@@ -133,7 +133,7 @@ function is_active($pages) {
             </li>
 
             <li class="mt-4 sidebar-header px-3">
-                <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Reports & Tools</small>
+                <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>
             </li>
 
             <li>

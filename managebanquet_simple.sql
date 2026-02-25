@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 25, 2026 at 08:43 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Generation Time: Feb 25, 2026 at 05:22 PM
+-- Server version: 10.4.28-MariaDB
+-- PHP Version: 8.2.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -88,15 +88,17 @@ CREATE TABLE `functions` (
   `backdrop_detail` text DEFAULT NULL,
   `backdrop_img` varchar(255) DEFAULT NULL,
   `hk_florist_detail` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `approve` tinyint(1) NOT NULL,
+  `created_by` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `functions`
 --
 
-INSERT INTO `functions` (`id`, `function_code`, `company_id`, `function_name`, `booking_name`, `organization`, `phone`, `room_name`, `booking_room`, `deposit`, `main_kitchen_remark`, `banquet_style`, `equipment`, `remark`, `backdrop_detail`, `backdrop_img`, `hk_florist_detail`, `created_at`) VALUES
-(1, '863563', 3, 'หฟหก', 'หกฟห', 'ฟหก', 'ฟหกฟหก', 'ฟหกฟ', 'หกฟ', 0.00, '', '4534', '534534', '53453', '', '', '', '2026-02-25 07:42:32');
+INSERT INTO `functions` (`id`, `function_code`, `company_id`, `function_name`, `booking_name`, `organization`, `phone`, `room_name`, `booking_room`, `deposit`, `main_kitchen_remark`, `banquet_style`, `equipment`, `remark`, `backdrop_detail`, `backdrop_img`, `hk_florist_detail`, `created_at`, `approve`, `created_by`) VALUES
+(23, '45453', 3, '45345', '3453', '453', '453453', '45345', '34534', 5345.00, '453453', '', '', '', '45345', 'uploads/backdrop_1772033482.png', '34534534', '2026-02-25 15:31:22', 0, 'นางสาว ดวงพร โชคชัย');
 
 -- --------------------------------------------------------
 
@@ -110,8 +112,18 @@ CREATE TABLE `function_kitchens` (
   `k_type` varchar(100) DEFAULT NULL,
   `k_item` text DEFAULT NULL,
   `k_qty` int(11) DEFAULT NULL,
-  `k_remark` text DEFAULT NULL
+  `k_remark` text DEFAULT NULL,
+  `k_date` varchar(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `function_kitchens`
+--
+
+INSERT INTO `function_kitchens` (`id`, `function_id`, `k_type`, `k_item`, `k_qty`, `k_remark`, `k_date`) VALUES
+(4, 23, '4534', '5345', 345345, NULL, '2026-02-04'),
+(5, 23, '45345345', '345', 34534, NULL, '2026-02-12'),
+(6, 23, '3453', '345345', 5345, NULL, '2026-02-28');
 
 -- --------------------------------------------------------
 
@@ -130,6 +142,14 @@ CREATE TABLE `function_menus` (
   `menu_price` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `function_menus`
+--
+
+INSERT INTO `function_menus` (`id`, `function_id`, `menu_time`, `menu_name`, `menu_set`, `menu_detail`, `menu_qty`, `menu_price`) VALUES
+(1, 23, '2026-02-12', '4534534', '534534', '453453', '4534534534', 4533.00),
+(2, 23, '2026-01-31', '5345', '453', '453453', '53453', 453453.00);
+
 -- --------------------------------------------------------
 
 --
@@ -144,6 +164,13 @@ CREATE TABLE `function_schedules` (
   `schedule_function` text DEFAULT NULL,
   `schedule_guarantee` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `function_schedules`
+--
+
+INSERT INTO `function_schedules` (`id`, `function_id`, `schedule_date`, `schedule_hour`, `schedule_function`, `schedule_guarantee`) VALUES
+(6, 23, '2026-02-19', '45345', '453453', '453');
 
 -- --------------------------------------------------------
 
@@ -164,7 +191,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `role`, `name`) VALUES
-(1, 'admin', '81dc9bdb52d04dc20036dbd8313ed055', '', ''),
+(1, 'admin', '81dc9bdb52d04dc20036dbd8313ed055', '', 'นางสาว ดวงพร โชคชัย'),
 (5, '6410510212', '$2y$10$o3v2/Smdthzzl06xw/U8sOC67LbVUvYdXpG8taNGXK7B0czrai3H2', 'Admin', 'นางสาว ดวงพร โชคชัย');
 
 --
@@ -236,25 +263,25 @@ ALTER TABLE `events`
 -- AUTO_INCREMENT for table `functions`
 --
 ALTER TABLE `functions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `function_kitchens`
 --
 ALTER TABLE `function_kitchens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `function_menus`
 --
 ALTER TABLE `function_menus`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `function_schedules`
 --
 ALTER TABLE `function_schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`

@@ -24,7 +24,7 @@ if (isset($_GET['edit_user_id'])) {
 ?>
 
 <style>
-    :root { --hotel-gold: #b89441; --hotel-gold-light: rgba(184, 148, 65, 0.1); --hotel-dark: #212529; }
+    :root { --hotel-gold: #b89441; --hotel-gold-light: rgba(184, 148, 65, 0.1);  }
     .form-control:focus, .form-select:focus { border-color: var(--hotel-gold); box-shadow: 0 0 0 0.25rem var(--hotel-gold-light); }
     .text-gold { color: var(--hotel-gold) !important; }
     .preview-zone { width: 100px; height: 100px; border: 2px dashed #ddd; border-radius: 12px; overflow: hidden; background: #fdfdfd; position: relative; cursor: pointer; margin-bottom: 10px; }

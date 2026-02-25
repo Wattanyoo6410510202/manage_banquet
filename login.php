@@ -7,15 +7,41 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if(isset($_POST['login'])){
     $u = mysqli_real_escape_string($conn, $_POST['username']);
-    $p = md5($_POST['password']);
+    $p_input = $_POST['password']; // รับรหัสผ่านตรงๆ มาก่อนเพื่อเช็ค format
 
-    $q = mysqli_query($conn, "SELECT * FROM users WHERE username='$u' AND password='$p'");
+    // 1. ค้นหา User จาก username
+    $sql = "SELECT * FROM users WHERE username = '$u'";
+    $q = mysqli_query($conn, $sql);
+
     if(mysqli_num_rows($q) > 0){
-        $_SESSION['user'] = $u;
-        header("Location: dashboard.php");
-        exit;
+        $user_data = mysqli_fetch_assoc($q);
+        $stored_password = $user_data['password'];
+
+        // 2. ตรวจสอบรหัสผ่าน (รองรับทั้ง MD5 เดิม และ Password Hash ใหม่)
+        $is_valid = false;
+        if (md5($p_input) === $stored_password) {
+            $is_valid = true;
+        } elseif (password_verify($p_input, $stored_password)) {
+            $is_valid = true;
+        }
+
+        if($is_valid){
+            // 3. เก็บข้อมูลทุกอย่างลง Session
+            $_SESSION['user_id']   = $user_data['id'];       // สำคัญ: ใช้บันทึก created_by
+            $_SESSION['user']      = $user_data['username']; // ชื่อสำหรับ Login
+            $_SESSION['user_name'] = $user_data['name'];     // ชื่อจริง (เช่น นางสาว ดวงพร)
+            $_SESSION['role']      = $user_data['role'];     // ระดับสิทธิ์ (Admin/User)
+            
+            // เก็บเวลาที่ Login ไว้ด้วย (เผื่อใช้ตรวจสอบ Session Timeout)
+            $_SESSION['login_time'] = time();
+
+            header("Location: dashboard.php");
+            exit;
+        } else {
+            $error = "รหัสผ่านไม่ถูกต้อง";
+        }
     } else {
-        $error = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+        $error = "ไม่พบชื่อผู้ใช้งานนี้ในระบบ";
     }
 }
 ?>
