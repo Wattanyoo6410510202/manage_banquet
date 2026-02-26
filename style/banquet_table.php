@@ -11,6 +11,75 @@
 
     }
 
+    /* --- DataTables & Buttons (Active State) --- */
+    /* ปุ่ม Pagination หน้าที่กำลังเปิด (Active) */
+    .page-item.active .page-link {
+        background-color: var(--hotel-gold) !important;
+        border-color: var(--hotel-gold) !important;
+        color: white !important;
+    }
+
+    จัดไปครับจาร ! ผมปรับสีของ Checkbox ให้เป็นสีทองเพื่อให้เข้ากับธีมใหม่ที่จารต้องการ โดยใช้เทคนิค accent-color สำหรับบราวเซอร์สมัยใหม่ และเขียน CSS ทับสำหรับคลาสของ Bootstrap เพื่อให้เวลาจารติ๊ก (Active) มันกลายเป็นสีทองสวยงามครับ 🎨 CSS เพิ่มเติมสำหรับ Checkbox สีทอง จารเอาโค้ดก้อนนี้ไปใส่เพิ่มในส่วน <style>ได้เลยครับ: CSS
+
+    /* --- Custom Golden Checkbox --- */
+    /* สำหรับ Checkbox ทั่วไป */
+    input[type="checkbox"] {
+        accent-color: var(--hotel-gold);
+        /* กำหนดสีหลักของ Checkbox เป็นสีทอง */
+        cursor: pointer;
+    }
+
+    /* ถ้าจารใช้คลาส .form-check-input ของ Bootstrap */
+    .form-check-input:checked {
+        background-color: var(--hotel-gold) !important;
+        border-color: var(--hotel-gold) !important;
+        box-shadow: 0 0 0 0.25rem var(--hotel-gold-light);
+    }
+
+    .form-check-input:focus {
+        border-color: var(--hotel-gold);
+        box-shadow: 0 0 0 0.25rem var(--hotel-gold-light);
+    }
+
+    /* --- 2. ปรับแต่งช่อง Search สีทอง (ตามรูป image_bfa91d.png) --- */
+    /* ปรับแต่ง input ของ DataTable */
+    .dataTables_filter input {
+        border: 1px solid #ddd;
+    }
+
+    /* --- 3. ปรับแต่ง Dropdown (Show entries) ให้เป็นสีทองด้วย (ภาพ image_bfa5d2.jpg) --- */
+    .dataTables_length select {
+        border: 1px solid #ddd;
+    }
+
+    .dataTables_length select:focus {
+        outline: none !important;
+        border-color: var(--hotel-gold) !important;
+        box-shadow: 0 0 0 0.25rem var(--hotel-gold-light) !important;
+    }
+
+    /* เมื่อคลิกที่ช่อง Search ให้ขอบเป็นสีทอง และมีเงาเรืองทอง */
+    .dataTables_filter input:focus {
+        outline: none !important;
+        border-color: var(--hotel-gold) !important;
+        box-shadow: 0 0 0 0.25rem var(--hotel-gold-light) !important;
+    }
+
+    /* ปรับแต่งช่อง input ทั่วไปในฟอร์มด้วย */
+    .form-control:focus {
+        border-color: var(--hotel-gold) !important;
+        box-shadow: 0 0 0 0.25rem var(--hotel-gold-light) !important;
+    }
+
+    /* เฉพาะ Checkbox ใน DataTable (ถ้ามี) */
+    table.dataTable tbody td input[type="checkbox"]:checked {
+        background-color: var(--hotel-gold);
+    }
+
+    .form-check-input:hover {
+        border-color: var(--hotel-gold);
+    }
+
     .card-body {
         flex: 1 1 auto;
         display: flex;

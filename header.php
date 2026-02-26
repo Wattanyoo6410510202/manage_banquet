@@ -125,11 +125,11 @@ function is_active($pages)
             </div>
 
             <ul class="list-unstyled components">
-                <li>
+                <!-- <li>
                     <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
-                </li>
+                </li> -->
 
                 <li>
                     <a href="manage_banquet.php"
@@ -138,7 +138,7 @@ function is_active($pages)
                     </a>
                 </li>
 
-                <li>
+                <!-- <li>
                     <a href="inventory.php" class="<?php echo is_active('inventory.php'); ?>">
                         <i class="bi bi-box-seam"></i> สต็อกสินค้า
                     </a>
@@ -148,7 +148,7 @@ function is_active($pages)
                     <a href="customers.php" class="<?php echo is_active('customers.php'); ?>">
                         <i class="bi bi-people"></i> รายชื่อลูกค้า
                     </a>
-                </li>
+                </li> -->
 
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>

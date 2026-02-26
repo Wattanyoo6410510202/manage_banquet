@@ -205,7 +205,7 @@ const aiMagicFill = () => {
             menus: [{ n: 'Cinema Pack', s: 'Fun', d: 'Fast Food Cinema Style', q: '200', p: '450' }]
         }
     ];
-
+    
     const customers = ['คุณอัครพล สุขสวัสดิ์', 'ดร.สมศักดิ์ รักไทย', 'คุณเจนนิเฟอร์ คิม', 'รศ.นภา พรรณนา'];
     const rooms = ['ห้องแกรนด์บอลรูม', 'ห้องราชพฤกษ์ ชั้น 2', 'ห้องจามจุรี', 'ห้องประชุมสุพรรณิการ์'];
     const organizations = ['บริษัท เอบีซี เทคโนโลยี จำกัด', 'กรมการปกครอง', 'มหาวิทยาลัยเกษตรศาสตร์', 'ธนาคารแห่งประเทศไทย'];
@@ -217,39 +217,52 @@ const aiMagicFill = () => {
     const today = new Date();
     const eventDate = new Date(today.setDate(today.getDate() + randInt(7, 30))).toISOString().split('T')[0];
 
-    // --- 2. ฟังก์ชันช่วยจัดการตาราง (สร้างแถวให้ครบตาม Data) ---
+    // --- 2. ฟังก์ชันช่วยจัดการตาราง ---
     const fillDynamicRows = (tableId, addFunc, dataArr, mappingFunc) => {
         const tbody = document.querySelector(`#${tableId} tbody`);
         if (!tbody) return;
-        while (tbody.rows.length > 0) tbody.deleteRow(0); // ล้างแถวเก่า
+        while (tbody.rows.length > 0) tbody.deleteRow(0); 
 
         dataArr.forEach(item => {
-            addFunc(); // เรียกฟังก์ชันเดิมที่จารมีในไฟล์ PHP
+            addFunc(); 
             const rows = tbody.querySelectorAll('tr');
             mappingFunc(rows[rows.length - 1], item);
         });
     };
 
-    // --- 3. ลงมือกรอกข้อมูล (Fill Every Section) ---
+    // --- 3. ลงมือกรอกข้อมูล (เน้นเนื้อหาเพียวๆ) ---
 
-    // 3.1 ข้อมูลส่วนตัวและรหัสงาน
-    document.querySelector('input[name="function_code"]').value = 'F-' + randInt(10000, 99999);
-    document.querySelector('input[name="function_name"]').value = selectedTheme.name;
-    document.querySelector('input[name="booking_name"]').value = rand(customers);
-    document.querySelector('input[name="organization"]').value = rand(organizations);
-    document.querySelector('input[name="phone"]').value = '08' + randInt(11111111, 99999999);
-    document.querySelector('input[name="room_name"]').value = rand(rooms);
-    document.querySelector('input[name="booking_room"]').value = 'R-' + randInt(100, 999);
-    document.querySelector('input[name="deposit"]').value = randInt(5, 50) * 1000;
+    // 🛑 [BLOCK] ส่วนนี้ห้ามยุ่งเด็ดขาด (ลบออกไปเลยเพื่อความชัวร์)
+    // - ห้ามกรอก function_code
+    // - ห้ามกรอก booking_room
+    
+    // 3.1 กรอกข้อมูลฟอร์มหลัก (เฉพาะที่เป็นข้อมูลทั่วไป)
+    const inputFnName = document.querySelector('input[name="function_name"]');
+    if(inputFnName) inputFnName.value = selectedTheme.name;
 
-    // 3.2 สุ่มเลือกบริษัทและเปลี่ยนโลโก้
+    const inputBookName = document.querySelector('input[name="booking_name"]');
+    if(inputBookName) inputBookName.value = rand(customers);
+
+    const inputOrg = document.querySelector('input[name="organization"]');
+    if(inputOrg) inputOrg.value = rand(organizations);
+
+    const inputPhone = document.querySelector('input[name="phone"]');
+    if(inputPhone) inputPhone.value = '08' + randInt(11111111, 99999999);
+
+    const inputRoom = document.querySelector('input[name="room_name"]');
+    if(inputRoom) inputRoom.value = rand(rooms);
+
+    const inputDeposit = document.querySelector('input[name="deposit"]');
+    if(inputDeposit) inputDeposit.value = randInt(5, 50) * 1000;
+
+    // 3.2 บริษัทและโลโก้
     const companySelect = document.querySelector('select[name="company_id"]');
     if (companySelect && companySelect.options.length > 1) {
         companySelect.selectedIndex = randInt(1, companySelect.options.length - 1);
-        updateCompanyLogo(companySelect); // เรียกฟังก์ชันเดิมของจาร
+        if (typeof updateCompanyLogo === "function") updateCompanyLogo(companySelect);
     }
 
-    // 3.3 ตาราง Schedule
+    // 3.3 ตาราง Schedule (ไม่ยุ่งกับรหัส)
     fillDynamicRows('scheduleTable', addScheduleRow, selectedTheme.schedules, (row, data) => {
         row.querySelector('input[name="schedule_date[]"]').value = eventDate;
         row.querySelector('input[name="schedule_hour[]"]').value = data.h;
@@ -264,12 +277,16 @@ const aiMagicFill = () => {
         row.querySelector('textarea[name="k_item[]"]').value = data.i;
         row.querySelector('input[name="k_qty[]"]').value = data.q;
     });
-    document.querySelector('textarea[name="main_kitchen_remark"]').value = "เน้นอาหารรสชาติกลางๆ ไม่เผ็ดมาก";
 
     // 3.5 Setup & Technical
-    document.querySelector('textarea[name="banquet_style"]').value = selectedTheme.style;
-    document.querySelector('textarea[name="equipment"]').value = selectedTheme.equipment;
-    document.querySelector('textarea[name="remark"]').value = selectedTheme.remark;
+    const bqStyle = document.querySelector('textarea[name="banquet_style"]');
+    if(bqStyle) bqStyle.value = selectedTheme.style;
+
+    const bqEquip = document.querySelector('textarea[name="equipment"]');
+    if(bqEquip) bqEquip.value = selectedTheme.equipment;
+
+    const bqRemark = document.querySelector('textarea[name="remark"]');
+    if(bqRemark) bqRemark.value = selectedTheme.remark;
 
     // 3.6 ตาราง Menu F&B
     fillDynamicRows('menuTable', addMenuRow, selectedTheme.menus, (row, data) => {
@@ -282,39 +299,24 @@ const aiMagicFill = () => {
     });
 
     // 3.7 Decoration & HK
-    document.querySelector('textarea[name="backdrop_detail"]').value = "Backdrop อักษรโฟม: " + selectedTheme.name + "\nธีมสี: " + rand(['ครีม-ทอง', 'ฟ้า-ขาว', 'ชมพู-พาสเทล']);
-    document.querySelector('textarea[name="hk_florist_detail"]').value = selectedTheme.hk;
-
-    // --- 3.8 สุ่มรูปภาพ Backdrop (เวอร์ชั่นส่งค่าไปบันทึก) ---
-    const previewImg = document.getElementById('imagePreview');
-    const previewContainer = document.getElementById('imagePreviewContainer');
-    const aiPathInput = document.getElementById('backdrop_img_path_ai'); // ช่องลับที่เพิ่มใหม่
-
-    if (previewImg) {
-        // สุ่มรูป (จารอาจจะหา URL รูปงานแต่งสวยๆ มาใส่แทนได้ครับ)
-        const randomUrl = `https://picsum.photos/seed/${Math.random()}/800/600`;
-
-        previewImg.src = randomUrl;
-
-        // ใส่ค่าลงในช่องลับ เพื่อให้ PHP รู้ว่า "ถ้าไม่ได้อัปโหลดไฟล์ ให้ใช้รูปนี้แทน"
-        if (aiPathInput) {
-            aiPathInput.value = randomUrl;
-        }
-
-        previewContainer.classList.remove('d-none');
-    }
+    const bckDetail = document.querySelector('textarea[name="backdrop_detail"]');
+    if(bckDetail) bckDetail.value = "Backdrop อักษรโฟม: " + selectedTheme.name + "\nธีมสี: " + rand(['ครีม-ทอง', 'ฟ้า-ขาว', 'ชมพู-พาสเทล']);
+    
+    const hkDetail = document.querySelector('textarea[name="hk_florist_detail"]');
+    if(hkDetail) hkDetail.value = selectedTheme.hk;
 
     // --- เอฟเฟกต์ที่ปุ่ม ---
     const btn = document.getElementById('aiMagicFill');
-    btn.innerHTML = '<i class="bi bi-check-all me-2"></i> กรอกให้ครบแล้วจาร!';
-    btn.classList.replace('btn-warning', 'btn-success');
-    setTimeout(() => {
-        btn.innerHTML = '<i class="bi bi-robot me-2"></i> AI สุ่มให้ครับจาร!';
-        btn.classList.replace('btn-success', 'btn-warning');
-    }, 2000);
+    if(btn) {
+        btn.innerHTML = '<i class="bi bi-check-all me-2"></i> สุ่มเนื้อหาให้แล้วจาร!';
+        btn.classList.replace('btn-warning', 'btn-success');
+        setTimeout(() => {
+            btn.innerHTML = '<i class="bi bi-robot me-2"></i> AI สุ่มให้ครับจาร!';
+            btn.classList.replace('btn-success', 'btn-warning');
+        }, 2000);
+    }
 };
 
-// ผูก Event เข้ากับปุ่ม
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('aiMagicFill');
     if (btn) btn.addEventListener('click', aiMagicFill);

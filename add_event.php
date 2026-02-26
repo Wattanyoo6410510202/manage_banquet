@@ -8,6 +8,36 @@ $query_companies = "SELECT id AS company_id, company_name, logo_path AS company_
 $res_companies = $conn->query($query_companies);
 ?>
 
+<?php
+// 1. กำหนด Prefix ปี/เดือน (เช่น No.26/02)
+$prefix = "No." . date('y/m');
+
+// 2. เขียน SQL เพื่อดึงค่าล่าสุดจากฐานข้อมูล
+// จารเช็คชื่อตาราง (functions) และชื่อฟิลด์ (function_code) ให้ตรงกับของจารนะครับ
+$sql = "SELECT function_code FROM functions 
+        WHERE function_code LIKE '$prefix%' 
+        ORDER BY function_code DESC LIMIT 1";
+
+// 3. รัน Query จริงๆ (สมมติว่าตัวแปรเชื่อมต่อ DB ของจารชื่อ $conn)
+$result = mysqli_query($conn, $sql);
+$row = mysqli_fetch_assoc($result);
+
+// 4. ตรวจสอบผลลัพธ์
+if ($row) {
+    $last_code = $row['function_code']; // ได้ค่าล่าสุดมา เช่น "No.26/020005"
+
+    // ตัดเอาเฉพาะตัวเลข 5 หลักท้ายมาบวก 1
+    $last_number = (int) substr($last_code, -5);
+    $new_number = str_pad($last_number + 1, 5, '0', STR_PAD_LEFT);
+} else {
+    // ถ้ายังไม่มีข้อมูลของเดือนนี้เลย ให้เริ่มที่ 1
+    $new_number = "00001";
+}
+
+// 5. รวมร่างเป็นรหัสใหม่
+$final_code = $prefix . $new_number;
+?>
+
 <div style="position: fixed; bottom: 80px; right: 30px; z-index: 9999;">
     <button type="button" id="aiMagicFill" class="btn btn-warning shadow-lg fw-bold p-3 border-3 border-white"
         style="border-radius: 50px; min-width: 180px;">
@@ -28,16 +58,16 @@ $res_companies = $conn->query($query_companies);
 
                     <div style="width: 100%; max-width: 450px;">
                         <div class="d-flex align-items-center gap-2">
-                            <button name="save" type="submit"
-                                class="btn btn-success btn-sm px-3  flex-shrink-0">
+                            <button name="save" type="submit" class="btn btn-success btn-sm px-3  flex-shrink-0">
                                 <i class="bi bi-cloud-check-fill me-2"></i> บันทึกข้อมูลฟังชั่น
                             </button>
                             <div class="input-group input-group-sm">
                                 <span
                                     class="input-group-text bg-dark border-secondary text-gold small fw-bold">NO.</span>
-                                <input type="text" name="function_code"
+                                <input type="text" name="function_code" id="function_code"
                                     class="form-control border-secondary bg-light fw-bold text-center"
-                                    placeholder="F-00000" style="letter-spacing: 1px;" required>
+                                    value="<?php echo $final_code; ?>" placeholder="No.26/020001"
+                                    style="letter-spacing: 1px;" readonly required>
                             </div>
 
                         </div>

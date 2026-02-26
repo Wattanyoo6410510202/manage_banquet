@@ -67,7 +67,7 @@ include "header.php";
                         <th class="ps-4">ชื่องาน (Function)</th>
                         <th>ผู้จอง</th>
                         <th>เงินมัดจำ</th>
-                        <th>สถานที่</th>
+                        <th>เลขที่</th>
                         <th>สถานะ</th>
                         <th>Sales</th>
                         <th class="text-center bg-light">จัดการ</th>
@@ -119,8 +119,8 @@ include "header.php";
                                 <td><span class="text-primary fw-bold"><?php echo $deposit; ?></span></td>
                                 <td>
                                     <span class="badge bg-light text-dark border fw-normal">
-                                        <i
-                                            class="bi bi-geo-alt me-1 text-gold"></i><?php echo htmlspecialchars($row['room_name']); ?>
+                                        <i class="bi bi-hash me-1 text-gold"></i>
+                                        <?php echo htmlspecialchars($row['function_code']); ?>
                                     </span>
                                 </td>
                                 <td>
