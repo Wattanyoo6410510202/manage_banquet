@@ -25,25 +25,31 @@ if (isset($_POST['save'])) {
     $main_kitchen_remark = $_POST['main_kitchen_remark'];
     $backdrop_detail = $_POST['backdrop_detail'];
     $hk_florist_detail = $_POST['hk_florist_detail'];
-    
+
     // ดึงค่า "ชื่อจริง" (name) จาก Session ที่เราเก็บไว้ตอน Login
     // (นางสาว ดวงพร โชคชัย)
     $created_by_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Unknown';
 
     // --- 2. จัดการเรื่องการอัปโหลดรูปภาพ Backdrop ---
     $backdrop_img_path = "";
+
+    // Step 2.1: เช็คว่ามีการอัปโหลดไฟล์จริงจากเครื่องไหม
     if (isset($_FILES['backdrop_img']) && $_FILES['backdrop_img']['error'] == 0) {
         $ext = pathinfo($_FILES['backdrop_img']['name'], PATHINFO_EXTENSION);
         $filename = "backdrop_" . time() . "." . $ext;
-        $target = "uploads/" . $filename; 
-        
+        $target = "uploads/" . $filename;
+
         if (!is_dir('uploads')) {
             mkdir('uploads', 0777, true);
         }
-        
+
         if (move_uploaded_file($_FILES['backdrop_img']['tmp_name'], $target)) {
-            $backdrop_img_path = $target;
+            $backdrop_img_path = $target; // ได้ค่าเป็น uploads/xxx.png
         }
+    }
+    // Step 2.2: ถ้าไม่มีไฟล์อัปโหลด ให้เช็คว่ามี URL จาก AI ส่งมาไหม (จากช่อง hidden ที่เราเพิ่ม)
+    else if (!empty($_POST['backdrop_img_path_ai'])) {
+        $backdrop_img_path = $_POST['backdrop_img_path_ai']; // ได้ค่าเป็น https://picsum.photos/...
     }
 
     // --- 3. บันทึกข้อมูลลงตารางหลัก (functions) ---
@@ -55,7 +61,7 @@ if (isset($_POST['save'])) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $conn->prepare($sql_main);
-    
+
     // bind_param: เปลี่ยน "i" ตัวสุดท้ายเป็น "s" (String) 
     // เพราะเราจะบันทึกเป็น "ชื่อคน" ไม่ใช่ "เลข ID"
     $stmt->bind_param(
@@ -101,25 +107,25 @@ if (isset($_POST['save'])) {
 
             // --- 5. บันทึกข้อมูลตาราง Kitchen ---
             // --- 5. บันทึกข้อมูลตาราง Kitchen (เพิ่ม k_date) ---
-if (!empty($_POST['k_type'])) {
-    foreach ($_POST['k_type'] as $key => $val) {
-        if (!empty($val)) {
-            // เพิ่ม k_date เข้าไปใน SQL
-            $sql_k = "INSERT INTO function_kitchens (function_id, k_date, k_type, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)";
-            $stmt_k = $conn->prepare($sql_k);
-            
-            // รับค่าจาก Form
-            $k_date = $_POST['k_date'][$key];
-            $k_item = $_POST['k_item'][$key];
-            $k_qty  = $_POST['k_qty'][$key];
-            $k_remark = $_POST['k_remark'][$key];
+            if (!empty($_POST['k_type'])) {
+                foreach ($_POST['k_type'] as $key => $val) {
+                    if (!empty($val)) {
+                        // เพิ่ม k_date เข้าไปใน SQL
+                        $sql_k = "INSERT INTO function_kitchens (function_id, k_date, k_type, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)";
+                        $stmt_k = $conn->prepare($sql_k);
 
-            // bind_param: i (id), s (date), s (type), s (item), i (qty), s (remark)
-            $stmt_k->bind_param("isssis", $last_id, $k_date, $val, $k_item, $k_qty, $k_remark);
-            $stmt_k->execute();
-        }
-    }
-}
+                        // รับค่าจาก Form
+                        $k_date = $_POST['k_date'][$key];
+                        $k_item = $_POST['k_item'][$key];
+                        $k_qty = $_POST['k_qty'][$key];
+                        $k_remark = $_POST['k_remark'][$key];
+
+                        // bind_param: i (id), s (date), s (type), s (item), i (qty), s (remark)
+                        $stmt_k->bind_param("isssis", $last_id, $k_date, $val, $k_item, $k_qty, $k_remark);
+                        $stmt_k->execute();
+                    }
+                }
+            }
 
             // --- 6. บันทึกข้อมูลตาราง Menu ---
             if (!empty($_POST['menu_name'])) {
@@ -135,7 +141,7 @@ if (!empty($_POST['k_type'])) {
 
             // ถ้าทุกอย่างโอเค ยืนยันการบันทึกทั้งหมด
             $conn->commit();
-            
+
             // ส่งค่าแจ้งเตือนสำเร็จ
             $_SESSION['flash_msg'] = "success";
             header("Location: manage_banquet.php");

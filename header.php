@@ -2,13 +2,14 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if(!isset($_SESSION['user'])) {
+if (!isset($_SESSION['user'])) {
     header("Location: login.php");
     exit;
 }
 
 // ฟังก์ชันสำหรับเช็คหน้าปัจจุบันเพื่อกำหนดคลาส active
-function is_active($pages) {
+function is_active($pages)
+{
     $current_page = basename($_SERVER['PHP_SELF']);
     if (is_array($pages)) {
         return in_array($current_page, $pages) ? 'active' : '';
@@ -18,13 +19,16 @@ function is_active($pages) {
 ?>
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <title>Sale System - Banquet</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sarabun:wght@300;400;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
         /* ล็อค Navbar บน */
@@ -39,7 +43,8 @@ function is_active($pages) {
         /* ล็อค Sidebar ข้าง */
         #sidebar {
             position: fixed;
-            top: 56px; /* ต่อจากความสูง Navbar */
+            top: 56px;
+            /* ต่อจากความสูง Navbar */
             left: 0;
             height: calc(100vh - 56px);
             overflow-y: auto;
@@ -48,11 +53,13 @@ function is_active($pages) {
 
         /* ดันเนื้อหา content ไม่ให้โดนเมนูทับ */
         .wrapper {
-            margin-top: 56px; /* หลบ Navbar */
+            margin-top: 56px;
+            /* หลบ Navbar */
         }
 
         #content {
-            margin-left: 260px; /* หลบ Sidebar (ตามความกว้างที่คุณตั้งไว้) */
+            margin-left: 260px;
+            /* หลบ Sidebar (ตามความกว้างที่คุณตั้งไว้) */
             width: calc(100% - 260px);
             min-height: calc(100vh - 56px);
         }
@@ -64,9 +71,11 @@ function is_active($pages) {
                 height: 100vh;
                 margin-left: -260px;
             }
+
             #sidebar.active {
                 margin-left: 0;
             }
+
             #content {
                 margin-left: 0;
                 width: 100%;
@@ -74,75 +83,84 @@ function is_active($pages) {
         }
     </style>
 </head>
+
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm border-bottom border-secondary">
-    <div class="container-fluid px-3">
-        <button type="button" id="sidebarCollapse" class="btn btn-dark d-lg-none me-2">
-            <i class="bi bi-list text-gold"></i>
-        </button>
-        
-        <a class="navbar-brand fw-bold ms-2" href="dashboard.php">
-            <i class="bi bi-building me-2 text-gold"></i><span class="text-white">SALE</span> <span class="text-gold">SYSTEM</span>
-        </a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm border-bottom border-secondary">
+        <div class="container-fluid px-3">
+            <button type="button" id="sidebarCollapse" class="btn btn-dark d-lg-none me-2">
+                <i class="bi bi-list text-gold"></i>
+            </button>
 
-        <div class="ms-auto d-flex align-items-center">
-            <div class="dropdown">
-                <a href="#" class="text-white-50 text-decoration-none dropdown-toggle small" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-circle me-1 text-gold"></i> <?php echo $_SESSION['user']; ?>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0 bg-dark">
-                    <li><a class="dropdown-item text-white" href="profile.php"><i class="bi bi-person me-2 text-gold"></i>โปรไฟล์</a></li>
-                    <li><hr class="dropdown-divider bg-secondary"></li>
-                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="bi bi-box-arrow-right me-2 text-danger"></i>Logout</a></li>
-                </ul>
+            <a class="navbar-brand fw-bold ms-2" href="dashboard.php">
+                <i class="bi bi-building me-2 text-gold"></i><span class="text-white">SALE</span> <span
+                    class="text-gold">SYSTEM</span>
+            </a>
+
+            <div class="ms-auto d-flex align-items-center">
+                <div class="dropdown">
+                    <a href="#" class="text-white-50 text-decoration-none dropdown-toggle small"
+                        data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1 text-gold"></i> <?php echo $_SESSION['user']; ?>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 bg-dark">
+                        <li><a class="dropdown-item text-white" href="profile.php"><i
+                                    class="bi bi-person me-2 text-gold"></i>โปรไฟล์</a></li>
+                        <li>
+                            <hr class="dropdown-divider bg-secondary">
+                        </li>
+                        <li><a class="dropdown-item text-danger" href="logout.php"><i
+                                    class="bi bi-box-arrow-right me-2 text-danger"></i>Logout</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
-</nav>
-
-<div class="wrapper">
-    <nav id="sidebar">
-        <div class="sidebar-header py-4 px-3">
-            <small class="text-uppercase text-gold fw-bold letter-spacing-1" style="font-size: 0.7rem;">Main Navigation</small>
-        </div>
-
-        <ul class="list-unstyled components">
-            <li>
-                <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
-                    <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-            </li>
-
-            <li>
-                <a href="manage_banquet.php" class="<?php echo is_active(['manage_banquet.php', 'add_event.php', 'edit_event.php', 'view_event.php','calendar.php']); ?>">
-                    <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
-                </a>
-            </li>
-
-            <li>
-                <a href="inventory.php" class="<?php echo is_active('inventory.php'); ?>">
-                    <i class="bi bi-box-seam"></i> สต็อกสินค้า
-                </a>
-            </li>
-
-            <li>
-                <a href="customers.php" class="<?php echo is_active('customers.php'); ?>">
-                    <i class="bi bi-people"></i> รายชื่อลูกค้า
-                </a>
-            </li>
-
-            <li class="mt-4 sidebar-header px-3">
-                <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>
-            </li>
-
-            <li>
-                <a href="setting.php" class="<?php echo is_active('setting.php'); ?>">
-                    <i class="bi bi-graph-up-arrow"></i> การตั้งค่า
-                </a>
-            </li>
-        </ul>
     </nav>
 
-    <div id="content">
-        <div class="container-fluid pt-1 px-1">
+    <div class="wrapper">
+        <nav id="sidebar">
+            <div class="sidebar-header py-4 px-3">
+                <small class="text-uppercase text-gold fw-bold letter-spacing-1" style="font-size: 0.7rem;">Main
+                    Navigation</small>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li>
+                    <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+
+                <li>
+                    <a href="manage_banquet.php"
+                        class="<?php echo is_active(['manage_banquet.php', 'add_event.php', 'edit_event.php', 'view_event.php', 'calendar.php']); ?>">
+                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
+                    </a>
+                </li>
+
+                <li>
+                    <a href="inventory.php" class="<?php echo is_active('inventory.php'); ?>">
+                        <i class="bi bi-box-seam"></i> สต็อกสินค้า
+                    </a>
+                </li>
+
+                <li>
+                    <a href="customers.php" class="<?php echo is_active('customers.php'); ?>">
+                        <i class="bi bi-people"></i> รายชื่อลูกค้า
+                    </a>
+                </li>
+
+                <li class="mt-4 sidebar-header px-3">
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>
+                </li>
+
+                <li>
+                    <a href="setting.php" class="<?php echo is_active('setting.php'); ?>">
+                        <i class="bi bi-gear-fill"></i> การตั้งค่า
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div id="content">
+            <div class="container-fluid pt-1 px-1">

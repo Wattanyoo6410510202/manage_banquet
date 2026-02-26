@@ -33,21 +33,12 @@ if (isset($_GET['edit_user_id'])) {
     .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
 </style>
 
-<div class="row mb-4 align-items-center">
-    <div class="col-6">
-        <h4 class="fw-bold mb-0"><i class="bi bi-gear-wide-connected me-2 text-gold"></i>ตั้งค่าระบบ</h4>
-    </div>
-    <div class="col-6 text-end">
-        <span class="badge bg-light text-dark border p-2"><i class="bi bi-clock me-1"></i> อัปเดตล่าสุด: <?php echo date('H:i'); ?></span>
-    </div>
-</div>
-
 <div class="row g-4 mb-5">
     <div class="col-lg-4">
         <div class="card h-100">
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-4 text-gold"><i class="bi bi-building me-2"></i><?php echo $edit_data ? 'แก้ไขบริษัท' : 'ลงทะเบียนบริษัท'; ?></h5>
-                <form action="save_settings.php" method="POST" enctype="multipart/form-data">
+                <form action="api/save_settings.php" method="POST" enctype="multipart/form-data">
                     <?php if($edit_data): ?> <input type="hidden" name="id" value="<?php echo $edit_data['id']; ?>"> <?php endif; ?>
                     
                     <div class="text-center mb-3">
@@ -127,7 +118,7 @@ if (isset($_GET['edit_user_id'])) {
                 <i class="bi bi-pencil text-gold"></i>
             </a>
             
-            <a href="save_settings.php?delete_id=<?php echo $row['id']; ?>" 
+            <a href="api/save_settings.php?delete_id=<?php echo $row['id']; ?>" 
                class="btn btn-sm btn-light border text-danger" 
                onclick="return confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลบริษัท <?php echo $row['company_name']; ?>?');">
                 <i class="bi bi-trash"></i>
@@ -150,7 +141,7 @@ if (isset($_GET['edit_user_id'])) {
         <div class="card">
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-4 text-gold"><i class="bi bi-person-gear me-2"></i><?php echo $edit_user ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้งาน'; ?></h5>
-                <form action="save_user.php" method="POST">
+                <form action="api/save_user.php" method="POST">
                     <?php if($edit_user): ?> <input type="hidden" name="id" value="<?php echo $edit_user['id']; ?>"> <?php endif; ?>
                         <div class="mb-3">
     <label class="small fw-bold">ชื่อ-นามสกุล</label>
@@ -201,7 +192,7 @@ if (isset($_GET['edit_user_id'])) {
                                 <td><span class="badge bg-light text-dark border fw-normal"><?php echo $u['role']; ?></span></td>
                                 <td class="text-end pe-4">
                                     <a href="setting.php?edit_user_id=<?php echo $u['id']; ?>" class="btn btn-sm btn-light border"><i class="bi bi-pencil text-gold"></i></a>
-                                    <a href="save_user.php?delete_id=<?php echo $u['id']; ?>" class="btn btn-sm btn-light border text-danger" onclick="return confirm('ลบผู้ใช้รายนี้?')"><i class="bi bi-trash"></i></a>
+                                    <a href="api/save_user.php?delete_id=<?php echo $u['id']; ?>" class="btn btn-sm btn-light border text-danger" onclick="return confirm('ลบผู้ใช้รายนี้?')"><i class="bi bi-trash"></i></a>
                                 </td>
                             </tr>
                             <?php endwhile; ?>
