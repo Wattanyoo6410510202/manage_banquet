@@ -2,40 +2,33 @@
 include "config.php";
 include "api/process_function.php";
 include "header.php";
+access_control('all_staff');
 
 // ดึงข้อมูลบริษัทสำหรับ Dropdown
 $query_companies = "SELECT id AS company_id, company_name, logo_path AS company_logo FROM companies ORDER BY company_name ASC";
 $res_companies = $conn->query($query_companies);
 ?>
 
-<?php
-// 1. กำหนด Prefix ปี/เดือน (เช่น No.26/02)
-$prefix = "No." . date('y/m');
 
-// 2. เขียน SQL เพื่อดึงค่าล่าสุดจากฐานข้อมูล
-// จารเช็คชื่อตาราง (functions) และชื่อฟิลด์ (function_code) ให้ตรงกับของจารนะครับ
-$sql = "SELECT function_code FROM functions 
+<?php 
+// --- Logic รันเลขที่เอกสาร No.YY/MMXXX ---
+$prefix =  date('y/m'); 
+$sql = "SELECT function_code FROM functions
         WHERE function_code LIKE '$prefix%' 
         ORDER BY function_code DESC LIMIT 1";
 
-// 3. รัน Query จริงๆ (สมมติว่าตัวแปรเชื่อมต่อ DB ของจารชื่อ $conn)
 $result = mysqli_query($conn, $sql);
 $row = mysqli_fetch_assoc($result);
 
-// 4. ตรวจสอบผลลัพธ์
 if ($row) {
-    $last_code = $row['function_code']; // ได้ค่าล่าสุดมา เช่น "No.26/020005"
-
-    // ตัดเอาเฉพาะตัวเลข 5 หลักท้ายมาบวก 1
-    $last_number = (int) substr($last_code, -5);
-    $new_number = str_pad($last_number + 1, 5, '0', STR_PAD_LEFT);
+    // ถ้ามีเลขเดิม เช่น No.26/02005 -> ดึง 005 มา +1
+    $last_number = (int) substr($row['function_code'], -3); 
+    $new_number = str_pad($last_number + 1, 3, '0', STR_PAD_LEFT);
 } else {
-    // ถ้ายังไม่มีข้อมูลของเดือนนี้เลย ให้เริ่มที่ 1
-    $new_number = "00001";
+    // ถ้ายังไม่มี เริ่มที่ 001
+    $new_number = "001";
 }
-
-// 5. รวมร่างเป็นรหัสใหม่
-$final_code = $prefix . $new_number;
+$final_code = $prefix . $new_number; 
 ?>
 
 <div style="position: fixed; bottom: 80px; right: 30px; z-index: 9999;">

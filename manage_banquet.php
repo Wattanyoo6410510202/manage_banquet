@@ -2,9 +2,17 @@
 include "config.php";
 include "header.php";
 ?>
+<?php
+// ตรวจสอบ Role จาก Session (ปรับชื่อคีย์ตามที่คุณใช้จริง)
+$user_role = strtolower($_SESSION['role'] ?? '');
+
+// กำหนดกลุ่มที่มีสิทธิ์ แก้ไข/ลบ (Admin, Staff, GM)
+$can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
+?>
 <div id="alert-container">
     <?php include "assets/alert.php"; ?>
 </div>
+
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
@@ -46,11 +54,23 @@ include "header.php";
                     <i class="bi bi-calendar3"></i>
                     <span class="d-none d-sm-inline ms-1 small">ปฏิทิน</span>
                 </a>
-                <a href="add_event.php" class="btn btn-dark btn-sm px-3 py-1 rounded-pill shadow-sm"
-                    style="font-size: 0.8rem;">
-                    <i class="bi bi-plus-lg"></i>
-                    <span class="ms-1">เพิ่มงานใหม่</span>
-                </a>
+                <?php
+                // 1. ตรวจสอบว่า Session ของ Role ถูกเก็บไว้ในชื่อตัวแปรอะไร (สมมติว่าเป็น $_SESSION['role'])
+// 2. แปลงเป็นตัวพิมพ์เล็ก (strtolower) เพื่อให้เทียบกับ Array ได้แม่นยำ
+                $user_role = strtolower($_SESSION['role'] ?? '');
+
+                // 3. กำหนดกลุ่มที่อนุญาตให้เห็นปุ่ม
+                $allowed_roles = ['admin', 'staff', 'gm'];
+
+                // 4. เช็กเงื่อนไข: ถ้า Role อยู่ในกลุ่มที่กำหนด ให้แสดงปุ่ม
+                if (in_array($user_role, $allowed_roles)):
+                    ?>
+                    <a href="add_event.php" class="btn btn-dark btn-sm px-3 py-1 rounded-pill shadow-sm"
+                        style="font-size: 0.8rem;">
+                        <i class="bi bi-plus-lg"></i>
+                        <span class="ms-1">เพิ่มงานใหม่</span>
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -75,11 +95,27 @@ include "header.php";
                 </thead>
                 <tbody>
                     <?php
+                    // 1. ดึงข้อมูลจาก Session (ใช้ 'user' เพราะเก็บ username ที่ใช้ Login)
+                    $user_role = strtolower($_SESSION['role'] ?? 'staff');
+                    $current_user = $_SESSION['user_name'] ?? ''; // <--- เปลี่ยนจาก user_name เป็น user
+                    
+                    // 2. สร้างเงื่อนไข WHERE
+                    $where_clause = "";
+
+                    // ถ้าเป็น staff ให้เห็นแค่งานตัวเอง
+                    if ($user_role === 'staff') {
+                        $safe_user = mysqli_real_escape_string($conn, $current_user);
+                        $where_clause = " WHERE f.created_by = '$safe_user' ";
+                    }
+
+                    // 3. SQL Query
                     $sql = "SELECT f.*, c.company_name, c.logo_path,
-                           (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
-                           FROM functions f 
-                           LEFT JOIN companies c ON f.company_id = c.id
-                           ORDER BY f.id DESC";
+        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
+        FROM functions f 
+        LEFT JOIN companies c ON f.company_id = c.id
+        $where_clause
+        ORDER BY f.id DESC";
+
                     $q = mysqli_query($conn, $sql);
                     if ($q && mysqli_num_rows($q) > 0) {
                         while ($row = mysqli_fetch_assoc($q)) {
@@ -134,9 +170,9 @@ include "header.php";
                                 </td>
                                 <td class="text-center  sticky-col">
                                     <div class="d-flex justify-content-center gap-1">
-                                        <?php if ($row['approve'] == 0): ?>
-                                            <button class="btn btn-sm btn-outline-success "
-                                                onclick="confirmApprove(<?php echo $row['id']; ?>)" title="อนุมัติงาน">
+                                        <?php if ($row['approve'] == 0 && in_array(strtolower($_SESSION['role']), ['admin', 'gm'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-row"
+                                                data-id="<?php echo $row['id']; ?>" title="อนุมัติงาน">
                                                 <i class="bi bi-check-lg"></i>
                                             </button>
                                         <?php endif; ?>
@@ -146,15 +182,19 @@ include "header.php";
                                             <i class="bi bi-printer "></i>
                                         </a>
 
-                                        <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-outline-dark "
-                                            title="แก้ไขข้อมูล">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </a>
+                                        <?php if ($can_manage): ?>
+                                            <?php if ($row['approve'] == 0): // ถ้ายังไม่อนุมัติ (0) ถึงจะโชว์ปุ่ม ?>
+                                                <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-outline-dark"
+                                                    title="แก้ไขข้อมูล">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                            <?php endif; ?>
 
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete"
-                                            data-id="<?php echo $row['id']; ?>" title="ลบรายการ">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
+                                                data-id="<?php echo $row['id']; ?>" title="ลบรายการ">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -176,5 +216,11 @@ include "header.php";
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
 
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script src="assets/delete_handler.js"></script>
 <?php include "style/banquet_table.php"; ?>
+
+
 <?php include "footer.php"; ?>
