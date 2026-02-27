@@ -55,7 +55,7 @@ if (!empty($ids) && is_array($ids)) {
         $conn->commit();
 
         // ✅ เก็บ Session สำหรับ Flash Message (หน้าจอก็จะเด้งแถบเขียวเนียนๆ)
-        $_SESSION['flash_msg'] = "success";
+        $_SESSION['flash_msg'] = "delete_success";
         $_SESSION['msg_text'] = "ลบข้อมูลเรียบร้อยแล้วครับจาร";
 
         echo json_encode(['status' => 'success']);

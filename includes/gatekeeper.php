@@ -17,7 +17,7 @@ function protect($page_type)
             $roles = ['gm'];
             break;
         case 'all_staff':
-            $roles = ['admin', 'staff', 'gm'];
+            $roles = ['Admin', 'Staff', 'G'];
             break;
         case 'viewer':
             $roles = ['viewer'];

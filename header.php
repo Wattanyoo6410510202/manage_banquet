@@ -1,4 +1,4 @@
-<<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -80,7 +80,7 @@ function is_active($pages)
 
             /* ดันเนื้อหา content ไม่ให้โดนเมนูทับ */
             .wrapper {
-                margin-top: 32px;
+                margin-top: 50px;
                 /* หลบ Navbar */
             }
 
@@ -160,7 +160,7 @@ function is_active($pages)
                     </li>
                     <li>
                         <a href="manage_banquet.php"
-                            class="<?php echo is_active(['manage_banquet.php']); ?>">
+                            class="<?php echo is_active(['manage_banquet.php', 'view.php']); ?>">
                             <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
                         </a>
                     </li>

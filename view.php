@@ -1,14 +1,12 @@
 <?php
 include "config.php";
 
-
-// 1. รับค่า ID และป้องกัน SQL Injection
+// 1. รับค่า ID
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
-// 2. ดึงข้อมูลจาก Session (อิงตามไฟล์ Login ที่จารส่งมาล่าสุด)
-// ใช้ trim() กันเหนียวเผื่อมีช่องว่างหลุดมาตอนบันทึก
+// 2. ดึงข้อมูลจาก Session (ทำให้เป็นตัวเล็กทั้งหมดเพื่อเทียบง่ายๆ)
 $current_user_name = isset($_SESSION['user_name']) ? trim($_SESSION['user_name']) : '';
-$user_role = isset($_SESSION['role']) ? trim($_SESSION['role']) : 'staff';
+$user_role = strtolower(trim($_SESSION['role'] ?? 'staff'));
 
 // 3. ดึงข้อมูลจากฐานข้อมูล
 $sql = "SELECT f.*, c.company_name, c.logo_path 
@@ -18,37 +16,124 @@ $sql = "SELECT f.*, c.company_name, c.logo_path
 $res = $conn->query($sql);
 $data = $res->fetch_assoc();
 
-// --- 🚀 ส่วนการเช็คสิทธิ์แบบเข้มงวด ---
-
 if (!$data) {
     die("ไม่พบข้อมูลรายการนี้ในระบบ!");
 }
 
-// ดึงชื่อคนสร้างจาก DB มาตัดช่องว่างก่อนเทียบ
+// ดึงชื่อคนสร้างจาก DB มาตัดช่องว่าง
 $created_by_db = trim($data['created_by']);
 
+// --- 🚀 ส่วนการเช็คสิทธิ์ (Gatekeeper) ---
+
 /**
- * 💡 Logic การเช็ค:
- * 1. ถ้าไม่ใช่ Admin (คือเป็น staff หรืออื่นๆ)
- * 2. และ ชื่อคนสร้างใน DB ไม่ตรงกับชื่อคนล็อคอิน
- * 3. ให้ดีดออกทันที
+ * 💡 Logic: 
+ * ถ้าไม่ใช่ Admin และไม่ใช่ GM (กลุ่มคนมีสิทธิ์สูง)
+ * ค่อยมาเช็คว่าใช่เจ้าของงานไหม ถ้าไม่ใช่เจ้าของงานจริง...ดีดออก!
  */
-if ($user_role !== 'admin') {
+if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'viewer') {
     if ($created_by_db !== $current_user_name) {
         header("Location: access_denied.php");
         exit();
     }
-
-include "header.php";
 }
 
-// --- ผ่านด่านเช็คสิทธิ์แล้ว ทำงานต่อด้านล่าง ---
+// ✅ ย้าย Header ออกมาข้างนอก ให้ทุกคนโหลดได้เหมือนกัน
+require_once "header.php";
+
+// --- ผ่านด่านแล้ว ทำงานต่อด้านล่าง ---
+
+// 1. ดึง ID คนอนุมัติจากข้อมูลที่มีอยู่
+$approver_id = $data['approve_by'] ?? null;
+$approver_name = 'ยังไม่อนุมัติ'; // ค่าเริ่มต้นถ้ายังไม่มีใครอนุมัติ
+
+if ($approver_id && is_numeric($approver_id)) {
+    // 2. ไปดึงชื่อจากตาราง users
+    $sql_user = "SELECT name FROM users WHERE id = ? LIMIT 1";
+    if ($stmt_user = $conn->prepare($sql_user)) {
+        $stmt_user->bind_param("i", $approver_id);
+        $stmt_user->execute();
+        $res_user = $stmt_user->get_result();
+        if ($user_row = $res_user->fetch_assoc()) {
+            $approver_name = $user_row['name']; // ได้ชื่อมาแล้ว!
+        }
+        $stmt_user->close();
+    }
+}
+
+// --- 🚀 สำหรับผู้จัดทำ (Event Organizer) ---
+// ค้นหาลายเซ็นจากชื่อ (created_by) ที่เก็บในตาราง functions
+$creator_sig = "";
+$created_by_name = trim($data['created_by'] ?? '');
+
+if (!empty($created_by_name)) {
+    // JOIN ตาราง users (u) เพื่อเอา ID ไปหาใน signatures (s)
+    $sql_c = "SELECT s.path 
+              FROM users u 
+              JOIN signatures s ON u.id = s.users_id 
+              WHERE u.name = ? 
+              ORDER BY s.id DESC LIMIT 1";
+
+    if ($stmt_c = $conn->prepare($sql_c)) {
+        $stmt_c->bind_param("s", $created_by_name);
+        $stmt_c->execute();
+        $res_c = $stmt_c->get_result();
+        if ($row_c = $res_c->fetch_assoc()) {
+            $creator_sig = $row_c['path'];
+        }
+        $stmt_c->close();
+    }
+}
+
+// --- 🚀 สำหรับผู้อนุมัติ (Authorized By) ---
+// ค้นหาลายเซ็นจาก approve_by (ซึ่งเป็น int ID อยู่แล้ว)
+$approver_id = $data['approve_by'] ?? 0;
+$approver_sig = "";
+
+if ($approver_id > 0) {
+    $sql_a = "SELECT path FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1";
+    if ($stmt_a = $conn->prepare($sql_a)) {
+        $stmt_a->bind_param("i", $approver_id);
+        $stmt_a->execute();
+        $res_a = $stmt_a->get_result();
+        if ($row_a = $res_a->fetch_assoc()) {
+            $approver_sig = $row_a['path'];
+        }
+        $stmt_a->close();
+    }
+}
+
+// ฟังก์ชันตรวจสอบ Path เพื่อความปลอดภัย
+function displaySignature($path)
+{
+    if (empty($path))
+        return "";
+    // ถ้าใน DB เก็บแค่ชื่อไฟล์ เช่น "sig1.png" ให้เติม path
+    // แต่ถ้าเก็บเต็ม "uploads/signatures/sig1.png" อยู่แล้วก็ใช้ได้เลย
+    return (strpos($path, 'uploads/') !== false) ? $path : "uploads/signatures/" . $path;
+}
 ?>
 
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link rel="stylesheet" href="style/banquet_print.css">
+<style>
+    .sig-space {
+        height: 60px;
+        /* ความสูงพื้นที่ลายเซ็น */
+        display: flex;
+        align-items: flex-end;
+        /* ให้รูปชิดขอบล่าง (บนเส้นบรรทัด) */
+        justify-content: center;
+        margin-bottom: 2px;
+    }
 
+    .sig-img {
+        max-height: 55px;
+        /* คุมความสูงไม่ให้ล้น */
+        width: auto;
+        object-fit: contain;
+    }
+</style>
 
 
 <div class="no-print"
@@ -61,6 +146,16 @@ include "header.php";
             <i class="bi bi-printer-fill text-secondary fs-5"></i>
             <span style="font-size: 10px;" class="fw-bold">พิมพ์</span>
         </button>
+
+        <div class="hr-custom w-75 border-top opacity-25"></div>
+
+        <button onclick="window.location.href='signature_page.php?id=<?php echo $id; ?>'"
+            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+            title="จัดการลายเซ็น">
+            <i class="bi bi-pen-fill text-info fs-5"></i>
+            <span style="font-size: 10px;" class="fw-bold">ลายเซ็น</span>
+        </button>
+
 
         <div class="hr-custom w-75 border-top opacity-25"></div>
 
@@ -78,6 +173,18 @@ include "header.php";
             title="ส่งออก Word">
             <i class="bi bi-file-earmark-word-fill text-primary fs-5"></i>
             <span style="font-size: 10px;" class="fw-bold">Word</span>
+        </button>
+
+
+
+
+        <div class="hr-custom w-75 border-top opacity-25"></div>
+
+        <button onclick="exportToDoc()"
+            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+            title="ส่งออกเอกสาร">
+            <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
+            <span style="font-size: 10px;" class="fw-bold">DOC</span>
         </button>
 
     </div>
@@ -134,7 +241,7 @@ include "header.php";
                 <th width="15%">Date</th>
                 <th width="15%">Hour</th>
                 <th>Function Detail</th>
-                <th width="12%">Guar. (Pax)</th>
+                <th width="12%">QTY</th>
             </tr>
         </thead>
         <tbody>
@@ -241,17 +348,41 @@ include "header.php";
     </div>
 
     <div class="row mt-5 text-center" style="font-size: 10px;">
-        <div class="col-4">
-            <div class="mx-auto border-top w-75 pt-1 mt-4">ผู้จัดทำ (Event Organizer)</div>
-            <small class="text-muted">วันที่: ____/____/____</small>
+        <div class="col-4 text-center">
+            <div class="sig-space">
+                <?php if (!empty($creator_sig)): ?>
+                    <img src="<?php echo displaySignature($creator_sig); ?>" class="sig-img">
+                <?php endif; ?>
+            </div>
+            <div class="mx-auto border-top w-75 pt-1">
+                <div class="fw-bold"><?php echo $data['created_by'] ?? '-'; ?></div>
+                ผู้จัดทำ (Event Organizer)
+            </div>
+            <small class="text-muted">วันที่: <?php echo $data['created_at'] ?? '-'; ?></small>
         </div>
-        <div class="col-4">
-            <div class="mx-auto border-top w-75 pt-1 mt-4">ผู้อนุมัติ (Authorized By)</div>
-            <small class="text-muted">วันที่: ____/____/____</small>
+
+        <div class="col-4 text-center">
+            <div class="sig-space">
+                <?php if ($data['approve'] == 1 && !empty($approver_sig)): ?>
+                    <img src="<?php echo displaySignature($approver_sig); ?>" class="sig-img">
+                <?php endif; ?>
+            </div>
+            <div class="mx-auto border-top w-75 pt-1">
+                <div class="fw-bold"><?php echo $approver_name; ?></div>
+                ผู้อนุมัติ (Authorized By)
+            </div>
+            <small class="text-muted">
+                วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '-'; ?>
+            </small>
         </div>
-        <div class="col-4">
-            <div class="mx-auto border-top w-75 pt-1 mt-4">ลูกค้า (Customer Signature)</div>
-            <small class="text-muted">วันที่: ____/____/____</small>
+
+        <div class="col-4 text-center">
+            <div class="sig-space"></div>
+            <div class="mx-auto border-top w-75 pt-1">
+                <div class="fw-bold"><?php echo $data['booking_name'] ?? '-'; ?></div>
+                ลูกค้า (Customer)
+            </div>
+            <small class="text-muted">วันที่: ______/______/______</small>
         </div>
     </div>
 </div>
@@ -316,6 +447,7 @@ include "header.php";
             btn.disabled = false;
         });
     }
+
 </script>
 
 <?php include "footer.php"; ?>

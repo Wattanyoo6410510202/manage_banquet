@@ -167,6 +167,7 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                                 <td>
                                     <div class="text-muted small"><?php echo htmlspecialchars($row['created_by'] ?: '-'); ?>
                                     </div>
+                                     <div class="text-muted x-small">แก้ไขเมื่อ <?php echo htmlspecialchars($row['modify']); ?></div>
                                 </td>
                                 <td class="text-center  sticky-col">
                                     <div class="d-flex justify-content-center gap-1">

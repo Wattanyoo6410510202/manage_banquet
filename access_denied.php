@@ -47,10 +47,6 @@
         <div class="alert alert-warning border-0 small">
             ระบบจะพาคุณกลับไปหน้าหลักภายใน <span id="countdown" class="fw-bold">5</span> วินาที...
         </div>
-
-        <a href="javascript:history.back()" class="btn btn-primary w-100 py-2">
-            <i class="bi bi-arrow-left-circle me-2"></i>กลับไปหน้าก่อนหน้า
-        </a>
     </div>
 
     <script>

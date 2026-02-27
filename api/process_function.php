@@ -54,19 +54,17 @@ if (isset($_POST['save'])) {
 
     // --- 3. บันทึกข้อมูลลงตารางหลัก (functions) ---
     $sql_main = "INSERT INTO functions (
-        function_code, company_id, function_name, booking_name, organization, 
-        phone, room_name, booking_room, deposit, banquet_style, 
-        equipment, remark, main_kitchen_remark, backdrop_detail, 
-        hk_florist_detail, backdrop_img, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    company_id, function_name, booking_name, organization, 
+    phone, room_name, booking_room, deposit, banquet_style, 
+    equipment, remark, main_kitchen_remark, backdrop_detail, 
+    hk_florist_detail, backdrop_img, created_by
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $conn->prepare($sql_main);
 
-    // bind_param: เปลี่ยน "i" ตัวสุดท้ายเป็น "s" (String) 
-    // เพราะเราจะบันทึกเป็น "ชื่อคน" ไม่ใช่ "เลข ID"
+    // bind_param: ตัด s ตัวแรกออก (เพราะไม่มี function_code แล้ว) เหลือ 16 ตัวแปร
     $stmt->bind_param(
-        "sissssssdssssssss", // ตัวสุดท้ายเปลี่ยนจาก i เป็น s
-        $function_code,
+        "issssssdssssssss",
         $company_id,
         $function_name,
         $booking_name,
@@ -82,14 +80,18 @@ if (isset($_POST['save'])) {
         $backdrop_detail,
         $hk_florist_detail,
         $backdrop_img_path,
-        $created_by_name // ส่งชื่อจริงเข้าไปบันทึก
+        $created_by_name
     );
 
     // --- เริ่มต้นการบันทึกข้อมูล (แก้ไขจากจุดที่จารส่งมา) ---
     if ($stmt->execute()) {
         $last_id = $conn->insert_id;
+    // --- 🚀 เพิ่มตรงนี้: สร้างเลข 00064/2702 แล้ว UPDATE กลับทันที ---
+    $final_code = str_pad($last_id, 5, '0', STR_PAD_LEFT) . "/" . date('dm');
+    $conn->query("UPDATE functions SET function_code = '$final_code' WHERE id = $last_id");
+    // -------------------------------------------------------
 
-        // ใช้ Database Transaction เพื่อความปลอดภัยของข้อมูล
+    $conn->begin_transaction();
         $conn->begin_transaction();
 
         try {

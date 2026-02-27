@@ -35,7 +35,7 @@ if(isset($_POST['login'])){
             // เก็บเวลาที่ Login ไว้ด้วย (เผื่อใช้ตรวจสอบ Session Timeout)
             $_SESSION['login_time'] = time();
 
-            header("Location: dashboard.php");
+            header("Location: calendar.php");
             exit;
         } else {
             $error = "รหัสผ่านไม่ถูกต้อง";

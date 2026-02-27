@@ -86,7 +86,7 @@ include "header.php"; ?>
                 <div class="animate__animated animate__fadeIn">
                     <div class="mb-3">
                         <small class="text-muted d-block">ชื่องานหลัก:</small>
-                        <h4 class="text-primary fw-bold mb-0">${props.mainTitle}</h4>
+                        <h4 class="fw-bold mb-0">${props.mainTitle}</h4>
                         <span class="badge bg-light text-dark border mt-1">ID งาน: ${eventId}</span>
                     </div>
                     
@@ -95,12 +95,12 @@ include "header.php"; ?>
                         <li class="list-group-item px-0"><strong>เวลา:</strong> ${props.time} น.</li>
                         <li class="list-group-item px-0"><strong>ห้องประชุม:</strong> ${props.room}</li>
                         <li class="list-group-item px-0"><strong>ผู้จอง:</strong> ${props.booking}</li>
-                        <li class="list-group-item px-0 text-danger"><strong>จำนวนการันตี:</strong> ${props.guarantee} ท่าน</li>
+                        <li class="list-group-item px-0 text-danger"><strong>จำนวน:</strong> ${props.guarantee} ท่าน</li>
                         <li class="list-group-item px-0 small text-muted"><strong>หมายเหตุ:</strong><br>${props.remark || '-'}</li>
                     </ul>
                     
                     <hr>
-                    <a href="edit.php?id=${eventId}" class="btn btn-warning w-100 fw-bold shadow-sm mb-2">
+                    <a href="edit.php?id=${eventId}" class="btn btn-dark w-100 fw-bold text-gold mb-2">
                         <i class="bi bi-pencil-square me-2"></i> แก้ไขข้อมูลงานนี้
                     </a>
                     

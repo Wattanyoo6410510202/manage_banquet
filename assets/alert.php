@@ -69,9 +69,14 @@
                 $alert_class = "alert-warning text-warning";
                 $alert_icon = "bi-exclamation-triangle-fill";
                 break;
-       
+
             case 'update_success':
                 $alert_msg = "อัปเดตข้อมูลสำเร็จ";
+                $alert_class = "alert-success text-success";
+                $alert_icon = "bi-check-circle-fill";
+                break;
+            case 'approve_success':
+                $alert_msg = "อนุมัติสำเร็จ";
                 $alert_class = "alert-success text-success";
                 $alert_icon = "bi-check-circle-fill";
                 break;

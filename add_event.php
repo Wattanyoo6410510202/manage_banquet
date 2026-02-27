@@ -2,7 +2,7 @@
 include "config.php";
 include "api/process_function.php";
 include "header.php";
-access_control('all_staff');
+access_control(['Admin', 'GM', 'Staff']);
 
 // ดึงข้อมูลบริษัทสำหรับ Dropdown
 $query_companies = "SELECT id AS company_id, company_name, logo_path AS company_logo FROM companies ORDER BY company_name ASC";
@@ -10,26 +10,6 @@ $res_companies = $conn->query($query_companies);
 ?>
 
 
-<?php 
-// --- Logic รันเลขที่เอกสาร No.YY/MMXXX ---
-$prefix =  date('y/m'); 
-$sql = "SELECT function_code FROM functions
-        WHERE function_code LIKE '$prefix%' 
-        ORDER BY function_code DESC LIMIT 1";
-
-$result = mysqli_query($conn, $sql);
-$row = mysqli_fetch_assoc($result);
-
-if ($row) {
-    // ถ้ามีเลขเดิม เช่น No.26/02005 -> ดึง 005 มา +1
-    $last_number = (int) substr($row['function_code'], -3); 
-    $new_number = str_pad($last_number + 1, 3, '0', STR_PAD_LEFT);
-} else {
-    // ถ้ายังไม่มี เริ่มที่ 001
-    $new_number = "001";
-}
-$final_code = $prefix . $new_number; 
-?>
 
 <div style="position: fixed; bottom: 80px; right: 30px; z-index: 9999;">
     <button type="button" id="aiMagicFill" class="btn btn-warning shadow-lg fw-bold p-3 border-3 border-white"
@@ -50,19 +30,10 @@ $final_code = $prefix . $new_number;
                     </h4>
 
                     <div style="width: 100%; max-width: 450px;">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-end">
                             <button name="save" type="submit" class="btn btn-success btn-sm px-3  flex-shrink-0">
                                 <i class="bi bi-cloud-check-fill me-2"></i> บันทึกข้อมูลฟังชั่น
                             </button>
-                            <div class="input-group input-group-sm">
-                                <span
-                                    class="input-group-text bg-dark border-secondary text-gold small fw-bold">NO.</span>
-                                <input type="text" name="function_code" id="function_code"
-                                    class="form-control border-secondary bg-light fw-bold text-center"
-                                    value="<?php echo $final_code; ?>" placeholder="No.26/020001"
-                                    style="letter-spacing: 1px;" readonly required>
-                            </div>
-
                         </div>
                     </div>
                 </div>
