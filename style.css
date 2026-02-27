@@ -1,171 +1,79 @@
-/* style.css */
 :root {
     --hotel-dark: #1a1a1a;
-    /* ดำสนิทแบบ Navbar */
     --hotel-gold: #b89441;
-    /* ทองพรีเมียม */
     --hotel-gold-light: #d4af37;
-    /* ทองสว่างสำหรับ Hover */
     --hotel-bg: #f0f2f5;
-    /* พื้นหลังส่วนเนื้อหา */
     --sidebar-width: 260px;
+    --nav-height: 56px;
 }
 
 body {
     background-color: var(--hotel-bg);
     font-family: 'Inter', 'Sarabun', sans-serif;
-    overflow-x: hidden;
     margin: 0;
 }
 
-/* --- Layout Structure --- */
+/* --- Layout --- */
 .wrapper {
-    display: block;
-    /* เปลี่ยนจาก flex เป็น block เพื่อให้ content เต็มจอ */
+    display: flex;
     width: 100%;
+    margin-top: var(--nav-height);
 }
 
-/* --- Sidebar: บังคับให้เป็นแบบสไลด์ทับทุหน้าจอ --- */
+/* --- Sidebar --- */
 #sidebar {
     position: fixed;
-    top: 0;
-    left: calc(var(--sidebar-width) * -1);
-    /* ซ่อนไว้ทางซ้ายเสมอ */
+    top: var(--nav-height);
+    left: 0;
     width: var(--sidebar-width);
-    height: 100vh;
+    height: calc(100vh - var(--nav-height));
     background-color: var(--hotel-dark);
     color: #fff;
-    transition: all 0.3s ease;
-    z-index: 2000;
-    /* อยู่เหนือทุกอย่างรวมถึง Navbar */
-    border-right: 1px solid rgba(184, 148, 65, 0.2);
+    transition: all 0.3s;
+    z-index: 1000;
     overflow-y: auto;
+    border-right: 1px solid rgba(184, 148, 65, 0.2);
 }
 
-/* เมื่อสั่งเปิดเมนู */
-#sidebar.active {
-    left: 0;
-    /* สไลด์ออกมาทับหน้าจอ */
+#content {
+    width: calc(100% - var(--sidebar-width));
+    margin-left: var(--sidebar-width);
+    padding: 25px;
+    min-height: calc(100vh - var(--nav-height));
+    transition: all 0.3s;
 }
 
-#sidebar .sidebar-header {
-    padding: 20px 25px;
-    background: rgba(0, 0, 0, 0.2);
+/* --- UI Elements --- */
+.navbar {
+    background-color: var(--hotel-dark) !important;
+    height: var(--nav-height);
 }
 
-#sidebar ul.components {
-    padding: 15px 0;
-}
+.text-gold { color: var(--hotel-gold) !important; }
 
 #sidebar ul li a {
     padding: 12px 25px;
-    font-size: 0.95rem;
     display: flex;
     align-items: center;
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
-    transition: all 0.3s;
     border-left: 4px solid transparent;
 }
 
-#sidebar ul li a i {
-    font-size: 1.2rem;
-    margin-right: 15px;
-    width: 25px;
-    text-align: center;
-    color: var(--hotel-gold);
-}
-
-#sidebar ul li a:hover,
-#sidebar ul li a.active {
+#sidebar ul li a.active, #sidebar ul li a:hover {
     color: #fff !important;
     background: rgba(184, 148, 65, 0.15);
     border-left: 4px solid var(--hotel-gold);
 }
 
-/* --- Content: ให้เต็มหน้าจอเสมอทั้งคอมและมือถือ --- */
-#content {
-    width: 100%;
-    padding: 25px;
-    transition: all 0.3s;
-    min-height: 100vh;
+#sidebar ul li a i {
+    margin-right: 15px;
+    color: var(--hotel-gold);
 }
 
-/* --- Overlay: ฉากหลังดำเวลาเปิดเมนู --- */
-#sidebarOverlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1999;
-}
-
-/* --- Navbar & UI Elements --- */
-.navbar {
-    z-index: 1030;
-}
-
-.text-gold {
-    color: var(--hotel-gold) !important;
-}
-
-/* --- Table & Dashboard Cards --- */
-.table thead th {
-    background-color: #f8f9fa;
-    color: var(--hotel-dark);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.5px;
-}
-
-.stat-card {
-    border-radius: 12px;
-    border: none;
-    transition: transform 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-}
-
-/* --- Responsive Table (สำหรับจอเล็กจริงๆ) --- */
-@media (max-width: 768px) {
-    .table thead th {
-        font-size: 0.65rem;
-        padding: 10px 5px;
-    }
-
-    #content {
-        padding: 15px;
-        padding-top: 71px;
-    }
-}
-
-.img-preview-wrapper {
-    width: 150px;
-    /* ปรับขนาดความกว้างตามต้องการ */
-    height: 150px;
-    /* ปรับขนาดความสูงตามต้องการ */
-    background-color: #f8f9fa;
-    border: 2px dashed var(--hotel-gold);
-    border-radius: 15px;
-    overflow: hidden;
-    /* ป้องกันรูปเลยกรอบ */
-    position: relative;
-}
-
-#img_preview {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    /* ขยายรูปให้พอดีกรอบโดยไม่เสียสัดส่วน */
-}
-
-.img-preview-wrapper:hover {
-    background-color: var(--hotel-gold-light);
-    transition: 0.3s;
+/* --- Responsive --- */
+@media (max-width: 991px) {
+    #sidebar { left: calc(var(--sidebar-width) * -1); }
+    #sidebar.active { left: 0; }
+    #content { width: 100%; margin-left: 0; }
 }
