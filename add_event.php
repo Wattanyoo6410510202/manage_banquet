@@ -45,11 +45,11 @@ $res_companies = $conn->query($query_companies);
                 <div class="row mb-5">
                     <div class="col-md-4 border-end">
                         <div class="p-3 bg-light rounded-3 text-center h-100">
-                            <label class="small fw-bold d-block mb-2 text-start">เลือกบริษัท/ลูกค้า (Company
+                            <label class="small fw-bold d-block mb-2 text-start">เลือกโรงแรม/ลูกค้า (Company
                                 Selection)</label>
                             <select name="company_id" class="form-select form-select-sm mb-3"
                                 onchange="updateCompanyLogo(this)" required>
-                                <option value="">-- เลือกบริษัท --</option>
+                                <option value="">-- เลือกโรงแรม --</option>
                                 <?php if ($res_companies && $res_companies->num_rows > 0):
                                     while ($row = $res_companies->fetch_assoc()):
                                         $logo_path = !empty($row['company_logo']) ? $row['company_logo'] : 'assets/img/default-company.png'; ?>
@@ -71,7 +71,7 @@ $res_companies = $conn->query($query_companies);
                             <div class="col-md-6 mb-3">
                                 <label class="small fw-bold">ชื่องาน (Function)</label>
                                 <input name="function_name" class="form-control form-control-sm"
-                                    placeholder="Event Name" required>
+                                    placeholder="งาน......." required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="small fw-bold">ผู้จอง (Booking)</label>
@@ -87,7 +87,7 @@ $res_companies = $conn->query($query_companies);
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="small fw-bold">สถานที่ประชุม</label>
-                                <input name="room_name" class="form-control form-control-sm" placeholder="Room Name">
+                                <input name="room_name" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="small fw-bold">Booking Room</label>
@@ -108,10 +108,10 @@ $res_companies = $conn->query($query_companies);
                             <table class="table table-sm table-hover align-middle" id="scheduleTable">
                                 <thead class="small text-center text-secondary">
                                     <tr>
-                                        <th width="20%">Date</th>
-                                        <th width="20%">Hour</th>
-                                        <th>Function Detail</th>
-                                        <th width="15%">Guar.</th>
+                                        <th width="20%">วันที่</th>
+                                        <th width="20%">เวลา</th>
+                                        <th>รายละเอียด</th>
+                                        <th width="15%">จำนวน</th>
                                         <th width="5%"></th>
                                     </tr>
                                 </thead>
@@ -134,7 +134,7 @@ $res_companies = $conn->query($query_companies);
                                 </tbody>
                             </table>
                             <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
-                                onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> Add Schedule Row</button>
+                                onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> เพิ่มกำหนดการ</button>
                         </div>
 
                         <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
@@ -142,10 +142,10 @@ $res_companies = $conn->query($query_companies);
                             <table class="table table-sm table-hover align-middle" id="kitchenTable">
                                 <thead class="small text-center text-secondary">
                                     <tr>
-                                        <th width="20%">Date</th>
-                                        <th width="20%">Break Type</th>
-                                        <th>Menu Item</th>
-                                        <th width="15%">Guarantee</th>
+                                        <th width="20%">วันที่</th>
+                                        <th width="20%">ประเภท</th>
+                                        <th>รายการเมนู</th>
+                                        <th width="15%">จำนวน</th>
                                         <th width="5%"></th>
                                     </tr>
                                 </thead>
@@ -158,7 +158,7 @@ $res_companies = $conn->query($query_companies);
                                                 placeholder="e.g. AM Break"></td>
                                         <td><textarea name="k_item[]"
                                                 class="form-control form-control-sm border-0 bg-light" rows="2"
-                                                placeholder="Menu description"></textarea></td>
+                                                placeholder="ชื่อรายการ"></textarea></td>
                                         <td><input type="number" name="k_qty[]"
                                                 class="form-control form-control-sm border-0 bg-light text-center"></td>
                                         <td><button type="button" class="btn text-danger btn-sm border-0"
@@ -168,43 +168,44 @@ $res_companies = $conn->query($query_companies);
                                 </tbody>
                             </table>
                             <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addKitchenRow()"><i
-                                    class="bi bi-plus-lg me-1"></i> Add Kitchen Order</button>
+                                    class="bi bi-plus-lg me-1"></i> เพิ่มรายการครัว</button>
                         </div>
                         <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="3"
-                            placeholder="Kitchen special instructions..."></textarea>
+                            placeholder="หมายเหตุเพิ่มเติม..."></textarea>
                     </div>
 
                     <div class="col-md-5 bg-sidebar p-4 rounded-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. Set-up & Technical
+                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. ด้านเทคนิคและงานช่าง
                         </h5>
                         <div class="mb-4">
-                            <label class="fw-bold small text-muted">Banquet Arrangement:</label>
+                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
                             <textarea name="banquet_style" class="form-control form-control-sm bg-white"
                                 rows="6"></textarea>
                         </div>
                         <div class="mb-4">
-                            <label class="fw-bold small text-muted">Engineering & Audio Visual:</label>
+                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
                             <textarea name="equipment" class="form-control form-control-sm bg-white"
                                 rows="5"></textarea>
                         </div>
                         <div class="mb-0">
-                            <label class="fw-bold small text-muted">Additional Remarks:</label>
+                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
                             <textarea name="remark" class="form-control form-control-sm bg-white" rows="2"></textarea>
                         </div>
                     </div>
                 </div>
 
-                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. Menu Food & Beverage Details</h5>
+                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. รายละเอียดเมนูอาหารและเครื่องดื่ม
+                </h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle border" id="menuTable">
                         <thead class="text-center text-secondary bg-light">
                             <tr>
-                                <th width="10%">Time</th>
-                                <th width="15%">Type Menu</th>
+                                <th width="10%">เวลา</th>
+                                <th width="15%">ประเภทเมนู</th>
                                 <th width="10%">Set</th>
-                                <th>Details</th>
-                                <th width="10%">Qty</th>
-                                <th width="12%">Price</th>
+                                <th>รายละเอียด</th>
+                                <th width="10%">จำนวน</th>
+                                <th width="12%">ราคา</th>
                                 <th width="5%"></th>
                             </tr>
                         </thead>
@@ -223,19 +224,19 @@ $res_companies = $conn->query($query_companies);
                                 <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"
                                         placeholder="0.00"></td>
                                 <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
-                                        onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>
+                                        onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
                             </tr>
                         </tbody>
                     </table>
                     <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
-                            class="bi bi-plus-lg me-1"></i> Add F&B Item</button>
+                            class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
                 </div>
 
-                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. Decoration & Housekeeping</h5>
+                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด</h5>
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
-                            <label class="fw-bold small text-muted mb-3">Backdrop & Signage Details:</label>
+                            <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
                             <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
                                 rows="3"></textarea>
                             <div class="p-3 border-dashed text-center bg-light">
@@ -254,7 +255,7 @@ $res_companies = $conn->query($query_companies);
                     </div>
                     <div class="col-md-6">
                         <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
-                            <label class="fw-bold small text-muted mb-3">Housekeeping & Florist Requirement:</label>
+                            <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
                             <textarea name="hk_florist_detail" class="form-control form-control-sm" rows="8"></textarea>
                         </div>
                     </div>
@@ -328,7 +329,7 @@ $res_companies = $conn->query($query_companies);
         <td><textarea name="menu_detail[]" class="form-control form-control-sm border-0" rows="1"></textarea></td>
         <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0"></td>
         <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"></td>
-        <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>
+        <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></i></button></td>
     `;
     }
 

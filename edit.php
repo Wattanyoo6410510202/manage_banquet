@@ -1,14 +1,7 @@
 <?php
 include "config.php";
-require_once "header.php";
-access_control('all_staff');
 
-// --- 🛡️ ส่วนควบคุมสิทธิ์ที่ปรับปรุงแล้ว ---
-// ปรับให้เป็นตัวเล็ก และลบช่องว่าง (trim) เพื่อความชัวร์
-$current_user = trim($_SESSION['user_name'] ?? ''); // ใช้ username ตามที่คุยกัน
-$user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
-
-// 1. รับ ID และดึงข้อมูล
+// 1. รับ ID และดึงข้อมูลขึ้นมาก่อน (ต้องทำก่อนเช็คสิทธิ์)
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $query = "SELECT * FROM functions WHERE id = $id";
 $res = $conn->query($query);
@@ -19,12 +12,21 @@ if (!$data) {
     exit;
 }
 
-// 🛡️ ด่านที่ 1: เช็คสิทธิ์ Admin หรือ เจ้าของงาน
-// ใช้ $user_role ที่เป็นตัวเล็กแล้วมาเทียบ
+$current_user = trim($_SESSION['user_name'] ?? '');
+$user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
+
+// 🛡️ ด่านที่ 1: เช็คสิทธิ์ (ตอนนี้ระบบรู้จัก $data และ $current_user แล้ว)
 if ($user_role !== 'admin' && $user_role !== 'gm' && trim($data['created_by']) !== $current_user) {
-    header("Location: access_denied.php");
+    // ใช้ JavaScript Redirect เพื่อเลี่ยงปัญหา Headers already sent
+    echo "<script>window.location.href='access_denied.php';</script>";
     exit();
 }
+
+// 3. ถ้าผ่านด่านค่อยโหลด Layout และทำส่วนที่เหลือ
+require_once "header.php";
+access_control('all_staff');
+
+
 
 // 🛡️ ด่านที่ 2: เช็คสถานะอนุมัติ (Admin แก้ได้เสมอ)
 if (isset($data['approve']) && $data['approve'] != 0 && $user_role !== 'admin') {
@@ -46,9 +48,7 @@ $kitchens = $conn->query("SELECT * FROM function_kitchens WHERE function_id = $i
 $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDER BY id ASC");
 ?>
 
-
-
-<div class="container-fluid py-4">
+<div class="container-fluid">
     <form action="api/update_function.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="function_id" value="<?php echo $id; ?>">
@@ -61,7 +61,7 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                     <div style="width: 100%; max-width: 450px;">
                         <div class="d-flex align-items-center gap-2">
                             <button name="update" type="submit" class="btn btn-primary btn-sm px-3 flex-shrink-0">
-                                <i class="bi bi-cloud-upload-fill me-2"></i> อัปเดตข้อมูล (Update)
+                                <i class="bi bi-cloud-upload-fill me-2"></i> อัปเดตข้อมูล
                             </button>
                             <div class="input-group input-group-sm">
                                 <span
@@ -80,7 +80,7 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                 <div class="row mb-5">
                     <div class="col-md-4 border-end">
                         <div class="p-3 bg-light rounded-3 text-center h-100">
-                            <label class="small fw-bold d-block mb-2 text-start">เลือกบริษัท/ลูกค้า</label>
+                            <label class="small fw-bold d-block mb-2 text-start">เลือกโรงแรม/ลูกค้า</label>
                             <select name="company_id" class="form-select form-select-sm mb-3"
                                 onchange="updateCompanyLogo(this)" required>
                                 <?php
@@ -174,10 +174,10 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                                 </tbody>
                             </table>
                             <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addScheduleRow()"><i
-                                    class="bi bi-plus-lg"></i> Add Row</button>
+                                    class="bi bi-plus-lg"></i>  เพิ่มกำหนดการ</button>
                         </div>
 
-                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen</h5>
+                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable">
                                 <tbody>
@@ -204,34 +204,34 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                                 </tbody>
                             </table>
                             <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addKitchenRow()"><i
-                                    class="bi bi-plus-lg"></i> Add Kitchen</button>
+                                    class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
                         </div>
                         <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2"
                             rows="3"><?php echo $data['main_kitchen_remark'] ?? ''; ?></textarea>
                     </div>
 
                     <div class="col-md-5 bg-sidebar p-4 rounded-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. Set-up & Technical
+                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. ด้านเทคนิคและงานช่าง
                         </h5>
                         <div class="mb-4">
-                            <label class="fw-bold small text-muted">Banquet Arrangement:</label>
+                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
                             <textarea name="banquet_style" class="form-control form-control-sm bg-white"
                                 rows="6"><?php echo $data['banquet_style']; ?></textarea>
                         </div>
                         <div class="mb-4">
-                            <label class="fw-bold small text-muted">Engineering & Audio Visual:</label>
+                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
                             <textarea name="equipment" class="form-control form-control-sm bg-white"
                                 rows="5"><?php echo $data['equipment']; ?></textarea>
                         </div>
                         <div class="mb-0">
-                            <label class="fw-bold small text-muted">Additional Remarks:</label>
+                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
                             <textarea name="remark" class="form-control form-control-sm bg-white"
                                 rows="2"><?php echo $data['remark']; ?></textarea>
                         </div>
                     </div>
                 </div>
 
-                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. Menu Food & Beverage Details</h5>
+                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i>  5. รายละเอียดเมนูอาหารและเครื่องดื่ม</h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle border" id="menuTable">
                         <tbody>
@@ -251,20 +251,20 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                                         <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"
                                                 value="<?php echo $m['menu_price']; ?>"></td>
                                         <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
-                                                onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>
+                                                onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
                                     </tr>
                                 <?php endwhile; endif; ?>
                         </tbody>
                     </table>
                     <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addMenuRow()"><i
-                            class="bi bi-plus-lg"></i> Add Menu</button>
+                            class="bi bi-plus-lg"></i> เพิ่มรายการอาหาร</button>
                 </div>
 
-                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. Decoration & Housekeeping</h5>
+                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i>  6. การตกแต่งและการดูแลทำความสะอาด</h5>
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
-                            <label class="fw-bold small text-muted mb-3">Backdrop & Signage Details:</label>
+                            <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
                             <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
                                 rows="3"><?php echo $data['backdrop_detail'] ?? ''; ?></textarea>
 
@@ -284,7 +284,7 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                     </div>
                     <div class="col-md-6">
                         <div class="p-4 border rounded-4 bg-white shadow-sm h-100">
-                            <label class="fw-bold small text-muted mb-3">Housekeeping & Florist Requirement:</label>
+                            <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
                             <textarea name="hk_florist_detail" class="form-control form-control-sm"
                                 rows="8"><?php echo $data['hk_florist_detail']; ?></textarea>
                         </div>
@@ -330,7 +330,7 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
     function addMenuRow() {
         const table = document.querySelector("#menuTable tbody");
         const row = table.insertRow();
-        row.innerHTML = `<td><input type="date" name="menu_time[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_name[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_set[]" class="form-control form-control-sm border-0 bg-light"></td><td><textarea name="menu_detail[]" class="form-control form-control-sm border-0" rows="1"></textarea></td><td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"></td><td class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-trash-fill"></i></button></td>`;
+        row.innerHTML = `<td><input type="date" name="menu_time[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_name[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_set[]" class="form-control form-control-sm border-0 bg-light"></td><td><textarea name="menu_detail[]" class="form-control form-control-sm border-0" rows="1"></textarea></td><td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0"></td><td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"></td><td class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>`;
     }
 
     function removeRow(btn) {

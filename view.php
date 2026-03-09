@@ -44,7 +44,7 @@ require_once "header.php";
 
 // 1. ดึง ID คนอนุมัติจากข้อมูลที่มีอยู่
 $approver_id = $data['approve_by'] ?? null;
-$approver_name = 'ยังไม่อนุมัติ'; // ค่าเริ่มต้นถ้ายังไม่มีใครอนุมัติ
+$approver_name = '(..........................................)'; // ค่าเริ่มต้นถ้ายังไม่มีใครอนุมัติ
 
 if ($approver_id && is_numeric($approver_id)) {
     // 2. ไปดึงชื่อจากตาราง users
@@ -238,10 +238,10 @@ function displaySignature($path)
     <table class="table table-sm table-bordered table-tight mb-2">
         <thead class="table-light text-center">
             <tr>
-                <th width="15%">Date</th>
-                <th width="15%">Hour</th>
-                <th>Function Detail</th>
-                <th width="12%">QTY</th>
+                <th width="15%">วันที่</th>
+                <th width="15%">เวลา</th>
+                <th>รายละเอียด</th>
+                <th width="12%">จำนวน</th>
             </tr>
         </thead>
         <tbody>
@@ -264,10 +264,10 @@ function displaySignature($path)
             <table class="table table-sm table-bordered table-tight mb-1">
                 <thead class="table-light text-center">
                     <tr>
-                        <th width="18%">Date</th>
-                        <th width="20%">Type</th>
-                        <th>Menu Item</th>
-                        <th width="12%">Qty</th>
+                        <th width="18%">วันที่</th>
+                        <th width="20%">ประเภท</th>
+                        <th>รายการอาหาร</th>
+                        <th width="12%">จำนวน</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -302,12 +302,12 @@ function displaySignature($path)
     <table class="table table-sm table-bordered table-tight mb-2">
         <thead class="table-light text-center">
             <tr>
-                <th width="10%">Time</th>
-                <th width="15%">Type Menu</th>
-                <th width="10%">Set</th>
-                <th>Menu Details</th>
-                <th width="10%">Qty</th>
-                <th width="12%">Price/Unit</th>
+                <th width="10%">เวลา</th>
+                <th width="15%">ประเภทเมนู</th>
+                <th width="10%">เซ็ต</th>
+                <th>รายละเอียดเมนู</th>
+                <th width="10%">จำนวน</th>
+                <th width="12%">ราคา/หน่วย</th>
             </tr>
         </thead>
         <tbody>
@@ -372,7 +372,7 @@ function displaySignature($path)
                 ผู้อนุมัติ (Authorized By)
             </div>
             <small class="text-muted">
-                วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '-'; ?>
+                วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '______/______/______'; ?>
             </small>
         </div>
 
