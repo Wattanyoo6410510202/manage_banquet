@@ -1,0 +1,79 @@
+:root {
+    --hotel-dark: #1a1a1a;
+    --hotel-gold: #b89441;
+    --hotel-gold-light: #d4af37;
+    --hotel-bg: #f0f2f5;
+    --sidebar-width: 260px;
+    --nav-height: 56px;
+}
+
+body {
+    background-color: var(--hotel-bg);
+    font-family: 'Inter', 'Sarabun', sans-serif;
+    margin: 0;
+}
+
+/* --- Layout --- */
+.wrapper {
+    display: flex;
+    width: 100%;
+    margin-top: var(--nav-height);
+}
+
+/* --- Sidebar --- */
+#sidebar {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - var(--nav-height));
+    background-color: var(--hotel-dark);
+    color: #fff;
+    transition: all 0.3s;
+    z-index: 1000;
+    overflow-y: auto;
+    border-right: 1px solid rgba(184, 148, 65, 0.2);
+}
+
+#content {
+    width: calc(100% - var(--sidebar-width));
+    margin-left: var(--sidebar-width);
+    padding: 25px;
+    min-height: calc(100vh - var(--nav-height));
+    transition: all 0.3s;
+}
+
+/* --- UI Elements --- */
+.navbar {
+    background-color: var(--hotel-dark) !important;
+    height: var(--nav-height);
+}
+
+.text-gold { color: var(--hotel-gold) !important; }
+
+#sidebar ul li a {
+    padding: 12px 25px;
+    display: flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    border-left: 4px solid transparent;
+}
+
+#sidebar ul li a.active, #sidebar ul li a:hover {
+    color: #fff !important;
+    background: rgba(184, 148, 65, 0.15);
+    border-left: 4px solid var(--hotel-gold);
+}
+
+#sidebar ul li a i {
+    margin-right: 15px;
+    color: var(--hotel-gold);
+}
+
+/* --- Responsive --- */
+@media (max-width: 991px) {
+    #sidebar { left: calc(var(--sidebar-width) * -1); }
+    #sidebar.active { left: 0; }
+    #content { width: 100%; margin-left: 0; }
+}

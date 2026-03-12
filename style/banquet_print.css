@@ -1,0 +1,116 @@
+/* --- ส่วนการแสดงผลบนหน้าจอ (Screen Display) --- */
+body {
+    background: #eeeeee;
+}
+
+#printableArea {
+    font-family: 'Sarabun', sans-serif;
+    width: 210mm;
+    padding: 10mm 12mm;
+    margin: 20px auto;
+    background: white;
+    font-size: 10px;
+    line-height: 1.3;
+    color: black;
+    box-sizing: border-box;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.text-gold {
+    color: #D4AF37;
+}
+
+.section-title {
+    border-left: 3px solid #D4AF37;
+    padding-left: 8px;
+    font-weight: 600;
+    background: #f8f9fa;
+    font-size: 10.5px;
+    margin: 10px 0 5px 0 !important;
+    text-transform: uppercase;
+}
+
+.table-tight th,
+.table-tight td {
+    padding: 3px 5px !important;
+    font-size: 9.5px;
+    vertical-align: middle;
+}
+
+.data-value {
+    border-bottom: 0.5px solid #ccc;
+    padding: 0 3px;
+    font-weight: 600;
+}
+
+.box-detail {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: #fcfcfc;
+    min-height: 35px;
+}
+
+.html2pdf__page-break {
+    display: block;
+    height: 0;
+    page-break-before: always;
+    break-before: page;
+}
+
+/* --- ส่วนการตั้งค่าสำหรับการพิมพ์ (Print Settings) --- */
+@media print {
+    body {
+        background: white;
+    }
+
+    /* 1. ซ่อนปุ่มและส่วนที่ไม่เกี่ยวข้องทั้งหมด */
+    .no-print,
+    .btn-group,
+    .container.text-center,
+    header,
+    footer,
+    nav {
+        display: none !important;
+    }
+
+    /* 2. ดันเนื้อหาขึ้นไปให้ชิดขอบบนมากขึ้น */
+    #printableArea {
+        position: absolute;
+        left: 0;
+        top: -5mm;
+        /* ขยับขึ้นไปชิดขอบบน */
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 5mm 10mm !important;
+        box-shadow: none !important;
+        visibility: visible !important;
+    }
+
+    /* ซ่อนทุกอย่างยกเว้น printableArea */
+    body * {
+        visibility: hidden;
+    }
+
+    #printableArea,
+    #printableArea * {
+        visibility: visible;
+    }
+
+    /* เพิ่มความนวลให้ตัว Toolbar */
+    .border-gold-soft {
+        border-color: #D4AF37 !important;
+        border-width: 1px !important;
+    }
+
+    .btn-link:hover {
+        background-color: #f8f9fa !important;
+        border-radius: 50px;
+    }
+
+    /* คุมระยะห่าง VR (ตัวคั่น) */
+    .vr {
+        width: 1px;
+        align-self: stretch;
+    }
+}
