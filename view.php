@@ -9,10 +9,17 @@ $current_user_name = isset($_SESSION['user_name']) ? trim($_SESSION['user_name']
 $user_role = strtolower(trim($_SESSION['role'] ?? 'staff'));
 
 // 3. ดึงข้อมูลจากฐานข้อมูล
-$sql = "SELECT f.*, c.company_name, c.logo_path 
+// 3. ดึงข้อมูลจากฐานข้อมูล (ปรับใหม่ให้ JOIN ครบทุกอย่าง)
+$sql = "SELECT f.*, 
+               c.company_name, c.logo_path,
+               ft.type_name as function_type_name, 
+               r.room_name as master_room_name
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id 
+        LEFT JOIN function_types ft ON f.function_type_id = ft.id 
+        LEFT JOIN meeting_rooms r ON f.room_id = r.id
         WHERE f.id = $id";
+
 $res = $conn->query($sql);
 $data = $res->fetch_assoc();
 
@@ -111,6 +118,20 @@ function displaySignature($path)
     // แต่ถ้าเก็บเต็ม "uploads/signatures/sig1.png" อยู่แล้วก็ใช้ได้เลย
     return (strpos($path, 'uploads/') !== false) ? $path : "uploads/signatures/" . $path;
 }
+// ลองเปลี่ยน k_type_id เป็นชื่อคอลัมน์จริงๆ ใน DB ของจาร
+$sql_kitchens = "SELECT fk.*, mbt.type_name as k_type_name 
+                 FROM function_kitchens fk 
+                 LEFT JOIN master_break_types mbt ON fk.k_type_id = mbt.id 
+                 WHERE fk.function_id = $id";
+
+$kitchens = $conn->query($sql_kitchens);
+
+$sql_menus = "SELECT fm.*, mms.type_name as set_name 
+              FROM function_menus fm
+              LEFT JOIN master_break_types mms ON fm.menu_set_id = mms.id 
+              WHERE fm.function_id = $id";
+
+$menus = $conn->query($sql_menus);
 ?>
 
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
@@ -214,10 +235,14 @@ function displaySignature($path)
             <div class="row g-2">
                 <div class="col-12"><strong>ชื่องาน:</strong> <span
                         class="data-value"><?php echo $data['function_name']; ?></span></div>
+                <div class="col-12"><strong>ประเภทงาน:</strong> <span
+                        class="data-value"><?php echo $data['function_type_name'] ?? '-'; ?></span></div>
+
                 <div class="col-6"><strong>ผู้จอง:</strong> <span
                         class="data-value"><?php echo $data['booking_name']; ?></span></div>
                 <div class="col-6"><strong>เบอร์โทร:</strong> <span
                         class="data-value"><?php echo $data['phone']; ?></span></div>
+
                 <div class="col-12"><strong>หน่วยงาน/ที่อยู่:</strong> <span
                         class="data-value"><?php echo $data['organization']; ?></span></div>
             </div>
@@ -225,11 +250,16 @@ function displaySignature($path)
         <div class="col-5 border-start ps-3">
             <div class="row g-2">
                 <div class="col-12"><strong>สถานที่ประชุม:</strong> <span
-                        class="data-value"><?php echo $data['room_name']; ?></span></div>
+                        class="data-value"><?php echo $data['master_room_name'] ?? $data['room_name']; ?></span></div>
+
+                <div class="col-12"><strong>จำนวนผู้เข้าร่วม (PAX):</strong> <span
+                        class="data-value fw-bold text-danger"><?php echo number_format($data['pax'] ?? 0); ?>
+                        ท่าน</span></div>
+
                 <div class="col-12"><strong>Booking Room:</strong> <span
                         class="data-value"><?php echo $data['booking_room'] ?? '-'; ?></span></div>
                 <div class="col-12 text-primary"><strong>เงินมัดจำ (Deposit):</strong> <span
-                        class="data-value"><?php echo $data['deposit'] ?? '0.00'; ?></span></div>
+                        class="data-value"><?php echo number_format($data['deposit'] ?? 0, 2); ?></span></div>
             </div>
         </div>
     </div>
@@ -272,13 +302,15 @@ function displaySignature($path)
                 </thead>
                 <tbody>
                     <?php
-                    $kitchens = $conn->query("SELECT * FROM function_kitchens WHERE function_id = $id");
+                    // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
                     while ($row = $kitchens->fetch_assoc()): ?>
                         <tr>
                             <td class="text-center"><?php echo $row['k_date']; ?></td>
-                            <td><?php echo $row['k_type']; ?></td>
-                            <td><?php echo $row['k_item']; ?></td>
-                            <td class="text-center"><?php echo $row['k_qty']; ?></td>
+
+                            <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
+
+                            <td><?php echo nl2br($row['k_item']); ?></td>
+                            <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -304,7 +336,6 @@ function displaySignature($path)
             <tr>
                 <th width="10%">เวลา</th>
                 <th width="15%">ประเภทเมนู</th>
-                <th width="10%">เซ็ต</th>
                 <th>รายละเอียดเมนู</th>
                 <th width="10%">จำนวน</th>
                 <th width="12%">ราคา/หน่วย</th>
@@ -312,14 +343,15 @@ function displaySignature($path)
         </thead>
         <tbody>
             <?php
-            $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id");
+            // ลบบรรทัด $menus = $conn->query("SELECT * ...") ทิ้งไปเลยครับ
             while ($row = $menus->fetch_assoc()): ?>
                 <tr>
                     <td class="text-center"><?php echo $row['menu_time']; ?></td>
-                    <td class="fw-bold"><?php echo $row['menu_name']; ?></td>
-                    <td class="text-center"><?php echo $row['menu_set']; ?></td>
+
+                    <td class="text-center"><?php echo $row['set_name'] ?? 'ไม่ได้เลือกเซต'; ?></td>
+
                     <td><?php echo nl2br($row['menu_detail']); ?></td>
-                    <td class="text-center fw-bold"><?php echo $row['menu_qty']; ?></td>
+                    <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
                     <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>
                 </tr>
             <?php endwhile; ?>

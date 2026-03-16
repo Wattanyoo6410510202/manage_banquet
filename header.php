@@ -159,6 +159,11 @@ function is_active($pages)
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
+                  <li>
+                    <a href="manage_banquet.php" class="<?php echo is_active(['manage_banquet.php', 'view.php']); ?>">
+                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
+                    </a>
+                </li>
                 <li>
                     <a href="customer.php" class="<?php echo is_active('customer.php'); ?>">
                         <i class="bi bi-person"></i> ลูกค้า
@@ -184,11 +189,7 @@ function is_active($pages)
                         <i class="bi bi-door-open"></i> ห้องประชุม
                     </a>
                 </li>
-                <li>
-                    <a href="manage_banquet.php" class="<?php echo is_active(['manage_banquet.php', 'view.php']); ?>">
-                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
-                    </a>
-                </li>
+              
 
 
                 <?php if (strtolower($_SESSION['role']) === 'admin'): ?>
