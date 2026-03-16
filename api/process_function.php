@@ -25,6 +25,7 @@ if (isset($_POST['save'])) {
     $main_kitchen_remark = $_POST['main_kitchen_remark'];
     $backdrop_detail = $_POST['backdrop_detail'];
     $hk_florist_detail = $_POST['hk_florist_detail'];
+    $pax = $_POST['pax'];
 
     // ดึงค่า "ชื่อจริง" (name) จาก Session ที่เราเก็บไว้ตอน Login
     // (นางสาว ดวงพร โชคชัย)
@@ -57,14 +58,14 @@ if (isset($_POST['save'])) {
     company_id, function_name, booking_name, organization, 
     phone, room_name, booking_room, deposit, banquet_style, 
     equipment, remark, main_kitchen_remark, backdrop_detail, 
-    hk_florist_detail, backdrop_img, created_by
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    hk_florist_detail, backdrop_img, created_by, pax
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = $conn->prepare($sql_main);
 
-    // bind_param: ตัด s ตัวแรกออก (เพราะไม่มี function_code แล้ว) เหลือ 16 ตัวแปร
+    // bind_param: ตัด s ตัวแรกออก (เพราะไม่มี function_code แล้ว) เหลือ 17 ตัวแปร
     $stmt->bind_param(
-        "issssssdssssssss",
+        "issssssdsssssssss",
         $company_id,
         $function_name,
         $booking_name,
@@ -80,7 +81,8 @@ if (isset($_POST['save'])) {
         $backdrop_detail,
         $hk_florist_detail,
         $backdrop_img_path,
-        $created_by_name
+        $created_by_name,
+        $pax
     );
 
     // --- เริ่มต้นการบันทึกข้อมูล (แก้ไขจากจุดที่จารส่งมา) ---

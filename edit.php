@@ -112,7 +112,7 @@ $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDE
                                     value="<?php echo htmlspecialchars($data['function_name']); ?>" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="small fw-bold">ผู้จอง (Booking)</label>
+                                <label class="small fw-bold">ลูกค้า</label>
                                 <input name="booking_name" class="form-control form-control-sm"
                                     value="<?php echo htmlspecialchars($data['booking_name']); ?>" required>
                             </div>

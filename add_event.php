@@ -74,7 +74,7 @@ $res_companies = $conn->query($query_companies);
                                     placeholder="งาน......." required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="small fw-bold">ผู้จอง (Booking)</label>
+                                <label class="small fw-bold">ลูกค้า</label>
                                 <input name="booking_name" class="form-control form-control-sm" required>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -96,6 +96,10 @@ $res_companies = $conn->query($query_companies);
                             <div class="col-md-6 mb-3">
                                 <label class="small fw-bold">Deposit (มัดจำ)</label>
                                 <input name="deposit" class="form-control form-control-sm">
+                            </div>
+                              <div class="col-md-6 mb-3">
+                                <label class="small fw-bold">จำนวนผู้เข้าร่วม (PAX)</label>
+                                <input name="pax" class="form-control form-control-sm">
                             </div>
                         </div>
                     </div>
