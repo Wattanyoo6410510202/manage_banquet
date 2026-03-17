@@ -30,14 +30,26 @@ if (isset($_POST['action'])) {
             $msg = "inserted";
         }
 
+        // --- แก้ไขตรงส่วนบันทึก (save) ---
         if ($conn->query($sql)) {
-            ob_clean();
-            // ถ้าเป็น Insert ส่ง ID ล่าสุดกลับไปด้วย เผื่อต้องใช้
-            echo json_encode(["status" => "success", "message" => $msg, "id" => ($id > 0 ? $id : $conn->insert_id)]);
-        } else {
-            echo json_encode(["status" => "error", "message" => $conn->error]);
+            ob_clean(); // ล้างค้างที่อาจหลุดมา
+            $new_id = ($id > 0 ? $id : $conn->insert_id);
+
+            echo json_encode([
+                "status" => "success",
+                "message" => $msg,
+                "data" => [
+                    "id" => $new_id,
+                    "cust_name" => $cust_name,
+                    "cust_tax_id" => $cust_tax_id,
+                    "cust_address" => $cust_address,
+                    "cust_contact_name" => $cust_contact_name,
+                    "cust_phone" => $cust_phone,
+                    "cust_email" => $cust_email
+                ]
+            ]);
+            exit; // 👈 ต้องมีบรรทัดนี้ ไม่งั้นมันจะไปโหลด header.php มาใส่ใน JSON
         }
-        exit;
     }
 
     // --- 2. Logic การลบ (AJAX) ---
@@ -104,7 +116,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-dark btn-sm px-3 py-1">
+                            <button type="submit" class="btn btn-dark px-3 py-1">
                                 <i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า
                             </button>
                             <button type="button" class="btn btn-light btn-sm border"
@@ -161,11 +173,11 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                         <td><?= htmlspecialchars($row['cust_email']) ?></td>
                                         <td class="text-center">
                                             <div class="btn-group">
-                                                <button class="btn btn-sm btn-outline-primary" title="แก้ไข"
+                                                <button class="btn btn-sm btn-outline-primary border-0" title="แก้ไข"
                                                     onclick='editCust(<?= json_encode($row) ?>)'>
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-danger" title="ลบ"
+                                                <button class="btn btn-sm btn-outline-danger border-0" title="ลบ"
                                                     onclick="deleteCust(<?= $row['id'] ?>)">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -209,38 +221,96 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
         document.querySelector('.card-header.bg-dark').innerHTML = '<i class="bi bi-person-plus-fill me-2 text-amber"></i>ข้อมูลลูกค้า / บริษัท';
     }
 
-   function saveCust(e) {
-    e.preventDefault();
-    let form = document.getElementById('custForm');
-    let fd = new FormData(form);
+    function saveCust(e) {
+        e.preventDefault();
+        const form = document.getElementById('custForm');
+        const fd = new FormData(form);
+        const btn = e.target.querySelector('button[type="submit"]');
+        const isEdit = document.getElementById('cust_id').value > 0;
 
-    fetch('customer.php', { // <--- เช็กชื่อไฟล์นี้อีกรอบ!
-        method: 'POST',
-        body: fd
-    })
-    .then(res => {
-        // ลองเช็กว่าที่ตอบกลับมาใช่ JSON ไหม
-        return res.text().then(text => {
-            try {
-                return JSON.parse(text);
-            } catch (err) {
-                console.error("Server Responded with non-JSON:", text);
-                throw new Error("Server response was not JSON");
-            }
-        });
-    })
-    .then(res => {
-        if (res.status === 'success') {
-            location.reload();
-        } else {
-            alert('Error: ' + res.message);
-        }
-    })
-    .catch(err => {
-        console.error("Fetch Error:", err);
-        alert("เกิดข้อผิดพลาดในการส่งข้อมูล เช็ก Console (F12)");
-    });
-}
+        // ล็อคปุ่มป้องกันการส่งซ้ำ
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+
+        fetch('customer.php', {
+            method: 'POST',
+            body: fd
+        })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const table = $('#customerTable').DataTable();
+                    const d = res.data; // ข้อมูลก้อนใหม่จากฝั่ง PHP
+
+                    if (isEdit) {
+                        // ✅ กรณีแก้ไข: ค้นหาแถวเดิมด้วย ID แล้วอัปเดตข้อมูล
+                        const rowId = document.getElementById('cust_id').value;
+                        const row = $(`button[onclick*="deleteCust(${rowId})"]`).parents('tr');
+
+                        table.row(row).data([
+                            `<span class="fw-bold">${d.cust_name}</span>`,
+                            d.cust_contact_name,
+                            d.cust_phone,
+                            d.cust_email,
+                            row.find('td:last').html() // รักษา HTML ของกลุ่มปุ่มจัดการเดิมไว้
+                        ]).draw(false);
+
+                    } else {
+                        // ✅ กรณีเพิ่มใหม่: ยัดข้อมูล และสั่งให้คอลัมน์ปุ่มอยู่ตรงกลาง
+                        const table = $('#customerTable').DataTable();
+                        const d = res.data;
+
+                        const newRow = table.row.add([
+                            `<span class="fw-bold">${d.cust_name}</span>`,
+                            d.cust_contact_name,
+                            d.cust_phone,
+                            d.cust_email,
+                            `<div class="btn-group">
+            <button class="btn btn-sm btn-outline-primary" title="แก้ไข" 
+                onclick='editCust(${JSON.stringify(d)})'>
+                <i class="bi bi-pencil-square"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" title="ลบ" 
+                onclick="deleteCust(${d.id})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>`
+                        ]).draw(false).node(); // ดึงก้อน Row (tr) ที่เพิ่งสร้างออกมา
+
+                        // บังคับให้คอลัมน์ที่ 5 (index 4) ในแถวนี้มีคลาส text-center เพื่อให้อยู่ตรงกลาง
+                        $(newRow).find('td').eq(4).addClass('text-center');
+                    }
+
+                    // ล้างฟอร์มให้พร้อมสำหรับรายการถัดไป
+                    resetForm();
+
+                } else {
+                    // แจ้งเตือนเฉพาะกรณีเกิด Error จากระบบ (เช่น Data ซ้ำ หรือ SQL พัง)
+                    alert('เกิดข้อผิดพลาด: ' + res.message);
+                }
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ (Check PHP or JSON format)');
+            })
+            .finally(() => {
+                // คืนค่าปุ่มให้กลับมาใช้งานได้
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า';
+            });
+    }
+
+    // ฟังก์ชันแจ้งเตือนแบบเนียนๆ
+    function showNotify(type, msg) {
+        const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 250px;">
+            <i class="bi bi-info-circle me-2"></i> ${msg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+        $('body').append(alertHtml);
+        setTimeout(() => { $('.alert').alert('close'); }, 3000);
+    }
 
     function deleteCust(id) {
         if (confirm('ยืนยันการลบลูกค้ารายนี้?')) {
@@ -274,12 +344,6 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                 { extend: 'print', exportOptions: { columns: [0, 1, 2, 3] } },
                 { extend: 'copy', exportOptions: { columns: [0, 1, 2, 3] } }
             ],
-            "language": {
-                "sSearch": "ค้นหา:",
-                "sLengthMenu": "แสดง _MENU_ แถว",
-                "info": "แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ",
-                "paginate": { "next": "ถัดไป", "previous": "ก่อนหน้า" }
-            }
         });
 
         $('#customExcel').on('click', function () { table.button('.buttons-excel').trigger(); });

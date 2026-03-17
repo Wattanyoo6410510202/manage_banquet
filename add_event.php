@@ -15,9 +15,13 @@ $res_companies = $conn->query($query_companies);
 $query_types = "SELECT id, type_name FROM function_types ORDER BY id ASC";
 $res_types = $conn->query($query_types);
 
-// 3. ดึงข้อมูลห้องประชุม (Meeting Rooms)
-$query_rooms = "SELECT id, room_name, floor FROM meeting_rooms ORDER BY room_name ASC";
-$res_rooms = $conn->query($query_rooms);
+// 1. รับค่า ID บริษัทที่เลือก (เช่น จาก URL หรือตัวแปรที่จารย์มี)
+$target_company_id = isset($_GET['company_id']) ? intval($_GET['company_id']) : 0;
+
+// 2. ปรับ SQL ให้ดึงเฉพาะห้องของบริษัทนั้น
+// ถ้า $target_company_id เป็น 0 อาจจะให้ดึงทั้งหมด หรือไม่ดึงเลยก็ได้ครับ
+$sql_rooms = "SELECT * FROM meeting_rooms WHERE company_id = '$target_company_id' AND status = 'active' ORDER BY room_name ASC";
+$res_rooms = $conn->query($sql_rooms);
 
 // 4. ดึงประเภทเมนูอาหาร (Master Menu Types)
 $query_menu_types = "SELECT id, type_name FROM master_menu_types ORDER BY id ASC";
@@ -30,6 +34,19 @@ $res_customers = $conn->query($query_customers);
 // 6. ดึงข้อมูลประเภท Break (จากตารางที่จารให้มา)
 $query_breaks = "SELECT id, type_name FROM master_break_types ORDER BY id ASC";
 $res_breaks = $conn->query($query_breaks);
+
+// ต่อท้ายส่วนที่รับค่า $target_company_id
+$current_logo = 'assets/img/default-company.png'; // ค่าเริ่มต้น
+if ($target_company_id > 0) {
+    // ดึงโลโก้ออกมา
+    $res_companies->data_seek(0);
+    while ($row = $res_companies->fetch_assoc()) {
+        if ($row['id'] == $target_company_id) {
+            $current_logo = !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png';
+            break;
+        }
+    }
+}
 ?>
 
 <style>
@@ -84,21 +101,22 @@ $res_breaks = $conn->query($query_breaks);
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
                             <select name="company_id" class="form-select border-0 bg-light mb-3"
-                                onchange="updateCompanyLogo(this)" required style="border-radius: 10px; height: 42px;">
+                                onchange="updateCompanyLogo(this); window.location.href='?company_id=' + this.value"
+                                required style="border-radius: 10px; height: 42px;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php if ($res_companies && $res_companies->num_rows > 0):
                                     $res_companies->data_seek(0);
                                     while ($row = $res_companies->fetch_assoc()):
                                         $logo_path = !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png'; ?>
-                                        <option value="<?= $row['id']; ?>" data-logo="<?= $logo_path; ?>">
+                                        <option value="<?= $row['id']; ?>" data-logo="<?= $logo_path; ?>"
+                                            <?= ($target_company_id == $row['id']) ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($row['company_name']); ?>
                                         </option>
                                     <?php endwhile; endif; ?>
                             </select>
-
                             <div class="company-logo-preview border-0 rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto mb-2"
                                 style="width: 80px; height: 80px; overflow: hidden;">
-                                <img id="companyLogo" src="assets/img/default-company.png" class="img-fluid p-2"
+                                <img id="companyLogo" src="<?= $current_logo; ?>" class="img-fluid p-2"
                                     alt="Company Logo">
                             </div>
                         </div>
@@ -163,38 +181,31 @@ $res_breaks = $conn->query($query_breaks);
                             </label>
                             <div class="row g-3">
                                 <?php if ($res_rooms && $res_rooms->num_rows > 0):
-                                    $res_rooms->data_seek(0);
-                                    while ($r = $res_rooms->fetch_assoc()):
-                                        $is_premium = ($r['floor'] > 5);
-                                        ?>
+                                    while ($r = $res_rooms->fetch_assoc()): ?>
                                         <div class="col-md-4">
-                                            <div class="room-card p-3 rounded-4 border bg-white  h-100 position-relative"
-                                                onclick="selectRoom(this, '<?= $r['id'] ?>')" style="transition: none;"> <input
-                                                    type="radio" name="room_id" value="<?= $r['id'] ?>" class="d-none" required>
+                                            <div class="room-card p-3 rounded-4 border bg-white h-100 position-relative"
+                                                style="cursor: pointer;" onclick="selectRoom(this, '<?= $r['id'] ?>')">
 
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <span
-                                                        class="badge <?= $is_premium ? 'bg-warning' : 'bg-primary' ?> bg-opacity-10 <?= $is_premium ? 'text-warning' : 'text-primary' ?> rounded-pill">
-                                                        Floor <?= $r['floor'] ?>
-                                                    </span>
-                                                    <i class="bi bi-check-circle-fill check-icon text-success d-none"></i>
+                                                <input type="radio" name="room_id" value="<?= $r['id'] ?>"
+                                                    class="d-none room-radio">
+
+                                                <div class="check-icon position-absolute"
+                                                    style="top: 10px; right: 10px; display: none;">
+                                                    <i class="bi bi-check-circle-fill text-success fs-5"></i>
                                                 </div>
 
-                                                <h6 class="fw-bold mb-1">
-                                                    <?= htmlspecialchars($r['room_name']) ?>
-                                                </h6>
+                                                <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
                                                 <p class="text-muted small mb-0">
-                                                    <i class="bi bi-people me-1"></i> รองรับสูงสุด: 50-100 ท่าน
+                                                    <i class="bi bi-aspect-ratio me-1"></i> พื้นที่:
+                                                    <?= number_format($r['total_sqm'], 2) ?> ตร.ม.
                                                 </p>
-
-                                                <?php if ($is_premium): ?>
-                                                    <div class="mt-2 small text-warning fw-bold">
-                                                        <i class="bi bi-star-fill me-1"></i> Premium Lounge
-                                                    </div>
-                                                <?php endif; ?>
                                             </div>
                                         </div>
-                                    <?php endwhile; endif; ?>
+                                    <?php endwhile; else: ?>
+                                    <div class="col-12 text-center py-5">
+                                        <p class="text-muted">ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้</p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="row ps-lg-3">

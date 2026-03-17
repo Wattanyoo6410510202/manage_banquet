@@ -57,8 +57,22 @@ $res_breaks = $conn->query($query_breaks);
 $query_menu_types = "SELECT id, type_name FROM master_menu_types ORDER BY id ASC";
 $res_menu_sets = $conn->query($query_menu_types);
 
-$res_rooms = $conn->query("SELECT * FROM meeting_rooms ORDER BY floor ASC, room_name ASC");
+// 1. ดึง ID บริษัทของงานนี้ออกมาก่อน (จารย์มีตัวแปร $data อยู่แล้ว)
+$current_company_id = $data['company_id']; 
+
+// 2. แก้ Query ให้ดึงเฉพาะห้องของบริษัทนี้
+$res_rooms = $conn->query("SELECT * FROM meeting_rooms 
+                           WHERE company_id = '$current_company_id' 
+                           AND status = 'active' 
+                           ORDER BY floor ASC, room_name ASC");
 $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
+
+// ดึงข้อมูลห้องทั้งหมดเตรียมไว้ให้ JS
+$all_rooms_res = $conn->query("SELECT * FROM meeting_rooms WHERE status = 'active' ORDER BY floor ASC");
+$all_rooms_data = [];
+while($row = $all_rooms_res->fetch_assoc()) {
+    $all_rooms_data[] = $row;
+}
 ?>
 <style>
     .room-card.selected {
@@ -111,7 +125,7 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
                             <select name="company_id" class="form-select border-0 bg-light mb-3"
-                                onchange="updateCompanyLogo(this)" required style="border-radius: 10px; height: 42px;">
+                                onchange="updateCompanyLogo(this); filterRooms(this.value);" required style="border-radius: 10px; height: 42px;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $current_logo = 'assets/img/default-company.png'; // ค่า Default
@@ -205,7 +219,7 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
                             <label class="form-label small fw-bold text-secondary mb-3">
                                 <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select Venue)
                             </label>
-                            <div class="row g-3">
+                            <div class="row g-3 " id="roomContainer">
                                 <?php if ($res_rooms && $res_rooms->num_rows > 0):
                 $res_rooms->data_seek(0);
                 while ($r = $res_rooms->fetch_assoc()):
@@ -737,5 +751,76 @@ function confirmRemoveFile(index) {
         }
     }
 }
+</script>
+<script>
+// แปลงข้อมูล PHP Array เป็น JS Object
+const allRooms = <?php echo json_encode($all_rooms_data); ?>;
+const selectedRoomId = "<?php echo $data['room_id']; ?>"; // ห้องที่เคยจองไว้เดิม
+
+function filterRooms(companyId) {
+    const container = document.getElementById('roomContainer');
+    container.innerHTML = ''; // ล้างค่าเก่า
+
+    if (!companyId) {
+        container.innerHTML = '<div class="col-12 text-center py-4 text-muted">-- กรุณาเลือกโรงแรม --</div>';
+        return;
+    }
+
+    // กรองเอาเฉพาะห้องที่มี company_id ตรงกับที่เลือก
+    const filtered = allRooms.filter(room => room.company_id == companyId);
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-12 text-center py-4 text-muted">-- ไม่พบห้องประชุมในโรงแรมนี้ --</div>';
+        return;
+    }
+
+    // วนลูปสร้าง HTML ของ Card ห้องประชุม
+    filtered.forEach(room => {
+        const isSelected = (room.id == selectedRoomId);
+        const cardHtml = `
+            <div class="col-md-4">
+                <div class="room-card p-3 rounded-4 border h-100 position-relative ${isSelected ? 'selected border-primary bg-light' : 'bg-white'}"
+                     onclick="selectRoom(this, '${room.id}')" 
+                     style="cursor: pointer;">
+                    
+                    <input type="radio" name="room_id" value="${room.id}" 
+                           class="d-none room-radio" ${isSelected ? 'checked' : ''}>
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge ${room.floor > 5 ? 'bg-warning text-dark' : 'bg-primary text-white'} rounded-pill">
+                            ชั้น ${room.floor}
+                        </span>
+                        <i class="bi bi-check-circle-fill check-icon text-primary ${isSelected ? '' : 'd-none'}"></i>
+                    </div>
+
+                    <h6 class="fw-bold mb-1">${room.room_name}</h6>
+                    <p class="text-muted small mb-0">ขนาดพื้นที่: ${room.total_sqm} ตร.ม.</p>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', cardHtml);
+    });
+}
+
+// ฟังก์ชันคลิกเลือกห้อง
+function selectRoom(card, roomId) {
+    document.querySelectorAll('.room-card').forEach(c => {
+        c.classList.remove('selected', 'border-primary', 'bg-light');
+        c.classList.add('bg-white');
+        c.querySelector('.check-icon').classList.add('d-none');
+        c.querySelector('.room-radio').checked = false;
+    });
+
+    card.classList.add('selected', 'border-primary', 'bg-light');
+    card.classList.remove('bg-white');
+    card.querySelector('.check-icon').classList.remove('d-none');
+    card.querySelector('.room-radio').checked = true;
+}
+
+// สั่งให้ทำงานทันทีตอนโหลดหน้า (เพื่อให้โชว์ห้องของโรงแรมเดิม)
+document.addEventListener('DOMContentLoaded', function() {
+    const currentComp = document.querySelector('select[name="company_id"]').value;
+    if(currentComp) filterRooms(currentComp);
+});
 </script>
 <?php include "footer.php"; ?>

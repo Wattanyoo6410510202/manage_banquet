@@ -86,7 +86,7 @@ if (isset($_POST['save'])) {
         // --- 3. แก้ไข SQL INSERT (เพิ่ม customer_id, function_type_id) ---
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบจำนวน Column และ ? ให้เท่ากันคือ 21 ตัว) ---
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบลำดับให้ตรงกับ bind_param) ---
-$sql_main = "INSERT INTO functions (
+        $sql_main = "INSERT INTO functions (
     company_id, customer_id, function_type_id, room_id, function_name, 
     booking_name, organization, phone, booking_room, deposit, 
     banquet_style, equipment, remark, main_kitchen_remark, 
@@ -94,40 +94,40 @@ $sql_main = "INSERT INTO functions (
     start_time, end_time, file_attachment1, file_attachment2, file_attachment3
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-$stmt = $conn->prepare($sql_main);
+        $stmt = $conn->prepare($sql_main);
 
-// นับใหม่: i(4) s(5) d(1) s(7) i(1) i(1) s(2) s(3) 
+        // นับใหม่: i(4) s(5) d(1) s(7) i(1) i(1) s(2) s(3) 
 // รวมทั้งหมดต้องมี 25 ตัว: iiiisssssdssssssss i i sssss
-$types = "iiiisssssdssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
+        $types = "iiiisssssdssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
 
-$stmt->bind_param(
-    $types,
-    $company_id,         // 1 (i)
-    $customer_id,        // 2 (i)
-    $function_type_id,   // 3 (i)
-    $room_id,            // 4 (i)
-    $function_name,      // 5 (s)
-    $booking_name,       // 6 (s)
-    $organization,       // 7 (s)
-    $phone,              // 8 (s)
-    $booking_room,       // 9 (s)
-    $deposit,            // 10 (d)
-    $banquet_style,      // 11 (s)
-    $equipment,          // 12 (s)
-    $remark,             // 13 (s)
-    $main_kitchen_remark,// 14 (s)
-    $backdrop_detail,    // 15 (s)
-    $hk_florist_detail,  // 16 (s)
-    $backdrop_img_path,  // 17 (s)
-    $created_by_name,    // 18 (s)
-    $created_by_id,      // 19 (i) **ย้ายมาลำดับที่ 19 ให้ตรงกับ SQL**
-    $pax,                // 20 (i)
-    $start_date,         // 21 (s)
-    $end_date,           // 22 (s)
-    $attach_paths[1],    // 23 (s)
-    $attach_paths[2],    // 24 (s)
-    $attach_paths[3]     // 25 (s)
-);
+        $stmt->bind_param(
+            $types,
+            $company_id,         // 1 (i)
+            $customer_id,        // 2 (i)
+            $function_type_id,   // 3 (i)
+            $room_id,            // 4 (i)
+            $function_name,      // 5 (s)
+            $booking_name,       // 6 (s)
+            $organization,       // 7 (s)
+            $phone,              // 8 (s)
+            $booking_room,       // 9 (s)
+            $deposit,            // 10 (d)
+            $banquet_style,      // 11 (s)
+            $equipment,          // 12 (s)
+            $remark,             // 13 (s)
+            $main_kitchen_remark,// 14 (s)
+            $backdrop_detail,    // 15 (s)
+            $hk_florist_detail,  // 16 (s)
+            $backdrop_img_path,  // 17 (s)
+            $created_by_name,    // 18 (s)
+            $created_by_id,      // 19 (i) **ย้ายมาลำดับที่ 19 ให้ตรงกับ SQL**
+            $pax,                // 20 (i)
+            $start_date,         // 21 (s)
+            $end_date,           // 22 (s)
+            $attach_paths[1],    // 23 (s)
+            $attach_paths[2],    // 24 (s)
+            $attach_paths[3]     // 25 (s)
+        );
 
         if (!$stmt->execute()) {
             throw new Exception("บันทึกตารางหลักล้มเหลว: " . $stmt->error);
@@ -196,9 +196,15 @@ $stmt->bind_param(
 
     } catch (Exception $e) {
         $conn->rollback();
-        $_SESSION['flash_msg'] = "error";
-        header("Location: manage_banquet.php");
-        exit();
+
+        // หยุดการทำงานและแสดง Error ทั้งหมดออกมา
+        echo "<h1 style='color:red;'>เกิดข้อผิดพลาดในการบันทึก!</h1>";
+        echo "<p><b>ข้อความจากระบบ:</b> " . $e->getMessage() . "</p>";
+        echo "<hr>";
+        echo "<pre>";
+        print_r($_POST); // ดูว่าหน้าบ้านส่งค่าอะไรมาบ้าง
+        echo "</pre>";
+        exit(); // หยุดการ Redirect เพื่อให้อ่าน Error ทัน
     }
 }
 ?>

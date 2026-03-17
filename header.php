@@ -49,9 +49,9 @@ function is_active($pages)
 
 <head>
     <meta charset="UTF-8">
-    <title>Sale System - Banquet</title>
+    <title>Sale System </title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/png" href="assets/img/images (1).png">
+    <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link
@@ -121,8 +121,8 @@ function is_active($pages)
             </button>
 
             <a class="navbar-brand fw-bold ms-2" href="dashboard.php">
-                <i class="bi bi-building me-2 text-gold"></i><span class="text-white">SALE</span> <span
-                    class="text-gold">SYSTEM</span>
+                <i class="bi bi-building me-2 text-gold"></i><span class="text-white">Banquet</span> <span
+                    class="text-gold"> Management</span>
             </a>
 
             <div class="ms-auto d-flex align-items-center">
@@ -159,7 +159,7 @@ function is_active($pages)
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
-                  <li>
+                <li>
                     <a href="manage_banquet.php" class="<?php echo is_active(['manage_banquet.php', 'view.php']); ?>">
                         <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
                     </a>
@@ -170,11 +170,16 @@ function is_active($pages)
                     </a>
                 </li>
                 <li class="mt-4 sidebar-header px-3">
-                        <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
-                    </li>
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
+                </li>
                 <li>
                     <a href="main_kitchen.php" class="<?php echo is_active('main_kitchen.php'); ?>">
                         <i class="bi bi-egg"></i> การจัดการเบรก
+                    </a>
+                </li>
+                <li>
+                    <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
+                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
                     </a>
                 </li>
                 <li>
@@ -187,17 +192,13 @@ function is_active($pages)
                         <i class="bi bi-plus-circle"></i> เพิ่มประเภทเมนูและเบรก
                     </a>
                 </li>
+
                 <li>
-                    <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
-                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
+                    <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
+                        <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
                     </a>
                 </li>
-                <li>
-                        <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
-                            <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
-                        </a>
-                    </li>
-              
+
 
 
                 <?php if (strtolower($_SESSION['role']) === 'admin'): ?>
@@ -209,7 +210,7 @@ function is_active($pages)
                             <i class="bi bi-gear-fill "></i> การตั้งค่า
                         </a>
                     </li>
-                    
+
                 <?php endif; ?>
 
             </ul>
