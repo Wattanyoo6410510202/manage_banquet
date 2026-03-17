@@ -1,7 +1,7 @@
 <?php
 ob_start();
 session_start();
-include "../config.php"; 
+include "../config.php";
 
 header('Content-Type: application/json');
 
@@ -10,10 +10,10 @@ $current_user = $_SESSION['user_name'] ?? '';
 $user_role = $_SESSION['role'] ?? 'staff';
 
 if (isset($_POST['ids']) && is_array($_POST['ids'])) {
-    
+
     $ids = array_map('intval', $_POST['ids']); // ทำความสะอาด ID ทั้งหมด
     $ids_string = implode(',', $ids);
-    
+
     $conn->begin_transaction();
 
     try {
@@ -24,7 +24,7 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
             $stmt_check->bind_param("s", $current_user);
             $stmt_check->execute();
             $res_check = $stmt_check->get_result();
-            
+
             if ($res_check->num_rows > 0) {
                 throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
             }
@@ -41,6 +41,33 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
             }
         }
 
+        $res_files = $conn->query("SELECT backdrop_img, file_attachment1, file_attachment2, file_attachment3 FROM functions WHERE id IN ($ids_string)");
+
+        while ($row = $res_files->fetch_assoc()) {
+            $cols = ['backdrop_img', 'file_attachment1', 'file_attachment2', 'file_attachment3'];
+
+            foreach ($cols as $col) {
+                if (!empty($row[$col])) {
+                    $file_relative_path = "../" . $row[$col];
+
+                    // หาโฟลเดอร์ที่เก็บไฟล์นั้น (เช่นจาก ../uploads/attach_2026/f1.pdf -> ../uploads/attach_2026)
+                    $dir_path = dirname($file_relative_path);
+
+                    if (is_dir($dir_path)) {
+                        // 1. ลบไฟล์ทุกไฟล์ที่อยู่ในโฟลเดอร์นั้นก่อน (PHP ลบโฟลเดอร์ที่มีไฟล์ไม่ได้)
+                        $inner_files = glob($dir_path . '/*');
+                        foreach ($inner_files as $f) {
+                            if (is_file($f))
+                                unlink($f);
+                        }
+
+                        // 2. พอข้างในว่างแล้ว สั่งลบโฟลเดอร์ทิ้งเลยจาร
+                        @rmdir($dir_path);
+                    }
+                }
+            }
+        }
+
         // 4. ลบตารางลูกแบบทีเดียวจบ (ใช้ WHERE IN ประสิทธิภาพดีกว่าวนลูป)
         $conn->query("DELETE FROM function_schedules WHERE function_id IN ($ids_string)");
         $conn->query("DELETE FROM function_kitchens WHERE function_id IN ($ids_string)");
@@ -50,7 +77,7 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
         $conn->query("DELETE FROM functions WHERE id IN ($ids_string)");
 
         $conn->commit();
-        
+
         // เซ็ต SESSION เพื่อให้หน้าหลักโชว์ Alert สไลด์จากขวา (ตามที่จารเซ็ตไว้)
         $_SESSION['flash_msg'] = 'delete_success';
         echo json_encode(['status' => 'success']);

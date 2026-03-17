@@ -29,6 +29,7 @@ if (isset($_POST['save'])) {
     $hk_florist_detail = $_POST['hk_florist_detail'] ?? '';
 
     $created_by_name = $_SESSION['user_name'] ?? 'Unknown';
+    $created_by_id = $_SESSION['user_id'] ?? 0;
 
     $start_date = $_POST['start_time'] ?? null;
     $end_date = $_POST['end_time'] ?? null;
@@ -84,44 +85,49 @@ if (isset($_POST['save'])) {
     try {
         // --- 3. แก้ไข SQL INSERT (เพิ่ม customer_id, function_type_id) ---
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบจำนวน Column และ ? ให้เท่ากันคือ 21 ตัว) ---
-        $sql_main = "INSERT INTO functions (
-            company_id, customer_id, function_type_id, room_id, function_name, 
-            booking_name, organization, phone, booking_room, deposit, 
-            banquet_style, equipment, remark, main_kitchen_remark, 
-            backdrop_detail, hk_florist_detail, backdrop_img, created_by, pax, 
-            start_time, end_time, file_attachment1, file_attachment2, file_attachment3
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql_main);
+        // --- 3. แก้ไข SQL INSERT (ตรวจสอบลำดับให้ตรงกับ bind_param) ---
+$sql_main = "INSERT INTO functions (
+    company_id, customer_id, function_type_id, room_id, function_name, 
+    booking_name, organization, phone, booking_room, deposit, 
+    banquet_style, equipment, remark, main_kitchen_remark, 
+    backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
+    start_time, end_time, file_attachment1, file_attachment2, file_attachment3
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // ผูกตัวแปร (i=int, s=string, d=double) 
-// ต้องระบุประเภทให้ครบ 21 ตัว: iiii sssss d sssssss i ss
-        $stmt->bind_param(
-            "iiiisssssdssssssssisssss",
-            $company_id,         // 1 (i)
-            $customer_id,        // 2 (i)
-            $function_type_id,   // 3 (i)
-            $room_id,            // 4 (i)
-            $function_name,      // 5 (s)
-            $booking_name,       // 6 (s)
-            $organization,       // 7 (s)
-            $phone,              // 8 (s)
-            $booking_room,       // 9 (s)
-            $deposit,            // 10 (d)
-            $banquet_style,      // 11 (s)
-            $equipment,          // 12 (s)
-            $remark,             // 13 (s)
-            $main_kitchen_remark,// 14 (s)
-            $backdrop_detail,    // 15 (s)
-            $hk_florist_detail,  // 16 (s)
-            $backdrop_img_path,  // 17 (s)
-            $created_by_name,    // 18 (s)
-            $pax,                // 19 (i)
-            $start_date,         // 20 (s)
-            $end_date,            // 21 (s)
-            $attach_paths[1],   // 22 (New)
-            $attach_paths[2],   // 23 (New)
-            $attach_paths[3],   // 24 (New)
-        );
+$stmt = $conn->prepare($sql_main);
+
+// นับใหม่: i(4) s(5) d(1) s(7) i(1) i(1) s(2) s(3) 
+// รวมทั้งหมดต้องมี 25 ตัว: iiiisssssdssssssss i i sssss
+$types = "iiiisssssdssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
+
+$stmt->bind_param(
+    $types,
+    $company_id,         // 1 (i)
+    $customer_id,        // 2 (i)
+    $function_type_id,   // 3 (i)
+    $room_id,            // 4 (i)
+    $function_name,      // 5 (s)
+    $booking_name,       // 6 (s)
+    $organization,       // 7 (s)
+    $phone,              // 8 (s)
+    $booking_room,       // 9 (s)
+    $deposit,            // 10 (d)
+    $banquet_style,      // 11 (s)
+    $equipment,          // 12 (s)
+    $remark,             // 13 (s)
+    $main_kitchen_remark,// 14 (s)
+    $backdrop_detail,    // 15 (s)
+    $hk_florist_detail,  // 16 (s)
+    $backdrop_img_path,  // 17 (s)
+    $created_by_name,    // 18 (s)
+    $created_by_id,      // 19 (i) **ย้ายมาลำดับที่ 19 ให้ตรงกับ SQL**
+    $pax,                // 20 (i)
+    $start_date,         // 21 (s)
+    $end_date,           // 22 (s)
+    $attach_paths[1],    // 23 (s)
+    $attach_paths[2],    // 24 (s)
+    $attach_paths[3]     // 25 (s)
+);
 
         if (!$stmt->execute()) {
             throw new Exception("บันทึกตารางหลักล้มเหลว: " . $stmt->error);

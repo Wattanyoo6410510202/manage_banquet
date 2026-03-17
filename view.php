@@ -30,13 +30,7 @@ if (!$data) {
 // ดึงชื่อคนสร้างจาก DB มาตัดช่องว่าง
 $created_by_db = trim($data['created_by']);
 
-// --- 🚀 ส่วนการเช็คสิทธิ์ (Gatekeeper) ---
 
-/**
- * 💡 Logic: 
- * ถ้าไม่ใช่ Admin และไม่ใช่ GM (กลุ่มคนมีสิทธิ์สูง)
- * ค่อยมาเช็คว่าใช่เจ้าของงานไหม ถ้าไม่ใช่เจ้าของงานจริง...ดีดออก!
- */
 if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'viewer') {
     if ($created_by_db !== $current_user_name) {
         header("Location: access_denied.php");
@@ -67,48 +61,48 @@ if ($approver_id && is_numeric($approver_id)) {
     }
 }
 
-// --- 🚀 สำหรับผู้จัดทำ (Event Organizer) ---
-// ค้นหาลายเซ็นจากชื่อ (created_by) ที่เก็บในตาราง functions
-$creator_sig = "";
-$created_by_name = trim($data['created_by'] ?? '');
 
-if (!empty($created_by_name)) {
-    // JOIN ตาราง users (u) เพื่อเอา ID ไปหาใน signatures (s)
-    $sql_c = "SELECT s.path 
-              FROM users u 
-              JOIN signatures s ON u.id = s.users_id 
-              WHERE u.name = ? 
-              ORDER BY s.id DESC LIMIT 1";
+// --- 🚀 สำหรับผู้จัดทำ (Event Organizer) ---
+$creator_sig = "";
+// เปลี่ยนมาดึงจาก created_by_id ที่จารเพิ่งเพิ่มลงในตาราง functions
+$creator_id = intval($data['created_by_id'] ?? 0); 
+
+if ($creator_id > 0) {
+    // จารครับ Query นี้จะแม่นยำที่สุด เพราะเชื่อมด้วย Primary Key (ID)
+    $sql_c = "SELECT path FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1";
 
     if ($stmt_c = $conn->prepare($sql_c)) {
-        $stmt_c->bind_param("s", $created_by_name);
+        $stmt_c->bind_param("i", $creator_id);
         $stmt_c->execute();
         $res_c = $stmt_c->get_result();
+        
         if ($row_c = $res_c->fetch_assoc()) {
-            $creator_sig = $row_c['path'];
+            $creator_sig = $row_c['path']; // ได้ path รูปมาแล้ว
         }
         $stmt_c->close();
     }
 }
-
 // --- 🚀 สำหรับผู้อนุมัติ (Authorized By) ---
-// ค้นหาลายเซ็นจาก approve_by (ซึ่งเป็น int ID อยู่แล้ว)
-$approver_id = $data['approve_by'] ?? 0;
+// 1. ดึง ID ผู้อนุมัติจากคอลัมน์ approve_by ในฐานข้อมูล
+$approver_id = intval($data['approve_by'] ?? 0); 
 $approver_sig = "";
 
+// 2. ถ้ามี ID ผู้อนุมัติ (ค่ามากกว่า 0) ให้ไปค้นหาลายเซ็น
 if ($approver_id > 0) {
+    // จารครับ ผมใช้ users_id เพื่อดึงลายเซ็นล่าสุดของคนๆ นั้นออกมา
     $sql_a = "SELECT path FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1";
+    
     if ($stmt_a = $conn->prepare($sql_a)) {
-        $stmt_a->bind_param("i", $approver_id);
+        $stmt_a->bind_param("i", $approver_id); // ใช้ $approver_id ให้ตรงกับที่ดึงมาข้างบน
         $stmt_a->execute();
         $res_a = $stmt_a->get_result();
+        
         if ($row_a = $res_a->fetch_assoc()) {
-            $approver_sig = $row_a['path'];
+            $approver_sig = $row_a['path']; // ได้ path รูปมาแล้ว
         }
         $stmt_a->close();
     }
 }
-
 // ฟังก์ชันตรวจสอบ Path เพื่อความปลอดภัย
 function displaySignature($path)
 {
@@ -391,7 +385,10 @@ $menus = $conn->query($sql_menus);
             <div class="col-4 text-center">
                 <div class="sig-space">
                     <?php if (!empty($creator_sig)): ?>
-                        <img src="<?php echo displaySignature($creator_sig); ?>" class="sig-img">
+                        <img src="<?php echo $creator_sig; ?>" class="sig-img" style="max-height: 80px;">
+
+                    <?php else: ?>
+                        <p style="color:red; font-size:8px;"></p>
                     <?php endif; ?>
                 </div>
                 <div class="mx-auto border-top w-75 pt-1">
@@ -402,9 +399,12 @@ $menus = $conn->query($sql_menus);
             </div>
 
             <div class="col-4 text-center">
-                <div class="sig-space">
-                    <?php if ($data['approve'] == 1 && !empty($approver_sig)): ?>
-                        <img src="<?php echo displaySignature($approver_sig); ?>" class="sig-img">
+                 <div class="sig-space">
+                    <?php if (!empty($approver_sig)): ?>
+                        <img src="<?php echo $approver_sig; ?>" class="sig-img" style="max-height: 80px;">
+
+                    <?php else: ?>
+                        <p style="color:red; font-size:8px;"></p>
                     <?php endif; ?>
                 </div>
                 <div class="mx-auto border-top w-75 pt-1">

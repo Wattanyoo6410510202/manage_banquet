@@ -3,10 +3,8 @@ include "config.php";
 include "header.php";
 ?>
 <?php
-// ตรวจสอบ Role จาก Session (ปรับชื่อคีย์ตามที่คุณใช้จริง)
 $user_role = strtolower($_SESSION['role'] ?? '');
 
-// กำหนดกลุ่มที่มีสิทธิ์ แก้ไข/ลบ (Admin, Staff, GM)
 $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
 ?>
 <div id="alert-container">
@@ -55,14 +53,11 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                     <span class="d-none d-sm-inline ms-1 small">ปฏิทิน</span>
                 </a>
                 <?php
-                // 1. ตรวจสอบว่า Session ของ Role ถูกเก็บไว้ในชื่อตัวแปรอะไร (สมมติว่าเป็น $_SESSION['role'])
-// 2. แปลงเป็นตัวพิมพ์เล็ก (strtolower) เพื่อให้เทียบกับ Array ได้แม่นยำ
+               
                 $user_role = strtolower($_SESSION['role'] ?? '');
 
-                // 3. กำหนดกลุ่มที่อนุญาตให้เห็นปุ่ม
                 $allowed_roles = ['admin', 'staff', 'gm'];
 
-                // 4. เช็กเงื่อนไข: ถ้า Role อยู่ในกลุ่มที่กำหนด ให้แสดงปุ่ม
                 if (in_array($user_role, $allowed_roles)):
                     ?>
                     <a href="add_event.php" class="btn btn-dark btn-sm px-3 py-1 rounded-pill shadow-sm"
@@ -96,14 +91,11 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                 </thead>
                 <tbody>
                     <?php
-                    // 1. ดึงข้อมูลจาก Session (ใช้ 'user' เพราะเก็บ username ที่ใช้ Login)
                     $user_role = strtolower($_SESSION['role'] ?? 'staff');
                     $current_user = $_SESSION['user_name'] ?? ''; // <--- เปลี่ยนจาก user_name เป็น user
                     
-                    // 2. สร้างเงื่อนไข WHERE
                     $where_clause = "";
 
-                    // ถ้าเป็น staff ให้เห็นแค่งานตัวเอง
                     if ($user_role === 'staff') {
                         $safe_user = mysqli_real_escape_string($conn, $current_user);
                         $where_clause = " WHERE f.created_by = '$safe_user' ";

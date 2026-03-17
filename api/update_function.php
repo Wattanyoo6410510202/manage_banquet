@@ -18,8 +18,8 @@ if (isset($_POST['update'])) {
     $booking_room = $_POST['booking_room'];
     $deposit = floatval($_POST['deposit']);
     $pax = intval($_POST['pax'] ?? 0);
-    $start_time = $_POST['start_time'] ?? null;
-    $end_time = $_POST['end_time'] ?? null;
+    $start_time = !empty($_POST['start_time']) ? str_replace('T', ' ', $_POST['start_time']) : null;
+    $end_time = !empty($_POST['end_time']) ? str_replace('T', ' ', $_POST['end_time']) : null;
 
     $banquet_style = $_POST['banquet_style'];
     $equipment = $_POST['equipment'];
@@ -101,35 +101,42 @@ if (isset($_POST['update'])) {
 
     $stmt = $conn->prepare($sql_update);
 
-    // สตริงใหม่: "iiiisssssdsssssssissssi" (มี i 1 ตัวสุดท้ายสำหรับ WHERE id=?)
-    // นับรวมได้ 24 ตัวอักษรพอดีครับ
-    // แก้ไขบรรทัดที่ 101 ให้เป็นตามนี้ครับ (นับดีๆ มี 24 ตัว)
+    // สตริงประเภทข้อมูล (ต้องแม่นยำ 100%)
+    // 1-4: i (id ต่างๆ)
+    // 5-9: s (ข้อความ)
+    // 10: d (deposit - decimal)
+    // 11-17: s (รายละเอียดต่างๆ จนถึง backdrop_img)
+    // 18: i (pax - จำนวนคน)
+    // 19-23: s (start, end, file1, file2, file3)
+    // 24: i (WHERE id)
+    $types = "iiiisssssdsssssssssssssi"; 
+
     $stmt->bind_param(
-        "iiiisssssdssssssssissssi",
-        $company_id,               // 1
-        $customer_id,              // 2
-        $function_type_id,         // 3
-        $room_id,                  // 4
-        $function_name,            // 5
-        $booking_name,             // 6
-        $organization,             // 7
-        $phone,                    // 8
-        $booking_room,             // 9
-        $deposit,                  // 10
-        $banquet_style,            // 11
-        $equipment,                // 12
-        $remark,                   // 13
-        $main_kitchen_remark,      // 14
-        $backdrop_detail,          // 15
-        $hk_florist_detail,        // 16
-        $backdrop_img_path,        // 17
-        $pax,                      // 18
-        $start_time,               // 19
-        $end_time,                 // 20
-        $file_attachment_paths[1], // 21
-        $file_attachment_paths[2], // 22
-        $file_attachment_paths[3], // 23
-        $function_id               // 24
+        $types,
+        $company_id,               // 1 (i)
+        $customer_id,              // 2 (i)
+        $function_type_id,         // 3 (i)
+        $room_id,                  // 4 (i)
+        $function_name,            // 5 (s)
+        $booking_name,             // 6 (s)
+        $organization,             // 7 (s)
+        $phone,                    // 8 (s)
+        $booking_room,             // 9 (s)
+        $deposit,                  // 10 (d)
+        $banquet_style,            // 11 (s)
+        $equipment,                // 12 (s)
+        $remark,                   // 13 (s)
+        $main_kitchen_remark,      // 14 (s)
+        $backdrop_detail,          // 15 (s)
+        $hk_florist_detail,        // 16 (s)
+        $backdrop_img_path,        // 17 (s)
+        $pax,                      // 18 (i)  <-- เช็คตรงนี้!
+        $start_time,               // 19 (s)  <-- และตรงนี้!
+        $end_time,                 // 20 (s)
+        $file_attachment_paths[1], // 21 (s)
+        $file_attachment_paths[2], // 22 (s)
+        $file_attachment_paths[3], // 23 (s)
+        $function_id               // 24 (i)
     );
 
     if ($stmt->execute()) {

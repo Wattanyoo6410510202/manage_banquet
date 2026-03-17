@@ -169,26 +169,34 @@ function is_active($pages)
                         <i class="bi bi-person"></i> ลูกค้า
                     </a>
                 </li>
+                <li class="mt-4 sidebar-header px-3">
+                        <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
+                    </li>
                 <li>
                     <a href="main_kitchen.php" class="<?php echo is_active('main_kitchen.php'); ?>">
-                        <i class="bi bi-egg"></i> Main Kitchen
+                        <i class="bi bi-egg"></i> การจัดการเบรก
                     </a>
                 </li>
                 <li>
                     <a href="food_management.php" class="<?php echo is_active('food_management.php'); ?>">
-                        <i class="bi bi-cart"></i> Food Management
+                        <i class="bi bi-menu-app"></i> การจัดการเมนูอาหาร
                     </a>
                 </li>
                 <li>
                     <a href="setting_master.php" class="<?php echo is_active('setting_master.php'); ?>">
-                        <i class="bi bi-gear-fill"></i> ตั้งค่าข้อมูล Master
+                        <i class="bi bi-plus-circle"></i> เพิ่มประเภทเมนูและเบรก
                     </a>
                 </li>
                 <li>
                     <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
-                        <i class="bi bi-door-open"></i> ห้องประชุม
+                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
                     </a>
                 </li>
+                <li>
+                        <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
+                            <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
+                        </a>
+                    </li>
               
 
 
@@ -201,11 +209,7 @@ function is_active($pages)
                             <i class="bi bi-gear-fill "></i> การตั้งค่า
                         </a>
                     </li>
-                    <li>
-                        <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
-                            <i class="bi bi-tag-fill "></i> การตั้งค่าประเภทห้อง
-                        </a>
-                    </li>
+                    
                 <?php endif; ?>
 
             </ul>

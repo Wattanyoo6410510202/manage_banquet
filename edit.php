@@ -269,18 +269,18 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
 
                                 <div class="row g-3 ">
     <div class="col-md-6">
-        <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน (Start Date & Time)</label>
-        <input type="datetime-local" name="start_time" class="form-control border-0 bg-light"
-               required style="border-radius: 10px; height: 42px;"
-               value="<?= date('Y-m-d\TH:i', strtotime($data['start_time'])) ?>">
-    </div>
+    <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
+    <input type="datetime-local" name="start_time" class="form-control border-0 bg-light"
+           required style="border-radius: 10px; height: 42px;"
+           value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : (isset($data['start_time']) ? 'ERROR_DATA_EMPTY' : 'ERROR_NO_FIELD') ?>">
+</div>
 
-    <div class="col-md-6">
-        <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน (End Date & Time)</label>
-        <input type="datetime-local" name="end_time" class="form-control border-0 bg-light"
-               required style="border-radius: 10px; height: 42px;"
-               value="<?= date('Y-m-d\TH:i', strtotime($data['end_time'])) ?>">
-    </div>
+<div class="col-md-6">
+    <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน</label>
+    <input type="datetime-local" name="end_time" class="form-control border-0 bg-light"
+           required style="border-radius: 10px; height: 42px;"
+           value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
+</div>
 </div>
                             </div>
 

@@ -187,7 +187,7 @@ if(isset($_POST['login'])){
     </form>
 
     <div class="footer-text">
-        &copy; 2024 Hotel Management System. All rights reserved.
+        &copy; 2024 HMS. Wattanyoo641051020 All rights reserved.
     </div>
 </div>
 
