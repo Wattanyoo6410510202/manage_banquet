@@ -90,6 +90,7 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                         <th>เลขที่</th>
                         <th>สถานะ</th>
                         <th>Sales</th>
+                        <th>ไฟล์</th>
                         <th class="text-center bg-light">จัดการ</th>
                     </tr>
                 </thead>
@@ -167,7 +168,33 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                                 <td>
                                     <div class="text-muted small"><?php echo htmlspecialchars($row['created_by'] ?: '-'); ?>
                                     </div>
-                                     <div class="text-muted x-small">แก้ไขเมื่อ <?php echo htmlspecialchars($row['modify']); ?></div>
+                                    <div class="text-muted x-small">แก้ไขเมื่อ <?php echo htmlspecialchars($row['modify']); ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <?php
+                                        $has_file = false;
+                                        for ($i = 1; $i <= 3; $i++):
+                                            $file_path = $row['file_attachment' . $i];
+                                            if (!empty($file_path)):
+                                                $has_file = true;
+                                                // หา Extension เพื่อเลือก Icon (optional)
+                                                $ext = pathinfo($file_path, PATHINFO_EXTENSION);
+                                                ?>
+                                                <a href="<?php echo htmlspecialchars($file_path); ?>" target="_blank"
+                                                    class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 10px;">
+                                                    <i class="bi bi-file-earmark-arrow-down"></i> ไฟล์แนบ <?php echo $i; ?>
+                                                </a>
+                                            <?php
+                                            endif;
+                                        endfor;
+
+                                        if (!$has_file):
+                                            echo '<span class="text-muted small">- ไม่มีไฟล์ -</span>';
+                                        endif;
+                                        ?>
+                                    </div>
                                 </td>
                                 <td class="text-center  sticky-col">
                                     <div class="d-flex justify-content-center gap-1">

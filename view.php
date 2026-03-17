@@ -212,209 +212,218 @@ $menus = $conn->query($sql_menus);
 </div>
 
 <div id="printableArea">
-    <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
-        <div class="d-flex align-items-center">
-            <img src="<?php echo !empty($data['logo_path']) ? $data['logo_path'] : 'assets/img/default-company.png'; ?>"
-                style="max-height: 50px; max-width: 100px;" class="me-3">
-            <div>
-                <h5 class="mb-0 fw-bold text-dark">FUNCTION MEETING</h5>
-                <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo $data['company_name']; ?></p>
-            </div>
-        </div>
-        <div class="text-end">
-            <div class="p-1 border rounded bg-light text-center" style="min-width: 130px;">
-                <small class="text-muted d-block" style="font-size: 8px;">DOCUMENT NO.</small>
-                <span class="fw-bold " style="font-size: 14px;"><?php echo $data['function_code']; ?></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="section-title">1. ข้อมูลการจองทั่วไป (GENERAL INFORMATION)</div>
-    <div class="row g-2 mb-2">
-        <div class="col-7">
-            <div class="row g-2">
-                <div class="col-12"><strong>ชื่องาน:</strong> <span
-                        class="data-value"><?php echo $data['function_name']; ?></span></div>
-                <div class="col-12"><strong>ประเภทงาน:</strong> <span
-                        class="data-value"><?php echo $data['function_type_name'] ?? '-'; ?></span></div>
-
-                <div class="col-6"><strong>ผู้จอง:</strong> <span
-                        class="data-value"><?php echo $data['booking_name']; ?></span></div>
-                <div class="col-6"><strong>เบอร์โทร:</strong> <span
-                        class="data-value"><?php echo $data['phone']; ?></span></div>
-
-                <div class="col-12"><strong>หน่วยงาน/ที่อยู่:</strong> <span
-                        class="data-value"><?php echo $data['organization']; ?></span></div>
-            </div>
-        </div>
-        <div class="col-5 border-start ps-3">
-            <div class="row g-2">
-                <div class="col-12"><strong>สถานที่ประชุม:</strong> <span
-                        class="data-value"><?php echo $data['master_room_name'] ?? $data['room_name']; ?></span></div>
-
-                <div class="col-12"><strong>จำนวนผู้เข้าร่วม (PAX):</strong> <span
-                        class="data-value fw-bold text-danger"><?php echo number_format($data['pax'] ?? 0); ?>
-                        ท่าน</span></div>
-
-                <div class="col-12"><strong>Booking Room:</strong> <span
-                        class="data-value"><?php echo $data['booking_room'] ?? '-'; ?></span></div>
-                <div class="col-12 text-primary"><strong>เงินมัดจำ (Deposit):</strong> <span
-                        class="data-value"><?php echo number_format($data['deposit'] ?? 0, 2); ?></span></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section-title">2. ตารางกำหนดการ (SCHEDULE)</div>
-    <table class="table table-sm table-bordered table-tight mb-2">
-        <thead class="table-light text-center">
-            <tr>
-                <th width="15%">วันที่</th>
-                <th width="15%">เวลา</th>
-                <th>รายละเอียด</th>
-                <th width="12%">จำนวน</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $schedules = $conn->query("SELECT * FROM function_schedules WHERE function_id = $id");
-            while ($row = $schedules->fetch_assoc()): ?>
-                <tr>
-                    <td class="text-center"><?php echo $row['schedule_date']; ?></td>
-                    <td class="text-center"><?php echo $row['schedule_hour']; ?></td>
-                    <td><?php echo nl2br($row['schedule_function']); ?></td>
-                    <td class="text-center fw-bold"><?php echo number_format($row['schedule_guarantee']); ?></td>
-                </tr>
-            <?php endwhile; ?>
-        </tbody>
-    </table>
-
-    <div class="row g-3">
-        <div class="col-7">
-            <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
-            <table class="table table-sm table-bordered table-tight mb-1">
-                <thead class="table-light text-center">
-                    <tr>
-                        <th width="18%">วันที่</th>
-                        <th width="20%">ประเภท</th>
-                        <th>รายการอาหาร</th>
-                        <th width="12%">จำนวน</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
-                    while ($row = $kitchens->fetch_assoc()): ?>
-                        <tr>
-                            <td class="text-center"><?php echo $row['k_date']; ?></td>
-
-                            <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
-
-                            <td><?php echo nl2br($row['k_item']); ?></td>
-                            <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-            <div class="p-2 border rounded bg-light" style="font-size: 8.5px;">
-                <strong>Kitchen Remark:</strong> <?php echo nl2br($data['main_kitchen_remark'] ?? '-'); ?>
-            </div>
-        </div>
-        <div class="col-5">
-            <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
-            <div class="box-detail mb-2" style="min-height: 80px;">
-                <?php echo nl2br($data['banquet_style'] ?? 'ตามมาตรฐาน'); ?>
-            </div>
-
-            <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
-            <div class="box-detail" style="min-height: 60px;"><?php echo nl2br($data['equipment'] ?? '-'); ?></div>
-        </div>
-    </div>
-
-    <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม (FOOD & BEVERAGE DETAILS)</div>
-    <table class="table table-sm table-bordered table-tight mb-2">
-        <thead class="table-light text-center">
-            <tr>
-                <th width="10%">เวลา</th>
-                <th width="15%">ประเภทเมนู</th>
-                <th>รายละเอียดเมนู</th>
-                <th width="10%">จำนวน</th>
-                <th width="12%">ราคา/หน่วย</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            // ลบบรรทัด $menus = $conn->query("SELECT * ...") ทิ้งไปเลยครับ
-            while ($row = $menus->fetch_assoc()): ?>
-                <tr>
-                    <td class="text-center"><?php echo $row['menu_time']; ?></td>
-
-                    <td class="text-center"><?php echo $row['set_name'] ?? 'ไม่ได้เลือกเซต'; ?></td>
-
-                    <td><?php echo nl2br($row['menu_detail']); ?></td>
-                    <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
-                    <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>
-                </tr>
-            <?php endwhile; ?>
-        </tbody>
-    </table>
-
-    <div class="row g-3">
-        <div class="col-6">
-            <div class="section-title">7. ป้ายชื่อและฉาก (BACKDROP & SIGNAGE)</div>
-            <div class="box-detail mb-1"><?php echo nl2br($data['backdrop_detail'] ?? '-'); ?></div>
-            <?php if (!empty($data['backdrop_img'])): ?>
-                <div class="text-center border p-1 rounded bg-white mt-1">
-                    <img src="<?php echo $data['backdrop_img']; ?>" style="max-height: 80px; max-width: 100%;">
+    <div class="section-group">
+        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
+            <div class="d-flex align-items-center">
+                <img src="<?php echo !empty($data['logo_path']) ? $data['logo_path'] : 'assets/img/default-company.png'; ?>"
+                    style="max-height: 50px; max-width: 100px;" class="me-3">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark">FUNCTION MEETING</h5>
+                    <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo $data['company_name']; ?></p>
                 </div>
-            <?php endif; ?>
-        </div>
-        <div class="col-6">
-            <div class="section-title">8. แม่บ้านและดอกไม้ (FLORIST & HK)</div>
-            <div class="box-detail" style="min-height: 60px;">
-                <?php echo nl2br($data['hk_florist_detail'] ?? '-'); ?>
             </div>
-            <div class="mt-2 p-1 border-start border-warning bg-light" style="font-size: 9px;">
-                <strong>Additional Remark:</strong> <?php echo $data['remark'] ?? '-'; ?>
+            <div class="text-end">
+                <div class="p-1 border rounded bg-light text-center" style="min-width: 130px;">
+                    <small class="text-muted d-block" style="font-size: 8px;">DOCUMENT NO.</small>
+                    <span class="fw-bold " style="font-size: 14px;"><?php echo $data['function_code']; ?></span>
+                </div>
+            </div>
+        </div>
+        <div class="section-group">
+            <div class="section-title">1. ข้อมูลการจองทั่วไป (GENERAL INFORMATION)</div>
+            <div class="row g-2 mb-2">
+                <div class="col-7">
+                    <div class="row g-2">
+                        <div class="col-12"><strong>ชื่องาน:</strong> <span
+                                class="data-value"><?php echo $data['function_name']; ?></span></div>
+                        <div class="col-12"><strong>ประเภทงาน:</strong> <span
+                                class="data-value"><?php echo $data['function_type_name'] ?? '-'; ?></span></div>
+
+                        <div class="col-6"><strong>ผู้จอง:</strong> <span
+                                class="data-value"><?php echo $data['booking_name']; ?></span></div>
+                        <div class="col-6"><strong>เบอร์โทร:</strong> <span
+                                class="data-value"><?php echo $data['phone']; ?></span></div>
+
+                        <div class="col-12"><strong>หน่วยงาน/ที่อยู่:</strong> <span
+                                class="data-value"><?php echo $data['organization']; ?></span></div>
+                    </div>
+                </div>
+                <div class="col-5 border-start ps-3">
+                    <div class="row g-2">
+                        <div class="col-12"><strong>สถานที่ประชุม:</strong> <span
+                                class="data-value"><?php echo $data['master_room_name'] ?? $data['room_name']; ?></span>
+                        </div>
+
+                        <div class="col-12"><strong>จำนวนผู้เข้าร่วม (PAX):</strong> <span
+                                class="data-value fw-bold text-danger"><?php echo number_format($data['pax'] ?? 0); ?>
+                                ท่าน</span></div>
+
+                        <div class="col-12"><strong>Booking Room:</strong> <span
+                                class="data-value"><?php echo $data['booking_room'] ?? '-'; ?></span></div>
+                        <div class="col-12 text-primary"><strong>เงินมัดจำ (Deposit):</strong> <span
+                                class="data-value"><?php echo number_format($data['deposit'] ?? 0, 2); ?></span></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    <div class="section-group">
+        <div class="section-title">2. ตารางกำหนดการ (SCHEDULE)</div>
+        <table class="table table-sm table-bordered table-tight mb-2">
+            <thead class="table-light text-center">
+                <tr>
+                    <th width="15%">วันที่</th>
+                    <th width="15%">เวลา</th>
+                    <th>รายละเอียด</th>
+                    <th width="12%">จำนวน</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $schedules = $conn->query("SELECT * FROM function_schedules WHERE function_id = $id");
+                while ($row = $schedules->fetch_assoc()): ?>
+                    <tr>
+                        <td class="text-center"><?php echo $row['schedule_date']; ?></td>
+                        <td class="text-center"><?php echo $row['schedule_hour']; ?></td>
+                        <td><?php echo nl2br($row['schedule_function']); ?></td>
+                        <td class="text-center fw-bold"><?php echo number_format($row['schedule_guarantee']); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+    <div class="section-group">
+        <div class="row g-3">
+            <div class="col-7">
+                <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
+                <table class="table table-sm table-bordered table-tight mb-1">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th width="18%">วันที่</th>
+                            <th width="20%">ประเภท</th>
+                            <th>รายการอาหาร</th>
+                            <th width="12%">จำนวน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
+                        while ($row = $kitchens->fetch_assoc()): ?>
+                            <tr>
+                                <td class="text-center"><?php echo $row['k_date']; ?></td>
 
-    <div class="row mt-5 text-center" style="font-size: 10px;">
-        <div class="col-4 text-center">
-            <div class="sig-space">
-                <?php if (!empty($creator_sig)): ?>
-                    <img src="<?php echo displaySignature($creator_sig); ?>" class="sig-img">
+                                <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
+
+                                <td><?php echo nl2br($row['k_item']); ?></td>
+                                <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+                <div class="p-2 border rounded bg-light" style="font-size: 8.5px;">
+                    <strong>Kitchen Remark:</strong> <?php echo nl2br($data['main_kitchen_remark'] ?? '-'); ?>
+                </div>
+            </div>
+            <div class="col-5">
+                <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
+                <div class="box-detail mb-2" style="min-height: 80px;">
+                    <?php echo nl2br($data['banquet_style'] ?? 'ตามมาตรฐาน'); ?>
+                </div>
+
+                <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
+                <div class="box-detail" style="min-height: 60px;"><?php echo nl2br($data['equipment'] ?? '-'); ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="section-group">
+        <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม (FOOD & BEVERAGE DETAILS)</div>
+        <table class="table table-sm table-bordered table-tight mb-2">
+            <thead class="table-light text-center">
+                <tr>
+                    <th width="10%">เวลา</th>
+                    <th width="15%">ประเภทเมนู</th>
+                    <th>รายละเอียดเมนู</th>
+                    <th width="10%">จำนวน</th>
+                    <th width="12%">ราคา/หน่วย</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                // ลบบรรทัด $menus = $conn->query("SELECT * ...") ทิ้งไปเลยครับ
+                while ($row = $menus->fetch_assoc()): ?>
+                    <tr>
+                        <td class="text-center"><?php echo $row['menu_time']; ?></td>
+
+                        <td class="text-center"><?php echo $row['set_name'] ?? 'ไม่ได้เลือกเซต'; ?></td>
+
+                        <td><?php echo nl2br($row['menu_detail']); ?></td>
+                        <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
+                        <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+    <div class="section-group">
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="section-title">7. ป้ายชื่อและฉาก (BACKDROP & SIGNAGE)</div>
+                <div class="box-detail mb-1"><?php echo nl2br($data['backdrop_detail'] ?? '-'); ?></div>
+                <?php if (!empty($data['backdrop_img'])): ?>
+                    <div class="text-center border p-1 rounded bg-white mt-1">
+                        <img src="<?php echo $data['backdrop_img']; ?>" style="max-height: 80px; max-width: 100%;">
+                    </div>
                 <?php endif; ?>
             </div>
-            <div class="mx-auto border-top w-75 pt-1">
-                <div class="fw-bold"><?php echo $data['created_by'] ?? '-'; ?></div>
-                ผู้จัดทำ (Event Organizer)
+            <div class="col-6">
+                <div class="section-title">8. แม่บ้านและดอกไม้ (FLORIST & HK)</div>
+                <div class="box-detail" style="min-height: 60px;">
+                    <?php echo nl2br($data['hk_florist_detail'] ?? '-'); ?>
+                </div>
+                <div class="mt-2 p-1 border-start border-warning bg-light" style="font-size: 9px;">
+                    <strong>Additional Remark:</strong> <?php echo $data['remark'] ?? '-'; ?>
+                </div>
             </div>
-            <small class="text-muted">วันที่: <?php echo $data['created_at'] ?? '-'; ?></small>
         </div>
+    </div>
+    <div class="signature-wrapper">
+        <div class="row mt-5 text-center" style="font-size: 10px;">
+            <div class="col-4 text-center">
+                <div class="sig-space">
+                    <?php if (!empty($creator_sig)): ?>
+                        <img src="<?php echo displaySignature($creator_sig); ?>" class="sig-img">
+                    <?php endif; ?>
+                </div>
+                <div class="mx-auto border-top w-75 pt-1">
+                    <div class="fw-bold"><?php echo $data['created_by'] ?? '-'; ?></div>
+                    ผู้จัดทำ (Event Organizer)
+                </div>
+                <small class="text-muted">วันที่: <?php echo $data['created_at'] ?? '-'; ?></small>
+            </div>
 
-        <div class="col-4 text-center">
-            <div class="sig-space">
-                <?php if ($data['approve'] == 1 && !empty($approver_sig)): ?>
-                    <img src="<?php echo displaySignature($approver_sig); ?>" class="sig-img">
-                <?php endif; ?>
+            <div class="col-4 text-center">
+                <div class="sig-space">
+                    <?php if ($data['approve'] == 1 && !empty($approver_sig)): ?>
+                        <img src="<?php echo displaySignature($approver_sig); ?>" class="sig-img">
+                    <?php endif; ?>
+                </div>
+                <div class="mx-auto border-top w-75 pt-1">
+                    <div class="fw-bold"><?php echo $approver_name; ?></div>
+                    ผู้อนุมัติ (Authorized By)
+                </div>
+                <small class="text-muted">
+                    วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '______/______/______'; ?>
+                </small>
             </div>
-            <div class="mx-auto border-top w-75 pt-1">
-                <div class="fw-bold"><?php echo $approver_name; ?></div>
-                ผู้อนุมัติ (Authorized By)
-            </div>
-            <small class="text-muted">
-                วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '______/______/______'; ?>
-            </small>
-        </div>
 
-        <div class="col-4 text-center">
-            <div class="sig-space"></div>
-            <div class="mx-auto border-top w-75 pt-1">
-                <div class="fw-bold"><?php echo $data['booking_name'] ?? '-'; ?></div>
-                ลูกค้า (Customer)
+            <div class="col-4 text-center">
+                <div class="sig-space"></div>
+                <div class="mx-auto border-top w-75 pt-1">
+                    <div class="fw-bold"><?php echo $data['booking_name'] ?? '-'; ?></div>
+                    ลูกค้า (Customer)
+                </div>
+                <small class="text-muted">วันที่: ______/______/______</small>
             </div>
-            <small class="text-muted">วันที่: ______/______/______</small>
         </div>
     </div>
 </div>
@@ -481,5 +490,39 @@ $menus = $conn->query($sql_menus);
     }
 
 </script>
+<script>
+    window.onbeforeprint = function () {
+        // 1. นับจำนวนแถว (tr) ทั้งหมดใน printableArea
+        const rows = document.querySelectorAll('#printableArea tr').length;
+        const root = document.documentElement;
 
+        // 2. ลอจิกการปรับขนาด (จารปรับตัวเลข 30, 45 ได้ตามความยาวงานจาร)
+        if (rows > 45) {
+            // เนื้อหาเยอะมาก บีบสุดใจ
+            root.style.setProperty('--print-fs', '8px');
+            root.style.setProperty('--print-pad', '1px 3px');
+            root.style.setProperty('--print-lh', '1.1');
+        }
+        else if (rows > 30) {
+            // เนื้อหาเริ่มล้น บีบปานกลาง
+            root.style.setProperty('--print-fs', '9px');
+            root.style.setProperty('--print-pad', '2px 4px');
+            root.style.setProperty('--print-lh', '1.2');
+        }
+        else {
+            // เนื้อหาน้อย โชว์สวยๆ ตัวโตๆ
+            root.style.setProperty('--print-fs', '10px');
+            root.style.setProperty('--print-pad', '3px 5px');
+            root.style.setProperty('--print-lh', '1.3');
+        }
+    };
+
+    // เมื่อพิมพ์เสร็จ คืนค่าหน้าจอให้กลับมาเป็น Font 10px ปกติ
+    window.onafterprint = function () {
+        const root = document.documentElement;
+        root.style.setProperty('--print-fs', '10px');
+        root.style.setProperty('--print-pad', '3px 5px');
+        root.style.setProperty('--print-lh', '1.3');
+    };
+</script>
 <?php include "footer.php"; ?>

@@ -249,7 +249,7 @@ $res_breaks = $conn->query($query_breaks);
                                             Number</label>
                                         <input name="booking_room"
                                             class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                                            placeholder="BK-XXXX" >
+                                            placeholder="BK-XXXX">
                                     </div>
                                 </div>
 
@@ -262,7 +262,7 @@ $res_breaks = $conn->query($query_breaks);
                                                 class="input-group-text border-0 bg-transparent text-success fw-bold ps-0">฿</span>
                                             <input type="number" step="0.01" name="deposit"
                                                 class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-5"
-                                                placeholder="0.00" >
+                                                placeholder="0.00">
                                         </div>
                                     </div>
                                 </div>
@@ -274,11 +274,42 @@ $res_breaks = $conn->query($query_breaks);
                                         <div class="input-group">
                                             <input type="number" name="pax"
                                                 class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                                                placeholder="0" >
+                                                placeholder="0">
                                             <span
                                                 class="input-group-text border-0 bg-transparent text-info fw-bold pe-0">Pers.</span>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <?php
+                                    $file_colors = ['secondary', 'warning', 'danger']; // ตั้งค่าสีให้แต่ละช่อง
+                                    $file_labels = ['ไฟล์แนบ 1', 'ไฟล์แนบ 2', 'ไฟล์แนบ 3'];
+                                    for ($i = 1; $i <= 3; $i++):
+                                        $color = $file_colors[$i - 1];
+                                        ?>
+                                        <div class="col-md-4">
+                                            <div class="p-3 rounded-4 bg-<?= $color ?> bg-opacity-10">
+                                                <label class="small fw-bold text-<?= $color ?> mb-1 d-block">
+                                                    <i class="bi bi-paperclip"></i> <?= $file_labels[$i - 1] ?>
+                                                </label>
+
+                                                <input type="file" name="file_attachment<?= $i ?>"
+                                                    class="form-control form-control-sm border-0 bg-transparent p-0">
+
+                                                <input type="hidden" name="old_file_<?= $i ?>"
+                                                    value="<?php echo $row['file_attachment' . $i]; ?>">
+
+                                                <?php if (!empty($row['file_attachment' . $i])): ?>
+                                                    <div class="mt-1">
+                                                        <a href="../<?= $row['file_attachment' . $i] ?>" target="_blank"
+                                                            class="badge bg-<?= $color ?> text-decoration-none small">
+                                                            <i class="bi bi-eye"></i> ดูไฟล์ปัจจุบัน
+                                                        </a>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endfor; ?>
                                 </div>
                             </div>
                         </div>

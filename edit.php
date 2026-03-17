@@ -267,7 +267,7 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
                                     </select>
                                 </div>
 
-                                <div class="row g-3 mb-3">
+                                <div class="row g-3 ">
     <div class="col-md-6">
         <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน (Start Date & Time)</label>
         <input type="datetime-local" name="start_time" class="form-control border-0 bg-light"
@@ -322,6 +322,56 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
                                         </div>
                                     </div>
                                 </div>
+                              <div class="row g-3 mt-1">
+    <?php 
+    $file_colors = ['secondary', 'warning', 'danger']; 
+    for($i=1; $i<=3; $i++): 
+        $color = $file_colors[$i-1];
+        $file_path = $data['file_attachment'.$i];
+        $file_name = $file_path ? basename($file_path) : '';
+    ?>
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-<?=$color?> bg-opacity-10 border border-<?=$color?> border-opacity-25">
+            <label class="small fw-bold text-<?=$color?> mb-1 d-block">
+                <i class="bi bi-paperclip"></i> ไฟล์แนบ <?=$i?>
+            </label>
+
+            <?php if($file_path): ?>
+                <div id="file_display_<?=$i?>" class="d-flex align-items-center justify-content-between mb-2 bg-white p-2 rounded-3 shadow-sm">
+                    <div class="text-truncate me-2" style="font-size: 11px;">
+                        <a href="<?=$file_path?>" target="_blank" class="text-decoration-none text-dark">
+                            <i class="bi bi-file-earmark-check text-<?=$color?>"></i> <?=$file_name?>
+                        </a>
+                    </div>
+                    
+                    <div class="ms-1">
+                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" 
+                                style="font-size: 10px; border-radius: 6px;"
+                                onclick="if(confirm('ลบไฟล์เดิม?')){ 
+                                    document.getElementById('file_display_<?=$i?>').style.setProperty('display', 'none', 'important'); 
+                                    document.getElementById('delete_flag_<?=$i?>').value = '1'; 
+                                }">
+                            <i class="bi bi-trash3"></i> ลบ
+                        </button>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <input type="file" name="file_attachment<?=$i?>" 
+                class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>" 
+                style="font-size: 11px;">
+            
+            <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
+            <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>" value="0">
+            
+            <div class="mt-1" style="font-size: 9px; color: #666;">
+                * อัปโหลดใหม่เพื่อเปลี่ยนไฟล์
+            </div>
+        </div>
+    </div>
+    <?php endfor; ?>
+</div>
+
                             </div>
                         </div>
                     </div>
@@ -671,5 +721,21 @@ async function fetchBreakMenu(selectEl) {
         }
     }
 </script>
-
+<script>
+function confirmRemoveFile(index) {
+    if(confirm('ยืนยันที่จะนำไฟล์เดิมออกเพื่อเปลี่ยนไฟล์ใหม่หรือไม่?')) {
+        // หา Element ที่โชว์ไฟล์เดิม
+        const displayDiv = document.getElementById('file_display_' + index);
+        const flagInput = document.getElementById('delete_flag_' + index);
+        
+        if(displayDiv && flagInput) {
+            displayDiv.style.display = 'none'; // ซ่อนทันที
+            flagInput.value = '1';            // เปลี่ยนค่าเป็น 1 เพื่อบอก PHP ให้ลบ
+            console.log('File ' + index + ' marked for deletion');
+        } else {
+            alert('Error: ไม่พบ Element สำหรับลบไฟล์');
+        }
+    }
+}
+</script>
 <?php include "footer.php"; ?>

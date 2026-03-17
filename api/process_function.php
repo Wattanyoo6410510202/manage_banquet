@@ -45,25 +45,58 @@ if (isset($_POST['save'])) {
         }
     }
 
+    // --- 2.1 จัดการไฟล์แนบเพิ่มเติม 3 ไฟล์ (สร้างโฟลเดอร์ถ้ามีการอัปโหลด) ---
+    $attach_paths = [1 => null, 2 => null, 3 => null];
+    $has_upload = false;
+
+    // เช็คก่อนว่าใน 3 ช่องนี้ มีอันไหนอัปโหลดมาบ้าง
+    for ($i = 1; $i <= 3; $i++) {
+        if (isset($_FILES["file_attachment$i"]) && $_FILES["file_attachment$i"]['error'] == 0) {
+            $has_upload = true;
+            break;
+        }
+    }
+
+    if ($has_upload) {
+        // สร้างชื่อโฟลเดอร์ตามวันที่และเวลาเพื่อให้ไม่ซ้ำกัน (หรือตามชื่อลูกค้าก็ได้ครับจาร)
+        $sub_folder = "uploads/attach_" . date('Ymd_His');
+        if (!is_dir($sub_folder)) {
+            mkdir($sub_folder, 0777, true); // สร้างโฟลเดอร์หลักและซับโฟลเดอร์ถ้ายังไม่มี
+        }
+
+        for ($i = 1; $i <= 3; $i++) {
+            $file_field = "file_attachment" . $i;
+            if (isset($_FILES[$file_field]) && $_FILES[$file_field]['error'] == 0) {
+                $ext = pathinfo($_FILES[$file_field]['name'], PATHINFO_EXTENSION);
+                // ตั้งชื่อไฟล์ให้ดูง่ายขึ้น
+                $new_name = "file_" . $i . "_" . uniqid() . "." . $ext;
+                $target_attach = $sub_folder . "/" . $new_name;
+
+                if (move_uploaded_file($_FILES[$file_field]['tmp_name'], $target_attach)) {
+                    $attach_paths[$i] = $target_attach;
+                }
+            }
+        }
+    }
+
     $conn->begin_transaction();
 
     try {
         // --- 3. แก้ไข SQL INSERT (เพิ่ม customer_id, function_type_id) ---
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบจำนวน Column และ ? ให้เท่ากันคือ 21 ตัว) ---
         $sql_main = "INSERT INTO functions (
-    company_id, customer_id, function_type_id, room_id, function_name, 
-    booking_name, organization, phone, booking_room, deposit, 
-    banquet_style, equipment, remark, main_kitchen_remark, 
-    backdrop_detail, hk_florist_detail, backdrop_img, created_by, pax, 
-    start_time, end_time
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // มี ? ทั้งหมด 21 ตัว
-
+            company_id, customer_id, function_type_id, room_id, function_name, 
+            booking_name, organization, phone, booking_room, deposit, 
+            banquet_style, equipment, remark, main_kitchen_remark, 
+            backdrop_detail, hk_florist_detail, backdrop_img, created_by, pax, 
+            start_time, end_time, file_attachment1, file_attachment2, file_attachment3
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql_main);
 
         // ผูกตัวแปร (i=int, s=string, d=double) 
 // ต้องระบุประเภทให้ครบ 21 ตัว: iiii sssss d sssssss i ss
         $stmt->bind_param(
-            "iiiisssssdssssssssiss", // รวม 21 ตัวอักษร
+            "iiiisssssdssssssssisssss",
             $company_id,         // 1 (i)
             $customer_id,        // 2 (i)
             $function_type_id,   // 3 (i)
@@ -84,7 +117,10 @@ if (isset($_POST['save'])) {
             $created_by_name,    // 18 (s)
             $pax,                // 19 (i)
             $start_date,         // 20 (s)
-            $end_date            // 21 (s)
+            $end_date,            // 21 (s)
+            $attach_paths[1],   // 22 (New)
+            $attach_paths[2],   // 23 (New)
+            $attach_paths[3],   // 24 (New)
         );
 
         if (!$stmt->execute()) {
