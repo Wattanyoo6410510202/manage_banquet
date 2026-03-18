@@ -116,8 +116,8 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                             </div>
                         </div>
                         <div class="d-grid gap-2 mt-3">
-                            <button type="submit" id="btnSubmit"
-                                class="btn btn-warning fw-bold shadow-sm"><i class="bi bi-save me-2 text-amber"></i>บันทึกข้อมูลเบรก</button>
+                            <button type="submit" id="btnSubmit" class="btn btn-warning fw-bold shadow-sm"><i
+                                    class="bi bi-save me-2 text-amber"></i>บันทึกข้อมูลเบรก</button>
                             <button type="button" class="btn btn-light btn-sm border"
                                 onclick="resetForm()">ยกเลิก</button>
                         </div>
@@ -230,10 +230,24 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                 "<'d-none'B>", // ซ่อนปุ่ม Text ทื่อๆ ไว้ แต่ยังให้ระบบ Buttons ทำงาน
             "buttons": [
-                { extend: 'copy', exportOptions: { columns: [0, 1, 2] } },
-                { extend: 'excel', exportOptions: { columns: [0, 1, 2] } },
-                { extend: 'print', exportOptions: { columns: [0, 1, 2] } }
-            ]
+                {
+                    extend: 'excel',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2] },
+                    title: 'รายการเบรก'
+                },
+                {
+                    extend: 'print',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2] },
+                    title: 'รายการเบรก' // ✅ ใส่คอมม่าหน้า title แล้วครับ
+                },
+                {
+                    extend: 'copy',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2, 3, 4] }
+                }
+            ],
         });
         // เชื่อมปุ่ม Custom (ย้ายมาไว้ใน ready เพื่อความชัวร์)
         $('#customExcel').on('click', function () {

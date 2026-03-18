@@ -153,14 +153,19 @@ function is_active($pages)
             </div>
 
             <ul class="list-unstyled components">
-
                 <li>
-                    <a href="calendar.php" class="<?php echo is_active('calendar.php'); ?>">
-                        <i class="bi bi-speedometer2"></i> Dashboard
+                    <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
+                        <i class="bi bi-speedometer2"></i> แดชบอร์ด
                     </a>
                 </li>
                 <li>
-                    <a href="manage_banquet.php" class="<?php echo is_active(['manage_banquet.php', 'view.php']); ?>">
+                    <a href="calendar.php" class="<?php echo is_active('calendar.php'); ?>">
+                        <i class="bi bi-speedometer2"></i> ปฏิทิน
+                    </a>
+                </li>
+                <li>
+                    <a href="manage_banquet.php"
+                        class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php']); ?>">
                         <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
                     </a>
                 </li>

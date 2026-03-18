@@ -4,8 +4,6 @@ include "api/process_function.php";
 include "header.php";
 access_control(['Admin', 'GM', 'Staff']);
 
-/** * --- เตรียมข้อมูลสำหรับ Dropdown --- 
- */
 
 // 1. ดึงข้อมูลบริษัท/โรงแรม
 $query_companies = "SELECT id, company_name, logo_path FROM companies ORDER BY company_name ASC";
@@ -72,7 +70,7 @@ if ($target_company_id > 0) {
 
 <script src="assets/ai_random_fill.js"></script>
 
-<div class="container-fluid">
+<div class="container-fluid p-0">
     <form method="POST" enctype="multipart/form-data">
         <div class="card  border-0">
             <div class="card-header main-header p-4">
@@ -126,14 +124,14 @@ if ($target_company_id > 0) {
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="small fw-bold text-secondary m-0">
-                                    <i class="bi bi-person-lines-fill me-1 text-primary"></i> ข้อมูลลูกค้า
+                                    <i class="bi bi-person-lines-fill me-1 "></i> ข้อมูลลูกค้า
                                 </label>
                             </div>
 
                             <div class="mb-3">
                                 <input type="hidden" name="customer_id" id="customer_id_hidden">
                                 <select id="customer_selector" name="customer_id"
-                                    class="form-select border-0 bg-primary bg-opacity-10 text-primary fw-bold"
+                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light"
                                     onchange="fillCustomerInfo(this)"
                                     style="border-radius: 10px; height: 42px; font-size: 13px;">
                                     <option value="">-- ค้นหา/เลือกลูกค้าเดิม --</option>
@@ -195,15 +193,54 @@ if ($target_company_id > 0) {
                                                 </div>
 
                                                 <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
-                                                <p class="text-muted small mb-0">
-                                                    <i class="bi bi-aspect-ratio me-1"></i> พื้นที่:
-                                                    <?= number_format($r['total_sqm'], 2) ?> ตร.ม.
-                                                </p>
+                                                <div class="mb-2">
+                                                    <p class="text-muted small mb-1">
+                                                        <i class="bi bi-layers me-1"></i> ชั้น:
+                                                        <?= htmlspecialchars($r['floor']) ?> |
+                                                        <i class="bi bi-aspect-ratio me-1"></i> พื้นที่:
+                                                        <?= number_format($r['total_sqm'], 2) ?> ตร.ม.
+                                                    </p>
+
+                                                    <p class="text-muted small mb-1">
+                                                        <i class="bi bi-people me-1"></i>
+                                                        Banquet: <span
+                                                            class="text-dark fw-bold"><?= number_format($r['cap_banquet']) ?></span>
+                                                        |
+                                                        Theatre: <span
+                                                            class="text-dark fw-bold"><?= number_format($r['cap_theatre']) ?></span>
+                                                    </p>
+
+                                                    <?php
+                                                    $room_id = $r['id'];
+                                                    // จารย์เช็กในตาราง booking ว่ามีรายการที่อนุมัติแล้วและยังไม่หมดเวลาหรือไม่
+                                                    $check_booking = $conn->query("SELECT end_time FROM functions 
+                                   WHERE room_id = '$room_id' 
+                                   AND approve = 1 
+                                   AND end_time >= NOW() 
+                                   ORDER BY end_time DESC LIMIT 1");
+
+                                                    if ($check_booking && $check_booking->num_rows > 0):
+                                                        $booking = $check_booking->fetch_assoc();
+                                                        ?>
+                                                        <p class="mb-0">
+                                                            <span class="badge bg-danger">
+                                                                <i class="bi bi-calendar-check me-1"></i>
+                                                                ใช้งานถึง: <?= date('d/m/Y H:i', strtotime($booking['end_time'])) ?>
+                                                            </span>
+                                                        </p>
+                                                    <?php else: ?>
+                                                        <p class="mb-0">
+                                                            <span class="badge bg-success">
+                                                                <i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน
+                                                            </span>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                </div>
                                             </div>
                                         </div>
                                     <?php endwhile; else: ?>
                                     <div class="col-12 text-center py-5">
-                                        <p class="text-muted">ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้</p>
+                                        <p class="text-muted">โปรดเลือกบริษัทก่อน / ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้ </p>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -560,9 +597,9 @@ if ($target_company_id > 0) {
 
     function selectRoom(element, roomId) {
         document.querySelectorAll('.room-card').forEach(card => {
-            card.classList.remove('selected', 'shadow');
+            card.classList.remove('selected');
         });
-        element.classList.add('selected', 'shadow');
+        element.classList.add('selected');
         const radio = element.querySelector('input[type="radio"]');
         radio.checked = true;
         console.log("Selected Room ID:", roomId);
@@ -600,6 +637,8 @@ if ($target_company_id > 0) {
             const response = await fetch(`api/get_menu_ajax.php?type_id=${typeId}`);
             const data = await response.text();
             textarea.value = data;
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
         } catch (error) {
             console.error("Error:", error);
             textarea.value = "1. ";

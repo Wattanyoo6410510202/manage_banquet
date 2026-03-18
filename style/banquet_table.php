@@ -223,8 +223,8 @@
             },
             "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
             "buttons": [
-                { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: [1, 2, 3, 4, 5, 6, 7,8] } },
-                { extend: 'print', exportOptions: { columns: [1, 2, 3, 4, 5, 6, 7,8] } }
+                { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: [1, 2, 3, 4, 5, 6, 7,8] } , title: 'รายการจัดเลี่ยง'},
+                { extend: 'print', exportOptions: { columns: [1, 2, 3, 4, 5, 6, 7,8] } , title: 'รายการจัดเลี่ยง' }
             ],
             "columnDefs": [
                 { "orderable": false, "targets": [0, 9] },

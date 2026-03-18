@@ -68,28 +68,43 @@ $res_rooms = $conn->query("SELECT * FROM meeting_rooms
 $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
 
 // ดึงข้อมูลห้องทั้งหมดเตรียมไว้ให้ JS
-$all_rooms_res = $conn->query("SELECT * FROM meeting_rooms WHERE status = 'active' ORDER BY floor ASC");
+// ดึงข้อมูลห้องพร้อมเช็กสถานะการจอง (เฉพาะรายการที่ Approve และยังไม่หมดเวลา)
+$all_rooms_res = $conn->query("
+    SELECT 
+        r.*, 
+        (SELECT f.end_time
+         FROM functions f 
+         WHERE f.room_id = r.id 
+         AND f.approve = 1 
+         AND f.end_time >= NOW() 
+         ORDER BY f.end_time DESC LIMIT 1) as busy_until
+    FROM meeting_rooms r
+    WHERE r.status = 'active' 
+    ORDER BY r.floor ASC, r.room_name ASC
+");
+
 $all_rooms_data = [];
 while($row = $all_rooms_res->fetch_assoc()) {
+    // เก็บเข้า array เพื่อส่งให้ json_encode ใน JS
     $all_rooms_data[] = $row;
 }
 ?>
 <style>
-    .room-card.selected {
-        border: 2px solid #198754 !important;
-        background-color: #f8fffb !important;
-    }
+.room-card.selected {
+    border: 2px solid #198754 !important;
+    background-color: #f8fffb !important;
+}
 
-    .room-card.selected .check-icon {
-        display: block !important;
-    }
+.room-card.selected .check-icon {
+    display: block !important;
+}
 
-    .bg-light {
-        background-color: #f8f9fa !important;
-    }
+.bg-light {
+    background-color: #f8f9fa !important;
+}
 </style>
 
-<div class="container-fluid">
+<div class="container-fluid p-0">
     <form action="api/update_function.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="function_id" value="<?php echo $id; ?>">
@@ -125,7 +140,8 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
                             <select name="company_id" class="form-select border-0 bg-light mb-3"
-                                onchange="updateCompanyLogo(this); filterRooms(this.value);" required style="border-radius: 10px; height: 42px;">
+                                onchange="updateCompanyLogo(this); filterRooms(this.value);" required
+                                style="border-radius: 10px; height: 42px;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $current_logo = 'assets/img/default-company.png'; // ค่า Default
@@ -159,7 +175,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="small fw-bold text-secondary m-0">
-                                    <i class="bi bi-person-lines-fill me-1 text-primary"></i> ข้อมูลลูกค้า
+                                    <i class="bi bi-person-lines-fill me-1 "></i> ข้อมูลลูกค้า
                                 </label>
                             </div>
 
@@ -167,7 +183,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                 <input type="hidden" name="customer_id" id="customer_id_hidden"
                                     value="<?= $data['customer_id'] ?>">
                                 <select id="customer_selector"
-                                    class="form-select border-0 bg-primary bg-opacity-10 text-primary fw-bold"
+                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light"
                                     onchange="fillCustomerInfo(this)"
                                     style="border-radius: 10px; height: 42px; font-size: 13px;">
                                     <option value="">-- ค้นหา/เลือกลูกค้าเดิม --</option>
@@ -228,25 +244,27 @@ while($row = $all_rooms_res->fetch_assoc()) {
                     $is_selected_room = ($r['id'] == $data['room_id']);
             ?>
                                 <div class="col-md-4">
-    <?php $is_selected = ($r['id'] == $data['room_id']); ?>
-    
-    <div class="room-card p-3 rounded-4 border h-100  <?= $is_selected ? 'selected' : 'bg-white' ?>"
-        onclick="selectRoom(this, '<?= $r['id'] ?>')" 
-        style="">
-        
-        <input type="radio" name="room_id" value="<?= $r['id'] ?>" class="d-none" <?= $is_selected ? 'checked' : '' ?>>
+                                    <?php $is_selected = ($r['id'] == $data['room_id']); ?>
 
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="badge <?= $is_premium ? 'bg-warning' : 'bg-primary' ?> bg-opacity-10 <?= $is_premium ? 'text-warning' : 'text-primary' ?> rounded-pill">
-                Floor <?= $r['floor'] ?>
-            </span>
-            <i class="bi bi-check-circle-fill check-icon text-primary <?= $is_selected ? '' : 'd-none' ?>"></i>
-        </div>
+                                    <div class="room-card p-3 rounded-4 border h-100  <?= $is_selected ? 'selected' : 'bg-white' ?>"
+                                        onclick="selectRoom(this, '<?= $r['id'] ?>')" style="">
 
-        <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
-        <p class="text-muted small mb-0">Max: 100 ท่าน</p>
-    </div>
-</div>
+                                        <input type="radio" name="room_id" value="<?= $r['id'] ?>" class="d-none"
+                                            <?= $is_selected ? 'checked' : '' ?>>
+
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <span
+                                                class="badge <?= $is_premium ? 'bg-warning' : 'bg-primary' ?> bg-opacity-10 <?= $is_premium ? 'text-warning' : 'text-primary' ?> rounded-pill">
+                                                Floor <?= $r['floor'] ?>
+                                            </span>
+                                            <i
+                                                class="bi bi-check-circle-fill check-icon text-primary <?= $is_selected ? '' : 'd-none' ?>"></i>
+                                        </div>
+
+                                        <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
+                                        <p class="text-muted small mb-0">Max: 100 ท่าน</p>
+                                    </div>
+                                </div>
                                 <?php endwhile; endif; ?>
                             </div>
                         </div>
@@ -282,20 +300,24 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                 </div>
 
                                 <div class="row g-3 ">
-    <div class="col-md-6">
-    <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
-    <input type="datetime-local" name="start_time" class="form-control border-0 bg-light"
-           required style="border-radius: 10px; height: 42px;"
-           value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : (isset($data['start_time']) ? 'ERROR_DATA_EMPTY' : 'ERROR_NO_FIELD') ?>">
-</div>
+                                    <div class="col-md-6">
+                                        <label
+                                            class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
+                                        <input type="datetime-local" name="start_time"
+                                            class="form-control border-0 bg-light" required
+                                            style="border-radius: 10px; height: 42px;"
+                                            value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : (isset($data['start_time']) ? 'ERROR_DATA_EMPTY' : 'ERROR_NO_FIELD') ?>">
+                                    </div>
 
-<div class="col-md-6">
-    <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน</label>
-    <input type="datetime-local" name="end_time" class="form-control border-0 bg-light"
-           required style="border-radius: 10px; height: 42px;"
-           value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
-</div>
-</div>
+                                    <div class="col-md-6">
+                                        <label
+                                            class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน</label>
+                                        <input type="datetime-local" name="end_time"
+                                            class="form-control border-0 bg-light" required
+                                            style="border-radius: 10px; height: 42px;"
+                                            value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="row g-3">
@@ -304,7 +326,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                         <label class="small fw-bold text-primary mb-1 d-block">Booking Number</label>
                                         <input name="booking_room"
                                             class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                                            placeholder="BK-XXXX" 
+                                            placeholder="BK-XXXX"
                                             value="<?= htmlspecialchars($data['booking_room']) ?>">
                                     </div>
                                 </div>
@@ -317,8 +339,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                                 class="input-group-text border-0 bg-transparent text-success fw-bold ps-0">฿</span>
                                             <input type="number" step="0.01" name="deposit"
                                                 class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-5"
-                                                placeholder="0.00" 
-                                                value="<?= $data['deposit'] ?>">
+                                                placeholder="0.00" value="<?= $data['deposit'] ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -330,61 +351,66 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                         <div class="input-group">
                                             <input type="number" name="pax"
                                                 class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                                                placeholder="0"  value="<?= $data['pax'] ?>">
+                                                placeholder="0" value="<?= $data['pax'] ?>">
                                             <span
                                                 class="input-group-text border-0 bg-transparent text-info fw-bold pe-0">Pers.</span>
                                         </div>
                                     </div>
                                 </div>
-                              <div class="row g-3 mt-1">
-    <?php 
+                                <div class="row g-3 mt-1">
+                                    <?php 
     $file_colors = ['secondary', 'warning', 'danger']; 
     for($i=1; $i<=3; $i++): 
         $color = $file_colors[$i-1];
         $file_path = $data['file_attachment'.$i];
         $file_name = $file_path ? basename($file_path) : '';
     ?>
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-<?=$color?> bg-opacity-10 border border-<?=$color?> border-opacity-25">
-            <label class="small fw-bold text-<?=$color?> mb-1 d-block">
-                <i class="bi bi-paperclip"></i> ไฟล์แนบ <?=$i?>
-            </label>
+                                    <div class="col-md-4">
+                                        <div
+                                            class="p-3 rounded-4 bg-<?=$color?> bg-opacity-10 border border-<?=$color?> border-opacity-25">
+                                            <label class="small fw-bold text-<?=$color?> mb-1 d-block">
+                                                <i class="bi bi-paperclip"></i> ไฟล์แนบ <?=$i?>
+                                            </label>
 
-            <?php if($file_path): ?>
-                <div id="file_display_<?=$i?>" class="d-flex align-items-center justify-content-between mb-2 bg-white p-2 rounded-3 shadow-sm">
-                    <div class="text-truncate me-2" style="font-size: 11px;">
-                        <a href="<?=$file_path?>" target="_blank" class="text-decoration-none text-dark">
-                            <i class="bi bi-file-earmark-check text-<?=$color?>"></i> <?=$file_name?>
-                        </a>
-                    </div>
-                    
-                    <div class="ms-1">
-                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" 
-                                style="font-size: 10px; border-radius: 6px;"
-                                onclick="if(confirm('ลบไฟล์เดิม?')){ 
+                                            <?php if($file_path): ?>
+                                            <div id="file_display_<?=$i?>"
+                                                class="d-flex align-items-center justify-content-between mb-2 bg-white p-2 rounded-3 ">
+                                                <div class="text-truncate me-2" style="font-size: 11px;">
+                                                    <a href="<?=$file_path?>" target="_blank"
+                                                        class="text-decoration-none text-dark">
+                                                        <i class="bi bi-file-earmark-check text-<?=$color?>"></i>
+                                                        <?=$file_name?>
+                                                    </a>
+                                                </div>
+
+                                                <div class="ms-1">
+                                                    <button type="button"
+                                                        class="btn btn-outline-danger btn-sm py-0 px-2"
+                                                        style="font-size: 10px; border-radius: 6px;" onclick="if(confirm('ลบไฟล์เดิม?')){ 
                                     document.getElementById('file_display_<?=$i?>').style.setProperty('display', 'none', 'important'); 
                                     document.getElementById('delete_flag_<?=$i?>').value = '1'; 
                                 }">
-                            <i class="bi bi-trash3"></i> ลบ
-                        </button>
-                    </div>
-                </div>
-            <?php endif; ?>
+                                                        <i class="bi bi-trash3"></i> ลบ
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
 
-            <input type="file" name="file_attachment<?=$i?>" 
-                class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>" 
-                style="font-size: 11px;">
-            
-            <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
-            <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>" value="0">
-            
-            <div class="mt-1" style="font-size: 9px; color: #666;">
-                * อัปโหลดใหม่เพื่อเปลี่ยนไฟล์
-            </div>
-        </div>
-    </div>
-    <?php endfor; ?>
-</div>
+                                            <input type="file" name="file_attachment<?=$i?>"
+                                                class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>"
+                                                style="font-size: 11px;">
+
+                                            <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
+                                            <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>"
+                                                value="0">
+
+                                            <div class="mt-1" style="font-size: 9px; color: #666;">
+                                                * อัปโหลดใหม่เพื่อเปลี่ยนไฟล์
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
 
                             </div>
                         </div>
@@ -671,22 +697,22 @@ function selectRoom(element, roomId) {
     // 1. ล้างทุกอย่างออกจากทุก Card (เอาให้เกลี้ยง!)
     document.querySelectorAll('.room-card').forEach(card => {
         // ลบ Class ที่เป็นตัวกำหนดสีออกให้หมด
-        card.classList.remove('selected', 'shadow', 'bg-primary', 'bg-opacity-10', 'border-primary');
+        card.classList.remove('selected', 'bg-primary', 'bg-opacity-10', 'border-primary');
         // คืนค่าพื้นหลังเป็นสีขาว
         card.classList.add('bg-white');
-        
+
         // ซ่อนไอคอนเช็คถูกของอันอื่นด้วย
         const icon = card.querySelector('.check-icon');
-        if(icon) icon.classList.add('d-none');
+        if (icon) icon.classList.add('d-none');
     });
 
     // 2. ใส่สีฟ้าให้อันที่เพิ่งคลิก
-    element.classList.add('selected', 'shadow'); 
+    element.classList.add('selected');
     element.classList.remove('bg-white'); // ต้องเอาสีขาวออกด้วย สีฟ้าถึงจะชัด
-    
+
     // แสดงไอคอนเช็คถูกของอันนี้
     const currentIcon = element.querySelector('.check-icon');
-    if(currentIcon) currentIcon.classList.remove('d-none');
+    if (currentIcon) currentIcon.classList.remove('d-none');
 
     // 3. ติ๊ก Radio ตัวจริงที่ซ่อนอยู่
     const radio = element.querySelector('input[type="radio"]');
@@ -696,55 +722,58 @@ function selectRoom(element, roomId) {
 }
 
 async function fetchBreakMenu(selectEl) {
-        const row = selectEl.closest('tr');
-        const textarea = row.querySelector('.break-menu-input');
-        const typeId = selectEl.value;
+    const row = selectEl.closest('tr');
+    const textarea = row.querySelector('.break-menu-input');
+    const typeId = selectEl.value;
 
-        if (!typeId) return;
-        textarea.placeholder = "กำลังดึงข้อมูล...";
+    if (!typeId) return;
+    textarea.placeholder = "กำลังดึงข้อมูล...";
 
-        try {
-            const response = await fetch(`api/get_menu_ajax.php?type_id=${typeId}`);
-            const data = await response.text();
-            textarea.value = data;
-        } catch (error) {
-            console.error("Error:", error);
-            textarea.value = "1. ";
-        }
+    try {
+        const response = await fetch(`api/get_menu_ajax.php?type_id=${typeId}`);
+        const data = await response.text();
+        textarea.value = data;
+        // แถม: ปรับความสูง textarea ตามเนื้อหาอัตโนมัติ
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    } catch (error) {
+        console.error("Error:", error);
+        textarea.value = "1. ";
     }
+}
 
-     async function fetchMenuDetail(selectEl) {
-        const row = selectEl.closest('tr');
-        const textarea = row.querySelector('.menu-detail-input'); // มั่นใจว่าคลาสตรงกัน
-        const setId = selectEl.value;
+async function fetchMenuDetail(selectEl) {
+    const row = selectEl.closest('tr');
+    const textarea = row.querySelector('.menu-detail-input'); // มั่นใจว่าคลาสตรงกัน
+    const setId = selectEl.value;
 
-        if (!setId) return;
-        textarea.placeholder = "กำลังดึงรายละเอียดเมนู...";
+    if (!setId) return;
+    textarea.placeholder = "กำลังดึงรายละเอียดเมนู...";
 
-        try {
-            // วิ่งไปหาไฟล์ AJAX สำหรับดึงรายละเอียดเมนูหลัก
-            const response = await fetch(`api/get_menu_detail_ajax.php?set_id=${setId}`);
-            const data = await response.text();
-            textarea.value = data;
+    try {
+        // วิ่งไปหาไฟล์ AJAX สำหรับดึงรายละเอียดเมนูหลัก
+        const response = await fetch(`api/get_menu_detail_ajax.php?set_id=${setId}`);
+        const data = await response.text();
+        textarea.value = data;
 
-            // แถม: ปรับความสูง textarea ตามเนื้อหาอัตโนมัติ
-            textarea.style.height = 'auto';
-            textarea.style.height = (textarea.scrollHeight) + 'px';
-        } catch (error) {
-            console.error("Fetch Menu Error:", error);
-        }
+        // แถม: ปรับความสูง textarea ตามเนื้อหาอัตโนมัติ
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    } catch (error) {
+        console.error("Fetch Menu Error:", error);
     }
+}
 </script>
 <script>
 function confirmRemoveFile(index) {
-    if(confirm('ยืนยันที่จะนำไฟล์เดิมออกเพื่อเปลี่ยนไฟล์ใหม่หรือไม่?')) {
+    if (confirm('ยืนยันที่จะนำไฟล์เดิมออกเพื่อเปลี่ยนไฟล์ใหม่หรือไม่?')) {
         // หา Element ที่โชว์ไฟล์เดิม
         const displayDiv = document.getElementById('file_display_' + index);
         const flagInput = document.getElementById('delete_flag_' + index);
-        
-        if(displayDiv && flagInput) {
+
+        if (displayDiv && flagInput) {
             displayDiv.style.display = 'none'; // ซ่อนทันที
-            flagInput.value = '1';            // เปลี่ยนค่าเป็น 1 เพื่อบอก PHP ให้ลบ
+            flagInput.value = '1'; // เปลี่ยนค่าเป็น 1 เพื่อบอก PHP ให้ลบ
             console.log('File ' + index + ' marked for deletion');
         } else {
             alert('Error: ไม่พบ Element สำหรับลบไฟล์');
@@ -777,26 +806,55 @@ function filterRooms(companyId) {
     // วนลูปสร้าง HTML ของ Card ห้องประชุม
     filtered.forEach(room => {
         const isSelected = (room.id == selectedRoomId);
+
+        // เช็กสถานะ: สมมติว่าในวัตถุ room มี property 'busy_until' (เช่น "2024-05-20 18:00") 
+        // ถ้าห้องนั้นถูกอนุมัติ (approve=1) และยังไม่หมดเวลา
+        const isBusy = room.busy_until ? true : false;
+
         const cardHtml = `
-            <div class="col-md-4">
-                <div class="room-card p-3 rounded-4 border h-100 position-relative ${isSelected ? 'selected border-primary bg-light' : 'bg-white'}"
-                     onclick="selectRoom(this, '${room.id}')" 
-                     style="cursor: pointer;">
-                    
-                    <input type="radio" name="room_id" value="${room.id}" 
-                           class="d-none room-radio" ${isSelected ? 'checked' : ''}>
+            <div class="col-md-4 mb-3">
+    <div class="room-card p-3 rounded-4 border h-100 position-relative 
+        ${isSelected ? 'selected border-primary bg-light' : 'bg-white'}"
+        onclick="selectRoom(this, '${room.id}')" 
+        style="cursor: pointer; transition: all 0.2s; ${isBusy ? 'border-style: dashed;' : ''}">
+        
+        <input type="radio" name="room_id" value="${room.id}" 
+               class="d-none room-radio" ${isSelected ? 'checked' : ''}>
 
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge ${room.floor > 5 ? 'bg-warning text-dark' : 'bg-primary text-white'} rounded-pill">
-                            ชั้น ${room.floor}
-                        </span>
-                        <i class="bi bi-check-circle-fill check-icon text-primary ${isSelected ? '' : 'd-none'}"></i>
-                    </div>
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="badge ${room.floor > 5 ? 'bg-warning text-dark' : 'bg-primary text-white'} rounded-pill">
+                <i class="bi bi-layers me-1"></i> ชั้น: ${room.floor}
+            </span>
+            <i class="bi bi-check-circle-fill check-icon text-success ${isSelected ? '' : 'd-none'}"></i>
+        </div>
 
-                    <h6 class="fw-bold mb-1">${room.room_name}</h6>
-                    <p class="text-muted small mb-0">ขนาดพื้นที่: ${room.total_sqm} ตร.ม.</p>
+        <h6 class="fw-bold mb-1">${room.room_name}</h6>
+        
+        <p class="text-muted small mb-1">
+            <i class="bi bi-aspect-ratio me-1"></i> พื้นที่: ${parseFloat(room.total_sqm).toFixed(2)} ตร.ม.
+        </p>
+
+        <p class="text-muted small mb-2">
+            <i class="bi bi-people me-1"></i>
+            B: <span class="text-dark fw-bold">${room.cap_banquet}</span> |
+            T: <span class="text-dark fw-bold">${room.cap_theatre}</span>
+        </p>
+
+        <div class="mt-2">
+            ${isBusy ? `
+                <div class="d-flex flex-column gap-1">
+                    <span class="badge bg-danger bg-opacity-10 text-danger w-100 py-2 border border-danger border-opacity-25">
+                        <i class="bi bi-calendar-check me-1"></i> ใช้งานถึง: ${room.busy_until}
+                    </span>
                 </div>
-            </div>
+            ` : `
+                <span class="badge bg-success bg-opacity-10 text-success w-100 py-2 border border-success border-opacity-25">
+                    <i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน
+                </span>
+            `}
+        </div>
+    </div>
+</div>
         `;
         container.insertAdjacentHTML('beforeend', cardHtml);
     });
@@ -820,7 +878,7 @@ function selectRoom(card, roomId) {
 // สั่งให้ทำงานทันทีตอนโหลดหน้า (เพื่อให้โชว์ห้องของโรงแรมเดิม)
 document.addEventListener('DOMContentLoaded', function() {
     const currentComp = document.querySelector('select[name="company_id"]').value;
-    if(currentComp) filterRooms(currentComp);
+    if (currentComp) filterRooms(currentComp);
 });
 </script>
 <?php include "footer.php"; ?>

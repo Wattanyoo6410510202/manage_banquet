@@ -124,7 +124,7 @@ require_once "header.php";
                         </div>
 
                         <div class="p-3 bg-light rounded-3 mb-3 border">
-                            <label class="fw-bold small text-primary mb-2 d-block">Capacity (Persons)</label>
+                            <label class="fw-bold small text-primary mb-2 d-block">ความจุ (ต่อคน)</label>
                             <div class="row g-2">
                                 <div class="col-6">
                                     <span class="small ">Theatre</span>
@@ -235,10 +235,14 @@ require_once "header.php";
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
     let roomTable;
 
@@ -247,12 +251,33 @@ require_once "header.php";
         roomTable = $('#roomTable').DataTable({
             "order": [],
             "pageLength": 10,
-            // กำหนดคลาสให้คอลัมน์ล่วงหน้า จะได้ไม่ต้องสั่ง addClass ทีหลัง
+
+            "buttons": [
+                {
+                    extend: 'excel',
+                    className: 'd-none', // ซ่อนปุ่มจริงไว้ เพราะเราจะใช้ปุ่ม Custom ของจารย์กดแทน
+                    title: 'ข้อมูลห้องประชุม',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4]
+                    }
+                },
+                {
+                    extend: 'print',
+                    className: 'd-none', // ซ่อนปุ่มจริงไว้
+                    title: 'รายการห้องประชุม',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4]
+                    }
+                }
+            ],
             "columnDefs": [
                 { "targets": [0], "className": "text-start ps-4" },
-                { "targets": [1, 2, 3, 4], "className": "text-center" }
+                { "targets": [1, 2, 3, 4], "className": "text-center" },
+                { "targets": [5], "orderable": false } // ปิดการเรียงลำดับคอลัมน์จัดการ
             ]
+
         });
+
 
         // 2. คำนวณ SQM อัตโนมัติ
         $('.calc-sqm').on('input', function () {
@@ -260,6 +285,8 @@ require_once "header.php";
             const l = parseFloat($('#length_m').val()) || 0;
             $('#display_sqm').val((w * l).toFixed(2));
         });
+
+
 
         // 3. บันทึกข้อมูลแบบ AJAX (No Reload)
         $('#roomForm').on('submit', function (e) {
@@ -337,6 +364,10 @@ require_once "header.php";
                 .catch(err => console.error('Error:', err));
         });
     });
+
+    // ปุ่ม Export
+    $('#customExcel').on('click', function () { roomTable.button('.buttons-excel').trigger(); });
+    $('#customPrint').on('click', function () { roomTable.button('.buttons-print').trigger(); });
 
     // ฟังก์ชันดึงข้อมูลมาแก้ (เลื่อนขึ้นบน)
     function editRoom(data) {

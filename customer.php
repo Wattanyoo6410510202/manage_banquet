@@ -340,9 +340,23 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
             "pageLength": 10,
             "dom": '<"d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
             "buttons": [
-                { extend: 'excel', exportOptions: { columns: [0, 1, 2, 3] } },
-                { extend: 'print', exportOptions: { columns: [0, 1, 2, 3] } },
-                { extend: 'copy', exportOptions: { columns: [0, 1, 2, 3] } }
+                {
+                    extend: 'excel',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2, 3] },
+                    title: 'รายการลูกค้า'
+                },
+                {
+                    extend: 'print',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2, 3] },
+                    title: 'รายการลูกค้า' // ✅ ใส่คอมม่าหน้า title แล้วครับ
+                },
+                {
+                    extend: 'copy',
+                    className: 'd-none',
+                    exportOptions: { columns: [0, 1, 2, 3, 4] }
+                }
             ],
         });
 
