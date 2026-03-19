@@ -6,6 +6,59 @@ include "header.php";
 $user_role = strtolower($_SESSION['role'] ?? '');
 
 $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
+
+// 1. ตรวจสอบ Role และ User
+$user_role = strtolower($_SESSION['role'] ?? 'staff');
+$current_user = $_SESSION['user_name'] ?? '';
+$can_manage = in_array($user_role, ['admin', 'gm', 'manager']); // กำหนดสิทธิ์จัดการ
+
+// 2. เตรียม WHERE Clause
+$where_clause = "";
+if ($user_role === 'staff') {
+    $safe_user = mysqli_real_escape_string($conn, $current_user);
+    $where_clause = " WHERE f.created_by = '$safe_user' ";
+}
+
+// 3. SQL Query
+$sql = "SELECT f.*, c.company_name, c.logo_path,
+        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
+        FROM functions f 
+        LEFT JOIN companies c ON f.company_id = c.id
+        $where_clause
+        ORDER BY f.id DESC";
+
+$q = mysqli_query($conn, $sql);
+$functions_data = [];
+
+// 4. วนลูปเก็บข้อมูลลง Array และจัดการ Format ให้พร้อมใช้
+if ($q && mysqli_num_rows($q) > 0) {
+    while ($row = mysqli_fetch_assoc($q)) {
+        // จัดการเรื่องวันที่
+        $display_date = !empty($row['event_date']) ? $row['event_date'] : $row['created_at'];
+        $row['formatted_date'] = date('d M Y', strtotime($display_date));
+
+        // จัดการสถานะ (Status Mapping)
+        $status_map = [
+            1 => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success', 'icon' => 'bi-check-circle'],
+            2 => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-x-circle'],
+            0 => ['text' => 'รออนุมัติ', 'class' => 'bg-warning-subtle text-warning', 'icon' => 'bi-clock-history']
+        ];
+        $row['status_info'] = $status_map[$row['approve']] ?? $status_map[0];
+
+        // จัดการไฟล์แนบ
+        $row['attachments'] = [];
+        for ($i = 1; $i <= 3; $i++) {
+            if (!empty($row['file_attachment' . $i])) {
+                $row['attachments'][] = [
+                    'path' => $row['file_attachment' . $i],
+                    'label' => 'ไฟล์แนบ ' . $i
+                ];
+            }
+        }
+
+        $functions_data[] = $row;
+    }
+}
 ?>
 <div id="alert-container">
     <?php include "assets/alert.php"; ?>
@@ -53,7 +106,7 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                     <span class="d-none d-sm-inline ms-1 small">ปฏิทิน</span>
                 </a>
                 <?php
-               
+
                 $user_role = strtolower($_SESSION['role'] ?? '');
 
                 $allowed_roles = ['admin', 'staff', 'gm'];
@@ -90,136 +143,114 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
-                    $user_role = strtolower($_SESSION['role'] ?? 'staff');
-                    $current_user = $_SESSION['user_name'] ?? ''; // <--- เปลี่ยนจาก user_name เป็น user
-                    
-                    $where_clause = "";
-
-                    if ($user_role === 'staff') {
-                        $safe_user = mysqli_real_escape_string($conn, $current_user);
-                        $where_clause = " WHERE f.created_by = '$safe_user' ";
-                    }
-
-                    // 3. SQL Query
-                    $sql = "SELECT f.*, c.company_name, c.logo_path,
-        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
-        FROM functions f 
-        LEFT JOIN companies c ON f.company_id = c.id
-        $where_clause
-        ORDER BY f.id DESC";
-
-                    $q = mysqli_query($conn, $sql);
-                    if ($q && mysqli_num_rows($q) > 0) {
-                        while ($row = mysqli_fetch_assoc($q)) {
-                            $display_date = !empty($row['event_date']) ? $row['event_date'] : $row['created_at'];
-                            $date = date('d M Y', strtotime($display_date));
-                            $deposit = !empty($row['deposit']) ? number_format($row['deposit'], 2) : '0.00';
-                            $comp_name = !empty($row['company_name']) ? $row['company_name'] : '-';
-
-                            $status_map = [
-                                1 => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success', 'icon' => 'bi-check-circle'],
-                                2 => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-x-circle'],
-                                0 => ['text' => 'รออนุมัติ', 'class' => 'bg-warning-subtle text-warning', 'icon' => 'bi-clock-history']
-                            ];
-                            $st = $status_map[$row['approve']] ?? $status_map[0];
-                            ?>
-                            <tr>
-                                <td><input type="checkbox" class="row-checkbox form-check-input"
-                                        value="<?php echo $row['id']; ?>"></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2 hotel-logo-container">
-                                            <?php $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'default-logo.png'; ?>
-                                            <img src="<?php echo htmlspecialchars($logo); ?>" alt="Logo">
-                                        </div>
-                                        <div class="fw-bold text-dark small"><?php echo htmlspecialchars($comp_name); ?></div>
+                    <?php foreach ($functions_data as $row): ?>
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="row-checkbox form-check-input" value="<?= $row['id']; ?>">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 hotel-logo-container">
+                                        <?php $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'default-logo.png'; ?>
+                                        <img src="<?= htmlspecialchars($logo); ?>" alt="Logo">
                                     </div>
-                                </td>
-                                <td class="ps-4">
-                                    <div class="fw-bold text-dark"><?php echo htmlspecialchars($row['function_name']); ?></div>
-                                    <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> <?php echo $date; ?>
+                                    <div class="fw-bold text-dark small">
+                                        <?= htmlspecialchars($row['company_name'] ?: '-'); ?>
                                     </div>
-                                </td>
-                                <td>
-                                    <div class="text-dark small"><?php echo htmlspecialchars($row['booking_name']); ?></div>
-                                    <div class="text-muted x-small"><?php echo htmlspecialchars($row['phone']); ?></div>
-                                </td>
-                                <td><span class="text-primary fw-bold"><?php echo $deposit; ?></span></td>
-                                <td>
-                                    <span class="badge bg-light text-dark border fw-normal">
-                                        <i class="bi bi-hash me-1 text-gold"></i>
-                                        <?php echo htmlspecialchars($row['function_code']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge <?php echo $st['class']; ?> rounded-pill px-3">
-                                        <i class="bi <?php echo $st['icon']; ?> me-1"></i> <?php echo $st['text']; ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="text-muted small"><?php echo htmlspecialchars($row['created_by'] ?: '-'); ?>
-                                    </div>
-                                    <div class="text-muted x-small">แก้ไขเมื่อ <?php echo htmlspecialchars($row['modify']); ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column gap-1">
-                                        <?php
-                                        $has_file = false;
-                                        for ($i = 1; $i <= 3; $i++):
-                                            $file_path = $row['file_attachment' . $i];
-                                            if (!empty($file_path)):
-                                                $has_file = true;
-                                                // หา Extension เพื่อเลือก Icon (optional)
-                                                $ext = pathinfo($file_path, PATHINFO_EXTENSION);
-                                                ?>
-                                                <a href="<?php echo htmlspecialchars($file_path); ?>" target="_blank"
-                                                    class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 10px;">
-                                                    <i class="bi bi-file-earmark-arrow-down"></i> ไฟล์แนบ <?php echo $i; ?>
-                                                </a>
-                                            <?php
-                                            endif;
-                                        endfor;
+                                </div>
+                            </td>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark"><?= htmlspecialchars($row['function_name']); ?></div>
+                                <div class="text-muted small">
+                                    <i class="bi bi-calendar-event me-1"></i> <?= $row['formatted_date']; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-dark small"><?= htmlspecialchars($row['booking_name']); ?></div>
+                                <div class="text-muted x-small"><?= htmlspecialchars($row['phone']); ?></div>
+                            </td>
+                            <td><span class="text-primary fw-bold"><?= number_format($row['deposit'] ?: 0, 2); ?></span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border fw-normal">
+                                    <i class="bi bi-hash me-1 text-gold"></i>
+                                    <?= htmlspecialchars($row['function_code']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-3">
+                                    <i class="bi <?= $row['status_info']['icon']; ?> me-1"></i>
+                                    <?= $row['status_info']['text']; ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="text-muted small"><?= htmlspecialchars($row['created_by'] ?: '-'); ?></div>
+                                <div class="text-muted x-small">แก้ไขเมื่อ <?= htmlspecialchars($row['modify']); ?></div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <?php if (empty($row['attachments'])): ?>
+                                        <span class="text-muted small">- ไม่มีไฟล์ -</span>
+                                    <?php else: ?>
+                                        <?php foreach ($row['attachments'] as $file): ?>
+                                            <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank"
+                                                class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 10px;">
+                                                <i class="bi bi-file-earmark-arrow-down"></i> <?= $file['label']; ?>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td class="text-center sticky-col">
+                                <div class="d-flex justify-content-center gap-1">
 
-                                        if (!$has_file):
-                                            echo '<span class="text-muted small">- ไม่มีไฟล์ -</span>';
-                                        endif;
-                                        ?>
-                                    </div>
-                                </td>
-                                <td class="text-center  sticky-col">
-                                    <div class="d-flex justify-content-center gap-1">
-                                        <?php if ($row['approve'] == 0 && in_array(strtolower($_SESSION['role']), ['admin', 'gm'])): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-row"
-                                                data-id="<?php echo $row['id']; ?>" title="อนุมัติงาน">
-                                                <i class="bi bi-check-lg"></i>
-                                            </button>
-                                        <?php endif; ?>
+                                    <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                                        <button type="button" class="btn btn-sm btn-success btn-approve-row"
+                                            data-id="<?= $row['id']; ?>" title="อนุมัติงาน">
+                                            <i class="bi bi-check-lg"></i> อนุมัติ
+                                        </button>
+                                    <?php endif; ?>
 
-                                        <a href="view.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-outline-primary "
-                                            title="ดูรายละเอียด">
-                                            <i class="bi bi-printer "></i>
+                                    <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
+                                        <button type="button" class="btn btn-sm btn-info text-white btn-status-change"
+                                            data-id="<?= $row['id']; ?>" data-status="In Progress" title="เริ่มดำเนินการ">
+                                            <i class="bi bi-play-fill"></i> ดำเนินการ
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if ($row['status'] == 'In Progress'): ?>
+                                        <button type="button" class="btn btn-sm btn-primary btn-status-change"
+                                            data-id="<?= $row['id']; ?>" data-status="Completed" title="จบงานเรียบร้อย">
+                                            <i class="bi bi-flag-fill"></i> จบงาน
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-status-change"
+                                            data-id="<?= $row['id']; ?>" data-status="Cancelled" title="ยกเลิกงานนี้">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <div class="vr mx-1"></div> <a href="view.php?id=<?= $row['id']; ?>"
+                                        class="btn btn-sm btn-outline-primary" title="พิมพ์/ดูรายละเอียด">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+
+                                    <?php if ($can_manage && $row['status'] != 'Completed'): ?>
+                                        <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
+                                            title="แก้ไข">
+                                            <i class="bi bi-pencil-square"></i>
                                         </a>
-
-                                        <?php if ($can_manage): ?>
-                                            <?php if ($row['approve'] == 0): // ถ้ายังไม่อนุมัติ (0) ถึงจะโชว์ปุ่ม ?>
-                                                <a href="edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-outline-dark"
-                                                    title="แก้ไขข้อมูล">
-                                                    <i class="bi bi-pencil-square"></i>
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
-                                                data-id="<?php echo $row['id']; ?>" title="ลบรายการ">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php }
-                    } ?>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
+                                            data-id="<?= $row['id']; ?>">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>

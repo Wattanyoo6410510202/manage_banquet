@@ -83,48 +83,153 @@ $(document).ready(function () {
     }
   });
 
-  $(document).on("click", ".btn-approve-row", function () {
+  // $(document).on("click", ".btn-approve-row", function () {
+  //   const id = $(this).data("id");
+  //   const row = $(this).closest("tr");
+  //   const button = $(this);
+
+  //   Swal.fire({
+  //     title: "ยืนยันการอนุมัติ?",
+  //     text: "คุณต้องการอนุมัติรายการนี้ใช่หรือไม่?",
+  //     icon: "question",
+  //     showCancelButton: true,
+  //     confirmButtonColor: "#198754",
+  //     cancelButtonColor: "#6c757d",
+  //     confirmButtonText: "ตกลง, อนุมัติเลย!",
+  //     cancelButtonText: "ยกเลิก",
+  //   }).then((result) => {
+  //     if (result.isConfirmed) {
+  //       $.ajax({
+  //         url: "approve_event.php",
+  //         type: "POST",
+  //         data: { id: id },
+  //         dataType: "json",
+  //         success: function (response) {
+  //           if (response.status === "success") {
+  //             // 1. ทำให้แถวเปลี่ยนสถานะทันที (ความเนียน)
+  //             row
+  //               .find("td")
+  //               .eq(6)
+  //               .find(".badge")
+  //               .removeClass("bg-warning-subtle text-warning")
+  //               .addClass("bg-success-subtle text-success")
+  //               .html('<i class="bi bi-check-circle me-1"></i> อนุมัติแล้ว');
+
+  //             button.remove();
+
+  //             // 2. ดึงเอาหน้า alert.php มาแสดงใหม่ใน #alert-container โดยไม่ต้องรีโหลดทั้งหน้า
+  //             $("#alert-container").load("assets/alert.php");
+
+  //             // หรือถ้าต้องการให้ชัวร์ว่า Session ทำงานครบถ้วน แนะนำให้ใช้:
+  //             // location.reload();
+  //           } else {
+  //             Swal.fire("ผิดพลาด!", response.message, "error");
+  //           }
+  //         },
+  //       });
+  //     }
+  //   });
+  // });
+  $(document).on("click", ".btn-status-change, .btn-approve-row", function () {
     const id = $(this).data("id");
+    const newStatus = $(this).data("status") || "Confirmed";
     const row = $(this).closest("tr");
-    const button = $(this);
+    const currentBtn = $(this);
+
+    // 1. ตั้งค่าสีและข้อความตามสถานะ (สำหรับ Badge)
+    const statusConfig = {
+      Confirmed: {
+        text: "อนุมัติแล้ว",
+        class: "bg-success-subtle text-success",
+        icon: "bi-check-circle",
+      },
+      "In Progress": {
+        text: "ดำเนินการ",
+        class: "bg-info-subtle text-info",
+        icon: "bi-play-circle",
+      },
+      Completed: {
+        text: "จบงานแล้ว",
+        class: "bg-primary-subtle text-primary",
+        icon: "bi-flag",
+      },
+      Cancelled: {
+        text: "ยกเลิก",
+        class: "bg-danger-subtle text-danger",
+        icon: "bi-x-circle",
+      },
+    };
 
     Swal.fire({
-      title: "ยืนยันการอนุมัติ?",
-      text: "คุณต้องการอนุมัติรายการนี้ใช่หรือไม่?",
+      title: "ยืนยันการทำรายการ?",
+      text: `ต้องการเปลี่ยนสถานะเป็น "${newStatus}" ใช่หรือไม่?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#198754",
-      cancelButtonColor: "#6c757d",
-      confirmButtonText: "ตกลง, อนุมัติเลย!",
+      confirmButtonText: "ตกลง",
       cancelButtonText: "ยกเลิก",
+      confirmButtonColor: newStatus === "Cancelled" ? "#dc3545" : "#198754",
     }).then((result) => {
       if (result.isConfirmed) {
         $.ajax({
-          url: "approve_event.php",
+          url: "approve_event.php", // ไฟล์ PHP ที่จารย์ใช้จัดการ DB
           type: "POST",
-          data: { id: id },
+          data: { id: id, status: newStatus },
           dataType: "json",
           success: function (response) {
             if (response.status === "success") {
-              // 1. ทำให้แถวเปลี่ยนสถานะทันที (ความเนียน)
-              row
-                .find("td")
-                .eq(6)
-                .find(".badge")
-                .removeClass("bg-warning-subtle text-warning")
-                .addClass("bg-success-subtle text-success")
-                .html('<i class="bi bi-check-circle me-1"></i> อนุมัติแล้ว');
+              // --- ✅ ส่วนที่ 1: อัปเดต Badge (ช่องที่ 7) ---
+              const config = statusConfig[newStatus];
+              row.find("td").eq(6).html(`
+                            <span class="badge ${config.class} rounded-pill px-3">
+                                <i class="bi ${config.icon} me-1"></i> ${config.text}
+                            </span>
+                        `);
 
-              button.remove();
+              // --- ✅ ส่วนที่ 2: สร้างชุดปุ่มใหม่ (Action Buttons) ---
+              let actionButtons = `<div class="d-flex justify-content-center gap-1">`;
 
-              // 2. ดึงเอาหน้า alert.php มาแสดงใหม่ใน #alert-container โดยไม่ต้องรีโหลดทั้งหน้า
-              $("#alert-container").load("assets/alert.php");
+              if (newStatus === "Confirmed") {
+                actionButtons += `
+                                <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="${id}" data-status="In Progress" title="เริ่มดำเนินการ"><i class="bi bi-play-fill"></i> ดำเนินการ</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled" title="ยกเลิก"><i class="bi bi-x-lg"></i></button>
+                            `;
+              } else if (newStatus === "In Progress") {
+                actionButtons += `
+                                <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="${id}" data-status="Completed" title="จบงาน"><i class="bi bi-flag-fill"></i> จบงาน</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled" title="ยกเลิก"><i class="bi bi-x-lg"></i></button>
+                            `;
+              }
 
-              // หรือถ้าต้องการให้ชัวร์ว่า Session ทำงานครบถ้วน แนะนำให้ใช้:
-              // location.reload();
+              // ปุ่มพื้นฐาน (ดูรายละเอียด)
+              actionButtons += `
+                            <div class="vr mx-1"></div>
+                            <a href="view.php?id=${id}" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-printer"></i></a>
+                        `;
+
+              // ถ้ายังไม่จบ/ไม่ยกเลิก ให้มีปุ่มแก้ไขและลบ
+              if (newStatus !== "Completed" && newStatus !== "Cancelled") {
+                actionButtons += `
+                                <a href="edit.php?id=${id}" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="${id}" title="ลบ"><i class="bi bi-trash"></i></button>
+                            `;
+              }
+
+              actionButtons += `</div>`;
+
+              // ยัดปุ่มใหม่ลงช่อง Action (td.sticky-col)
+              row.find("td.sticky-col").html(actionButtons);
+
+              // --- ✅ ส่วนที่ 3: โหลด Dashboard สรุปยอดใหม่ ---
+              if ($("#alert-container").length) {
+                $("#alert-container").load("assets/alert.php");
+              }
             } else {
               Swal.fire("ผิดพลาด!", response.message, "error");
             }
+          },
+          error: function (xhr) {
+            console.log(xhr.responseText);
+            Swal.fire("Error", "ไม่สามารถติดต่อ Server ได้", "error");
           },
         });
       }

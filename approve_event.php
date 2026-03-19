@@ -4,51 +4,55 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include "config.php";
-
 header('Content-Type: application/json');
 
-// 1. ตรวจสอบว่าพนักงานล็อกอินอยู่หรือไม่ (ถ้าไม่มีค่าใน session จะอนุมัติไม่ได้)
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Session หมดอายุ กรุณาล็อกอินใหม่']);
+    echo json_encode(['status' => 'error', 'message' => 'Session หมดอายุ']);
     exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $id = $_POST['id'] ?? null;
-    
-    // 🚀 ดึงเลข ID พนักงานจาก Session ที่เก็บไว้ตอน Login
-    $user_id_from_session = $_SESSION['user_id']; 
-    
+    $status = $_POST['status'] ?? 'Confirmed'; 
+    $user_id = $_SESSION['user_id']; 
+
     if ($id && is_numeric($id)) {
-        // 🚀 อัปเดต: สถานะเป็น 1, วันที่ปัจจุบัน, และ ID พนักงานจาก Session
+        
+        // --- 🚀 Logic Approve Value ---
+        $approve_val = ($status === 'Cancelled') ? 2 : 1;
+
         $sql = "UPDATE functions SET 
-                approve = 1, 
-                approve_date = NOW(), 
-                approve_by = ? 
+                    approve = ?, 
+                    status = ?, 
+                    status_updated_at = NOW(),
+                    approve_date = IF(approve_date IS NULL AND ? = 1, NOW(), approve_date),
+                    approve_by = IF(approve_by IS NULL AND ? = 1, ?, approve_by),
+                    modify = CURRENT_TIMESTAMP
                 WHERE id = ?";
         
         if ($stmt = $conn->prepare($sql)) {
-            // "ii" คือพารามิเตอร์ที่เป็น Integer ทั้งคู่
-            // ตัวแรกคือ $user_id_from_session (จาก Login)
-            // ตัวที่สองคือ $id (ID ของใบงาน)
-            $stmt->bind_param("ii", $user_id_from_session, $id);
+            $stmt->bind_param("isiiii", $approve_val, $status, $approve_val, $approve_val, $user_id, $id);
             
             if ($stmt->execute()) {
-                // บันทึกสำเร็จ: ตั้งค่า Flash Message เพื่อไปโชว์แจ้งเตือนหน้าเว็บ
-                $_SESSION['flash_msg'] = "approved"; 
-                echo json_encode(['status' => 'success']); 
+                // --- ✅ ส่วนที่จารย์ต้องการ: ส่ง Session ตามสถานะที่กด ---
+                if ($status === 'Confirmed') {
+                    $_SESSION['flash_msg'] = "approved";
+                } elseif ($status === 'In Progress') {
+                    $_SESSION['flash_msg'] = "in_progress";
+                } elseif ($status === 'Completed') {
+                    $_SESSION['flash_msg'] = "completed";
+                } elseif ($status === 'Cancelled') {
+                    $_SESSION['flash_msg'] = "cancelled";
+                }
+
+                echo json_encode(['status' => 'success', 'message' => 'อัปเดตสถานะเรียบร้อย']); 
             } else {
-                echo json_encode(['status' => 'error', 'message' => 'Execute Error: ' . $stmt->error]);
+                echo json_encode(['status' => 'error', 'message' => 'Database Error']);
             }
             $stmt->close();
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Prepare Error: ' . $conn->error]);
         }
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'ID เอกสารไม่ถูกต้อง']);
+        echo json_encode(['status' => 'error', 'message' => 'ID ไม่ถูกต้อง']);
     }
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
 }
 $conn->close();
-?>

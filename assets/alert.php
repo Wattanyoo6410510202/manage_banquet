@@ -63,6 +63,25 @@
                 $alert_class = "alert-success text-success";
                 $alert_icon = "bi-shield-check";
                 break;
+            case 'in_progress':
+                $alert_msg = "เริ่มดำเนินการจัดงานแล้ว";
+                $alert_class = "alert-info text-info";
+                $alert_icon = "bi-play-circle-fill";
+                break;
+
+            // กรณีจบงาน (Completed)
+            case 'completed':
+                $alert_msg = "ปิดงาน/บันทึกรายการเรียบร้อยแล้ว";
+                $alert_class = "alert-primary text-primary";
+                $alert_icon = "bi-flag-fill";
+                break;
+
+            // กรณียกเลิกงาน (Cancelled)
+            case 'cancelled':
+                $alert_msg = "ยกเลิกรายการเรียบร้อยแล้ว";
+                $alert_class = "alert-danger text-danger";
+                $alert_icon = "bi-x-octagon-fill";
+                break;
             case 'error':
             case 'delete_error':
                 $alert_msg = "เกิดข้อผิดพลาด!";
