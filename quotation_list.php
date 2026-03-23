@@ -12,12 +12,16 @@ $sql = "SELECT q.*, f.function_name, c.cust_name
 $result = $conn->query($sql);
 ?>
 
-
+<div id="alert-container">
+    <?php include "assets/alert.php"; ?>
+</div>
 <div class="container-fluid p-0">
     <div class="row mb-4 align-items-center">
-        <div class="col-md-7">
-            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-card-checklist text-primary"></i> ประวัติใบเสนอราคา</h3>
-            <p class="text-muted mb-0">ตรวจสอบและจัดการใบเสนอราคาที่ออกไปแล้วทั้งหมด</p>
+        <div class="col">
+            <h4 class="fw-bold text-dark mb-0">
+                <i class="bi bi-file-earmark-text me-2 text-gold"></i> รายการใบเสนอราคาทั้งหมด
+            </h4>
+            <p class="text-muted small mb-0">อนุมัติและใช้งาน</p>
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
             <a href="add_quote.php" class="btn btn-primary btn-create">
@@ -49,7 +53,7 @@ $result = $conn->query($sql);
                             <td>
                                 <div class="fw-bold text-dark"><?= $row['cust_name'] ?></div>
                                 <small class="text-muted"><i
-                                        class="bi bi-calendar-event me-1"></i><?= $row['function_name'] ?></small>
+                                        class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?></small>
                             </td>
                             <td class="text-end fw-bold text-dark">
                                 <?= number_format($row['grand_total'], 2) ?>
@@ -76,14 +80,23 @@ $result = $conn->query($sql);
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
+                                    <?php if ($row['status'] !== 'Approved'): ?>
+                                        <button type="button" class="btn btn-outline-success btn-action btn-approve-quote"
+                                            data-id="<?= $row['id'] ?>" title="อนุมัติ">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    <?php endif; ?>
+
                                     <a href="quotation_view.php?id=<?= $row['id'] ?>"
                                         class="btn btn-outline-primary btn-action" title="พิมพ์/ดู">
                                         <i class="bi bi-printer"></i>
                                     </a>
-                                    <a href="edit_quotation.php?id=<?= $row['id'] ?>"
-                                        class="btn btn-outline-warning btn-action" title="แก้ไข">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
+                                    <?php if ($row['status'] !== 'Approved'): ?>
+                                        <a href="edit_quotation.php?id=<?= $row['id'] ?>"
+                                            class="btn btn-outline-warning btn-action" title="แก้ไข">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    <?php endif; ?>
                                     <button type="button" class="btn btn-outline-danger btn-action btn-delete-quote"
                                         data-id="<?= $row['id'] ?>" title="ลบ">
                                         <i class="bi bi-trash"></i>
@@ -97,3 +110,67 @@ $result = $conn->query($sql);
         </div>
     </div>
 </div>
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    $(document).ready(function () {
+        // ใช้ Delegation เพื่อรองรับ DataTable และ Row ที่เจนใหม่
+        $(document).on('click', '.btn-delete-quote', function (e) {
+            e.preventDefault();
+
+            // เก็บปุ่มที่คลิกไว้ในตัวแปร เพื่อเอาไปหาแถว (TR) ที่จะลบทิ้ง
+            const btn = $(this);
+            const quoteId = btn.attr('data-id');
+            const row = btn.closest('tr'); // หาแถว <tr> ที่ปุ่มนี้สังกัดอยู่
+
+            if (confirm("ยืนยันการลบใบเสนอราคานี้? ข้อมูลจะหายไปทันที")) {
+
+                $.ajax({
+                    url: 'api/delete_quote.php',
+                    type: 'POST',
+                    data: { id: quoteId },
+                    success: function (response) {
+                        if (response.trim() === 'success') {
+                            // --- ส่วนที่ทำให้ไม่ต้องโหลดหน้าใหม่ ---
+                            // สั่งให้แถวค่อยๆ จางหายไปแล้วค่อยลบทิ้งจาก DOM
+                            row.fadeOut(10, function () {
+                                $(this).remove();
+
+                                // ถ้าใช้ DataTable ต้องสั่งลบผ่าน API ของมันเพื่อให้ลำดับเลขไม่เพี้ยน (ถ้ามี)
+                                // if ($.fn.DataTable.isDataTable('#quoteDataTable')) {
+                                //     $('#quoteDataTable').DataTable().row(row).remove().draw();
+                                // }
+                            });
+
+                            console.log("Deleted ID:", quoteId);
+                        } else {
+                            alert("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์: " + response);
+                        }
+                    },
+                    error: function () {
+                        alert("ไม่สามารถติดต่อไฟล์ลบได้ กรุณาตรวจสอบพาธ api/delete_quote.php");
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-approve-quote', function () {
+        let id = $(this).data('id');
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติ?',
+            text: "คุณต้องการอนุมัติใบเสนอราคานี้ใช่หรือไม่?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ใช่, อนุมัติเลย',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ส่งค่าไปที่ไฟล์ PHP สำหรับอัปเดต Status ใน Database
+                window.location.href = 'api/approve_process.php?id=' + id;
+            }
+        });
+    });
+</script>

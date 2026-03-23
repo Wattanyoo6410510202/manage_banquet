@@ -240,20 +240,18 @@ if ($target_company_id > 0) {
                                         </div>
                                     <?php endwhile; else: ?>
                                     <div class="col-12 text-center py-5">
-                                        <p class="text-muted">โปรดเลือกบริษัทก่อน / ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้ </p>
+                                        <p class="text-muted">โปรดเลือกบริษัทก่อน / ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้
+                                        </p>
                                     </div>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="row ps-lg-3">
-
-                            <h6 class="fw-bold mb-4 text-dark">
+                        <div class="row text-dark">
+                            <h6 class="fw-bold  text-dark">
                                 <i class="bi bi-info-circle me-2 text-primary"></i>รายละเอียดการจอง
                             </h6>
 
-
-
-                            <div class="row mb-4">
+                            <div class="row text-dark">
                                 <div class="col-md-8 mb-3">
                                     <label class="form-label small fw-bold text-secondary">ชื่องาน (Event
                                         Title)</label>
@@ -274,14 +272,14 @@ if ($target_company_id > 0) {
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-6 ">
                                         <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน (Start
                                             Date & Time)</label>
                                         <input type="datetime-local" name="start_time"
                                             class="form-control border-0 bg-light" required
                                             style="border-radius: 10px; height: 42px;">
                                     </div>
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-6 ">
                                         <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน (End
                                             Date & Time)</label>
                                         <input type="datetime-local" name="end_time"
@@ -290,47 +288,65 @@ if ($target_company_id > 0) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-primary bg-opacity-10">
-                                        <label class="small fw-bold text-primary mb-1 d-block">Booking
-                                            Number</label>
-                                        <input name="booking_room"
-                                            class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                                            placeholder="BK-XXXX">
+                            <div class="row  mb-3">
+                                <div class="row g-2 ">
+                                    <div class="col-md-2">
+                                        <div class="p-3 rounded-4 bg-primary bg-opacity-10 h-100">
+                                            <label class="small fw-bold text-primary mb-1 d-block">Booking
+                                                Number</label>
+                                            <input name="booking_room" value="<?php echo $row['booking_room'] ?? ''; ?>"
+                                                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
+                                                placeholder="BK-XXXX">
+                                        </div>
                                     </div>
-                                </div>
+                                    <div class="col-md-2">
+                                        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
+                                            <label class="small fw-bold text-info mb-1 d-block">จำนวน (PAX)</label>
+                                            <div class="input-group">
+                                                <input type="number" name="pax" value="<?php echo $row['pax'] ?? ''; ?>"
+                                                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
+                                                    placeholder="0">
+                                                <span
+                                                    class="input-group-text border-0 bg-transparent text-info fw-bold pe-0 small">Pers.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
+                                            <label class="small fw-bold text-success mb-1 d-block">มัดจำ
+                                                (Deposit)</label>
+                                            <div class="input-group">
+                                                <span
+                                                    class="input-group-text border-0 bg-transparent text-success fw-bold ps-0 fs-4">฿</span>
+                                                <input type="number" step="0.01" name="deposit"
+                                                    value="<?php echo $row['deposit'] ?? ''; ?>"
+                                                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-4"
+                                                    placeholder="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-success bg-opacity-10">
-                                        <label class="small fw-bold text-success mb-1 d-block">มัดจำ
-                                            (Deposit)</label>
-                                        <div class="input-group">
-                                            <span
-                                                class="input-group-text border-0 bg-transparent text-success fw-bold ps-0">฿</span>
-                                            <input type="number" step="0.01" name="deposit"
-                                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-5"
-                                                placeholder="0.00">
+
+
+                                    <div class="col-md-4">
+                                        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
+                                            <label class="small fw-bold text-secondary mb-1 d-block">มูลค่างานทั้งหมด
+                                                (Total Amount)</label>
+                                            <div class="input-group">
+                                                <span
+                                                    class="input-group-text border-0 bg-transparent text-secondary fw-bold ps-0 fs-4">฿</span>
+                                                <input type="number" step="0.01" name="total_amount"
+                                                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-4"
+                                                    placeholder="0.00"
+                                                    value="<?php echo isset($row['total_amount']) ? number_format($row['total_amount'], 2, '.', '') : '0.00'; ?>">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-info bg-opacity-10">
-                                        <label class="small fw-bold text-info mb-1 d-block">จำนวนผู้เข้าร่วม
-                                            (PAX)</label>
-                                        <div class="input-group">
-                                            <input type="number" name="pax"
-                                                class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                                                placeholder="0">
-                                            <span
-                                                class="input-group-text border-0 bg-transparent text-info fw-bold pe-0">Pers.</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mt-2">
+                                <div class="row g-2">
                                     <?php
-                                    $file_colors = ['secondary', 'warning', 'danger']; // ตั้งค่าสีให้แต่ละช่อง
+                                    $file_colors = ['secondary', 'warning', 'danger'];
                                     $file_labels = ['ไฟล์แนบ 1', 'ไฟล์แนบ 2', 'ไฟล์แนบ 3'];
                                     for ($i = 1; $i <= 3; $i++):
                                         $color = $file_colors[$i - 1];
@@ -338,14 +354,14 @@ if ($target_company_id > 0) {
                                         <div class="col-md-4">
                                             <div class="p-3 rounded-4 bg-<?= $color ?> bg-opacity-10">
                                                 <label class="small fw-bold text-<?= $color ?> mb-1 d-block">
-                                                    <i class="bi bi-paperclip"></i> <?= $file_labels[$i - 1] ?>
+                                                    <i class="bi bi-paperclip"></i>
+                                                    <?= $file_labels[$i - 1] ?>
                                                 </label>
-
                                                 <input type="file" name="file_attachment<?= $i ?>"
                                                     class="form-control form-control-sm border-0 bg-transparent p-0">
 
                                                 <input type="hidden" name="old_file_<?= $i ?>"
-                                                    value="<?php echo $row['file_attachment' . $i]; ?>">
+                                                    value="<?php echo $row['file_attachment' . $i] ?? ''; ?>">
 
                                                 <?php if (!empty($row['file_attachment' . $i])): ?>
                                                     <div class="mt-1">
@@ -362,206 +378,217 @@ if ($target_company_id > 0) {
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="row mb-5">
-                    <div class="col-md-7 border-end pe-lg-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)</h5>
-                        <div class="table-responsive mb-4">
-                            <table class="table table-sm table-hover align-middle" id="scheduleTable">
-                                <thead class="small text-center text-secondary">
-                                    <tr>
-                                        <th width="20%">วันที่</th>
-                                        <th width="20%">เวลา</th>
-                                        <th>รายละเอียด</th>
-                                        <th width="15%">จำนวน</th>
-                                        <th width="5%"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><input type="date" name="schedule_date[]"
-                                                class="form-control form-control-sm border-0 bg-light"></td>
-                                        <td><input type="text" name="schedule_hour[]"
-                                                class="form-control form-control-sm border-0 bg-light"
-                                                placeholder="00:00 - 00:00"></td>
-                                        <td><textarea name="schedule_function[]"
-                                                class="form-control form-control-sm border-0 bg-light"
-                                                rows="2"></textarea></td>
-                                        <td><input type="number" name="schedule_guarantee[]"
-                                                class="form-control form-control-sm border-0 bg-light"></td>
-                                        <td><button type="button" class="btn text-danger btn-sm border-0"
-                                                onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
-                                onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> เพิ่มกำหนดการ</button>
+                    <div class="row mb-5">
+                        <div class="col-md-7 border-end pe-lg-4">
+                            <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)
+                            </h5>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-sm table-hover align-middle" id="scheduleTable">
+                                    <thead class="small text-center text-secondary">
+                                        <tr>
+                                            <th width="20%">วันที่</th>
+                                            <th width="20%">เวลา</th>
+                                            <th>รายละเอียด</th>
+                                            <th width="15%">จำนวน</th>
+                                            <th width="5%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><input type="date" name="schedule_date[]"
+                                                    class="form-control form-control-sm border-0 bg-light"></td>
+                                            <td><input type="text" name="schedule_hour[]"
+                                                    class="form-control form-control-sm border-0 bg-light"
+                                                    placeholder="00:00 - 00:00"></td>
+                                            <td><textarea name="schedule_function[]"
+                                                    class="form-control form-control-sm border-0 bg-light"
+                                                    rows="2"></textarea></td>
+                                            <td><input type="number" name="schedule_guarantee[]"
+                                                    class="form-control form-control-sm border-0 bg-light"></td>
+                                            <td><button type="button" class="btn text-danger btn-sm border-0"
+                                                    onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
+                                    onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> เพิ่มกำหนดการ</button>
+                            </div>
+
+                            <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle" id="kitchenTable">
+                                    <thead class="small text-center text-secondary">
+                                        <tr>
+                                            <th width="20%">วันที่</th>
+                                            <th width="25%">ประเภทเมนู</th>
+                                            <th>รายการรายละเอียด</th>
+                                            <th width="15%">จำนวน (PAX)</th>
+                                            <th width="5%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <input type="date" name="k_date[]"
+                                                    class="form-control form-control-sm border-0 bg-light">
+                                            </td>
+                                            <td>
+                                                <select name="k_type_id[]"
+                                                    class="form-select form-select-sm border-0 bg-light"
+                                                    onchange="fetchBreakMenu(this)">
+                                                    <option value="" disabled selected>-- เลือกประเภท Break --</option>
+                                                    <?php if ($res_breaks && $res_breaks->num_rows > 0):
+                                                        $res_breaks->data_seek(0);
+                                                        while ($b = $res_breaks->fetch_assoc()): ?>
+                                                            <option value="<?= $b['id'] ?>">
+                                                                <?= htmlspecialchars($b['type_name']) ?>
+                                                            </option>
+                                                        <?php endwhile; endif; ?>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <textarea name="k_item[]"
+                                                    class="form-control form-control-sm border-0 bg-light break-menu-input"
+                                                    rows="3" placeholder="1. รายการอาหาร..."
+                                                    onfocus="initFirstLine(this)"></textarea>
+                                            </td>
+                                            <td>
+                                                <input type="number" name="k_qty[]"
+                                                    class="form-control form-control-sm border-0 bg-light text-center"
+                                                    placeholder="0">
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn text-danger btn-sm border-0"
+                                                    onclick="removeRow(this)">
+                                                    <i class="bi bi-dash-circle"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
+                                    onclick="addKitchenRow()">
+                                    <i class="bi bi-plus-lg me-1"></i> เพิ่มรายการครัว
+                                </button>
+                            </div>
+
+
+                            <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="3"
+                                placeholder="หมายเหตุเพิ่มเติม..."></textarea>
                         </div>
 
-                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle" id="kitchenTable">
-                                <thead class="small text-center text-secondary">
-                                    <tr>
-                                        <th width="20%">วันที่</th>
-                                        <th width="25%">ประเภทเมนู</th>
-                                        <th>รายการรายละเอียด</th>
-                                        <th width="15%">จำนวน (PAX)</th>
-                                        <th width="5%"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <input type="date" name="k_date[]"
-                                                class="form-control form-control-sm border-0 bg-light">
-                                        </td>
-                                        <td>
-                                            <select name="k_type_id[]"
-                                                class="form-select form-select-sm border-0 bg-light"
-                                                onchange="fetchBreakMenu(this)">
-                                                <option value="" disabled selected>-- เลือกประเภท Break --</option>
-                                                <?php if ($res_breaks && $res_breaks->num_rows > 0):
-                                                    $res_breaks->data_seek(0);
-                                                    while ($b = $res_breaks->fetch_assoc()): ?>
-                                                        <option value="<?= $b['id'] ?>">
-                                                            <?= htmlspecialchars($b['type_name']) ?>
-                                                        </option>
-                                                    <?php endwhile; endif; ?>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <textarea name="k_item[]"
-                                                class="form-control form-control-sm border-0 bg-light break-menu-input"
-                                                rows="3" placeholder="1. รายการอาหาร..."
-                                                onfocus="initFirstLine(this)"></textarea>
-                                        </td>
-                                        <td>
-                                            <input type="number" name="k_qty[]"
-                                                class="form-control form-control-sm border-0 bg-light text-center"
-                                                placeholder="0">
-                                        </td>
-                                        <td>
-                                            <button type="button" class="btn text-danger btn-sm border-0"
-                                                onclick="removeRow(this)">
-                                                <i class="bi bi-dash-circle"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addKitchenRow()">
-                                <i class="bi bi-plus-lg me-1"></i> เพิ่มรายการครัว
-                            </button>
-                        </div>
-
-
-                        <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="3"
-                            placeholder="หมายเหตุเพิ่มเติม..."></textarea>
-                    </div>
-
-                    <div class="col-md-5 bg-sidebar p-4 rounded-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. ด้านเทคนิคและงานช่าง
-                        </h5>
-                        <div class="mb-4">
-                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                            <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                rows="6"></textarea>
-                        </div>
-                        <div class="mb-4">
-                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                            <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                rows="5"></textarea>
-                        </div>
-                        <div class="mb-0">
-                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                            <textarea name="remark" class="form-control form-control-sm bg-white" rows="2"></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. รายละเอียดเมนูอาหารและเครื่องดื่ม
-                </h5>
-                <div class="table-responsive mb-5">
-                    <table class="table table-sm table-hover align-middle border" id="menuTable">
-                        <thead class="text-center text-secondary bg-light">
-                            <tr>
-                                <th width="10%">เวลา</th>
-                                <th width="15%">ประเภทเมนู</th>
-                                <th>รายละเอียด</th>
-                                <th width="10%">จำนวน</th>
-                                <th width="12%">ราคา</th>
-                                <th width="5%"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><input type="date" name="menu_time[]" class="form-control form-control-sm border-0"
-                                        placeholder="10:30"></td>
-                                <td>
-                                    <select name="menu_set_id[]" class="form-select form-select-sm border-0"
-                                        onchange="fetchMenuDetail(this)">
-                                        <option value="" disabled selected>-- เลือกเซตเมนู --</option>
-                                        <?php
-                                        // สมมติจารมี $res_menu_sets ที่ดึงมาจากตาราง master_menus
-                                        if ($res_menu_sets):
-                                            $res_menu_sets->data_seek(0);
-                                            while ($m = $res_menu_sets->fetch_assoc()): ?>
-                                                <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
-                                                </option>
-                                            <?php endwhile; endif; ?>
-                                    </select>
-                                </td>
-                                <td>
-                                    <textarea name="menu_detail[]"
-                                        class="form-control form-control-sm border-0 menu-detail-input"
-                                        rows="1"></textarea>
-                                </td>
-                                <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0">
-                                </td>
-                                <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"
-                                        placeholder="0.00"></td>
-                                <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
-                                        onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
-                            class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
-                </div>
-
-                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด</h5>
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="p-4 border rounded-4 bg-white  h-100">
-                            <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
-                            <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
-                                rows="3"></textarea>
-                            <div class="p-3 border-dashed text-center bg-light">
-                                <input type="file" name="backdrop_img" id="backdropInput"
-                                    class="form-control form-control-sm mb-2" accept="image/*"
-                                    onchange="previewImage(this)">
-                                <input type="hidden" name="backdrop_img_path_ai" id="backdrop_img_path_ai">
-                                <div id="imagePreviewContainer" class="text-center d-none">
-                                    <img id="imagePreview" src="#" class="img-thumbnail mt-2"
-                                        style="max-height: 150px;">
-                                    <button type="button" class="btn btn-sm btn-link text-danger d-block mx-auto mt-2"
-                                        onclick="clearPreview()">ลบรูปภาพ</button>
-                                </div>
+                        <div class="col-md-5 bg-sidebar p-4 rounded-4">
+                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4.
+                                ด้านเทคนิคและงานช่าง
+                            </h5>
+                            <div class="mb-4">
+                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                    rows="6"></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                                <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                    rows="5"></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                                <textarea name="remark" class="form-control form-control-sm bg-white"
+                                    rows="2"></textarea>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="p-4 border rounded-4 bg-white  h-100">
-                            <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
-                            <textarea name="hk_florist_detail" class="form-control form-control-sm" rows="8"></textarea>
+
+                    <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5.
+                        รายละเอียดเมนูอาหารและเครื่องดื่ม
+                    </h5>
+                    <div class="table-responsive mb-5">
+                        <table class="table table-sm table-hover align-middle border" id="menuTable">
+                            <thead class="text-center text-secondary bg-light">
+                                <tr>
+                                    <th width="10%">เวลา</th>
+                                    <th width="15%">ประเภทเมนู</th>
+                                    <th>รายละเอียด</th>
+                                    <th width="10%">จำนวน</th>
+                                    <th width="12%">ราคา</th>
+                                    <th width="5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="date" name="menu_time[]"
+                                            class="form-control form-control-sm border-0" placeholder="10:30"></td>
+                                    <td>
+                                        <select name="menu_set_id[]" class="form-select form-select-sm border-0"
+                                            onchange="fetchMenuDetail(this)">
+                                            <option value="" disabled selected>-- เลือกเซตเมนู --</option>
+                                            <?php
+                                            // สมมติจารมี $res_menu_sets ที่ดึงมาจากตาราง master_menus
+                                            if ($res_menu_sets):
+                                                $res_menu_sets->data_seek(0);
+                                                while ($m = $res_menu_sets->fetch_assoc()): ?>
+                                                    <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
+                                                    </option>
+                                                <?php endwhile; endif; ?>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <textarea name="menu_detail[]"
+                                            class="form-control form-control-sm border-0 menu-detail-input"
+                                            rows="1"></textarea>
+                                    </td>
+                                    <td><input type="text" name="menu_qty[]"
+                                            class="form-control form-control-sm border-0">
+                                    </td>
+                                    <td><input type="text" name="menu_price[]"
+                                            class="form-control form-control-sm border-0" placeholder="0.00"></td>
+                                    <td class="text-center"><button type="button"
+                                            class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
+                                                class="bi bi-dash-circle"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
+                                class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
+                    </div>
+
+                    <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
+                    </h5>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="p-4 border rounded-4 bg-white  h-100">
+                                <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
+                                <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
+                                    rows="3"></textarea>
+                                <div class="p-3 border-dashed text-center bg-light">
+                                    <input type="file" name="backdrop_img" id="backdropInput"
+                                        class="form-control form-control-sm mb-2" accept="image/*"
+                                        onchange="previewImage(this)">
+                                    <input type="hidden" name="backdrop_img_path_ai" id="backdrop_img_path_ai">
+                                    <div id="imagePreviewContainer" class="text-center d-none">
+                                        <img id="imagePreview" src="#" class="img-thumbnail mt-2"
+                                            style="max-height: 150px;">
+                                        <button type="button"
+                                            class="btn btn-sm btn-link text-danger d-block mx-auto mt-2"
+                                            onclick="clearPreview()">ลบรูปภาพ</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-4 border rounded-4 bg-white  h-100">
+                                <label
+                                    class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
+                                <textarea name="hk_florist_detail" class="form-control form-control-sm"
+                                    rows="8"></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
     </form>
 </div>
 

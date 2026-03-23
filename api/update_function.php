@@ -17,6 +17,7 @@ if (isset($_POST['update'])) {
     $phone = $_POST['phone'];
     $booking_room = $_POST['booking_room'];
     $deposit = floatval($_POST['deposit']);
+    $total_amount = floatval($_POST['total_amount'] ?? 0); // 👈 เพิ่มตัวนี้เข้าไปครับ
     $pax = intval($_POST['pax'] ?? 0);
     $start_time = !empty($_POST['start_time']) ? str_replace('T', ' ', $_POST['start_time']) : null;
     $end_time = !empty($_POST['end_time']) ? str_replace('T', ' ', $_POST['end_time']) : null;
@@ -92,12 +93,13 @@ if (isset($_POST['update'])) {
 
     // --- 3. อัปเดตตารางหลัก ---
     $sql_update = "UPDATE functions SET 
-        company_id=?, customer_id=?, function_type_id=?, room_id=?, 
-        function_name=?, booking_name=?, organization=?, phone=?, booking_room=?, 
-        deposit=?, banquet_style=?, equipment=?, remark=?, main_kitchen_remark=?, 
-        backdrop_detail=?, hk_florist_detail=?, backdrop_img=?, pax=?, start_time=?, end_time=?,
-        file_attachment1=?, file_attachment2=?, file_attachment3=? 
-        WHERE id=?";
+    company_id=?, customer_id=?, function_type_id=?, room_id=?, 
+    function_name=?, booking_name=?, organization=?, phone=?, booking_room=?, 
+    deposit=?, total_amount=?, -- 👈 เพิ่มตรงนี้
+    banquet_style=?, equipment=?, remark=?, main_kitchen_remark=?, 
+    backdrop_detail=?, hk_florist_detail=?, backdrop_img=?, pax=?, start_time=?, end_time=?,
+    file_attachment1=?, file_attachment2=?, file_attachment3=? 
+    WHERE id=?";
 
     $stmt = $conn->prepare($sql_update);
 
@@ -109,34 +111,35 @@ if (isset($_POST['update'])) {
     // 18: i (pax - จำนวนคน)
     // 19-23: s (start, end, file1, file2, file3)
     // 24: i (WHERE id)
-    $types = "iiiisssssdsssssssssssssi"; 
+    $types = "iiiisssssddsssssssssssssi";
 
     $stmt->bind_param(
         $types,
-        $company_id,               // 1 (i)
-        $customer_id,              // 2 (i)
-        $function_type_id,         // 3 (i)
-        $room_id,                  // 4 (i)
-        $function_name,            // 5 (s)
-        $booking_name,             // 6 (s)
-        $organization,             // 7 (s)
-        $phone,                    // 8 (s)
-        $booking_room,             // 9 (s)
-        $deposit,                  // 10 (d)
-        $banquet_style,            // 11 (s)
-        $equipment,                // 12 (s)
-        $remark,                   // 13 (s)
-        $main_kitchen_remark,      // 14 (s)
-        $backdrop_detail,          // 15 (s)
-        $hk_florist_detail,        // 16 (s)
-        $backdrop_img_path,        // 17 (s)
-        $pax,                      // 18 (i)  <-- เช็คตรงนี้!
-        $start_time,               // 19 (s)  <-- และตรงนี้!
-        $end_time,                 // 20 (s)
-        $file_attachment_paths[1], // 21 (s)
-        $file_attachment_paths[2], // 22 (s)
-        $file_attachment_paths[3], // 23 (s)
-        $function_id               // 24 (i)
+        $company_id,           // 1
+        $customer_id,          // 2
+        $function_type_id,     // 3
+        $room_id,              // 4
+        $function_name,        // 5
+        $booking_name,         // 6
+        $organization,         // 7
+        $phone,                // 8
+        $booking_room,         // 9
+        $deposit,              // 10
+        $total_amount,         // 11 👈 แทรกตัวนี้ลงไปครับจาร!
+        $banquet_style,        // 12 (เลื่อนลำดับลงมา)
+        $equipment,            // 13
+        $remark,               // 14
+        $main_kitchen_remark,  // 15
+        $backdrop_detail,      // 16
+        $hk_florist_detail,    // 17
+        $backdrop_img_path,    // 18
+        $pax,                  // 19
+        $start_time,           // 20
+        $end_time,             // 21
+        $file_attachment_paths[1], // 22
+        $file_attachment_paths[2], // 23
+        $file_attachment_paths[3], // 24
+        $function_id           // 25
     );
 
     if ($stmt->execute()) {

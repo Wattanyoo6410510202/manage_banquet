@@ -21,6 +21,8 @@ if (isset($_POST['save'])) {
     $pax = intval($_POST['pax'] ?? 0);
     $deposit = floatval($_POST['deposit'] ?? 0);
 
+    $total_amount = floatval($_POST['total_amount'] ?? 0);
+
     $banquet_style = $_POST['banquet_style'] ?? '';
     $equipment = $_POST['equipment'] ?? '';
     $remark = $_POST['remark'] ?? '';
@@ -87,18 +89,19 @@ if (isset($_POST['save'])) {
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบจำนวน Column และ ? ให้เท่ากันคือ 21 ตัว) ---
         // --- 3. แก้ไข SQL INSERT (ตรวจสอบลำดับให้ตรงกับ bind_param) ---
         $sql_main = "INSERT INTO functions (
-    company_id, customer_id, function_type_id, room_id, function_name, 
-    booking_name, organization, phone, booking_room, deposit, 
-    banquet_style, equipment, remark, main_kitchen_remark, 
-    backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
-    start_time, end_time, file_attachment1, file_attachment2, file_attachment3
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            company_id, customer_id, function_type_id, room_id, function_name, 
+            booking_name, organization, phone, booking_room, deposit, 
+            total_amount, -- เพิ่มตรงนี้
+            banquet_style, equipment, remark, main_kitchen_remark, 
+            backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
+            start_time, end_time, file_attachment1, file_attachment2, file_attachment3
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_main);
 
         // นับใหม่: i(4) s(5) d(1) s(7) i(1) i(1) s(2) s(3) 
 // รวมทั้งหมดต้องมี 25 ตัว: iiiisssssdssssssss i i sssss
-        $types = "iiiisssssdssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
+        $types = "iiiisssssddssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
 
         $stmt->bind_param(
             $types,
@@ -112,21 +115,22 @@ if (isset($_POST['save'])) {
             $phone,              // 8 (s)
             $booking_room,       // 9 (s)
             $deposit,            // 10 (d)
-            $banquet_style,      // 11 (s)
-            $equipment,          // 12 (s)
-            $remark,             // 13 (s)
-            $main_kitchen_remark,// 14 (s)
-            $backdrop_detail,    // 15 (s)
-            $hk_florist_detail,  // 16 (s)
-            $backdrop_img_path,  // 17 (s)
-            $created_by_name,    // 18 (s)
-            $created_by_id,      // 19 (i) **ย้ายมาลำดับที่ 19 ให้ตรงกับ SQL**
-            $pax,                // 20 (i)
-            $start_date,         // 21 (s)
-            $end_date,           // 22 (s)
-            $attach_paths[1],    // 23 (s)
-            $attach_paths[2],    // 24 (s)
-            $attach_paths[3]     // 25 (s)
+            $total_amount,       // 11 (d) **เพิ่มใหม่ตรงนี้**
+            $banquet_style,      // 12 (s)
+            $equipment,          // 13 (s)
+            $remark,             // 14 (s)
+            $main_kitchen_remark,// 15 (s)
+            $backdrop_detail,    // 16 (s)
+            $hk_florist_detail,  // 17 (s)
+            $backdrop_img_path,  // 18 (s)
+            $created_by_name,    // 19 (s)
+            $created_by_id,      // 20 (i)
+            $pax,                // 21 (i)
+            $start_date,         // 22 (s)
+            $end_date,           // 23 (s)
+            $attach_paths[1],    // 24 (s)
+            $attach_paths[2],    // 25 (s)
+            $attach_paths[3]     // 26 (s)
         );
 
         if (!$stmt->execute()) {

@@ -38,12 +38,41 @@ if ($q && mysqli_num_rows($q) > 0) {
         $row['formatted_date'] = date('d M Y', strtotime($display_date));
 
         // จัดการสถานะ (Status Mapping)
+        // 1. กำหนด Mapping ของสถานะ
+        // 1. กำหนด Mapping ของสถานะ (เหมือนเดิม)
+        // จัดการสถานะ (Status Mapping) ตามโครงสร้าง statusConfig
         $status_map = [
-            1 => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success', 'icon' => 'bi-check-circle'],
-            2 => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-x-circle'],
-            0 => ['text' => 'รออนุมัติ', 'class' => 'bg-warning-subtle text-warning', 'icon' => 'bi-clock-history']
+            'Confirmed' => [
+                'text' => 'อนุมัติแล้ว',
+                'class' => 'bg-success-subtle text-success',
+                'icon' => 'bi-check-circle'
+            ],
+            'In Progress' => [
+                'text' => 'ดำเนินการ',
+                'class' => 'bg-info-subtle text-info',
+                'icon' => 'bi-play-circle'
+            ],
+            'Completed' => [
+                'text' => 'จบงานแล้ว',
+                'class' => 'bg-primary-subtle text-primary',
+                'icon' => 'bi-flag'
+            ],
+            'Cancelled' => [
+                'text' => 'ยกเลิก',
+                'class' => 'bg-danger-subtle text-danger',
+                'icon' => 'bi-x-circle'
+            ],
+            // เผื่อกรณีสถานะอื่นๆ ที่ยังไม่มีใน List ให้เป็นสีเทาไว้ก่อน
+            'Pending' => [
+                'text' => 'รออนุมัติ',
+                'class' => 'bg-warning-subtle text-warning',
+                'icon' => 'bi-clock-history'
+            ]
         ];
-        $row['status_info'] = $status_map[$row['approve']] ?? $status_map[0];
+
+        // ดึงค่าสถานะจากคอลัมน์ status มาแมป (ถ้าไม่มีใน map ให้ดึง Pending เป็นค่าเริ่มต้น)
+        $current_status = $row['status'] ?? 'Pending';
+        $row['status_info'] = $status_map[$current_status] ?? $status_map['Pending'];
 
         // จัดการไฟล์แนบ
         $row['attachments'] = [];
@@ -134,7 +163,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                         <th>โรงแรม</th>
                         <th class="ps-4">ชื่องาน (Function)</th>
                         <th>ผู้จอง</th>
-                        <th>เงินมัดจำ</th>
+                        <th>มูลค่า</th>
                         <th>เลขที่</th>
                         <th>สถานะ</th>
                         <th>Sales</th>
@@ -169,7 +198,8 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <div class="text-dark small"><?= htmlspecialchars($row['booking_name']); ?></div>
                                 <div class="text-muted x-small"><?= htmlspecialchars($row['phone']); ?></div>
                             </td>
-                            <td><span class="text-primary fw-bold"><?= number_format($row['deposit'] ?: 0, 2); ?></span>
+                            <td><span
+                                    class="text-primary fw-bold"><?= number_format($row['total_amount'] ?: 0, 2); ?></span>
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark border fw-normal">
@@ -188,14 +218,14 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <div class="text-muted x-small">แก้ไขเมื่อ <?= htmlspecialchars($row['modify']); ?></div>
                             </td>
                             <td>
-                                <div class="d-flex flex-column gap-1">
+                                <div class="d-flex flex-wrap gap-2">
                                     <?php if (empty($row['attachments'])): ?>
-                                        <span class="text-muted small">- ไม่มีไฟล์ -</span>
+                                        <span class="text-muted small">-</span>
                                     <?php else: ?>
                                         <?php foreach ($row['attachments'] as $file): ?>
-                                            <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank"
-                                                class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 10px;">
-                                                <i class="bi bi-file-earmark-arrow-down"></i> <?= $file['label']; ?>
+                                            <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank" class="text-danger"
+                                                title="<?= $file['label']; ?>" style="font-size: 1.2rem; line-height: 1;">
+                                                <i class="bi bi-file-earmark-pdf-fill"></i>
                                             </a>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
@@ -266,12 +296,8 @@ if ($q && mysqli_num_rows($q) > 0) {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script src="assets/delete_handler.js"></script>
 <?php include "style/banquet_table.php"; ?>
-
-
 <?php include "footer.php"; ?>

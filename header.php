@@ -163,20 +163,22 @@ function is_active($pages)
                         <i class="bi bi-speedometer2"></i> ปฏิทิน
                     </a>
                 </li>
+                
                 <li>
                     <a href="manage_banquet.php"
                         class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php']); ?>">
                         <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
                     </a>
                 </li>
+               
+                   <li>
+                    <a href="quotation_list.php" class="<?php echo is_active(['quotation_list.php','add_quote.php','quotation_view.php']); ?>">
+                        <i class="bi bi-file-earmark-text"></i> ใบเสนอราคา
+                    </a>
+                </li>
                 <li>
                     <a href="customer.php" class="<?php echo is_active('customer.php'); ?>">
                         <i class="bi bi-person"></i> ลูกค้า
-                    </a>
-                </li>
-                   <li>
-                    <a href="quotation_list.php" class="<?php echo is_active(['quotation_list.php','add_quote.php','quotation_view.php']); ?>">
-                        <i class="bi bi-person"></i> ใบเสนอราคา
                     </a>
                 </li>
                 <li class="mt-4 sidebar-header px-3">

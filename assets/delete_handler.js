@@ -2,7 +2,7 @@ $(document).ready(function () {
   function executeDelete(ids, rows) {
     Swal.fire({
       title: "ยืนยันการลบ?",
-      text: "จารจะลบรายการที่เลือกจริงใช่ไหม? ข้อมูลหายเกลี้ยงเลยนะ!",
+      text: "การดำเนินการนี้ไม่สามารถย้อนกลับได้ คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",

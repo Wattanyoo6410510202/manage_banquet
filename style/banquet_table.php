@@ -227,8 +227,8 @@
                 { extend: 'print', exportOptions: { columns: [1, 2, 3, 4, 5, 6, 7,8] } , title: 'รายการจัดเลี่ยง' }
             ],
             "columnDefs": [
-                { "orderable": false, "targets": [0, 9] },
-                { "width": "140px", "targets": 8 }
+                { "orderable": false, "targets": [0, 9] }
+                
             ],
             "initComplete": function () {
                 $(window).on('resize', function () {

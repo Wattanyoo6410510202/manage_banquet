@@ -269,13 +269,13 @@ while($row = $all_rooms_res->fetch_assoc()) {
                             </div>
                         </div>
 
-                        <div class="row ps-lg-3">
-                            <h6 class="fw-bold mb-4 text-dark">
+                        <div class="row">
+                            <h6 class="fw-bold text-dark">
                                 <i class="bi bi-info-circle me-2 text-primary"></i>รายละเอียดการจอง
                             </h6>
 
-                            <div class="row mb-4">
-                                <div class="col-md-8 mb-3">
+                            <div class="row">
+                                <div class="col-md-8">
                                     <label class="form-label small fw-bold text-secondary">ชื่องาน (Event Title)</label>
                                     <input name="function_name" class="form-control border-0 bg-light"
                                         placeholder="พิมพ์ชื่อโครงการหรืองานจัดเลี้ยง..." required
@@ -283,7 +283,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                         value="<?= htmlspecialchars($data['function_name']) ?>">
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-4">
                                     <label class="form-label small fw-bold text-secondary">ประเภทงาน</label>
                                     <select name="function_type_id" class="form-select border-0 bg-light" required
                                         style="border-radius: 10px; height: 42px;">
@@ -299,7 +299,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                     </select>
                                 </div>
 
-                                <div class="row g-3 ">
+                                <div class="row ">
                                     <div class="col-md-6">
                                         <label
                                             class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
@@ -318,45 +318,56 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                             value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
                                     </div>
                                 </div>
-                            </div>
+                            <div class="row g-2">
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-primary bg-opacity-10 h-100">
+            <label class="small fw-bold text-primary mb-1 d-block">Booking Number</label>
+            <input name="booking_room"
+                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
+                placeholder="BK-XXXX"
+                value="<?= htmlspecialchars($data['booking_room']) ?>">
+        </div>
+    </div>
 
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-primary bg-opacity-10">
-                                        <label class="small fw-bold text-primary mb-1 d-block">Booking Number</label>
-                                        <input name="booking_room"
-                                            class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                                            placeholder="BK-XXXX"
-                                            value="<?= htmlspecialchars($data['booking_room']) ?>">
-                                    </div>
-                                </div>
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
+            <label class="small fw-bold text-success mb-1 d-block">มัดจำ (Deposit)</label>
+            <div class="input-group">
+                <span class="input-group-text border-0 bg-transparent text-success fw-bold ps-0 fs-4">฿</span>
+                <input type="number" step="0.01" name="deposit"
+                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-4"
+                    placeholder="0.00" value="<?= $data['deposit'] ?>">
+            </div>
+        </div>
+    </div>
 
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-success bg-opacity-10">
-                                        <label class="small fw-bold text-success mb-1 d-block">มัดจำ (Deposit)</label>
-                                        <div class="input-group">
-                                            <span
-                                                class="input-group-text border-0 bg-transparent text-success fw-bold ps-0">฿</span>
-                                            <input type="number" step="0.01" name="deposit"
-                                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-5"
-                                                placeholder="0.00" value="<?= $data['deposit'] ?>">
-                                        </div>
-                                    </div>
-                                </div>
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
+            <label class="small fw-bold text-info mb-1 d-block">จำนวน (PAX)</label>
+            <div class="input-group">
+                <input type="number" name="pax"
+                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
+                    placeholder="0" value="<?= $data['pax'] ?>">
+                <span class="input-group-text border-0 bg-transparent text-info fw-bold pe-0 small">Pers.</span>
+            </div>
+        </div>
+    </div>
 
-                                <div class="col-md-4">
-                                    <div class="p-3 rounded-4 bg-info bg-opacity-10">
-                                        <label class="small fw-bold text-info mb-1 d-block">จำนวนผู้เข้าร่วม
-                                            (PAX)</label>
-                                        <div class="input-group">
-                                            <input type="number" name="pax"
-                                                class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                                                placeholder="0" value="<?= $data['pax'] ?>">
-                                            <span
-                                                class="input-group-text border-0 bg-transparent text-info fw-bold pe-0">Pers.</span>
-                                        </div>
-                                    </div>
-                                </div>
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
+            <label class="small fw-bold text-secondary mb-1 d-block">มูลค่างานทั้งหมด (Total Amount)</label>
+            <div class="input-group">
+                <span class="input-group-text border-0 bg-transparent text-secondary fw-bold ps-0 fs-4">฿</span>
+                <input type="number" step="0.01" name="total_amount"
+                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-4"
+                    placeholder="0.00" 
+                    value="<?= isset($data['total_amount']) ? number_format($data['total_amount'], 2, '.', '') : '0.00' ?>">
+            </div>
+        </div>
+    </div>
+</div>
+
+                           
                                 <div class="row g-3 mt-1">
                                     <?php 
     $file_colors = ['secondary', 'warning', 'danger']; 

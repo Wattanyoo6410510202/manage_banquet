@@ -144,11 +144,6 @@ $data = $res->fetch_assoc();
         </div>
 
         <div class="sig-body">
-            <div class="info-box text-start">
-                <strong>โครงการ:</strong> <?php echo $data['function_name']; ?><br>
-                <strong>ID:</strong> <?php echo $data['function_code']; ?>
-            </div>
-
             <div class="canvas-container">
                 <div class="hint-text" id="hint">ลงลายมือชื่อภายในกรอบนี้</div>
                 <canvas id="signature-pad"></canvas>
@@ -258,8 +253,8 @@ $data = $res->fetch_assoc();
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // ✅ ใช้ location.replace เพื่อไม่ให้กดย้อนกลับมาหน้าเซ็นชื่อนี้ได้อีก
-                        window.location.replace('view.php?id=<?php echo $id; ?>');
+                        alert("บันทึกลายเซ็นเรียบร้อยแล้ว");
+                        window.history.back(); // ย้อนกลับไปหน้าก่อนหน้าทันที
                     } else {
                         alert("Error: " + data.message);
                         btn.disabled = false;
