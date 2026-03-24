@@ -266,11 +266,11 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                             d.cust_phone,
                             d.cust_email,
                             `<div class="btn-group">
-            <button class="btn btn-sm btn-outline-primary" title="แก้ไข" 
+            <button class="btn btn-sm btn-outline-primary border-0" title="แก้ไข"
                 onclick='editCust(${JSON.stringify(d)})'>
                 <i class="bi bi-pencil-square"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger" title="ลบ" 
+            <button class="btn btn-sm btn-outline-danger border-0" title="ลบ"
                 onclick="deleteCust(${d.id})">
                 <i class="bi bi-trash"></i>
             </button>

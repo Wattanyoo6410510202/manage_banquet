@@ -34,7 +34,7 @@ body {
     font-weight: 600;
     background: #f8f9fa;
     font-size: calc(var(--print-fs) + 0.5px);
-    margin: 10px 0 5px 0 !important;
+    margin: 5px 0 5px 0 !important;
     text-transform: uppercase;
 }
 
@@ -123,7 +123,7 @@ body {
         /* ห้ามตัดกลางกลุ่ม */
         break-inside: avoid;
         display: block;
-        margin-bottom: 12px !important;
+        margin-bottom: 0px !important;
         position: relative;
         /* ให้ไหลตามกัน */
     }

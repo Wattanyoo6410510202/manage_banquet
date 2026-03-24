@@ -462,50 +462,56 @@ while($row = $all_rooms_res->fetch_assoc()) {
 
                         <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle" id="kitchenTable">
-                                <tbody>
-                                    <?php if ($kitchens->num_rows > 0):
-                                        while ($k = $kitchens->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><input type="date" name="k_date[]"
-                                                class="form-control form-control-sm border-0 bg-light"
-                                                value="<?php echo $k['k_date']; ?>"></td>
-                                        <td>
-                                            <select name="k_type_id[]"
-                                                class="form-select form-control-sm border-0 bg-light">
-                                                <option value="">-- เลือกประเภท --</option>
-                                                <?php
-                                                        // ตรวจสอบว่ามีข้อมูลใน $res_breaks หรือไม่
-                                                        if ($res_breaks && $res_breaks->num_rows > 0):
-                                                            // รีเซ็ต Pointer เพื่อให้วนลูปได้ทุกแถว (กรณีมีหลายรายการ)
-                                                            $res_breaks->data_seek(0);
-                                                            while ($b = $res_breaks->fetch_assoc()):
-                                                                // ตรวจสอบว่าค่าใน DB ($k['k_type_id']) ตรงกับ ID ของ Dropdown ($b['id']) หรือไม่
-                                                                // ใช้ ?? '' เพื่อป้องกัน Error "Undefined array key" หาก $k['k_type_id'] ไม่มีค่า
-                                                                $selected = (isset($k['k_type_id']) && $k['k_type_id'] == $b['id']) ? 'selected' : '';
-                                                                ?>
-                                                <option value="<?= $b['id'] ?>" <?= $selected ?>>
-                                                    <?= htmlspecialchars($b['type_name']) ?>
-                                                </option>
-                                                <?php
-                                                            endwhile;
-                                                        endif;
-                                                        ?>
-                                            </select>
-                                        </td>
-                                        <td><textarea name="k_item[]"
-                                                class="form-control form-control-sm border-0 bg-light"
-                                                rows="2"><?php echo $k['k_item']; ?></textarea></td>
-                                        <td><input type="number" name="k_qty[]"
-                                                class="form-control form-control-sm border-0 bg-light text-center"
-                                                value="<?php echo $k['k_qty']; ?>"></td>
-                                        <td><button type="button" class="btn text-danger btn-sm border-0"
-                                                onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; endif; ?>
-                                </tbody>
-                            </table>
+                            <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
+    <tbody>
+        <?php if ($kitchens->num_rows > 0):
+            while ($k = $kitchens->fetch_assoc()): ?>
+        <tr>
+            <td style="width: 140px;">
+                <input type="date" name="k_date[]"
+                    class="form-control form-control-sm border-0 bg-light"
+                    value="<?php echo $k['k_date']; ?>">
+            </td>
+
+            <td style="width: 160px;">
+                <select name="k_type_id[]"
+                    class="form-select form-select-sm border-0 bg-light">
+                    <option value="">-- เลือกประเภท --</option>
+                    <?php
+                    if ($res_breaks && $res_breaks->num_rows > 0):
+                        $res_breaks->data_seek(0);
+                        while ($b = $res_breaks->fetch_assoc()):
+                            $selected = (isset($k['k_type_id']) && $k['k_type_id'] == $b['id']) ? 'selected' : '';
+                    ?>
+                    <option value="<?= $b['id'] ?>" <?= $selected ?>>
+                        <?= htmlspecialchars($b['type_name']) ?>
+                    </option>
+                    <?php endwhile; endif; ?>
+                </select>
+            </td>
+
+            <td>
+                <textarea name="k_item[]" 
+                    class="form-control form-control-sm border-0 bg-light w-100" 
+                    style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"
+                ><?php echo $k['k_item']; ?></textarea>
+            </td>
+
+            <td style="width: 80px;">
+                <input type="number" name="k_qty[]"
+                    class="form-control form-control-sm border-0 bg-light text-center"
+                    value="<?php echo $k['k_qty']; ?>">
+            </td>
+
+            <td style="width: 45px;" class="text-center">
+                <button type="button" class="btn text-danger btn-sm border-0"
+                    onclick="removeRow(this)"><i class="bi bi-dash-circle fs-5"></i></button>
+            </td>
+        </tr>
+        <?php endwhile; endif; ?>
+    </tbody>
+</table>
                             <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addKitchenRow()"><i
                                     class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
                         </div>
@@ -537,40 +543,60 @@ while($row = $all_rooms_res->fetch_assoc()) {
                 <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. รายละเอียดเมนูอาหารและเครื่องดื่ม
                 </h5>
                 <div class="table-responsive mb-5">
-                    <table class="table table-sm table-hover align-middle " id="menuTable">
-                        <tbody>
-                            <?php if ($menus->num_rows > 0):
-                                while ($m = $menus->fetch_assoc()): ?>
-                            <tr>
-                                <td><input type="date" name="menu_time[]" class="form-control form-control-sm border-0"
-                                        value="<?php echo $m['menu_time']; ?>"></td>
-                                <td><select name="menu_set_id[]" class="form-select form-select-sm border-0">
-                                        <option value="">-- เลือกเซตเมนู --</option>
-                                        <?php if ($res_menu_sets && $res_menu_sets->num_rows > 0):
-                                                    $res_menu_sets->data_seek(0);
-                                                    while ($ms = $res_menu_sets->fetch_assoc()):
-                                                        $selected = (isset($m['menu_set_id']) && $m['menu_set_id'] == $ms['id']) ? 'selected' : '';
-                                                        ?>
-                                        <option value="<?= $ms['id'] ?>" <?= $selected ?>>
-                                            <?= htmlspecialchars($ms['type_name']) ?>
-                                        </option>
-                                        <?php endwhile; endif; ?>
-                                    </select></td>
-                                <td>
-                                    <textarea name="menu_detail[]" class="form-control form-control-sm border-0 w-100"
-                                        rows="3"
-                                        style="min-width: 500px; resize: vertical;"><?php echo htmlspecialchars($m['menu_detail'] ?? ''); ?></textarea>
-                                </td>
-                                <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0"
-                                        value="<?php echo $m['menu_qty']; ?>"></td>
-                                <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"
-                                        value="<?php echo $m['menu_price']; ?>"></td>
-                                <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
-                                        onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
-                            </tr>
-                            <?php endwhile; endif; ?>
-                        </tbody>
-                    </table>
+                    <table class="table table-sm table-hover align-middle" id="menuTable" style="table-layout: fixed; width: 100%;">
+    <tbody>
+        <?php if ($menus->num_rows > 0):
+            while ($m = $menus->fetch_assoc()): ?>
+        <tr>
+            <td style="width: 150px;">
+                <input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"
+                    value="<?php echo $m['menu_time']; ?>">
+            </td>
+
+            <td style="width: 180px;">
+                <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light">
+                    <option value="">-- เลือกเซตเมนู --</option>
+                    <?php if ($res_menu_sets && $res_menu_sets->num_rows > 0):
+                        $res_menu_sets->data_seek(0);
+                        while ($ms = $res_menu_sets->fetch_assoc()):
+                            $selected = (isset($m['menu_set_id']) && $m['menu_set_id'] == $ms['id']) ? 'selected' : '';
+                    ?>
+                    <option value="<?= $ms['id'] ?>" <?= $selected ?>>
+                        <?= htmlspecialchars($ms['type_name']) ?>
+                    </option>
+                    <?php endwhile; endif; ?>
+                </select>
+            </td>
+
+            <td>
+                <textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100"
+                    rows="1"
+                    style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;"
+                    oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"
+                ><?php echo htmlspecialchars($m['menu_detail'] ?? ''); ?></textarea>
+            </td>
+
+            <td style="width: 90px;">
+                <input type="number" name="menu_qty[]" class="form-control form-control-sm border-0 bg-light text-center" 
+                    placeholder="จำนวน"
+                    value="<?php echo $m['menu_qty']; ?>">
+            </td>
+
+            <td style="width: 110px;">
+                <input type="number" step="0.01" name="menu_price[]" class="form-control form-control-sm border-0 bg-light text-end" 
+                    placeholder="ราคา"
+                    value="<?php echo $m['menu_price']; ?>">
+            </td>
+
+            <td style="width: 50px;" class="text-center">
+                <button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)">
+                    <i class="bi bi-dash-circle fs-5"></i>
+                </button>
+            </td>
+        </tr>
+        <?php endwhile; endif; ?>
+    </tbody>
+</table>
                     <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addMenuRow()"><i
                             class="bi bi-plus-lg"></i> เพิ่มรายการอาหาร</button>
                 </div>

@@ -555,9 +555,9 @@ if ($target_company_id > 0) {
                                 class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
                     </div>
 
-                    <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
+                    <h5 class="section-title"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
                     </h5>
-                    <div class="row g-4">
+                    <div class="row g-2">
                         <div class="col-md-6">
                             <div class="p-4 border rounded-4 bg-white  h-100">
                                 <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>

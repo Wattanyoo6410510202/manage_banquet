@@ -65,7 +65,7 @@ if ($approver_id && is_numeric($approver_id)) {
 // --- 🚀 สำหรับผู้จัดทำ (Event Organizer) ---
 $creator_sig = "";
 // เปลี่ยนมาดึงจาก created_by_id ที่จารเพิ่งเพิ่มลงในตาราง functions
-$creator_id = intval($data['created_by_id'] ?? 0); 
+$creator_id = intval($data['created_by_id'] ?? 0);
 
 if ($creator_id > 0) {
     // จารครับ Query นี้จะแม่นยำที่สุด เพราะเชื่อมด้วย Primary Key (ID)
@@ -75,7 +75,7 @@ if ($creator_id > 0) {
         $stmt_c->bind_param("i", $creator_id);
         $stmt_c->execute();
         $res_c = $stmt_c->get_result();
-        
+
         if ($row_c = $res_c->fetch_assoc()) {
             $creator_sig = $row_c['path']; // ได้ path รูปมาแล้ว
         }
@@ -84,19 +84,19 @@ if ($creator_id > 0) {
 }
 // --- 🚀 สำหรับผู้อนุมัติ (Authorized By) ---
 // 1. ดึง ID ผู้อนุมัติจากคอลัมน์ approve_by ในฐานข้อมูล
-$approver_id = intval($data['approve_by'] ?? 0); 
+$approver_id = intval($data['approve_by'] ?? 0);
 $approver_sig = "";
 
 // 2. ถ้ามี ID ผู้อนุมัติ (ค่ามากกว่า 0) ให้ไปค้นหาลายเซ็น
 if ($approver_id > 0) {
     // จารครับ ผมใช้ users_id เพื่อดึงลายเซ็นล่าสุดของคนๆ นั้นออกมา
     $sql_a = "SELECT path FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1";
-    
+
     if ($stmt_a = $conn->prepare($sql_a)) {
         $stmt_a->bind_param("i", $approver_id); // ใช้ $approver_id ให้ตรงกับที่ดึงมาข้างบน
         $stmt_a->execute();
         $res_a = $stmt_a->get_result();
-        
+
         if ($row_a = $res_a->fetch_assoc()) {
             $approver_sig = $row_a['path']; // ได้ path รูปมาแล้ว
         }
@@ -122,7 +122,7 @@ $kitchens = $conn->query($sql_kitchens);
 
 $sql_menus = "SELECT fm.*, mms.type_name as set_name 
               FROM function_menus fm
-              LEFT JOIN master_break_types mms ON fm.menu_set_id = mms.id 
+              LEFT JOIN master_menu_types mms ON fm.menu_set_id = mms.id 
               WHERE fm.function_id = $id";
 
 $menus = $conn->query($sql_menus);
@@ -263,7 +263,7 @@ $menus = $conn->query($sql_menus);
     </div>
     <div class="section-group">
         <div class="section-title">2. ตารางกำหนดการ (SCHEDULE)</div>
-        <table class="table table-sm table-bordered table-tight mb-2">
+        <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
                 <tr>
                     <th width="15%">วันที่</th>
@@ -286,11 +286,12 @@ $menus = $conn->query($sql_menus);
             </tbody>
         </table>
     </div>
-    <div class="section-group">
-        <div class="row g-3">
+    <div class="section-group mb-0">
+        <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
+        <div class="row mt-0">
             <div class="col-7">
-                <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
-                <table class="table table-sm table-bordered table-tight mb-1">
+
+                <table class="table table-sm table-bordered table-tight mb-0">
                     <thead class="table-light text-center">
                         <tr>
                             <th width="18%">วันที่</th>
@@ -314,24 +315,24 @@ $menus = $conn->query($sql_menus);
                         <?php endwhile; ?>
                     </tbody>
                 </table>
-                <div class="p-2 border rounded bg-light" style="font-size: 8.5px;">
-                    <strong>Kitchen Remark:</strong> <?php echo nl2br($data['main_kitchen_remark'] ?? '-'); ?>
+                <div class="p-2 border rounded bg-light" style="font-size: 8.5px; mb-0">
+                    <strong>หมายเหตุครัว:</strong> <?php echo nl2br($data['main_kitchen_remark'] ?? '-'); ?>
                 </div>
             </div>
             <div class="col-5">
                 <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
-                <div class="box-detail mb-2" style="min-height: 80px;">
+                <div class="box-detail">
                     <?php echo nl2br($data['banquet_style'] ?? 'ตามมาตรฐาน'); ?>
                 </div>
 
                 <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
-                <div class="box-detail" style="min-height: 60px;"><?php echo nl2br($data['equipment'] ?? '-'); ?></div>
+                <div class="box-detail"><?php echo nl2br($data['equipment'] ?? '-'); ?></div>
             </div>
         </div>
     </div>
     <div class="section-group">
         <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม (FOOD & BEVERAGE DETAILS)</div>
-        <table class="table table-sm table-bordered table-tight mb-2">
+        <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
                 <tr>
                     <th width="10%">เวลา</th>
@@ -358,8 +359,8 @@ $menus = $conn->query($sql_menus);
             </tbody>
         </table>
     </div>
-    <div class="section-group">
-        <div class="row g-3">
+    <div class="section-group mb-0">
+        <div class="row ">
             <div class="col-6">
                 <div class="section-title">7. ป้ายชื่อและฉาก (BACKDROP & SIGNAGE)</div>
                 <div class="box-detail mb-1"><?php echo nl2br($data['backdrop_detail'] ?? '-'); ?></div>
@@ -375,7 +376,7 @@ $menus = $conn->query($sql_menus);
                     <?php echo nl2br($data['hk_florist_detail'] ?? '-'); ?>
                 </div>
                 <div class="mt-2 p-1 border-start border-warning bg-light" style="font-size: 9px;">
-                    <strong>Additional Remark:</strong> <?php echo $data['remark'] ?? '-'; ?>
+                    <strong>หมายเหตุอื่นๆ:</strong> <?php echo $data['remark'] ?? '-'; ?>
                 </div>
             </div>
         </div>
@@ -385,7 +386,7 @@ $menus = $conn->query($sql_menus);
             <div class="col-4 text-center">
                 <div class="sig-space">
                     <?php if (!empty($creator_sig)): ?>
-                        <img src="<?php echo $creator_sig; ?>" class="sig-img" style="max-height: 80px;">
+                        <img src="<?php echo $creator_sig; ?>" class="sig-img" style="max-height: 50px;">
 
                     <?php else: ?>
                         <p style="color:red; font-size:8px;"></p>
@@ -399,9 +400,9 @@ $menus = $conn->query($sql_menus);
             </div>
 
             <div class="col-4 text-center">
-                 <div class="sig-space">
+                <div class="sig-space">
                     <?php if (!empty($approver_sig)): ?>
-                        <img src="<?php echo $approver_sig; ?>" class="sig-img" style="max-height: 80px;">
+                        <img src="<?php echo $approver_sig; ?>" class="sig-img" style="max-height: 50px;">
 
                     <?php else: ?>
                         <p style="color:red; font-size:8px;"></p>

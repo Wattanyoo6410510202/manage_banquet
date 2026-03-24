@@ -3,19 +3,20 @@ include "config.php";
 
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 if (isset($_POST['action'])) {
-    if (ob_get_length()) ob_clean();
+    if (ob_get_length())
+        ob_clean();
     header('Content-Type: application/json; charset=utf-8');
 
-    $id             = intval($_POST['id'] ?? 0);
-    $break_time     = $conn->real_escape_string($_POST['break_time'] ?? '');
-    $break_type_id  = intval($_POST['break_type_id'] ?? 0);
-    $break_menu     = $conn->real_escape_string($_POST['break_menu'] ?? '');
-    $break_pax      = intval($_POST['break_pax'] ?? 0);
-    $break_remark   = $conn->real_escape_string($_POST['break_remark'] ?? '');
-    
+    $id = intval($_POST['id'] ?? 0);
+    $break_time = $conn->real_escape_string($_POST['break_time'] ?? '');
+    $break_type_id = intval($_POST['break_type_id'] ?? 0);
+    $break_menu = $conn->real_escape_string($_POST['break_menu'] ?? '');
+    $break_pax = intval($_POST['break_pax'] ?? 0);
+    $break_remark = $conn->real_escape_string($_POST['break_remark'] ?? '');
+
     // 🎯 ส่วนที่เพิ่มใหม่: รับราคาและคำนวณยอดรวม
-    $break_price    = floatval($_POST['break_price'] ?? 0);
-    $break_total    = $break_pax * $break_price; 
+    $break_price = floatval($_POST['break_price'] ?? 0);
+    $break_total = $break_pax * $break_price;
 
     if ($_POST['action'] == 'save') {
         if ($id > 0) {
@@ -55,7 +56,7 @@ if (isset($_POST['action'])) {
         } else {
             echo json_encode(["status" => "error", "message" => $conn->error]);
         }
-        exit; 
+        exit;
     }
 
     if ($_POST['action'] == 'delete') {
@@ -64,7 +65,7 @@ if (isset($_POST['action'])) {
         } else {
             echo json_encode(["status" => "error"]);
         }
-        exit; 
+        exit;
     }
 }
 
@@ -101,10 +102,10 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                             <select name="break_type_id" id="b_type_id" class="form-select form-select-sm" required>
                                 <option value="">-- เลือก --</option>
                                 <?php
-            $types = $conn->query("SELECT * FROM master_break_types ORDER BY id ASC");
-            while ($t = $types->fetch_assoc())
-                echo "<option value='{$t['id']}'>{$t['type_name']}</option>";
-            ?>
+                                $types = $conn->query("SELECT * FROM master_break_types ORDER BY id ASC");
+                                while ($t = $types->fetch_assoc())
+                                    echo "<option value='{$t['id']}'>{$t['type_name']}</option>";
+                                ?>
                             </select>
                         </div>
 
@@ -190,51 +191,51 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                             </thead>
                             <tbody id="breakTableBody" class="small">
                                 <?php while ($row = $breaks->fetch_assoc()): ?>
-                                <tr id="row-<?= $row['id'] ?>">
-                                    <td>
-                                        <div class="fw-bold text-primary b-time">
-                                            <?= htmlspecialchars($row['break_time']) ?></div>
-                                        <div class="badge bg-light text-dark border fw-normal b-type-name">
-                                            <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="mb-1 b-menu-text"><?= nl2br(htmlspecialchars($row['break_menu'])) ?>
-                                        </div>
-                                        <small class="text-danger b-remark-text">
-                                            <?= $row['break_remark'] ? '* ' . htmlspecialchars($row['break_remark']) : '' ?>
-                                        </small>
-                                    </td>
-                                    <td class="text-center fw-bold b-pax-text">
-                                        <?= number_format($row['break_pax']) ?>
-                                    </td>
-                                    <td class="text-end b-price-text">
-                                        <?= number_format($row['break_price'], 2) ?>
-                                    </td>
-                                    <td class="text-end fw-bold text-primary b-total-text">
-                                        <?= number_format($row['break_total'], 2) ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                           <button class="btn btn-sm btn-outline-primary border-0"
-    onclick='editBreak(<?= json_encode([
-        "id" => $row['id'],
-        "break_time" => $row['break_time'],
-        "break_type_id" => $row['break_type_id'],
-        "break_menu" => $row['break_menu'],
-        "break_pax" => (int)$row['break_pax'],
-        "break_price" => (float)$row['break_price'], // บังคับเป็นเลขทศนิยมที่นี่
-        "break_remark" => $row['break_remark']
-    ]) ?>)'>
-    <i class="bi bi-pencil-square"></i>
-</button>
-                                            <button class="btn btn-sm btn-outline-danger border-0"
-                                                onclick="deleteBreak(<?= $row['id'] ?>)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                    <tr id="row-<?= $row['id'] ?>">
+                                        <td>
+                                            <div class="fw-bold text-primary b-time">
+                                                <?= htmlspecialchars($row['break_time']) ?>
+                                            </div>
+                                            <div class="badge bg-light text-dark border fw-normal b-type-name">
+                                                <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="mb-1 b-menu-text"><?= nl2br(htmlspecialchars($row['break_menu'])) ?>
+                                            </div>
+                                            <small class="text-danger b-remark-text">
+                                                <?= $row['break_remark'] ? '* ' . htmlspecialchars($row['break_remark']) : '' ?>
+                                            </small>
+                                        </td>
+                                        <td class="text-center fw-bold b-pax-text">
+                                            <?= number_format($row['break_pax']) ?>
+                                        </td>
+                                        <td class="text-end b-price-text">
+                                            <?= number_format($row['break_price'], 2) ?>
+                                        </td>
+                                        <td class="text-end fw-bold text-primary b-total-text">
+                                            <?= number_format($row['break_total'], 2) ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-primary border-0" onclick='editBreak(<?= json_encode([
+                                                    "id" => $row['id'],
+                                                    "break_time" => $row['break_time'],
+                                                    "break_type_id" => $row['break_type_id'],
+                                                    "break_menu" => $row['break_menu'],
+                                                    "break_pax" => (int) $row['break_pax'],
+                                                    "break_price" => (float) $row['break_price'], // บังคับเป็นเลขทศนิยมที่นี่
+                                                    "break_remark" => $row['break_remark']
+                                                ]) ?>)'>
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger border-0"
+                                                    onclick="deleteBreak(<?= $row['id'] ?>)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 <?php endwhile; ?>
                             </tbody>
                         </table>
@@ -258,32 +259,32 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
-let table;
+    let table;
 
-$(document).ready(function() {
-    // 1. ตั้งค่า DataTable แบบภาษาไทย
-    table = $('#breakTable').DataTable({
-        "order": [
-            [0, "desc"]
-        ],
-        "pageLength": 10,
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
-        },
-        "columnDefs": [{
-            "orderable": false,
-            "targets": 3
-        }],
-        // แก้ไขตรงนี้ครับจาร
-        "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-            "<'row'<'col-sm-12'tr>>" +
-            "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
-            "<'d-none'B>", // ซ่อนปุ่ม Text ทื่อๆ ไว้ แต่ยังให้ระบบ Buttons ทำงาน
-        "buttons": [{
+    $(document).ready(function () {
+        // 1. ตั้งค่า DataTable แบบภาษาไทย
+        table = $('#breakTable').DataTable({
+            "order": [
+                [0, "desc"]
+            ],
+            "pageLength": 10,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
+            },
+            "columnDefs": [{
+                "orderable": false,
+                "targets": 3
+            }],
+            // แก้ไขตรงนี้ครับจาร
+            "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
+                "<'d-none'B>", // ซ่อนปุ่ม Text ทื่อๆ ไว้ แต่ยังให้ระบบ Buttons ทำงาน
+            "buttons": [{
                 extend: 'excel',
                 className: 'd-none',
                 exportOptions: {
-                    columns: [0, 1, 2]
+                    columns: [0, 1, 2, 3, 4] // ดึงถึงคอลัมน์ยอดรวม
                 },
                 title: 'รายการเบรก'
             },
@@ -302,50 +303,50 @@ $(document).ready(function() {
                     columns: [0, 1, 2, 3, 4]
                 }
             }
-        ],
+            ],
+        });
+        // เชื่อมปุ่ม Custom (ย้ายมาไว้ใน ready เพื่อความชัวร์)
+        $('#customExcel').on('click', function () {
+            table.button('.buttons-excel').trigger();
+        });
+        $('#customPrint').on('click', function () {
+            table.button('.buttons-print').trigger();
+        });
+        $('#customCopy').on('click', function () {
+            table.button('.buttons-copy').trigger();
+        });
     });
-    // เชื่อมปุ่ม Custom (ย้ายมาไว้ใน ready เพื่อความชัวร์)
-    $('#customExcel').on('click', function() {
-        table.button('.buttons-excel').trigger();
-    });
-    $('#customPrint').on('click', function() {
-        table.button('.buttons-print').trigger();
-    });
-    $('#customCopy').on('click', function() {
-        table.button('.buttons-copy').trigger();
-    });
-});
 
-// 2. ฟังก์ชันบันทึกข้อมูล (AJAX + DataTable API)
-document.getElementById('breakForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btnSubmit');
-    const fd = new FormData(this);
-    const b_id = document.getElementById('b_id').value;
+    // 2. ฟังก์ชันบันทึกข้อมูล (AJAX + DataTable API)
+    document.getElementById('breakForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmit');
+        const fd = new FormData(this);
+        const b_id = document.getElementById('b_id').value;
 
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-    fetch('main_kitchen.php', {
+        fetch('main_kitchen.php', {
             method: 'POST',
             body: fd
         })
-        .then(res => res.json())
-        .then(res => {
-            if (res.status === 'success') {
-                const d = res.data;
-                const remarkHtml = d.break_remark ?
-                    `<br><small class="text-danger">* ${d.break_remark}</small>` : '';
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const d = res.data;
+                    const remarkHtml = d.break_remark ?
+                        `<br><small class="text-danger">* ${d.break_remark}</small>` : '';
 
-                // เตรียมข้อมูลให้ครบ 6 คอลัมน์ (Index 0 - 5)
-const col0 = `<div class="fw-bold text-primary b-time">${d.break_time}</div>
+                    // เตรียมข้อมูลให้ครบ 6 คอลัมน์ (Index 0 - 5)
+                    const col0 = `<div class="fw-bold text-primary b-time">${d.break_time}</div>
               <div class="badge bg-light text-dark border fw-normal b-type-name">${d.type_name}</div>`;
-const col1 = `<div class="mb-1 b-menu-text">${d.break_menu.replace(/\n/g, '<br>')}</div>
+                    const col1 = `<div class="mb-1 b-menu-text">${d.break_menu.replace(/\n/g, '<br>')}</div>
               ${d.break_remark ? `<small class="text-danger">* ${d.break_remark}</small>` : ''}`;
-const col2 = `<div class="text-center fw-bold b-pax-text">${Number(d.break_pax).toLocaleString()}</div>`;
-const col3 = `<div class="text-end b-price-text">${d.break_price}</div>`; // เพิ่มคอลัมน์ราคา
-const col4 = `<div class="text-end fw-bold text-primary b-total-text">${d.break_total}</div>`; // เพิ่มคอลัมน์ยอดรวม
-const col5 = `<div class="text-center">
+                    const col2 = `<div class="text-center fw-bold b-pax-text">${Number(d.break_pax).toLocaleString()}</div>`;
+                    const col3 = `<div class="text-end b-price-text">${d.break_price}</div>`; // เพิ่มคอลัมน์ราคา
+                    const col4 = `<div class="text-end fw-bold text-primary b-total-text">${d.break_total}</div>`; // เพิ่มคอลัมน์ยอดรวม
+                    const col5 = `<div class="text-center">
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary border-0" onclick='editBreak(${JSON.stringify(d)})'>
                         <i class="bi bi-pencil-square"></i>
@@ -356,101 +357,102 @@ const col5 = `<div class="text-center">
                 </div>
               </div>`;
 
-if (b_id > 0) {
-    // อัปเดต Array ให้ครบ 6 คอลัมน์
-    table.row($(`#row-${d.id}`)).data([col0, col1, col2, col3, col4, col5]).draw(false);
-       } else {
-                    // กรณีเพิ่มใหม่: เพิ่ม Row เข้าไปใน DataTable
-                    const newRow = table.row.add([col1, col2, col3, col4]).draw(false).node();
-                    $(newRow).attr('id', 'row-' + d.id); // ใส่ ID ให้ Row ใหม่
-                    $(newRow).addClass('table-success'); // ไฮไลท์แถวใหม่
-                    setTimeout(() => $(newRow).removeClass('table-success'), 2000);
+                    // เปลี่ยนในส่วน fetch -> then(res => { ... })
+                    if (b_id > 0) {
+                        // กรณีอัปเดต: ใส่ให้ครบ 6 คอลัมน์ (Index 0-5)
+                        table.row($(`#row-${d.id}`)).data([col0, col1, col2, col3, col4, col5]).draw(false);
+                    } else {
+                        // กรณีเพิ่มใหม่: ต้องใส่ข้อมูลให้ครบทุกคอลัมน์เหมือนกันครับจาร
+                        const newRow = table.row.add([col0, col1, col2, col3, col4, col5]).draw(false).node();
+                        $(newRow).attr('id', 'row-' + d.id);
+                        $(newRow).addClass('table-success');
+                        setTimeout(() => $(newRow).removeClass('table-success'), 2000);
+                    }
+                    resetForm();
                 }
-                resetForm();
-            }
-        })
-        .catch(err => console.error(err))
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = 'บันทึกข้อมูลเบรก';
-        });
-});
-
-function editBreak(data) {
-    console.log(data); // <--- ลองกดแล้วดูใน Console (F12) ว่ามีคำว่า break_price ไหม
-    
-    $('#b_id').val(data.id);
-    $('#b_time').val(data.break_time);
-    $('#b_type_id').val(data.break_type_id);
-    $('#b_menu').val(data.break_menu);
-    $('#b_pax').val(data.break_pax);
-    $('#b_remark').val(data.break_remark);
-    
-    // ดึงค่ามาพักไว้ก่อน พร้อมเช็คว่าเป็นตัวเลขไหม
-    let price = parseFloat(data.break_price) || 0;
-    let pax = parseInt(data.break_pax) || 0;
-
-    // ใส่ค่าใน Input ราคาต่อหัว
-    $('#b_price').val(price.toFixed(2)); 
-    
-    // คำนวณยอดรวม
-    let total = pax * price;
-    $('#b_total_display').val(total.toLocaleString(undefined, {
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2
-    }));
-   
-    window.scrollTo(0, 0);
-}
-
-function resetForm() {
-    document.getElementById('breakForm').reset();
-    document.getElementById('b_id').value = 0;
-    document.getElementById('formHeader').className = 'card-header bg-warning text-dark fw-bold';
-    document.getElementById('btnSubmit').className = 'btn btn-warning btn-sm fw-bold shadow-sm';
-}
-
-function deleteBreak(id) {
-    if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
-        let fd = new FormData();
-        fd.append('action', 'delete');
-        fd.append('id', id);
-
-        fetch('main_kitchen.php', {
-                method: 'POST',
-                body: fd
             })
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success') {
-                    // ลบ Row ออกจาก DataTable ทันที (เนียนมาก)
-                    table.row($(`#row-${id}`)).remove().draw(false);
-                }
+            .catch(err => console.error(err))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = 'บันทึกข้อมูลเบรก';
             });
-    }
-}
-$(document).ready(function() {
-    // ฟังก์ชันคำนวณราคาสดๆ
-    $('#b_pax, #b_price').on('input', function() {
-        let pax = parseFloat($('#b_pax').val()) || 0;
-        let price = parseFloat($('#b_price').val()) || 0;
-        let total = pax * price;
+    });
 
-        // แสดงผลยอดรวมแบบใส่คอมมาและทศนิยม 2 ตำแหน่ง
+    function editBreak(data) {
+        console.log(data); // <--- ลองกดแล้วดูใน Console (F12) ว่ามีคำว่า break_price ไหม
+
+        $('#b_id').val(data.id);
+        $('#b_time').val(data.break_time);
+        $('#b_type_id').val(data.break_type_id);
+        $('#b_menu').val(data.break_menu);
+        $('#b_pax').val(data.break_pax);
+        $('#b_remark').val(data.break_remark);
+
+        // ดึงค่ามาพักไว้ก่อน พร้อมเช็คว่าเป็นตัวเลขไหม
+        let price = parseFloat(data.break_price) || 0;
+        let pax = parseInt(data.break_pax) || 0;
+
+        // ใส่ค่าใน Input ราคาต่อหัว
+        $('#b_price').val(price.toFixed(2));
+
+        // คำนวณยอดรวม
+        let total = pax * price;
         $('#b_total_display').val(total.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }));
-    });
-});
 
-// อย่าลืมเพิ่มการล้างค่าในฟังก์ชัน resetForm() ของจารย์ด้วยนะครับ
-function resetForm() {
-    $('#breakForm')[0].reset();
-    $('#b_id').val(0);
-    $('#b_total_display').val('0.00');
-    $('#formHeader').removeClass('bg-info').addClass('bg-warning');
-    $('#btnSubmit').html('<i class="bi bi-save me-2"></i>บันทึกข้อมูลเบรก');
-}
+        window.scrollTo(0, 0);
+    }
+
+    function resetForm() {
+        document.getElementById('breakForm').reset();
+        document.getElementById('b_id').value = 0;
+        document.getElementById('formHeader').className = 'card-header bg-warning text-dark fw-bold';
+        document.getElementById('btnSubmit').className = 'btn btn-warning btn-sm fw-bold shadow-sm';
+    }
+
+    function deleteBreak(id) {
+        if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
+            let fd = new FormData();
+            fd.append('action', 'delete');
+            fd.append('id', id);
+
+            fetch('main_kitchen.php', {
+                method: 'POST',
+                body: fd
+            })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        // ลบ Row ออกจาก DataTable ทันที (เนียนมาก)
+                        table.row($(`#row-${id}`)).remove().draw(false);
+                    }
+                });
+        }
+    }
+    $(document).ready(function () {
+        // ฟังก์ชันคำนวณราคาสดๆ
+        $('#b_pax, #b_price').on('input', function () {
+            let pax = parseFloat($('#b_pax').val()) || 0;
+            let price = parseFloat($('#b_price').val()) || 0;
+            let total = pax * price;
+
+            // แสดงผลยอดรวมแบบใส่คอมมาและทศนิยม 2 ตำแหน่ง
+            $('#b_total_display').val(total.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }));
+        });
+    });
+
+    // อย่าลืมเพิ่มการล้างค่าในฟังก์ชัน resetForm() ของจารย์ด้วยนะครับ
+    function resetForm() {
+        $('#breakForm')[0].reset();
+        $('#b_id').val(0);
+        $('#b_total_display').val('0.00');
+        $('#formHeader').removeClass('bg-info').addClass('bg-warning');
+        $('#btnSubmit').html('<i class="bi bi-save me-2"></i>บันทึกข้อมูลเบรก');
+    }
 </script>
 <?php include "footer.php"; ?>

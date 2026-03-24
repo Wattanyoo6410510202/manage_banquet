@@ -102,7 +102,7 @@ require_once "header.php";
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label class="small fw-bold mb-1">การันตี (Pax)</label>
-                                <input type="number" name="guarantee_pax" id="m_pax" class="form-control"
+                                <input type="number" name="guarantee_pax" id="m_pax" class="form-control" value="1"
                                     placeholder="100">
                             </div>
                             <div class="col-6 mb-3">
@@ -162,35 +162,36 @@ require_once "header.php";
                         <table id="menuTable" class="table table-hover align-middle w-100">
                             <thead class="table-dark">
                                 <tr class="small text-uppercase">
-                                    <th>ประเภทอาหาร</th>
+                                   <th>รายการเมนู/เครื่องดื่ม</th>
                                     <th class="text-center">จำนวน</th>
                                     <th class="text-center">ราคา/หัว</th>
-                                    <th>รายการเมนู/เครื่องดื่ม</th>
+                                     <th>ประเภทอาหาร</th>
                                     <th class="text-">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody class="small">
                                 <?php while ($row = $menus->fetch_assoc()): ?>
                                     <tr id="row-<?= $row['id'] ?>">
-                                        <td class="col-type fw-bold text-success">
-                                            <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
+                                       <td>
+                                            <div class="mb-1">
+                                                <span class="badge bg-secondary">Food</span>
+                                                <small
+                                                    class=" menu-text"><?= nl2br(htmlspecialchars($row['menu_items'])) ?></small>
+                                            </div>
+                                            <div>
+                                                <span class="badge bg-info text-dark">Beverage</span>
+                                                <small
+                                                    class=" bev-text"><?= nl2br(htmlspecialchars($row['beverage_detail'])) ?></small>
+                                            </div>
                                         </td>
                                         <td class="col-pax text-center"><?= number_format($row['guarantee_pax']) ?></td>
                                         <td class="col-price text-center fw-bold text-primary">
                                             <?= number_format($row['price_per_pax'], 2) ?>
                                         </td>
-                                        <td>
-                                            <div class="mb-1">
-                                                <span class="badge bg-secondary">Food</span>
-                                                <small
-                                                    class="text-muted menu-text"><?= nl2br(htmlspecialchars($row['menu_items'])) ?></small>
-                                            </div>
-                                            <div>
-                                                <span class="badge bg-info text-dark">Beverage</span>
-                                                <small
-                                                    class="text-muted bev-text"><?= nl2br(htmlspecialchars($row['beverage_detail'])) ?></small>
-                                            </div>
+                                         <td class="col-type ">
+                                            <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
                                         </td>
+                                        
                                         <td>
                                             <button class="btn btn-sm text-primary border-0"
                                                 onclick='editMenu(<?= json_encode($row) ?>)'><i
@@ -263,16 +264,38 @@ require_once "header.php";
                         } else {
                             // --- กรณีเพิ่มใหม่: สร้างแถวใหม่เข้า DataTables ทันที ---
                             let newRow = menuTable.row.add([
-                                res.type_name,
-                                Number($('#m_pax').val()).toLocaleString(),
-                                Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
-                                `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
-                         <div><span class="badge bg-info text-dark">Beverage</span> <small class="text-muted bev-text">${$('#m_bev').val().replace(/\n/g, '<br>')}</small></div>`,
-                                `<div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary" onclick='editMenu(${JSON.stringify({ id: res.id, menu_type_id: $('#m_type_id').val(), guarantee_pax: $('#m_pax').val(), price_per_pax: $('#m_price').val(), menu_items: $('#m_items').val(), beverage_detail: $('#m_bev').val() })})'><i class="bi bi-pencil-square"></i></button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMenu(${res.id})"><i class="bi bi-trash"></i></button>
-                         </div>`
-                            ]).draw(false).node();
+    // 1. รายละเอียดเมนู (ย้ายมาไว้ตัวแรก)
+    `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
+     <div><span class="badge bg-info text-dark">Beverage</span> <small class="text-muted bev-text">${$('#m_bev').val().replace(/\n/g, '<br>')}</small></div>`,
+    
+    // 2. จำนวน Pax
+    Number($('#m_pax').val()).toLocaleString(),
+    
+    // 3. ราคาต่อหัว
+    Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
+    
+    // 4. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
+    res.type_name,
+    
+    // 5. ปุ่มจัดการ (เหมือนเดิม)
+    `<div class="d-flex justify-content-start align-items-center gap-3">
+    <button type="button" class="btn btn-link text-primary p-1 border-0 btn-sm" 
+        onclick='editMenu(${JSON.stringify({ 
+            id: res.id, 
+            menu_type_id: $('#m_type_id').val(), 
+            guarantee_pax: $('#m_pax').val(), 
+            price_per_pax: $('#m_price').val(), 
+            menu_items: $('#m_items').val(), 
+            beverage_detail: $('#m_bev').val() 
+        })})'>
+        <i class="bi bi-pencil-square"></i>
+    </button>
+    <button type="button" class="btn btn-link text-danger p-1 border-0" 
+        onclick="deleteMenu(${res.id})">
+        <i class="bi bi-trash"></i>
+    </button>
+</div>`
+]).draw(false).node();
 
                             $(newRow).attr('id', 'row-' + res.id); // ใส่ ID ให้ <tr> ใหม่
                             $(newRow).find('td:eq(0)').addClass('fw-bold text-success col-type');

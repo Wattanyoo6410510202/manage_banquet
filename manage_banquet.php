@@ -268,6 +268,11 @@ if ($q && mysqli_num_rows($q) > 0) {
                                     </a>
 
                                     <?php if ($can_manage && $row['status'] != 'Completed'): ?>
+
+                                        <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
+                                            title="จัดการบัญชี/ROI">
+                                            <i class="bi bi-cash-coin"></i>
+                                        </a>
                                         <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
                                             title="แก้ไข">
                                             <i class="bi bi-pencil-square"></i>
