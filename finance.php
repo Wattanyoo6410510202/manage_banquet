@@ -33,7 +33,7 @@ $kitchen_data = getKitchenCost($conn, $id);
 $kitchen_total = $kitchen_data['total'];
 
 // ป้องกัน Error กรณีคอลัมน์ชื่อไม่ตรง หรือไม่มีข้อมูล
-$main_price = (float)($data['total_amount'] ?? 0); 
+$main_price = (float) ($data['total_amount'] ?? 0);
 
 // 🎯 คำนวณรายรับทั้งหมด (ราคาขายหลัก + รายรับเสริมที่คีย์เพิ่ม)
 $grand_total_income = $main_price + $total_income;
@@ -129,8 +129,8 @@ function getKitchenCost($conn, $function_id)
     $res_m = $conn->query($sql_m);
 
     while ($m = $res_m->fetch_assoc()) {
-        $qty = (float)$m['menu_qty'];
-        $price_direct = (float)$m['menu_price'];
+        $qty = (float) $m['menu_qty'];
+        $price_direct = (float) $m['menu_price'];
 
         if ($price_direct > 0) {
             // ถ้าระบุราคาเหมา/ราคาต่อเซตไว้แล้ว ใช้เจ้านี้คูณเลย
@@ -140,12 +140,13 @@ function getKitchenCost($conn, $function_id)
             $lines = explode("\n", str_replace("\r", "", $m['menu_detail']));
             foreach ($lines as $line) {
                 $name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
-                if (empty($name)) continue;
+                if (empty($name))
+                    continue;
 
                 $name_esc = $conn->real_escape_string($name);
                 $q_p = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$name_esc%' LIMIT 1");
                 if ($p = $q_p->fetch_assoc()) {
-                    $total_cost += ((float)$p['price_per_pax'] * $qty);
+                    $total_cost += ((float) $p['price_per_pax'] * $qty);
                 }
             }
         }
@@ -156,12 +157,13 @@ function getKitchenCost($conn, $function_id)
     $res_k = $conn->query($sql_k);
 
     while ($k = $res_k->fetch_assoc()) {
-        $k_qty = (float)$k['k_qty'];
+        $k_qty = (float) $k['k_qty'];
         $k_lines = explode("\n", str_replace("\r", "", $k['k_item']));
-        
+
         foreach ($k_lines as $line) {
             $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
-            if (empty($k_name)) continue;
+            if (empty($k_name))
+                continue;
 
             $k_name_esc = $conn->real_escape_string($k_name);
             $unit_price = 0;
@@ -169,13 +171,13 @@ function getKitchenCost($conn, $function_id)
             // 🔍 หาในตารางเบรกก่อน
             $q_b = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_name_esc%' LIMIT 1");
             if ($b = $q_b->fetch_assoc()) {
-                $unit_price = (float)$b['break_price'];
-            } 
+                $unit_price = (float) $b['break_price'];
+            }
             // 🔍 ถ้าไม่เจอ หาในตาราง Details เผื่อเป็นกับข้าวสั่งเพิ่ม
             else {
                 $q_d = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_name_esc%' LIMIT 1");
                 if ($d = $q_d->fetch_assoc()) {
-                    $unit_price = (float)$d['price_per_pax'];
+                    $unit_price = (float) $d['price_per_pax'];
                 }
             }
             $total_cost += ($unit_price * $k_qty);
@@ -190,58 +192,82 @@ function getKitchenCost($conn, $function_id)
 include "header.php";
 ?>
 <style>
-@media print {
-    /* 1. ซ่อนทุกอย่างที่ไม่ใช่โซนตารางสรุป */
-    body * { visibility: hidden; }
-    #financeTableContainer, #financeTableContainer * { visibility: visible; }
-    
-    /* 2. จัดตำแหน่งโซนที่จะปริ้นให้ชิดขอบบนสุด */
-    #financeTableContainer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+    @media print {
 
-    /* 3. ซ่อนปุ่มลบ (ถังขยะ) และปุ่มกดย้อนกลับ ไม่ให้ติดไปในกระดาษ */
-    .btn-delete-finance, .no-print, .btn, i.bi-trash {
-        display: none !important;
-    }
+        /* 1. ซ่อนทุกอย่างที่ไม่ใช่โซนตารางสรุป */
+        body * {
+            visibility: hidden;
+        }
 
-    /* 4. ปรับตารางให้มีเส้นขอบชัดเจนในกระดาษ */
-    .table {
-        border-collapse: collapse !important;
-        width: 100% !important;
-    }
-    .table th, .table td {
-        border: 1px solid #dee2e6 !important;
-        padding: 8px !important;
-        color: #000 !important;
-    }
+        #financeTableContainer,
+        #financeTableContainer * {
+            visibility: visible;
+        }
 
-    /* 5. ปรับส่วนสรุปด้านล่างให้ดูสะอาดตา */
-    .card { border: none !important; }
-    .border-bottom { border-bottom: 1px solid #000 !important; }
-    .text-primary, .text-danger, .text-success { color: #000 !important; } /* ปริ้นขาวดำจะได้ชัด */
-}
+        /* 2. จัดตำแหน่งโซนที่จะปริ้นให้ชิดขอบบนสุด */
+        #financeTableContainer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 3. ซ่อนปุ่มลบ (ถังขยะ) และปุ่มกดย้อนกลับ ไม่ให้ติดไปในกระดาษ */
+        .btn-delete-finance,
+        .no-print,
+        .btn,
+        i.bi-trash {
+            display: none !important;
+        }
+
+        /* 4. ปรับตารางให้มีเส้นขอบชัดเจนในกระดาษ */
+        .table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #dee2e6 !important;
+            padding: 8px !important;
+            color: #000 !important;
+        }
+
+        /* 5. ปรับส่วนสรุปด้านล่างให้ดูสะอาดตา */
+        .card {
+            border: none !important;
+        }
+
+        .border-bottom {
+            border-bottom: 1px solid #000 !important;
+        }
+
+        .text-primary,
+        .text-danger,
+        .text-success {
+            color: #000 !important;
+        }
+
+        /* ปริ้นขาวดำจะได้ชัด */
+    }
 </style>
 <div class="container-fluid p-0">
     <div class="d-flex justify-content-between align-items-center mb-4 ">
-    <div>
-        <h4 class="mb-1 fw-bold text-dark">
-            <i class="bi bi-cash-coin text-primary"></i> บัญชีงาน: <?= htmlspecialchars($data['function_name']) ?>
-        </h4>
-        <small class="text-muted">จัดการรายรับ-รายจ่าย และสรุปผลกำไรสุทธิ</small>
+        <div>
+            <h4 class="mb-1 fw-bold text-dark">
+                <i class="bi bi-cash-coin text-primary"></i> บัญชีงาน: <?= htmlspecialchars($data['function_name']) ?>
+            </h4>
+            <small class="text-muted">จัดการรายรับ-รายจ่าย และสรุปผลกำไรสุทธิ</small>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="button" onclick="window.print();" class="btn btn-dark btn-sm">
+                <i class="bi bi-printer"></i> พิมพ์รายงาน
+            </button>
+        </div>
     </div>
-    
-    <div class="d-flex gap-2">
-        <button type="button" onclick="window.print();" class="btn btn-dark btn-sm">
-            <i class="bi bi-printer"></i> พิมพ์รายงาน
-        </button>
-    </div>
-</div>
 
     <div id="summaryWrapper">
         <div class="row g-3 mb-4">
@@ -303,7 +329,24 @@ include "header.php";
                             <input type="date" name="transaction_date" class="form-control"
                                 value="<?= date('Y-m-d') ?>">
                         </div>
-                        <button type="submit" class="btn btn-warning w-100 fw-bold">บันทึกข้อมูล</button>
+                        <div class="mb-3">
+                            <?php
+                            // ดึงสิทธิ์มาเช็ค (แนะนำให้ใส่ไว้บรรทัดบนสุดของไฟล์ครั้งเดียวพอครับ)
+                            $user_role = strtolower($_SESSION['role'] ?? 'viewer');
+
+                            // ✅ ถ้า "ไม่ใช่" viewer (แปลว่าเป็น admin, staff หรือสิทธิ์อื่นๆ) ให้โชว์ปุ่มบันทึก
+                            if ($user_role !== 'viewer'):
+                                ?>
+                                <button type="submit" class="btn btn-warning w-100 fw-bold">
+                                    <i class="bi bi-save me-1"></i> บันทึกข้อมูล
+                                </button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary w-100 fw-bold disabled"
+                                    style="cursor: not-allowed;">
+                                    <i class="bi bi-lock-fill me-1"></i> โหมดอ่านอย่างเดียว
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -311,14 +354,14 @@ include "header.php";
 
         <div class="col-md-8" id="financeTableContainer">
             <div class="d-none d-print-block mb-3 border-bottom pb-2">
-    <h5 class="mb-1 fw-bold text-dark">
-        รายงานสรุปบัญชี ID: #<?= $data['id'] ?>
-    </h5>
-    <div class="d-flex justify-content-between">
-        <span>งาน: <?= htmlspecialchars($data['function_name']) ?></span>
-        <span>วันที่พิมพ์: <?= date('d/m/Y') ?></span>
-    </div>
-</div>
+                <h5 class="mb-1 fw-bold text-dark">
+                    รายงานสรุปบัญชี ID: #<?= $data['id'] ?>
+                </h5>
+                <div class="d-flex justify-content-between">
+                    <span>งาน: <?= htmlspecialchars($data['function_name']) ?></span>
+                    <span>วันที่พิมพ์: <?= date('d/m/Y') ?></span>
+                </div>
+            </div>
             <div class="mb-4 ">
                 <?php include 'calculate_costs.php'; ?>
             </div>
@@ -352,11 +395,15 @@ include "header.php";
                                             <?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
                                         <td class="text-center d-print-none">
-    <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
-            data-id="<?= $f['id'] ?>">
-        <i class="bi bi-trash"></i>
-    </button>
-</td>
+                                            <?php if (strtolower($_SESSION['role'] ?? 'viewer') !== 'viewer'): ?>
+                                                <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
+                                                    data-id="<?= $f['id'] ?>">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <i class="bi bi-lock text-muted" title="อ่านอย่างเดียว"></i>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -364,39 +411,40 @@ include "header.php";
                     </table>
                 </div>
             </div>
-           <div class="row g-2 mt-2" id="summaryPrintZone">
-     
- 
-        <div class="d-none d-print-block d-flex flex-column gap-2">
-            <div class="d-flex justify-content-between">
-                <span class="text-muted small">ผลตอบแทน (ROI):</span>
-                <span class="fw-bold text-dark"><?= number_format($roi, 2) ?>%</span>
-              </div>
-              <div class="d-flex justify-content-between border-bottom pb-1">
-                <span class="text-muted small">รวมรายรับทั้งหมด:</span>
-                <span class="fw-bold text-primary"><?= number_format($main_price + $total_income, 2) ?> บาท</span>
-              </div>
-              <div class="d-flex justify-content-between border-bottom pb-1">
-                <span class="text-muted small">ต้นทุนรวมทั้งงาน:</span>
-                <span class="fw-bold text-danger"><?= number_format($total_cost, 2) ?> บาท</span>
-              </div>
-              <div class="d-flex justify-content-between border-bottom pb-1">
-                <span class="text-muted small">กำไรสุทธิ:</span>
-                <span class="fw-bold text-success"><?= number_format($profit, 2) ?> บาท</span>
-              </div>
-    
-             </div>
-          </div>
-        </div>
- 
-</div>
-<script>
-function exportToWord(elementId) {
-    // 1. ดึงเนื้อหา HTML จาก id ที่ระบุ
-    var content = document.getElementById(elementId).innerHTML;
+            <div class="row g-2 mt-2" id="summaryPrintZone">
 
-    // 2. จัดรูปแบบสำหรับ Word (ใส่ Style พื้นฐานเพื่อให้ตารางมีเส้นตอนเปิดใน Word)
-    var style = `
+
+                <div class="d-none d-print-block d-flex flex-column gap-2">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small">ผลตอบแทน (ROI):</span>
+                        <span class="fw-bold text-dark"><?= number_format($roi, 2) ?>%</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <span class="text-muted small">รวมรายรับทั้งหมด:</span>
+                        <span class="fw-bold text-primary"><?= number_format($main_price + $total_income, 2) ?>
+                            บาท</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <span class="text-muted small">ต้นทุนรวมทั้งงาน:</span>
+                        <span class="fw-bold text-danger"><?= number_format($total_cost, 2) ?> บาท</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <span class="text-muted small">กำไรสุทธิ:</span>
+                        <span class="fw-bold text-success"><?= number_format($profit, 2) ?> บาท</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script>
+        function exportToWord(elementId) {
+            // 1. ดึงเนื้อหา HTML จาก id ที่ระบุ
+            var content = document.getElementById(elementId).innerHTML;
+
+            // 2. จัดรูปแบบสำหรับ Word (ใส่ Style พื้นฐานเพื่อให้ตารางมีเส้นตอนเปิดใน Word)
+            var style = `
         <style>
             table { border-collapse: collapse; width: 100%; }
             th, td { border: 1px solid black; padding: 5px; text-align: left; }
@@ -409,108 +457,108 @@ function exportToWord(elementId) {
         </style>
     `;
 
-    var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
-            "xmlns:w='urn:schemas-microsoft-com:office:word' "+
-            "xmlns='http://www.w3.org/TR/REC-html40'>"+
-            "<head><meta charset='utf-8'>" + style + "</head><body>";
-    var footer = "</body></html>";
-    
-    var sourceHTML = header + content + footer;
+            var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+                "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+                "xmlns='http://www.w3.org/TR/REC-html40'>" +
+                "<head><meta charset='utf-8'>" + style + "</head><body>";
+            var footer = "</body></html>";
 
-    // 3. สร้าง Blob object (สำคัญมาก: ช่วยให้เบราว์เซอร์มองว่าเป็นไฟล์จริงๆ)
-    var blob = new Blob(['\ufeff', sourceHTML], {
-        type: 'application/msword'
-    });
+            var sourceHTML = header + content + footer;
 
-    // 4. สร้าง Link สำหรับดาวน์โหลด
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement("a");
-    link.href = url;
-    
-    // ตั้งชื่อไฟล์ (เอาชื่อชื่องานมาตั้งเป็นชื่อไฟล์)
-    link.download = 'สรุปบัญชี_<?= addslashes($data['function_name']) ?>.doc';
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    // 5. ลบ Link ทิ้งหลังดาวน์โหลดเสร็จ
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-}
-</script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    // ฟังก์ชันโหลดข้อมูลใหม่แบบ AJAX
-    function refreshFinanceData() {
-        fetch(`finance.php?id=<?= $id ?>&ajax=1`)
-            .then(res => res.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                // อัปเดตตาราง
-                const tableContent = doc.querySelector('#financeTableContent').innerHTML;
-                document.querySelector('#financeTableContainer .card').innerHTML = tableContent;
-
-                // อัปเดต Card ยอดเงินด้านบน
-                const summaryContent = doc.querySelector('#summaryCards').innerHTML;
-                document.querySelector('#summaryWrapper').innerHTML = `<div class="row g-3 mb-4">${summaryContent}</div>`;
+            // 3. สร้าง Blob object (สำคัญมาก: ช่วยให้เบราว์เซอร์มองว่าเป็นไฟล์จริงๆ)
+            var blob = new Blob(['\ufeff', sourceHTML], {
+                type: 'application/msword'
             });
-    }
 
-    // การบันทึกข้อมูล
-    document.getElementById('financeForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
+            // 4. สร้าง Link สำหรับดาวน์โหลด
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            link.href = url;
 
-        fetch('api/finance_handler.php?action=save', {
-            method: 'POST',
-            body: formData
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    this.reset();
-                    this.querySelector('[name="transaction_date"]').value = '<?= date('Y-m-d') ?>';
-                    refreshFinanceData();
-                } else {
-                    Swal.fire('ผิดพลาด', data.message, 'error');
-                }
-            });
-    });
+            // ตั้งชื่อไฟล์ (เอาชื่อชื่องานมาตั้งเป็นชื่อไฟล์)
+            link.download = 'สรุปบัญชี_<?= addslashes($data['function_name']) ?>.doc';
 
-    // การลบข้อมูล
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-delete-finance')) {
-            const btn = e.target.closest('.btn-delete-finance');
-            const id = btn.dataset.id;
+            document.body.appendChild(link);
+            link.click();
 
-            Swal.fire({
-                title: 'ยืนยันการลบ?',
-                text: "ข้อมูลนี้จะหายไปจากบัญชีของงานนี้",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'ลบรายการ',
-                cancelButtonText: 'ยกเลิก'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const fd = new FormData();
-                    fd.append('id', id);
-                    fetch('api/finance_handler.php?action=delete', {
-                        method: 'POST',
-                        body: fd
-                    })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                refreshFinanceData();
-                            }
-                        });
-                }
-            });
+            // 5. ลบ Link ทิ้งหลังดาวน์โหลดเสร็จ
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
-    });
-</script>
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // ฟังก์ชันโหลดข้อมูลใหม่แบบ AJAX
+        function refreshFinanceData() {
+            fetch(`finance.php?id=<?= $id ?>&ajax=1`)
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
 
-<?php include "footer.php"; ?>
+                    // อัปเดตตาราง
+                    const tableContent = doc.querySelector('#financeTableContent').innerHTML;
+                    document.querySelector('#financeTableContainer .card').innerHTML = tableContent;
+
+                    // อัปเดต Card ยอดเงินด้านบน
+                    const summaryContent = doc.querySelector('#summaryCards').innerHTML;
+                    document.querySelector('#summaryWrapper').innerHTML = `<div class="row g-3 mb-4">${summaryContent}</div>`;
+                });
+        }
+
+        // การบันทึกข้อมูล
+        document.getElementById('financeForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('api/finance_handler.php?action=save', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        this.reset();
+                        this.querySelector('[name="transaction_date"]').value = '<?= date('Y-m-d') ?>';
+                        refreshFinanceData();
+                    } else {
+                        Swal.fire('ผิดพลาด', data.message, 'error');
+                    }
+                });
+        });
+
+        // การลบข้อมูล
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.btn-delete-finance')) {
+                const btn = e.target.closest('.btn-delete-finance');
+                const id = btn.dataset.id;
+
+                Swal.fire({
+                    title: 'ยืนยันการลบ?',
+                    text: "ข้อมูลนี้จะหายไปจากบัญชีของงานนี้",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'ลบรายการ',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const fd = new FormData();
+                        fd.append('id', id);
+                        fetch('api/finance_handler.php?action=delete', {
+                            method: 'POST',
+                            body: fd
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    refreshFinanceData();
+                                }
+                            });
+                    }
+                });
+            }
+        });
+    </script>
+
+    <?php include "footer.php"; ?>

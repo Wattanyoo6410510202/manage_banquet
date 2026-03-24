@@ -1,6 +1,6 @@
 <?php
 include "config.php";
-
+$user_role = strtolower($_SESSION['role'] ?? 'viewer');
 // ==========================================
 // 🛡️ API SECTION (ต้องอยู่บนสุดเพื่อ AJAX)
 // ==========================================
@@ -53,11 +53,25 @@ if (isset($_POST['action'])) {
     }
 
     // --- 2. Logic การลบ (AJAX) ---
+    // --- 2. Logic การลบ (AJAX) ---
     if ($action == 'delete') {
+
+        // 🚫 ด่านที่ 1: ดักสิทธิ์ Viewer ห้ามลบเด็ดขาด
+        if ($user_role === 'viewer') {
+            ob_clean(); // เคลียร์ Output ที่อาจจะค้างอยู่
+            echo "คุณไม่มีสิทธิ์ลบข้อมูล (Viewer Mode)";
+            exit;
+        }
+
         $id = intval($_POST['id']);
+
+        // 🚀 ด่านที่ 2: ถ้าไม่ใช่ Viewer ถึงจะยอมให้รัน Query นี้
         if ($conn->query("DELETE FROM customers WHERE id=$id")) {
             ob_clean();
             echo "success";
+        } else {
+            ob_clean();
+            echo "error: " . $conn->error;
         }
         exit;
     }
@@ -76,7 +90,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
     <div class="row">
         <div class="col-md-4">
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-dark text-white fw-bold">
+                <div class="card-header bg-dark text-white fw-bold py-3">
                     <i class="bi bi-person-plus-fill me-2"></i>ข้อมูลลูกค้า / บริษัท
                 </div>
                 <div class="card-body">
@@ -116,11 +130,22 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-dark px-3 py-1">
-                                <i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า
-                            </button>
-                            <button type="button" class="btn btn-light btn-sm border"
-                                onclick="resetForm()">ยกเลิก</button>
+                            <?php if ($user_role !== 'viewer'): ?>
+                                <button type="submit" class="btn btn-dark px-3 py-1 fw-bold">
+                                    <i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า
+                                </button>
+                                <button type="button" class="btn btn-light btn-sm border"
+                                    onclick="resetForm()">ยกเลิก</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary px-3 py-1 fw-bold disabled"
+                                    style="cursor: not-allowed;">
+                                    <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
+                                </button>
+                                <div class="text-center">
+                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                        คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูลลูกค้า</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>

@@ -122,11 +122,24 @@ if ($q && mysqli_num_rows($q) > 0) {
                     </button>
                 </div>
 
-                <button id="deleteSelected" class="btn btn-danger btn-sm py-1 px-2 shadow-sm"
-                    style="display:none; font-size: 0.75rem;">
-                    <i class="bi bi-trash3-fill"></i>
-                    <span class="ms-1">ลบ (<span id="selectCount">0</span>)</span>
-                </button>
+                <?php
+                // เช็คสิทธิ์ก่อน ถ้าไม่ใช่ viewer ถึงจะยอมให้ปุ่มนี้ปรากฏในโครงสร้าง HTML
+                if ($user_role !== 'viewer'):
+                    ?>
+                    <button id="deleteSelected" class="btn btn-danger btn-sm py-1 px-2 shadow-sm"
+                        style="display:none; font-size: 0.75rem;">
+                        <i class="bi bi-trash3-fill"></i>
+                        <span class="ms-1">ลบ (<span id="selectCount">0</span>)</span>
+                    </button>
+                <?php
+                else:
+                    ?>
+                    <button class="btn btn-secondary btn-sm py-1 px-2 shadow-sm disabled"
+                        style="font-size: 0.75rem; cursor: not-allowed;">
+                        <i class="bi bi-eye-fill"></i>
+                        <span class="ms-1">โหมดดูข้อมูลเท่านั้น</span>
+                    </button>
+                <?php endif; ?>
             </div>
 
             <div class="d-flex align-items-center gap-2">
@@ -138,7 +151,7 @@ if ($q && mysqli_num_rows($q) > 0) {
 
                 $user_role = strtolower($_SESSION['role'] ?? '');
 
-                $allowed_roles = ['admin', 'staff', 'gm'];
+                $allowed_roles = ['admin', 'staff', 'gm', 'viewer'];
 
                 if (in_array($user_role, $allowed_roles)):
                     ?>
@@ -234,45 +247,56 @@ if ($q && mysqli_num_rows($q) > 0) {
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
 
-                                    <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                        <button type="button" class="btn btn-sm btn-success btn-approve-row"
-                                            data-id="<?= $row['id']; ?>" title="อนุมัติงาน">
-                                            <i class="bi bi-check-lg"></i> อนุมัติ
-                                        </button>
-                                    <?php endif; ?>
+                                    <?php
+                                    // เช็คสิทธิ์ก่อนว่าไม่ใช่ viewer ถึงจะโชว์ปุ่มจัดการสถานะ
+                                    if ($user_role !== 'viewer'):
+                                        ?>
+                                        <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                                            <button type="button" class="btn btn-sm btn-success btn-approve-row"
+                                                data-id="<?= $row['id']; ?>" title="อนุมัติงาน">
+                                                <i class="bi bi-check-lg"></i> อนุมัติ
+                                            </button>
+                                        <?php endif; ?>
 
-                                    <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
-                                        <button type="button" class="btn btn-sm btn-info text-white btn-status-change"
-                                            data-id="<?= $row['id']; ?>" data-status="In Progress" title="เริ่มดำเนินการ">
-                                            <i class="bi bi-play-fill"></i> ดำเนินการ
-                                        </button>
-                                    <?php endif; ?>
+                                        <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
+                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change"
+                                                data-id="<?= $row['id']; ?>" data-status="In Progress" title="เริ่มดำเนินการ">
+                                                <i class="bi bi-play-fill"></i> ดำเนินการ
+                                            </button>
+                                        <?php endif; ?>
 
-                                    <?php if ($row['status'] == 'In Progress'): ?>
-                                        <button type="button" class="btn btn-sm btn-primary btn-status-change"
-                                            data-id="<?= $row['id']; ?>" data-status="Completed" title="จบงานเรียบร้อย">
-                                            <i class="bi bi-flag-fill"></i> จบงาน
-                                        </button>
-                                    <?php endif; ?>
+                                        <?php if ($row['status'] == 'In Progress'): ?>
+                                            <button type="button" class="btn btn-sm btn-primary btn-status-change"
+                                                data-id="<?= $row['id']; ?>" data-status="Completed" title="จบงานเรียบร้อย">
+                                                <i class="bi bi-flag-fill"></i> จบงาน
+                                            </button>
+                                        <?php endif; ?>
 
-                                    <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-status-change"
-                                            data-id="<?= $row['id']; ?>" data-status="Cancelled" title="ยกเลิกงานนี้">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
-                                    <?php endif; ?>
+                                        <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change"
+                                                data-id="<?= $row['id']; ?>" data-status="Cancelled" title="ยกเลิกงานนี้">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        <?php endif; ?>
 
-                                    <div class="vr mx-1"></div> <a href="view.php?id=<?= $row['id']; ?>"
-                                        class="btn btn-sm btn-outline-primary" title="พิมพ์/ดูรายละเอียด">
+                                    <?php endif; // จบการเช็ค viewer สำหรับกลุ่มปุ่มสถานะ ?>
+
+                                    <div class="vr mx-1"></div>
+
+                                    <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"
+                                        title="พิมพ์/ดูรายละเอียด">
                                         <i class="bi bi-printer"></i>
                                     </a>
 
-                                    <?php if ($can_manage && $row['status'] != 'Completed'): ?>
+                                    <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
+                                        title="จัดการบัญชี/ROI">
+                                        <i class="bi bi-cash-coin"></i>
+                                    </a>
 
-                                        <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
-                                            title="จัดการบัญชี/ROI">
-                                            <i class="bi bi-cash-coin"></i>
-                                        </a>
+                                    <?php
+                                    // ส่วน แก้ไข และ ลบ (Viewer ห้ามเห็นแน่นอน)
+                                    if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'):
+                                        ?>
                                         <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
                                             title="แก้ไข">
                                             <i class="bi bi-pencil-square"></i>
@@ -282,6 +306,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     <?php endif; ?>
+
                                 </div>
                             </td>
                         </tr>

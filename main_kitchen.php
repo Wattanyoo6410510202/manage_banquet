@@ -1,6 +1,6 @@
 <?php
 include "config.php";
-
+$user_role = strtolower($_SESSION['role'] ?? 'viewer');
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 if (isset($_POST['action'])) {
     if (ob_get_length())
@@ -60,10 +60,31 @@ if (isset($_POST['action'])) {
     }
 
     if ($_POST['action'] == 'delete') {
-        if ($conn->query("DELETE FROM function_breaks WHERE id=$id")) {
-            echo json_encode(["status" => "success"]);
+
+        // 🚫 1. ดักสิทธิ์ Viewer ก่อนเลยจาร
+        if ($user_role === 'viewer') {
+            echo json_encode([
+                "status" => "error",
+                "message" => "สิทธิ์ Viewer ไม่สามารถลบข้อมูลช่วงเวลาพักได้"
+            ]);
+            exit;
+        }
+
+        // 🛡️ 2. ป้องกัน SQL Injection ด้วยการบังคับเป็นตัวเลข (intval)
+        $id = intval($_POST['id'] ?? 0);
+
+        if ($id > 0) {
+            if ($conn->query("DELETE FROM function_breaks WHERE id=$id")) {
+                echo json_encode(["status" => "success"]);
+            } else {
+                // ส่ง Error จาก Database กลับไปดูด้วยเผื่อลบไม่ได้เพราะติด Foreign Key
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "ลบไม่สำเร็จ: " . $conn->error
+                ]);
+            }
         } else {
-            echo json_encode(["status" => "error"]);
+            echo json_encode(["status" => "error", "message" => "ID ไม่ถูกต้อง"]);
         }
         exit;
     }
@@ -83,7 +104,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
     <div class="row">
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
-                <div id="formHeader" class="card-header bg-warning text-dark fw-bold">
+                <div id="formHeader" class="card-header bg-warning text-dark fw-bold py-3">
                     <i class="bi bi-cup-hot me-2"></i>จัดการ Coffee Break
                 </div>
                 <div class="card-body">
@@ -142,11 +163,22 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                         </div>
 
                         <div class="d-grid gap-2 mt-3">
-                            <button type="submit" id="btnSubmit" class="btn btn-warning fw-bold shadow-sm">
-                                <i class="bi bi-save me-2"></i>บันทึกข้อมูลเบรก
-                            </button>
-                            <button type="button" class="btn btn-light btn-sm border"
-                                onclick="resetForm()">ยกเลิก</button>
+                            <?php if ($user_role !== 'viewer'): ?>
+                                <button type="submit" id="btnSubmit" class="btn btn-warning fw-bold shadow-sm">
+                                    <i class="bi bi-save me-2"></i>บันทึกข้อมูลเบรก
+                                </button>
+                                <button type="button" class="btn btn-light btn-sm border"
+                                    onclick="resetForm()">ยกเลิก</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary px-3 py-1 fw-bold disabled"
+                                    style="cursor: not-allowed;">
+                                    <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
+                                </button>
+                                <div class="text-center">
+                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                        คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -157,7 +189,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
             <div class="card shadow-sm border-0">
                 <div
                     class="card-header bg-white fw-bold border-bottom d-flex justify-content-between align-items-center py-2">
-                    <h5 class="mb-0 fw-bold text-dark">
+                    <h5 class="mb-0 fw-bold text-dark s">
                         <i class="bi bi-cup-hot me-2"></i></i>รายการ Coffee Break
                     </h5>
 
@@ -181,8 +213,8 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                         <table id="breakTable" class="table table-hover align-middle" style="width:100%">
                             <thead class="table-dark small">
                                 <tr>
-                                    <th>เวลา / ประเภท</th>
                                     <th>เมนูของว่าง</th>
+                                    <th>เวลา / ประเภท</th>
                                     <th width="10%" class="text-center">จำนวน</th>
                                     <th width="12%" class="text-end">ราคา/หัว</th>
                                     <th width="12%" class="text-end">ยอดรวม</th>
@@ -192,6 +224,14 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                             <tbody id="breakTableBody" class="small">
                                 <?php while ($row = $breaks->fetch_assoc()): ?>
                                     <tr id="row-<?= $row['id'] ?>">
+
+                                        <td>
+                                            <div class="mb-1 b-menu-text"><?= nl2br(htmlspecialchars($row['break_menu'])) ?>
+                                            </div>
+                                            <small class="text-danger b-remark-text">
+                                                <?= $row['break_remark'] ? '* ' . htmlspecialchars($row['break_remark']) : '' ?>
+                                            </small>
+                                        </td>
                                         <td>
                                             <div class="fw-bold text-primary b-time">
                                                 <?= htmlspecialchars($row['break_time']) ?>
@@ -199,13 +239,6 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                             <div class="badge bg-light text-dark border fw-normal b-type-name">
                                                 <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <div class="mb-1 b-menu-text"><?= nl2br(htmlspecialchars($row['break_menu'])) ?>
-                                            </div>
-                                            <small class="text-danger b-remark-text">
-                                                <?= $row['break_remark'] ? '* ' . htmlspecialchars($row['break_remark']) : '' ?>
-                                            </small>
                                         </td>
                                         <td class="text-center fw-bold b-pax-text">
                                             <?= number_format($row['break_pax']) ?>
@@ -339,10 +372,11 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                         `<br><small class="text-danger">* ${d.break_remark}</small>` : '';
 
                     // เตรียมข้อมูลให้ครบ 6 คอลัมน์ (Index 0 - 5)
-                    const col0 = `<div class="fw-bold text-primary b-time">${d.break_time}</div>
-              <div class="badge bg-light text-dark border fw-normal b-type-name">${d.type_name}</div>`;
-                    const col1 = `<div class="mb-1 b-menu-text">${d.break_menu.replace(/\n/g, '<br>')}</div>
+
+                    const col0 = `<div class="mb-1 b-menu-text">${d.break_menu.replace(/\n/g, '<br>')}</div>
               ${d.break_remark ? `<small class="text-danger">* ${d.break_remark}</small>` : ''}`;
+                    const col1 = `<div class="fw-bold text-primary b-time">${d.break_time}</div>
+              <div class="badge bg-light text-dark border fw-normal b-type-name">${d.type_name}</div>`;
                     const col2 = `<div class="text-center fw-bold b-pax-text">${Number(d.break_pax).toLocaleString()}</div>`;
                     const col3 = `<div class="text-end b-price-text">${d.break_price}</div>`; // เพิ่มคอลัมน์ราคา
                     const col4 = `<div class="text-end fw-bold text-primary b-total-text">${d.break_total}</div>`; // เพิ่มคอลัมน์ยอดรวม
@@ -365,8 +399,6 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                         // กรณีเพิ่มใหม่: ต้องใส่ข้อมูลให้ครบทุกคอลัมน์เหมือนกันครับจาร
                         const newRow = table.row.add([col0, col1, col2, col3, col4, col5]).draw(false).node();
                         $(newRow).attr('id', 'row-' + d.id);
-                        $(newRow).addClass('table-success');
-                        setTimeout(() => $(newRow).removeClass('table-success'), 2000);
                     }
                     resetForm();
                 }

@@ -7,17 +7,33 @@ header('Content-Type: application/json');
 
 // 1. ดึงข้อมูลจาก Session มาเช็คสิทธิ์
 $current_user = $_SESSION['user_name'] ?? '';
-$user_role = $_SESSION['role'] ?? 'staff';
+$user_role = strtolower($_SESSION['role'] ?? 'viewer'); // ใช้ตัวเล็กเช็คแม่นยำกว่า
 
 if (isset($_POST['ids']) && is_array($_POST['ids'])) {
 
-    $ids = array_map('intval', $_POST['ids']); // ทำความสะอาด ID ทั้งหมด
+    // --- แก้ไขจุดนี้: ส่ง JSON แทนการ Echo Script ---
+    if ($user_role === 'viewer') {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'ขออภัย! คุณมีสิทธิ์เข้าชมอย่างเดียว (Viewer) ไม่สามารถลบข้อมูลได้'
+        ]);
+        exit;
+    }
+
+    $ids = array_map('intval', $_POST['ids']);
     $ids_string = implode(',', $ids);
 
     $conn->begin_transaction();
 
     try {
-        // 🚀 2. เช็คสิทธิ์เข้มงวด: ถ้าเป็น Staff ต้องห้ามลบงานคนอื่น หรือลบงานที่ Approve แล้ว
+        // 🚀 2. เช็คสิทธิ์เข้มงวด (ดักทั้ง Viewer และ Staff)
+
+        // ด่านที่ 1: ถ้าเป็น Viewer "ห้ามลบทุกกรณี"
+        if ($user_role === 'viewer') {
+            throw new Exception("ขออภัย! คุณมีสิทธิ์เข้าชมอย่างเดียว ไม่สามารถลบข้อมูลได้");
+        }
+
+        // ด่านที่ 2: ถ้าเป็น Staff เช็คสิทธิ์ความเป็นเจ้าของและสถานะ Approve
         if ($user_role === 'staff') {
             $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by != ? OR approve != 0)";
             $stmt_check = $conn->prepare($check_sql);
@@ -29,7 +45,6 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
                 throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
             }
         }
-
         // 3. จัดการรูปภาพ (ดึง Path มาลบไฟล์ใน Folder)
         $res_img = $conn->query("SELECT backdrop_img FROM functions WHERE id IN ($ids_string)");
         while ($row = $res_img->fetch_assoc()) {

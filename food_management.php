@@ -1,6 +1,6 @@
 <?php
 include "config.php";
-
+$user_role = strtolower($_SESSION['role'] ?? 'viewer');
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 // ต้องอยู่ก่อนการส่ง Output ใดๆ เพื่อให้ Redirect ทำงานได้
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
@@ -11,11 +11,31 @@ if (isset($_POST['action'])) {
     header('Content-Type: application/json'); // บอก Browser ว่าจะส่ง JSON นะ
 
     if ($_POST['action'] == 'delete') {
+
+        // 🚫 1. ด่านแรก: เช็คสิทธิ์ Viewer ห้ามลบรายละเอียดเมนู
+        if ($user_role === 'viewer') {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'ขออภัย! สิทธิ์ Viewer ไม่สามารถลบรายการอาหารได้'
+            ]);
+            exit;
+        }
+
+        // 🛡️ 2. Clean ID ให้ชัวร์ว่าเป็นตัวเลข (ป้องกัน SQL Injection)
         $id = intval($_POST['id'] ?? 0);
-        if ($conn->query("DELETE FROM function_menu_details WHERE id=$id")) {
-            echo json_encode(['status' => 'success']);
+
+        if ($id > 0) {
+            // 🚀 3. ถ้าสิทธิ์ผ่านและ ID ถูกต้อง ถึงจะยอมให้ลบ
+            if ($conn->query("DELETE FROM function_menu_details WHERE id=$id")) {
+                echo json_encode(['status' => 'success']);
+            } else {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'ลบไม่สำเร็จ: ' . $conn->error
+                ]);
+            }
         } else {
-            echo json_encode(['status' => 'error']);
+            echo json_encode(['status' => 'error', 'message' => 'ไม่พบ ID รายการที่ต้องการลบ']);
         }
         exit;
     }
@@ -125,11 +145,22 @@ require_once "header.php";
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" id="btnSubmit" class="btn btn-success fw-bold shadow-sm">
-                                <i class="bi bi-save me-1"></i> บันทึกข้อมูลเมนู
-                            </button>
-                            <button type="button" class="btn btn-light border btn-sm"
-                                onclick="resetMenuForm()">ล้างข้อมูล</button>
+                            <?php if ($user_role !== 'viewer'): ?>
+                                <button type="submit" id="btnSubmit" class="btn btn-success fw-bold shadow-sm">
+                                    <i class="bi bi-save me-1"></i> บันทึกข้อมูลเมนู
+                                </button>
+                                <button type="button" class="btn btn-light border btn-sm"
+                                    onclick="resetMenuForm()">ล้างข้อมูล</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary fw-bold shadow-sm disabled"
+                                    style="cursor: not-allowed;">
+                                    <i class="bi bi-eye-fill me-1"></i> โหมดอ่านอย่างเดียว (Viewer)
+                                </button>
+                                <div class="text-center">
+                                    <small class="text-muted" style="font-size: 0.7rem;">* คุณสามารถดูรายการเมนูได้เท่านั้น
+                                        ไม่สามารถแก้ไขได้</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -162,17 +193,17 @@ require_once "header.php";
                         <table id="menuTable" class="table table-hover align-middle w-100">
                             <thead class="table-dark">
                                 <tr class="small text-uppercase">
-                                   <th>รายการเมนู/เครื่องดื่ม</th>
+                                    <th>รายการเมนู/เครื่องดื่ม</th>
                                     <th class="text-center">จำนวน</th>
                                     <th class="text-center">ราคา/หัว</th>
-                                     <th>ประเภทอาหาร</th>
+                                    <th>ประเภทอาหาร</th>
                                     <th class="text-">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody class="small">
                                 <?php while ($row = $menus->fetch_assoc()): ?>
                                     <tr id="row-<?= $row['id'] ?>">
-                                       <td>
+                                        <td>
                                             <div class="mb-1">
                                                 <span class="badge bg-secondary">Food</span>
                                                 <small
@@ -188,10 +219,10 @@ require_once "header.php";
                                         <td class="col-price text-center fw-bold text-primary">
                                             <?= number_format($row['price_per_pax'], 2) ?>
                                         </td>
-                                         <td class="col-type ">
+                                        <td class="col-type ">
                                             <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
                                         </td>
-                                        
+
                                         <td>
                                             <button class="btn btn-sm text-primary border-0"
                                                 onclick='editMenu(<?= json_encode($row) ?>)'><i
@@ -264,30 +295,30 @@ require_once "header.php";
                         } else {
                             // --- กรณีเพิ่มใหม่: สร้างแถวใหม่เข้า DataTables ทันที ---
                             let newRow = menuTable.row.add([
-    // 1. รายละเอียดเมนู (ย้ายมาไว้ตัวแรก)
-    `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
+                                // 1. รายละเอียดเมนู (ย้ายมาไว้ตัวแรก)
+                                `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
      <div><span class="badge bg-info text-dark">Beverage</span> <small class="text-muted bev-text">${$('#m_bev').val().replace(/\n/g, '<br>')}</small></div>`,
-    
-    // 2. จำนวน Pax
-    Number($('#m_pax').val()).toLocaleString(),
-    
-    // 3. ราคาต่อหัว
-    Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
-    
-    // 4. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
-    res.type_name,
-    
-    // 5. ปุ่มจัดการ (เหมือนเดิม)
-    `<div class="d-flex justify-content-start align-items-center gap-3">
+
+                                // 2. จำนวน Pax
+                                Number($('#m_pax').val()).toLocaleString(),
+
+                                // 3. ราคาต่อหัว
+                                Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
+
+                                // 4. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
+                                res.type_name,
+
+                                // 5. ปุ่มจัดการ (เหมือนเดิม)
+                                `<div class="d-flex justify-content-start align-items-center gap-3">
     <button type="button" class="btn btn-link text-primary p-1 border-0 btn-sm" 
-        onclick='editMenu(${JSON.stringify({ 
-            id: res.id, 
-            menu_type_id: $('#m_type_id').val(), 
-            guarantee_pax: $('#m_pax').val(), 
-            price_per_pax: $('#m_price').val(), 
-            menu_items: $('#m_items').val(), 
-            beverage_detail: $('#m_bev').val() 
-        })})'>
+        onclick='editMenu(${JSON.stringify({
+                                    id: res.id,
+                                    menu_type_id: $('#m_type_id').val(),
+                                    guarantee_pax: $('#m_pax').val(),
+                                    price_per_pax: $('#m_price').val(),
+                                    menu_items: $('#m_items').val(),
+                                    beverage_detail: $('#m_bev').val()
+                                })})'>
         <i class="bi bi-pencil-square"></i>
     </button>
     <button type="button" class="btn btn-link text-danger p-1 border-0" 
@@ -295,7 +326,7 @@ require_once "header.php";
         <i class="bi bi-trash"></i>
     </button>
 </div>`
-]).draw(false).node();
+                            ]).draw(false).node();
 
                             $(newRow).attr('id', 'row-' + res.id); // ใส่ ID ให้ <tr> ใหม่
                             $(newRow).find('td:eq(0)').addClass('fw-bold text-success col-type');

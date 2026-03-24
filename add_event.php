@@ -2,7 +2,7 @@
 include "config.php";
 include "api/process_function.php";
 include "header.php";
-access_control(['Admin', 'GM', 'Staff']);
+access_control(['Admin', 'GM', 'Staff', 'Viewer']);
 
 
 // 1. ดึงข้อมูลบริษัท/โรงแรม
@@ -46,7 +46,20 @@ if ($target_company_id > 0) {
     }
 }
 ?>
+<?php
+// ดึงข้อมูลห้องประชุมทั้งหมด พร้อมเช็กสถานะการจอง (Join ทีเดียวจบ)
+$all_rooms_query = "SELECT r.*, 
+    (SELECT end_time FROM functions 
+     WHERE room_id = r.id AND approve = 1 AND end_time >= NOW() 
+     ORDER BY end_time DESC LIMIT 1) as active_booking_end
+    FROM meeting_rooms r WHERE r.status = 'active'";
+$all_rooms_res = $conn->query($all_rooms_query);
 
+$rooms_data = [];
+while ($row = $all_rooms_res->fetch_assoc()) {
+    $rooms_data[] = $row;
+}
+?>
 <style>
     .room-card.selected {
         border: 2px solid #198754 !important;
@@ -61,14 +74,11 @@ if ($target_company_id > 0) {
         background-color: #f8f9fa !important;
     }
 </style>
-<div style="position: fixed; bottom: 80px; right: 30px; z-index: 9999;">
-    <button type="button" id="aiMagicFill" class="btn btn-warning fw-bold p-3 border-3 border-white"
-        style="border-radius: 50px; min-width: 180px;">
-        <i class="bi bi-robot me-2"></i> AI สุ่มให้ครับจาร!
-    </button>
-</div>
 
-<script src="assets/ai_random_fill.js"></script>
+<script>
+    // ส่งข้อมูลจาก PHP ไปเป็นตัวแปร JavaScript JSON
+    const allRooms = <?= json_encode($rooms_data); ?>;
+</script>
 
 <div class="container-fluid p-0">
     <form method="POST" enctype="multipart/form-data">
@@ -81,9 +91,25 @@ if ($target_company_id > 0) {
 
                     <div style="width: 100%; max-width: 450px;">
                         <div class="d-flex align-items-center justify-content-end">
-                            <button name="save" type="submit" class="btn btn-success btn-sm px-3  flex-shrink-0">
-                                <i class="bi bi-cloud-check-fill me-2"></i> บันทึกข้อมูลฟังชั่น
-                            </button>
+
+                            <?php
+                            // แปลงเป็นตัวเล็กเพื่อกันพลาด และเช็คว่าไม่ใช่ viewer
+                            $current_role = strtolower($_SESSION['role'] ?? '');
+
+                            // ถ้า role ไม่ใช่ viewer ให้แสดงปุ่มบันทึก
+                            if ($current_role !== 'viewer'):
+                                ?>
+                                <button name="save" type="submit"
+                                    class="btn btn-success btn-sm px-3 flex-shrink-0 shadow-sm">
+                                    <i class="bi bi-cloud-check-fill me-2"></i> บันทึกข้อมูลฟังชั่น
+                                </button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary btn-sm px-3 flex-shrink-0 opacity-50"
+                                    disabled>
+                                    <i class="bi bi-eye me-2"></i> โหมดอ่านอย่างเดียว
+                                </button>
+                            <?php endif; ?>
+
                         </div>
                     </div>
                 </div>
@@ -99,18 +125,17 @@ if ($target_company_id > 0) {
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
                             <select name="company_id" class="form-select border-0 bg-light mb-3"
-                                onchange="updateCompanyLogo(this); window.location.href='?company_id=' + this.value"
-                                required style="border-radius: 10px; height: 42px;">
+                                onchange="updateCompanyLogo(this); renderRooms(this.value);" required
+                                style="border-radius: 10px; height: 42px;">
                                 <option value="">-- เลือกโรงแรม --</option>
-                                <?php if ($res_companies && $res_companies->num_rows > 0):
-                                    $res_companies->data_seek(0);
-                                    while ($row = $res_companies->fetch_assoc()):
-                                        $logo_path = !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png'; ?>
-                                        <option value="<?= $row['id']; ?>" data-logo="<?= $logo_path; ?>"
-                                            <?= ($target_company_id == $row['id']) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($row['company_name']); ?>
-                                        </option>
-                                    <?php endwhile; endif; ?>
+                                <?php
+                                $res_companies->data_seek(0);
+                                while ($row = $res_companies->fetch_assoc()): ?>
+                                    <option value="<?= $row['id']; ?>"
+                                        data-logo="<?= !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png'; ?>">
+                                        <?= htmlspecialchars($row['company_name']); ?>
+                                    </option>
+                                <?php endwhile; ?>
                             </select>
                             <div class="company-logo-preview border-0 rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto mb-2"
                                 style="width: 80px; height: 80px; overflow: hidden;">
@@ -177,73 +202,10 @@ if ($target_company_id > 0) {
                                 <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select
                                 Venue)
                             </label>
-                            <div class="row g-3">
-                                <?php if ($res_rooms && $res_rooms->num_rows > 0):
-                                    while ($r = $res_rooms->fetch_assoc()): ?>
-                                        <div class="col-md-4">
-                                            <div class="room-card p-3 rounded-4 border bg-white h-100 position-relative"
-                                                style="cursor: pointer;" onclick="selectRoom(this, '<?= $r['id'] ?>')">
-
-                                                <input type="radio" name="room_id" value="<?= $r['id'] ?>"
-                                                    class="d-none room-radio">
-
-                                                <div class="check-icon position-absolute"
-                                                    style="top: 10px; right: 10px; display: none;">
-                                                    <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                                                </div>
-
-                                                <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
-                                                <div class="mb-2">
-                                                    <p class="text-muted small mb-1">
-                                                        <i class="bi bi-layers me-1"></i> ชั้น:
-                                                        <?= htmlspecialchars($r['floor']) ?> |
-                                                        <i class="bi bi-aspect-ratio me-1"></i> พื้นที่:
-                                                        <?= number_format($r['total_sqm'], 2) ?> ตร.ม.
-                                                    </p>
-
-                                                    <p class="text-muted small mb-1">
-                                                        <i class="bi bi-people me-1"></i>
-                                                        Banquet: <span
-                                                            class="text-dark fw-bold"><?= number_format($r['cap_banquet']) ?></span>
-                                                        |
-                                                        Theatre: <span
-                                                            class="text-dark fw-bold"><?= number_format($r['cap_theatre']) ?></span>
-                                                    </p>
-
-                                                    <?php
-                                                    $room_id = $r['id'];
-                                                    // จารย์เช็กในตาราง booking ว่ามีรายการที่อนุมัติแล้วและยังไม่หมดเวลาหรือไม่
-                                                    $check_booking = $conn->query("SELECT end_time FROM functions 
-                                   WHERE room_id = '$room_id' 
-                                   AND approve = 1 
-                                   AND end_time >= NOW() 
-                                   ORDER BY end_time DESC LIMIT 1");
-
-                                                    if ($check_booking && $check_booking->num_rows > 0):
-                                                        $booking = $check_booking->fetch_assoc();
-                                                        ?>
-                                                        <p class="mb-0">
-                                                            <span class="badge bg-danger">
-                                                                <i class="bi bi-calendar-check me-1"></i>
-                                                                ใช้งานถึง: <?= date('d/m/Y H:i', strtotime($booking['end_time'])) ?>
-                                                            </span>
-                                                        </p>
-                                                    <?php else: ?>
-                                                        <p class="mb-0">
-                                                            <span class="badge bg-success">
-                                                                <i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน
-                                                            </span>
-                                                        </p>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endwhile; else: ?>
-                                    <div class="col-12 text-center py-5">
-                                        <p class="text-muted">โปรดเลือกบริษัทก่อน / ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้
-                                        </p>
-                                    </div>
-                                <?php endif; ?>
+                            <div class="row g-3" id="roomContainer">
+                                <div class="col-12 text-center py-5 text-muted">
+                                    โปรดเลือกบริษัทก่อนเพื่อแสดงรายชื่อห้องประชุม
+                                </div>
                             </div>
                         </div>
                         <div class="row text-dark">
@@ -797,6 +759,54 @@ if ($target_company_id > 0) {
         } catch (error) {
             console.error("Fetch Menu Error:", error);
         }
+    }
+
+    function renderRooms(companyId) {
+        const container = document.getElementById('roomContainer');
+        if (!companyId) {
+            container.innerHTML = '<div class="col-12 text-center py-5 text-muted">โปรดเลือกบริษัทก่อน</div>';
+            return;
+        }
+
+        // กรองเอาเฉพาะห้องของบริษัทที่เลือก
+        const filteredRooms = allRooms.filter(room => room.company_id == companyId);
+
+        if (filteredRooms.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center py-5 text-muted">ไม่พบข้อมูลห้องประชุมสำหรับบริษัทนี้</div>';
+            return;
+        }
+
+        // สร้าง HTML
+        let html = '';
+        filteredRooms.forEach(r => {
+            const bookingStatus = r.active_booking_end
+                ? `<span class="badge bg-danger"><i class="bi bi-calendar-check me-1"></i> ใช้งานถึง: ${r.active_booking_end}</span>`
+                : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน</span>`;
+
+            html += `
+            <div class="col-md-4">
+                <div class="room-card p-3 rounded-4 border bg-white h-100 position-relative"
+                    style="cursor: pointer;" onclick="selectRoom(this, '${r.id}')">
+                    <input type="radio" name="room_id" value="${r.id}" class="d-none room-radio">
+                    <div class="check-icon position-absolute" style="top: 10px; right: 10px; display: none;">
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">${r.room_name}</h6>
+                    <div class="mb-2">
+                        <p class="text-muted small mb-1">
+                            <i class="bi bi-layers me-1"></i> ชั้น: ${r.floor || '-'} |
+                            <i class="bi bi-aspect-ratio me-1"></i> พื้นที่: ${parseFloat(r.total_sqm).toFixed(2)} ตร.ม.
+                        </p>
+                        <p class="text-muted small mb-1">
+                            <i class="bi bi-people me-1"></i> Banquet: <b>${r.cap_banquet}</b> | Theatre: <b>${r.cap_theatre}</b>
+                        </p>
+                        <p class="mb-0">${bookingStatus}</p>
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        container.innerHTML = html;
     }
 </script>
 <?php include "footer.php"; ?>

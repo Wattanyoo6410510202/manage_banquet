@@ -1,6 +1,6 @@
 <?php
 include "config.php";
-
+$user_role = strtolower($_SESSION['role'] ?? 'viewer');
 // ==========================================
 // 🛡️ API SECTION (Logic) - จัดการแบบ JSON
 // ==========================================
@@ -50,12 +50,33 @@ if (isset($_POST['action'])) {
         exit;
     }
 
+    // --- 3. Logic การลบห้องประชุม (AJAX) ---
     if ($action == 'delete') {
-        $id = intval($_POST['id']);
-        if ($conn->query("DELETE FROM meeting_rooms WHERE id=$id")) {
-            echo json_encode(['status' => 'success']);
+
+        // 🚫 1. ดักสิทธิ์ Viewer ห้ามลบห้องประชุมเด็ดขาด
+        if ($user_role === 'viewer') {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'ขออภัย! สิทธิ์ Viewer ไม่สามารถลบข้อมูลห้องประชุมได้'
+            ]);
+            exit;
+        }
+
+        // 🛡️ 2. Clean ID ให้ชัวร์ว่าเป็นตัวเลข
+        $id = intval($_POST['id'] ?? 0);
+
+        if ($id > 0) {
+            // เช็คก่อนลบ เผื่อมีห้องประชุมนี้ถูกใช้งานอยู่ (Optional: ถ้าจารย์มีระบบตรวจสอบความสัมพันธ์)
+            if ($conn->query("DELETE FROM meeting_rooms WHERE id=$id")) {
+                echo json_encode(['status' => 'success']);
+            } else {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'ไม่สามารถลบได้: ' . $conn->error
+                ]);
+            }
         } else {
-            echo json_encode(['status' => 'error']);
+            echo json_encode(['status' => 'error', 'message' => 'ID ห้องประชุมไม่ถูกต้อง']);
         }
         exit;
     }
@@ -150,10 +171,22 @@ require_once "header.php";
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" id="btn-submit" class="btn btn-success fw-bold shadow-sm"><i
-                                    class="bi bi-save me-1"></i>บันทึกข้อมูลห้อง</button>
-                            <button type="button" class="btn btn-outline-secondary border-0"
-                                onclick="resetForm()">ยกเลิก</button>
+                            <?php if ($user_role !== 'viewer'): ?>
+                                <button type="submit" id="btn-submit" class="btn btn-dark fw-bold">
+                                    <i class="bi bi-save me-1"></i>บันทึกข้อมูลห้อง
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary border-0"
+                                    onclick="resetForm()">ยกเลิก</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-secondary fw-bold disabled"
+                                    style="cursor: not-allowed;">
+                                    <i class="bi bi-lock-fill me-1"></i>โหมดอ่านอย่างเดียว
+                                </button>
+                                <div class="text-center">
+                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                        คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>

@@ -1,6 +1,15 @@
 <?php
 include "config.php";
 
+$current_user = trim($_SESSION['user_name'] ?? '');
+$user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
+
+// 🛡️ ด่านที่ 1: เช็คสิทธิ์ (ตอนนี้ระบบรู้จัก $data และ $current_user แล้ว)
+if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'staff' && trim($data['created_by']) !== $current_user) {
+    // ใช้ JavaScript Redirect เพื่อเลี่ยงปัญหา Headers already sent
+    echo "<script>window.location.href='access_denied.php';</script>";
+    exit();
+}
 // ==========================================
 // 🛡️ API SECTION (Logic) - ต้องอยู่ก่อนการแสดงผล
 // ==========================================
@@ -63,7 +72,7 @@ require_once "header.php";
                         </div>
                         
                         <div class="d-grid gap-2">
-                            <button type="submit" id="btnSubmit" class="btn btn-primary fw-bold">
+                            <button type="submit" id="btnSubmit" class="btn btn-dark fw-bold">
                                 <i class="bi bi-save me-1"></i> บันทึกข้อมูล
                             </button>
                             <button type="button" class="btn btn-light btn-sm border-0" onclick="resetForm()">ยกเลิก</button>

@@ -6,6 +6,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (isset($_POST['save'])) {
+    $current_role = strtolower($_SESSION['role'] ?? '');
+    if ($current_role === 'viewer') {
+        echo "<script>
+                alert('ขออภัย! คุณมีสิทธิ์เข้าชมอย่างเดียว (Viewer) ไม่สามารถบันทึกข้อมูลได้');
+                window.location.href = 'access_denied.php'; 
+              </script>";
+        exit;
+    }
 
     // --- 1. รับค่าข้อมูลทั่วไป (เพิ่ม 2 ฟิลด์ที่ขาดไป) ---
     $company_id = !empty($_POST['company_id']) ? intval($_POST['company_id']) : null;

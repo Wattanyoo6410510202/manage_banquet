@@ -24,7 +24,7 @@ $result = $conn->query($sql);
             <p class="text-muted small mb-0">อนุมัติและใช้งาน</p>
         </div>
         <div class="col-md-5 text-md-end mt-3 mt-md-0">
-            <a href="add_quote.php" class="btn btn-primary btn-create">
+            <a href="add_quote.php" class="btn btn-dark btn-create">
                 <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
             </a>
         </div>

@@ -1,6 +1,15 @@
 <?php
 include "config.php";
 
+$current_user = trim($_SESSION['user_name'] ?? '');
+$user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
+
+// 🛡️ ด่านที่ 1: เช็คสิทธิ์ (ตอนนี้ระบบรู้จัก $data และ $current_user แล้ว)
+if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'staff' && trim($data['created_by']) !== $current_user) {
+    // ใช้ JavaScript Redirect เพื่อเลี่ยงปัญหา Headers already sent
+    echo "<script>window.location.href='access_denied.php';</script>";
+    exit();
+}
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 if (isset($_POST['action'])) {
     $action = $_POST['action'];
