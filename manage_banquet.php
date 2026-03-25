@@ -25,7 +25,7 @@ $sql = "SELECT f.*, c.company_name, c.logo_path,
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id
         $where_clause
-        ORDER BY f.id DESC";
+        ORDER BY f.modify DESC, f.id DESC";
 
 $q = mysqli_query($conn, $sql);
 $functions_data = [];
@@ -131,7 +131,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                         <i class="bi bi-trash3-fill"></i>
                         <span class="ms-1">ลบ (<span id="selectCount">0</span>)</span>
                     </button>
-                <?php
+                    <?php
                 else:
                     ?>
                     <button class="btn btn-secondary btn-sm py-1 px-2 shadow-sm disabled"
@@ -196,13 +196,12 @@ if ($q && mysqli_num_rows($q) > 0) {
                                         <?php $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'default-logo.png'; ?>
                                         <img src="<?= htmlspecialchars($logo); ?>" alt="Logo">
                                     </div>
-                                    <div class="fw-bold text-dark small">
-                                        <?= htmlspecialchars($row['company_name'] ?: '-'); ?>
-                                    </div>
                                 </div>
                             </td>
                             <td class="ps-4">
-                                <div class="fw-bold text-dark"><?= htmlspecialchars($row['function_name']); ?></div>
+                                <div class="fw-bold text-dark text-wrap" style="max-width: 400px;">
+                                    <?= htmlspecialchars($row['function_name']); ?>
+                                </div>
                                 <div class="text-muted small">
                                     <i class="bi bi-calendar-event me-1"></i> <?= $row['formatted_date']; ?>
                                 </div>

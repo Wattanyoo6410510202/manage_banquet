@@ -202,14 +202,14 @@ function is_active($pages)
                 </li>
                 <li>
                     <a href="calendar.php" class="<?php echo is_active('calendar.php'); ?>">
-                        <i class="bi bi-speedometer2"></i> ปฏิทิน
+                        <i class="bi bi-calendar"></i> ปฏิทิน
                     </a>
                 </li>
 
                 <li>
                     <a href="manage_banquet.php"
                         class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']); ?>">
-                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง (Banquet)
+                        <i class="bi bi-calendar-event"></i> จัดเลี้ยง (Banquet)
                     </a>
                 </li>
 

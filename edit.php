@@ -12,30 +12,39 @@ if (!$data) {
     exit;
 }
 
+// --- 🛡️ ส่วนควบคุมสิทธิ์ใหม่ (Manual Control) ---
 $current_user = trim($_SESSION['user_name'] ?? '');
-$user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
+$user_role    = strtolower(trim($_SESSION['role'] ?? 'viewer'));
+$created_by   = trim($data['created_by'] ?? ''); // ดึงค่าคนสร้างมา trim ป้องกันช่องว่าง
 
-// 🛡️ ด่านที่ 1: เช็คสิทธิ์ (ตอนนี้ระบบรู้จัก $data และ $current_user แล้ว)
-if ($user_role !== 'admin' && $user_role !== 'gm' && trim($data['created_by']) !== $current_user) {
-    // ใช้ JavaScript Redirect เพื่อเลี่ยงปัญหา Headers already sent
+// 🛡️ ด่านที่ 1: ใครเข้าหน้านี้ได้บ้าง? (Admin, GM, และเจ้าของงาน)
+$is_admin = ($user_role === 'admin');
+$is_gm    = ($user_role === 'gm');
+$is_owner = ($created_by === $current_user);
+
+// ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่เจ้าของงาน" => ดีดออกทันที
+if (!$is_admin && !$is_gm && !$is_owner) {
     echo "<script>window.location.href='access_denied.php';</script>";
     exit();
 }
 
-// 3. ถ้าผ่านด่านค่อยโหลด Layout และทำส่วนที่เหลือ
+// โหลด Header หลังจากเช็คสิทธิ์ผ่านแล้ว
 require_once "header.php";
-access_control('all_staff');
+// เอา access_control ออกตามที่จารย์บอก เพื่อไม่ให้มันไปบล็อก GM ซ้ำซ้อน
 
+// 🛡️ ด่านที่ 2: เช็คสถานะอนุมัติ (ล็อกเฉพาะ Staff ที่ไม่ใชเจ้าของ หรือสิทธิ์เล็ก)
+// ในที่นี้ให้ Admin และ GM แก้ไขได้เสมอ แม้จะ Approve แล้ว
+$can_bypass_approve = ($is_admin || $is_gm);
 
-
-// 🛡️ ด่านที่ 2: เช็คสถานะอนุมัติ (Admin แก้ได้เสมอ)
-if (isset($data['approve']) && $data['approve'] != 0 && $user_role !== 'admin') {
+if (isset($data['approve']) && $data['approve'] != 0 && !$can_bypass_approve) {
     echo "<script>
-        alert('งานนี้ถูกอนุมัติแล้ว ห้ามแก้ไขครับ!');
+        alert('จารย์! งานนี้ถูกอนุมัติแล้ว Staff ทั่วไปห้ามแก้ไขครับ!');
         window.location.href='manage_banquet.php';
     </script>";
     exit;
 }
+
+// --- 🛡️ จบส่วนควบคุมสิทธิ์ ---
 // --- 🛡️ จบส่วนควบคุมสิทธิ์ ---
 
 // 2. ดึงข้อมูลบริษัทสำหรับ Dropdown (ใช้แบบเดิมที่จารบอกว่าภาพขึ้น)
@@ -69,15 +78,22 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
 
 // ดึงข้อมูลห้องทั้งหมดเตรียมไว้ให้ JS
 // ดึงข้อมูลห้องพร้อมเช็กสถานะการจอง (เฉพาะรายการที่ Approve และยังไม่หมดเวลา)
+// ดึงข้อมูลห้องพร้อม "รายการวันที่จอง" (เฉพาะงานที่ Approve แล้ว)
+// ดึงข้อมูลห้องพร้อม "รายการวันที่จองทั้งหมด" (เฉพาะที่ Approve และเป็นอนาคต)
 $all_rooms_res = $conn->query("
     SELECT 
         r.*, 
-        (SELECT f.end_time
+        (SELECT GROUP_CONCAT(DATE_FORMAT(f.start_time, '%d/%m') -- 1. ลองเอา DISTINCT ออกก่อน
+                ORDER BY f.start_time ASC SEPARATOR ', ')
          FROM functions f 
          WHERE f.room_id = r.id 
-         AND f.approve = 1 
-         AND f.end_time >= NOW() 
-         ORDER BY f.end_time DESC LIMIT 1) as busy_until
+         AND f.status = 'In Progress'
+         -- 2. เช็คให้ชัวร์ว่างานที่ 2 วันที่มัน >= วันนี้จริงๆ
+         AND DATE(f.start_time) >= CURDATE() 
+         AND f.start_time IS NOT NULL
+        ) as booking_dates,
+        -- 3. เพิ่มคอลัมน์นี้นับจำนวนงานจริงๆ ในห้องนี้มาดูเลย (เอาไว้ Debug ใน Console)
+        (SELECT COUNT(*) FROM functions f WHERE f.room_id = r.id AND f.status = 'In Progress' AND DATE(f.start_time) >= CURDATE()) as debug_count
     FROM meeting_rooms r
     WHERE r.status = 'active' 
     ORDER BY r.floor ASC, r.room_name ASC
@@ -841,60 +857,56 @@ function filterRooms(companyId) {
     }
 
     // วนลูปสร้าง HTML ของ Card ห้องประชุม
-    filtered.forEach(room => {
-        const isSelected = (room.id == selectedRoomId);
+   filtered.forEach(room => {
+    const isSelected = (room.id == selectedRoomId);
+    
+    // ดึงรายการวันที่จอง (ถ้ามีค่าจะเป็น "25/03, 28/03" ถ้าไม่มีจะเป็น null)
+    const bookingList = room.booking_dates;
 
-        // เช็กสถานะ: สมมติว่าในวัตถุ room มี property 'busy_until' (เช่น "2024-05-20 18:00") 
-        // ถ้าห้องนั้นถูกอนุมัติ (approve=1) และยังไม่หมดเวลา
-        const isBusy = room.busy_until ? true : false;
+    const cardHtml = `
+        <div class="col-md-4 mb-3">
+            <div class="room-card p-3 rounded-4 border h-100 position-relative 
+                ${isSelected ? 'selected border-primary bg-light shadow-sm' : 'bg-white'}"
+                onclick="selectRoom(this, '${room.id}')" 
+                style="cursor: pointer; transition: all 0.2s;">
+                
+                <input type="radio" name="room_id" value="${room.id}" 
+                       class="d-none room-radio" ${isSelected ? 'checked' : ''}>
 
-        const cardHtml = `
-            <div class="col-md-4 mb-3">
-    <div class="room-card p-3 rounded-4 border h-100 position-relative 
-        ${isSelected ? 'selected border-primary bg-light' : 'bg-white'}"
-        onclick="selectRoom(this, '${room.id}')" 
-        style="cursor: pointer; transition: all 0.2s; ${isBusy ? 'border-style: dashed;' : ''}">
-        
-        <input type="radio" name="room_id" value="${room.id}" 
-               class="d-none room-radio" ${isSelected ? 'checked' : ''}>
-
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <span class="badge ${room.floor > 5 ? 'bg-warning text-dark' : 'bg-primary text-white'} rounded-pill">
-                <i class="bi bi-layers me-1"></i> ชั้น: ${room.floor}
-            </span>
-            <i class="bi bi-check-circle-fill check-icon text-success ${isSelected ? '' : 'd-none'}"></i>
-        </div>
-
-        <h6 class="fw-bold mb-1">${room.room_name}</h6>
-        
-        <p class="text-muted small mb-1">
-            <i class="bi bi-aspect-ratio me-1"></i> พื้นที่: ${parseFloat(room.total_sqm).toFixed(2)} ตร.ม.
-        </p>
-
-        <p class="text-muted small mb-2">
-            <i class="bi bi-people me-1"></i>
-            B: <span class="text-dark fw-bold">${room.cap_banquet}</span> |
-            T: <span class="text-dark fw-bold">${room.cap_theatre}</span>
-        </p>
-
-        <div class="mt-2">
-            ${isBusy ? `
-                <div class="d-flex flex-column gap-1">
-                    <span class="badge bg-danger bg-opacity-10 text-danger w-100 py-2 border border-danger border-opacity-25">
-                        <i class="bi bi-calendar-check me-1"></i> ใช้งานถึง: ${room.busy_until}
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge ${room.floor > 5 ? 'bg-warning text-dark' : 'bg-primary text-white'} rounded-pill">
+                        <i class="bi bi-layers me-1"></i> ชั้น: ${room.floor}
                     </span>
+                    <i class="bi bi-check-circle-fill check-icon text-success ${isSelected ? '' : 'd-none'}"></i>
                 </div>
-            ` : `
-                <span class="badge bg-success bg-opacity-10 text-success w-100 py-2 border border-success border-opacity-25">
-                    <i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน
-                </span>
-            `}
+
+                <h6 class="fw-bold mb-1">${room.room_name}</h6>
+                
+                <p class="text-muted small mb-1">
+                    <i class="bi bi-aspect-ratio me-1"></i> ${parseFloat(room.total_sqm).toFixed(2)} ตร.ม.
+                </p>
+
+                <div class="mt-2">
+                    ${bookingList ? `
+                        <div class="d-flex flex-column gap-1">
+                            <span class="text-danger fw-bold" style="font-size: 0.75rem;">
+                                <i class="bi bi-calendar-x-fill me-1"></i> วันที่มีใช้งานแล้ว:
+                            </span>
+                            <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                                ${bookingList}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="p-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25 text-success text-center small">
+                            <i class="bi bi-calendar-check me-1"></i> ว่าง / พร้อมใช้งาน
+                        </div>
+                    `}
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-        `;
-        container.insertAdjacentHTML('beforeend', cardHtml);
-    });
+    `;
+    container.insertAdjacentHTML('beforeend', cardHtml);
+});
 }
 
 // ฟังก์ชันคลิกเลือกห้อง

@@ -4,7 +4,7 @@ include "header.php"; ?>
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 
-<div class="container-fluid py-3">
+<div class="container-fluid p-0">
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
