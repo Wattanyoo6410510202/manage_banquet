@@ -152,13 +152,13 @@ require_once "header.php";
                                 <button type="button" class="btn btn-light border btn-sm"
                                     onclick="resetMenuForm()">ล้างข้อมูล</button>
                             <?php else: ?>
-                                <button type="button" class="btn btn-secondary fw-bold shadow-sm disabled"
+                                <button type="button" class="btn btn-secondary px-3 py-1 fw-bold disabled"
                                     style="cursor: not-allowed;">
-                                    <i class="bi bi-eye-fill me-1"></i> โหมดอ่านอย่างเดียว (Viewer)
+                                    <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
-                                    <small class="text-muted" style="font-size: 0.7rem;">* คุณสามารถดูรายการเมนูได้เท่านั้น
-                                        ไม่สามารถแก้ไขได้</small>
+                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                        คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
                                 </div>
                             <?php endif; ?>
                         </div>

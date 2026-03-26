@@ -178,9 +178,9 @@ require_once "header.php";
                                 <button type="button" class="btn btn-outline-secondary border-0"
                                     onclick="resetForm()">ยกเลิก</button>
                             <?php else: ?>
-                                <button type="button" class="btn btn-secondary fw-bold disabled"
+                                <button type="button" class="btn btn-secondary px-3 py-1 fw-bold disabled"
                                     style="cursor: not-allowed;">
-                                    <i class="bi bi-lock-fill me-1"></i>โหมดอ่านอย่างเดียว
+                                    <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
                                     <small class="text-danger" style="font-size: 0.7rem;">*
