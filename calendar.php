@@ -48,18 +48,17 @@ include "header.php"; ?>
             dayMaxEvents: 3,
             events: [
                 <?php
-                // ดึงข้อมูลโดยแยก main_id ออกมาให้ชัดเจน
-                $sql = "SELECT f.id AS main_id, f.function_name, f.room_name, f.booking_name, f.remark,
+                // JOIN meeting_rooms เพื่อเอาชื่อห้อง และดึง status มาให้เป๊ะๆ
+                $sql = "SELECT f.id AS main_id, f.function_name, f.booking_name, f.remark, f.status,
+                               r.room_name AS true_room_name,
                                s.schedule_date, s.schedule_hour, s.schedule_function, s.schedule_guarantee 
                         FROM functions f
+                        LEFT JOIN meeting_rooms r ON f.room_id = r.id
                         JOIN function_schedules s ON f.id = s.function_id";
                 
                 $q = mysqli_query($conn, $sql);
                 while ($row = mysqli_fetch_assoc($q)) {
                     $display_title = "[" . $row['schedule_hour'] . "] " . $row['schedule_function'];
-                    
-                    // สุ่มสีโดยอ้างอิงจาก main_id (งานเดียวกัน ID เดียวกัน สีจะเหมือนกัน)
-                    // เพิ่มสตริงเข้าไปเล็กน้อยเพื่อให้การสุ่มกระจายตัวดีขึ้น
                     $event_color = "#" . substr(md5($row['main_id'] . "banquet_color"), 0, 6);
                 ?>
                     {
@@ -70,10 +69,11 @@ include "header.php"; ?>
                         extendedProps: {
                             mainTitle: '<?php echo addslashes($row['function_name']); ?>',
                             time: '<?php echo $row['schedule_hour']; ?>',
-                            room: '<?php echo addslashes($row['room_name']); ?>',
+                            room: '<?php echo addslashes($row['true_room_name'] ?? 'ไม่ระบุห้อง'); ?>',
                             booking: '<?php echo addslashes($row['booking_name']); ?>',
                             guarantee: '<?php echo $row['schedule_guarantee']; ?>',
-                            remark: '<?php echo addslashes($row['remark']); ?>'
+                            remark: '<?php echo addslashes($row['remark']); ?>',
+                            status: '<?php echo trim($row['status']); ?>' 
                         }
                     },
                 <?php } ?>
@@ -81,32 +81,49 @@ include "header.php"; ?>
             eventClick: function (info) {
                 const props = info.event.extendedProps;
                 const eventId = info.event.id;
+                
+                // แปลง Status เป็นตัวเล็กเพื่อเช็คเงื่อนไขให้แม่นยำขึ้น
+                const st = props.status.toLowerCase();
+                let statusBadge = '';
+                
+                if(st === 'approved' || st === 'confirmed' || st === 'active') {
+                    statusBadge = '<span class="badge bg-success">อนุมัติแล้ว</span>';
+                } else if(st === 'pending') {
+                    statusBadge = '<span class="badge bg-warning text-dark">รออนุมัติ</span>';
+                } else if(st === 'cancelled') {
+                    statusBadge = '<span class="badge bg-danger">ยกเลิก</span>';
+                } else {
+                    statusBadge = `<span class="badge bg-secondary">${props.status}</span>`;
+                }
 
                 detailPanel.innerHTML = `
                 <div class="animate__animated animate__fadeIn">
                     <div class="mb-3">
-                        <small class="text-muted d-block">ชื่องานหลัก:</small>
-                        <h4 class="fw-bold mb-0">${props.mainTitle}</h4>
-                        <span class="badge bg-light text-dark border mt-1">ID งาน: ${eventId}</span>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted">ID งาน: #${eventId}</small>
+                            ${statusBadge}
+                        </div>
+                        <h4 class="fw-bold mb-0" style="color: #1a1a1a;">${props.mainTitle}</h4>
                     </div>
                     
                     <ul class="list-group list-group-flush border-top">
-                        <li class="list-group-item px-0"><strong>กิจกรรมย่อย:</strong><br>${info.event.title}</li>
-                        <li class="list-group-item px-0"><strong>เวลา:</strong> ${props.time} น.</li>
-                        <li class="list-group-item px-0"><strong>ห้องประชุม:</strong> ${props.room}</li>
-                        <li class="list-group-item px-0"><strong>ผู้จอง:</strong> ${props.booking}</li>
-                        <li class="list-group-item px-0 text-danger"><strong>จำนวน:</strong> ${props.guarantee} ท่าน</li>
-                        <li class="list-group-item px-0 small text-muted"><strong>หมายเหตุ:</strong><br>${props.remark || '-'}</li>
+                        <li class="list-group-item px-0"><strong><i class="bi bi-layers me-2"></i>กิจกรรม:</strong><br>${info.event.title}</li>
+                        <li class="list-group-item px-0"><strong><i class="bi bi-clock me-2"></i>เวลา:</strong> ${props.time} น.</li>
+                        <li class="list-group-item px-0 text-primary"><strong><i class="bi bi-geo-alt me-2"></i>ห้องประชุม:</strong> ${props.room}</li>
+                        <li class="list-group-item px-0"><strong><i class="bi bi-person me-2"></i>ผู้จอง:</strong> ${props.booking}</li>
+                        <li class="list-group-item px-0 text-danger"><strong><i class="bi bi-people me-2"></i>จำนวน:</strong> ${props.guarantee} ท่าน</li>
+                        <li class="list-group-item px-0 small text-muted"><strong><i class="bi bi-sticky me-2"></i>หมายเหตุ:</strong><br>${props.remark || '-'}</li>
                     </ul>
                     
                     <hr>
-                    <a href="edit.php?id=${eventId}" class="btn btn-dark w-100 fw-bold text-gold mb-2">
-                        <i class="bi bi-pencil-square me-2"></i> แก้ไขข้อมูลงานนี้
-                    </a>
-                    
-                    <a href="view.php?id=${eventId}" target="_blank" class="btn btn-outline-secondary w-100 btn-sm">
-                        <i class="bi bi-printer me-2"></i> พิมพ์เอกสาร (PDF)
-                    </a>
+                    <div class="d-grid gap-2">
+                        <a href="edit.php?id=${eventId}" class="btn btn-dark fw-bold text-gold">
+                            <i class="bi bi-pencil-square me-2"></i> แก้ไขข้อมูลงาน
+                        </a>
+                        <a href="view.php?id=${eventId}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-printer me-2"></i> พิมพ์เอกสาร (PDF)
+                        </a>
+                    </div>
                 </div>
                 `;
             }
@@ -116,29 +133,13 @@ include "header.php"; ?>
 </script>
 
 <style>
-    #calendar { font-size: 0.85rem; background: white; border-radius: 10px; }
+    #calendar { font-size: 0.85rem; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold; color: #333; }
-    .fc-button { padding: 3px 7px !important; font-size: 0.8rem !important; }
-    
-    /* สไตล์สำหรับ Event */
-    .fc-event {
-        cursor: pointer;
-        border: none !important;
-        padding: 1px 3px;
-        transition: transform 0.1s;
-    }
-    .fc-event:hover {
-        transform: scale(1.03);
-        z-index: 10;
-    }
-
+    .fc-event { cursor: pointer; border: none !important; padding: 2px 4px; border-radius: 4px; }
     .text-gold { color: #d4af37; }
     .bg-dark { background-color: #1a1a1a !important; }
-    .list-group-item { border-bottom: 1px dashed #eee; font-size: 0.9rem; }
-    
-    @media (min-width: 992px) {
-        .sticky-top { top: 20px !important; }
-    }
+    .list-group-item { border-bottom: 1px dashed #eee; padding-top: 12px; padding-bottom: 12px; }
+    .badge { font-weight: 500; padding: 0.5em 0.8em; }
 </style>
 
 <?php include "footer.php"; ?>
