@@ -223,7 +223,7 @@ require_once "header.php";
                                     <th>บริษัท</th>
                                     <th>รวม (sqm)</th>
                                     <th>เวที</th>
-                                    <th>จัดเลี่ยง</th>
+                                    <th>จัดเลี้ยง</th>
                                     <th>จัดการ</th>
                                 </tr>
                             </thead>

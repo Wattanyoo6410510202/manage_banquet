@@ -1,6 +1,6 @@
 <?php
 // includes/gatekeeper.php
-require_once 'db.php';
+require_once 'config.php';
 require_once 'auth.php';
 
 function protect($page_type)

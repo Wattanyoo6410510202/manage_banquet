@@ -1,10 +1,9 @@
 <?php
-// แนะนำให้ใช้ include_once เพื่อกัน error ถ้าหน้าหลักมี config อยู่แล้ว
 include_once 'config.php'; 
 
 $id = intval($_GET['id'] ?? 0);
 
-// 1. ดึงข้อมูลงาน
+// 1. ดึงข้อมูลหัวข้องาน
 $sql_func = "SELECT function_name FROM functions WHERE id = $id";
 $res_func = $conn->query($sql_func);
 $event = $res_func->fetch_assoc();
@@ -15,66 +14,63 @@ function cleanItemName($name) {
     return trim(preg_replace('/^[0-9\.\-\s]+/', '', $name));
 }
 
-// 2. ประมวลผลข้อมูล
-$all_raw_items = [];
-$sql_menu = "SELECT menu_detail, menu_qty FROM function_menus WHERE function_id = $id";
-$res_menu = $conn->query($sql_menu);
-while ($row = $res_menu->fetch_assoc()) {
+// --- ตะกร้าที่ 1: รายการอาหารหลัก (ดึงจาก function_menus -> ล้วงราคาจาก function_menu_details) ---
+$main_list = [];
+$sum_main = 0;
+$sql_m = "SELECT menu_detail, menu_qty FROM function_menus WHERE function_id = $id";
+$res_m = $conn->query($sql_m);
+
+while ($row = $res_m->fetch_assoc()) {
     foreach (preg_split('/\r\n|\r|\n/', $row['menu_detail']) as $l) {
         $name = cleanItemName($l);
-        if (!empty($name)) $all_raw_items[] = ['name' => $name, 'qty' => (float)$row['menu_qty'], 'type_id' => 0];
+        if (!empty($name)) {
+            $price = 0;
+            $name_esc = $conn->real_escape_string($name);
+            // ล้วงราคาจากตารางรายละเอียดเมนู
+            $q_price = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$name_esc%' LIMIT 1");
+            if ($p = $q_price->fetch_assoc()) {
+                $price = (float)$p['price_per_pax'];
+            }
+            $total = $price * (float)$row['menu_qty'];
+            $main_list[] = ['name' => $name, 'qty' => (float)$row['menu_qty'], 'price' => $price, 'total' => $total];
+            $sum_main += $total;
+        }
     }
 }
 
-$sql_kitchen = "SELECT k_item, k_qty, k_type_id FROM function_kitchens WHERE function_id = $id";
-$res_kitchen = $conn->query($sql_kitchen);
-while ($row = $res_kitchen->fetch_assoc()) {
+// --- ตะกร้าที่ 2: รายการเบรก/จัดเตรียม (ดึงจาก function_kitchens -> ล้วงราคาจาก function_breaks) ---
+$break_list = [];
+$sum_break = 0;
+$sql_k = "SELECT k_item, k_qty FROM function_kitchens WHERE function_id = $id";
+$res_k = $conn->query($sql_k);
+
+while ($row = $res_k->fetch_assoc()) {
     foreach (preg_split('/\r\n|\r|\n/', $row['k_item']) as $l) {
         $name = cleanItemName($l);
-        if (!empty($name)) $all_raw_items[] = ['name' => $name, 'qty' => (float)$row['k_qty'], 'type_id' => $row['k_type_id']];
-    }
-}
-
-$main_list = [];
-$break_list = [];
-$sum_main = 0;   
-$sum_break = 0;  
-
-foreach ($all_raw_items as $item) {
-    $name_esc = $conn->real_escape_string($item['name']);
-    $price = 0;
-    $q_break = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$name_esc%' LIMIT 1");
-    
-    if ($q_break && $b = $q_break->fetch_assoc()) {
-        $price = (float)$b['break_price'];
-        $is_break = true;
-    } else {
-        $q_main = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$name_esc%' LIMIT 1");
-        if ($q_main && $m = $q_main->fetch_assoc()) $price = (float)$m['price_per_pax'];
-        $is_break = ($item['type_id'] == 1 || $item['type_id'] == 3 || preg_match('/(เบรค|กาแฟ|ขนม|ของว่าง|น้ำ)/u', $item['name']));
-    }
-    
-    $sub = $price * $item['qty'];
-    $data = ['name' => $item['name'], 'qty' => $item['qty'], 'price' => $price, 'total' => $sub];
-    
-    if ($is_break) { 
-        $break_list[] = $data; 
-        $sum_break += $sub; 
-    } else { 
-        $main_list[] = $data; 
-        $sum_main += $sub; 
+        if (!empty($name)) {
+            $price = 0;
+            $name_esc = $conn->real_escape_string($name);
+            // ล้วงราคาจากตารางเบรก
+            $q_price = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$name_esc%' LIMIT 1");
+            if ($p = $q_price->fetch_assoc()) {
+                $price = (float)$p['break_price'];
+            }
+            $total = $price * (float)$row['k_qty'];
+            $break_list[] = ['name' => $name, 'qty' => (float)$row['k_qty'], 'price' => $price, 'total' => $total];
+            $sum_break += $total;
+        }
     }
 }
 ?>
 
-<div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
-    <div style="flex: 1; min-width: 320px;">
-        <h6 style="margin-bottom: 8px; color: #0d6efd; font-weight: bold;">[ รายการอาหารหลัก ]</h6>
-        <table border="1" cellpadding="5" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+<div style="display: flex; gap: 15px; flex-wrap: wrap; font-family: 'Sarabun', sans-serif;">
+    <div style="flex: 1; min-width: 350px;">
+        <h6 style="color: #0d6efd; font-weight: bold;">[ รายการอาหารหลัก ]</h6>
+        <table border="1" style="width: 100%; border-collapse: collapse; font-size: 13px;">
             <thead style="background: #f8f9fa;">
                 <tr>
-                    <th>รายการ</th>
-                    <th width="40">จำนวน</th>
+                    <th style="padding: 8px;">รายการ</th>
+                    <th width="50">จำนวน</th>
                     <th width="70">ราคา</th>
                     <th width="80">รวม</th>
                 </tr>
@@ -82,32 +78,29 @@ foreach ($all_raw_items as $item) {
             <tbody>
                 <?php foreach ($main_list as $r): ?>
                 <tr>
-                    <td><?= $r['name'] ?></td>
+                    <td style="padding: 8px;"><?= $r['name'] ?></td>
                     <td align="center"><?= number_format($r['qty']) ?></td>
-                    <td align="center" style="color: #666;"><?= number_format($r['price'], 2) ?></td>
-                    <td align="center"><strong><?= number_format($r['total'], 2) ?></strong></td>
+                    <td align="right"><?= number_format($r['price'], 2) ?></td>
+                    <td align="right"><strong><?= number_format($r['total'], 2) ?></strong></td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if(empty($main_list)): ?>
-                    <tr><td colspan="4" align="center">ไม่มีรายการ</td></tr>
-                <?php endif; ?>
             </tbody>
-            <tfoot style="background: #fdfdfe; font-weight: bold;">
+            <tfoot style="background: #f0f7ff; font-weight: bold;">
                 <tr>
-                    <td colspan="3" align="right">รวมต้นทุนอาหารหลัก</td>
-                    <td align="right" style="color: #0d6efd; font-size: 14px;"><?= number_format($sum_main, 2) ?></td>
+                    <td colspan="3" align="right" style="padding: 8px;">รวมต้นทุนอาหารหลัก</td>
+                    <td align="right" style="color: #0d6efd;"><?= number_format($sum_main, 2) ?></td>
                 </tr>
             </tfoot>
         </table>
     </div>
 
-    <div style="flex: 1; min-width: 320px;">
-        <h6 style="margin-bottom: 8px; color: #fd7e14; font-weight: bold;">[ รายการเบรค/ของว่าง ]</h6>
-        <table border="1" cellpadding="5" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <div style="flex: 1; min-width: 350px;">
+        <h6 style="color: #fd7e14; font-weight: bold;">[ รายการจัดเตรียมเบรก ]</h6>
+        <table border="1" style="width: 100%; border-collapse: collapse; font-size: 13px;">
             <thead style="background: #f8f9fa;">
                 <tr>
-                    <th>รายการ</th>
-                    <th width="40">จำนวน</th>
+                    <th style="padding: 8px;">รายการเบรก</th>
+                    <th width="50">จำนวน</th>
                     <th width="70">ราคา</th>
                     <th width="80">รวม</th>
                 </tr>
@@ -115,20 +108,17 @@ foreach ($all_raw_items as $item) {
             <tbody>
                 <?php foreach ($break_list as $r): ?>
                 <tr>
-                    <td><?= $r['name'] ?></td>
+                    <td style="padding: 8px;"><?= $r['name'] ?></td>
                     <td align="center"><?= number_format($r['qty']) ?></td>
-                    <td align="center" style="color: #666;"><?= number_format($r['price'], 2) ?></td>
-                    <td align="center" style="color: #d94100;"><strong><?= number_format($r['total'], 2) ?></strong></td>
+                    <td align="right"><?= number_format($r['price'], 2) ?></td>
+                    <td align="right" style="color: #d94100;"><strong><?= number_format($r['total'], 2) ?></strong></td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if(empty($break_list)): ?>
-                    <tr><td colspan="4" align="center">ไม่มีรายการ</td></tr>
-                <?php endif; ?>
             </tbody>
-            <tfoot style="background: #fdfdfe; font-weight: bold;">
+            <tfoot style="background: #fff8f5; font-weight: bold;">
                 <tr>
-                    <td colspan="3" align="right">รวมต้นทุนเบรค</td>
-                    <td align="right" style="color: #d94100; font-size: 14px;"><?= number_format($sum_break, 2) ?></td>
+                    <td colspan="3" align="right" style="padding: 8px;">รวมต้นทุนเบรก</td>
+                    <td align="right" style="color: #d94100;"><?= number_format($sum_break, 2) ?></td>
                 </tr>
             </tfoot>
         </table>

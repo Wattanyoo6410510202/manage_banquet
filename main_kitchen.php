@@ -325,7 +325,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                 extend: 'print',
                 className: 'd-none',
                 exportOptions: {
-                    columns: [0, 1, 2]
+                    columns: [0, 1, 2, 3, 4]
                 },
                 title: 'รายการเบรก' // ✅ ใส่คอมม่าหน้า title แล้วครับ
             },
