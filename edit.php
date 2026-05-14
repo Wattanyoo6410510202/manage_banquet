@@ -320,7 +320,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                         <label
                                             class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
                                         <input type="datetime-local" name="start_time"
-                                            class="form-control border-0 bg-light" required
+                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
                                             style="border-radius: 10px; height: 42px;"
                                             value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : (isset($data['start_time']) ? 'ERROR_DATA_EMPTY' : 'ERROR_NO_FIELD') ?>">
                                     </div>
@@ -329,7 +329,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                         <label
                                             class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน</label>
                                         <input type="datetime-local" name="end_time"
-                                            class="form-control border-0 bg-light" required
+                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
                                             style="border-radius: 10px; height: 42px;"
                                             value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
                                     </div>
@@ -928,6 +928,25 @@ function selectRoom(card, roomId) {
 document.addEventListener('DOMContentLoaded', function() {
     const currentComp = document.querySelector('select[name="company_id"]').value;
     if (currentComp) filterRooms(currentComp);
+
+    // 🛠️ เพิ่มระบบตรวจสอบ Conflict ก่อนกดอัปเดต
+    document.querySelector('form').addEventListener('submit', async function(e) {
+        const roomId = document.querySelector('input[name="room_id"]:checked')?.value;
+        const start = document.querySelector('input[name="start_time"]').value;
+        const end = document.querySelector('input[name="end_time"]').value;
+        const functionId = document.querySelector('input[name="function_id"]').value;
+
+        if (roomId && start && end) {
+            // เรียกใช้ API ตรวจสอบ
+            const response = await fetch(`api/validate_room_booking.php?room_id=${roomId}&start=${start}&end=${end}&exclude_id=${functionId}`);
+            const result = await response.json();
+
+            if (result.status === 'conflict') {
+                e.preventDefault(); // หยุดการอัปเดต
+                alert('ขออภัย! ห้องนี้มีรายการที่ได้รับการอนุมัติแล้วในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่นครับ');
+            }
+        }
+    });
 });
 </script>
 <?php include "footer.php"; ?>

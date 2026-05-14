@@ -351,20 +351,16 @@ include "header.php";
                         </div>
                         <div class="mb-3">
                             <?php
-                            // ดึงสิทธิ์มาเช็ค (แนะนำให้ใส่ไว้บรรทัดบนสุดของไฟล์ครั้งเดียวพอครับ)
-                            $user_role = strtolower($_SESSION['role'] ?? 'viewer');
-
-                            // ✅ ถ้า "ไม่ใช่" viewer (แปลว่าเป็น admin, staff หรือสิทธิ์อื่นๆ) ให้โชว์ปุ่มบันทึก
-                            if ($user_role !== 'viewer'):
+                            // ✅ ตรวจสอบสถานะ: ถ้า status ยังเป็น 'Pending' (อนุมัติ = 0) ถึงจะให้โชว์ปุ่มบันทึก
+                            if ($data['approve'] == 0):
                                 ?>
                                 <button type="submit" class="btn btn-warning w-100 fw-bold">
                                     <i class="bi bi-save me-1"></i> บันทึกข้อมูล
                                 </button>
                             <?php else: ?>
-                                <button type="button" class="btn btn-secondary w-100 fw-bold disabled"
-                                    style="cursor: not-allowed;">
-                                    <i class="bi bi-lock-fill me-1"></i> โหมดอ่านอย่างเดียว
-                                </button>
+                                <div class="alert alert-secondary text-center small py-2">
+                                    <i class="bi bi-lock-fill"></i> งานนี้อนุมัติแล้ว ไม่สามารถแก้ไขข้อมูลการเงินได้
+                                </div>
                             <?php endif; ?>
                         </div>
                     </form>

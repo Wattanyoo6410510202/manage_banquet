@@ -188,32 +188,37 @@ $(document).ready(function () {
               // --- ✅ ส่วนที่ 2: สร้างชุดปุ่มใหม่ (Action Buttons) ---
               let actionButtons = `<div class="d-flex justify-content-center gap-1">`;
 
+              // 1. ปุ่มอนุมัติ (เฉพาะ Admin/GM และงานที่ยังไม่ผ่าน)
+              if (response.approve == 0 && (userRole === 'admin' || userRole === 'gm')) {
+                actionButtons += `<button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="${id}"><i class="bi bi-check-lg"></i> อนุมัติ</button>`;
+              }
+
+              // 2. ปุ่มเปลี่ยนสถานะตามขั้นตอน
               if (newStatus === "Confirmed") {
-                actionButtons += `
-                                <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="${id}" data-status="In Progress" title="เริ่มดำเนินการ"><i class="bi bi-play-fill"></i> ดำเนินการ</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled" title="ยกเลิก"><i class="bi bi-x-lg"></i></button>
-                            `;
+                actionButtons += `<button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="${id}" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>`;
               } else if (newStatus === "In Progress") {
-                actionButtons += `
-                                <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="${id}" data-status="Completed" title="จบงาน"><i class="bi bi-flag-fill"></i> จบงาน</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled" title="ยกเลิก"><i class="bi bi-x-lg"></i></button>
-                            `;
+                actionButtons += `<button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="${id}" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>`;
               }
 
-              // ปุ่มพื้นฐาน (ดูรายละเอียด)
-              actionButtons += `
-                            <div class="vr mx-1"></div>
-                            <a href="view.php?id=${id}" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-printer"></i></a>
-                        `;
-
-              // ถ้ายังไม่จบ/ไม่ยกเลิก ให้มีปุ่มแก้ไขและลบ
+              // 3. ปุ่มยกเลิก
               if (newStatus !== "Completed" && newStatus !== "Cancelled") {
-                actionButtons += `
-                                <a href="edit.php?id=${id}" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="${id}" title="ลบ"><i class="bi bi-trash"></i></button>
-                            `;
+                actionButtons += `<button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>`;
               }
 
+              // 4. ปุ่มพื้นฐาน
+              actionButtons += `
+                <div class="vr mx-1"></div>
+                <a href="view.php?id=${id}" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-printer"></i></a>
+                <a href="finance.php?id=${id}" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี"><i class="bi bi-cash-coin"></i></a>
+              `;
+
+              // 5. ปุ่มแก้ไขและลบ (เฉพาะงานที่ยังไม่อนุมัติและยังไม่จบงาน)
+              if (userRole !== 'viewer' && response.approve == 0 && newStatus !== "Completed") {
+                actionButtons += `
+                  <a href="edit.php?id=${id}" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="${id}" title="ลบ"><i class="bi bi-trash"></i></button>
+                `;
+              }
               actionButtons += `</div>`;
 
               // ยัดปุ่มใหม่ลงช่อง Action (td.sticky-col)

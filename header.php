@@ -195,6 +195,8 @@ function is_active($pages)
             </div>
 
             <ul class="list-unstyled components">
+                <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
                 <li>
                     <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
                         <i class="bi bi-speedometer2"></i> แดชบอร์ด
@@ -205,6 +207,7 @@ function is_active($pages)
                         <i class="bi bi-calendar"></i> ปฏิทิน
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <li>
                     <a href="manage_banquet.php"
@@ -213,6 +216,7 @@ function is_active($pages)
                     </a>
                 </li>
 
+                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
                 <li>
                     <a href="quotation_list.php"
                         class="<?php echo is_active(['quotation_list.php', 'add_quote.php', 'quotation_view.php']); ?>">
@@ -224,20 +228,32 @@ function is_active($pages)
                         <i class="bi bi-person"></i> ลูกค้า
                     </a>
                 </li>
+                <?php endif; ?>
+                <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">การจัดการแผนก</small>
                 </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
                 <li>
                     <a href="checklist_mt.php" class="<?php echo is_active('checklist_mt.php'); ?>">
                         <i class="bi bi-tools"></i> ช่าง
                     </a>
                 </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeper'])): ?>
                 <li>
                     <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
                         <i class="bi bi-house-door"></i> แม่บ้านจัดเลี้ยง
                     </a>
                 </li>
+                <?php endif; ?>
 
+                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
                 </li>
@@ -256,27 +272,19 @@ function is_active($pages)
                         <i class="bi bi-menu-app"></i> การจัดการเมนูอาหาร
                     </a>
                 </li>
-                <?php
-                // เช็คว่าสิทธิ์ปัจจุบัน อยู่ในกลุ่มที่อนุญาต (Admin หรือ Staff) หรือไม่
-                if (in_array(strtolower($_SESSION['role']), ['admin', 'staff', 'gm'])):
-                    ?>
-                    <li>
-                        <a href="setting_master.php" class="<?php echo is_active('setting_master.php'); ?>">
-                            <i class="bi bi-plus-circle"></i> เพิ่มประเภทเมนูและเบรก
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
-                            <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
-                        </a>
-                    </li>
-
+                <li>
+                    <a href="setting_master.php" class="<?php echo is_active('setting_master.php'); ?>">
+                        <i class="bi bi-plus-circle"></i> เพิ่มประเภทเมนูและเบรก
+                    </a>
+                </li>
+                <li>
+                    <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
+                        <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
+                    </a>
+                </li>
                 <?php endif; ?>
 
-
-
-                <?php if (strtolower($_SESSION['role']) === 'admin'): ?>
+                <?php if ($role === 'admin'): ?>
                     <li class="mt-4 sidebar-header px-3">
                         <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>
                     </li>
@@ -285,7 +293,6 @@ function is_active($pages)
                             <i class="bi bi-gear-fill "></i> การตั้งค่า
                         </a>
                     </li>
-
                 <?php endif; ?>
 
             </ul>

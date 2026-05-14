@@ -238,14 +238,14 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน (Start
                                             Date & Time)</label>
                                         <input type="datetime-local" name="start_time"
-                                            class="form-control border-0 bg-light" required
+                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
                                             style="border-radius: 10px; height: 42px;">
                                     </div>
                                     <div class="col-md-6 ">
                                         <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน (End
                                             Date & Time)</label>
                                         <input type="datetime-local" name="end_time"
-                                            class="form-control border-0 bg-light" required
+                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
                                             style="border-radius: 10px; height: 42px;">
                                     </div>
                                 </div>
