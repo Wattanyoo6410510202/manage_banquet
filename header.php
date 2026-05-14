@@ -245,7 +245,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeper'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
                 <li>
                     <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
                         <i class="bi bi-house-door"></i> แม่บ้านจัดเลี้ยง

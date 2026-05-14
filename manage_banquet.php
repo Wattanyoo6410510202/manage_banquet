@@ -244,7 +244,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeper'])): ?>
+                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping'])): ?>
                                         <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-row"
                                                 data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
@@ -271,7 +271,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                         <i class="bi bi-printer"></i>
                                     </a>
                                     
-                                    <?php if (!in_array($user_role, ['technician', 'housekeeper'])): ?>
+                                    <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
                                         <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
                                             title="จัดการบัญชี/ROI">
                                             <i class="bi bi-cash-coin"></i>
@@ -419,7 +419,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </div>
                             </div>
                             ` : ''}
-                            ${(userRole === 'housekeeper' || userRole === 'admin' || userRole === 'gm') ? `
+                            ${(userRole === 'housekeeping' || userRole === 'admin' || userRole === 'gm') ? `
                             <div class="col-md-6">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">6. การตกแต่งและการดูแลทำความสะอาด</div>
