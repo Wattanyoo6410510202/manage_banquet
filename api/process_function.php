@@ -44,6 +44,28 @@ if (isset($_POST['save'])) {
     $start_date = $_POST['start_time'] ?? null;
     $end_date = $_POST['end_time'] ?? null;
 
+    // --- ตรวจสอบการชนกันของวันเวลา (Conflict Check - เช็คเฉพาะรายการที่อนุมัติแล้ว) ---
+    if ($room_id && $start_date && $end_date) {
+        // เพิ่มเงื่อนไข AND approve = 1 เพื่อเช็คเฉพาะรายการที่อนุมัติแล้ว
+        $check_sql = "SELECT id, function_name FROM functions 
+                      WHERE room_id = ? 
+                      AND (start_time <= ? AND end_time >= ?)
+                      AND approve = 1";
+        
+        $stmt_check = $conn->prepare($check_sql);
+        $stmt_check->bind_param("iss", $room_id, $end_date, $start_date);
+        $stmt_check->execute();
+        $res_check = $stmt_check->get_result();
+
+        if ($res_check->num_rows > 0) {
+            echo "<script>
+                    alert('ขออภัย! ห้องนี้มีรายการที่ได้รับการอนุมัติแล้วในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่นครับ');
+                    window.history.back();
+                  </script>";
+            exit;
+        }
+    }
+
     // --- 2. จัดการรูปภาพ ---
     $backdrop_img_path = $_POST['backdrop_img_path_ai'] ?? '';
     if (isset($_FILES['backdrop_img']) && $_FILES['backdrop_img']['error'] == 0) {

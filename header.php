@@ -225,6 +225,20 @@ function is_active($pages)
                     </a>
                 </li>
                 <li class="mt-4 sidebar-header px-3">
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">การจัดการแผนก</small>
+                </li>
+                <li>
+                    <a href="checklist_mt.php" class="<?php echo is_active('checklist_mt.php'); ?>">
+                        <i class="bi bi-tools"></i> ช่าง
+                    </a>
+                </li>
+                <li>
+                    <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
+                        <i class="bi bi-house-door"></i> แม่บ้านจัดเลี้ยง
+                    </a>
+                </li>
+
+                <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
                 </li>
                 <li>

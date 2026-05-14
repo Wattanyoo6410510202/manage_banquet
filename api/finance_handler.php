@@ -13,16 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $type = $_POST['type'] ?? 'cost';
         $detail = mysqli_real_escape_string($conn, $_POST['detail'] ?? '');
         $amount = floatval($_POST['amount'] ?? 0);
+        $payment_method = mysqli_real_escape_string($conn, $_POST['payment_method'] ?? '');
         $t_date = !empty($_POST['transaction_date']) ? $_POST['transaction_date'] : date('Y-m-d');
+        
+        // รับค่าจาก session เพื่อบันทึกผู้สร้าง
+        $created_by_role = $_SESSION['role'] ?? 'unknown';
+        $created_by_name = $_SESSION['user_name'] ?? 'unknown';
 
         if ($function_id === 0 || $amount <= 0 || empty($detail)) {
             echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วนหรือจำนวนเงินไม่ถูกต้อง']);
             exit;
         }
 
-        $sql = "INSERT INTO function_finance (function_id, type, detail, amount, transaction_date) VALUES (?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO function_finance (function_id, type, detail, amount, payment_method, transaction_date, created_by_role, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issds", $function_id, $type, $detail, $amount, $t_date);
+        $stmt->bind_param("issdssss", $function_id, $type, $detail, $amount, $payment_method, $t_date, $created_by_role, $created_by_name);
         
         if ($stmt->execute()) {
             echo json_encode(['status' => 'success', 'message' => 'บันทึกข้อมูลเรียบร้อยแล้ว']);

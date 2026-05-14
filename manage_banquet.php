@@ -1,6 +1,16 @@
 <?php
 include "config.php";
 include "header.php";
+
+// ฟังก์ชันจัดรูปแบบเบอร์โทรศัพท์
+function formatPhoneNumber($phone)
+{
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($phone) == 10) {
+        return substr($phone, 0, 3) . '-' . substr($phone, 3, 3) . '-' . substr($phone, 4);
+    }
+    return $phone;
+}
 ?>
 <?php
 $user_role = strtolower($_SESSION['role'] ?? '');
@@ -168,7 +178,8 @@ if ($q && mysqli_num_rows($q) > 0) {
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <!-- ตารางปกติ (สำหรับจอ Desktop) -->
+        <div class="table-responsive d-none d-md-block">
             <table id="banquetTable" class="table table-hover align-middle mb-0" style="width:100%">
                 <thead class="table-light">
                     <tr>
@@ -187,42 +198,40 @@ if ($q && mysqli_num_rows($q) > 0) {
                 <tbody>
                     <?php foreach ($functions_data as $row): ?>
                         <tr>
-                            <td>
-                                <input type="checkbox" class="row-checkbox form-check-input" value="<?= $row['id']; ?>">
+                            <td><input type="checkbox" class="row-checkbox form-check-input" value="<?= $row['id']; ?>">
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="me-2 hotel-logo-container">
                                         <?php $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'default-logo.png'; ?>
-                                        <img src="<?= htmlspecialchars($logo); ?>" alt="Logo">
+                                        <img src="<?= htmlspecialchars($logo); ?>" alt="Logo"
+                                            style="width:30px; height:30px; object-fit:contain;">
                                     </div>
                                 </div>
                             </td>
                             <td class="ps-4">
-                                <div class="fw-bold text-dark text-wrap" style="max-width: 400px;">
+                                <div class="fw-bold text-dark text-wrap function-name-link" style="max-width: 400px; cursor: pointer; text-decoration: underline;">
                                     <?= htmlspecialchars($row['function_name']); ?>
                                 </div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-calendar-event me-1"></i> <?= $row['formatted_date']; ?>
-                                </div>
+                                <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>
+                                    <?= $row['formatted_date']; ?></div>
                             </td>
                             <td>
                                 <div class="text-dark small"><?= htmlspecialchars($row['booking_name']); ?></div>
-                                <div class="text-muted x-small"><?= htmlspecialchars($row['phone']); ?></div>
+                                <div class="text-muted x-small"><?= htmlspecialchars(formatPhoneNumber($row['phone'])); ?>
+                                </div>
                             </td>
                             <td><span
                                     class="text-primary fw-bold"><?= number_format($row['total_amount'] ?: 0, 2); ?></span>
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark border fw-normal">
-                                    <i class="bi bi-hash me-1 text-gold"></i>
-                                    <?= htmlspecialchars($row['function_code']); ?>
-                                </span>
+                                <span class="badge bg-light text-dark border fw-normal"><i
+                                        class="bi bi-hash me-1 text-gold"></i><?= htmlspecialchars($row['function_code']); ?></span>
                             </td>
                             <td>
                                 <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-3">
-                                    <i class="bi <?= $row['status_info']['icon']; ?> me-1"></i>
-                                    <?= $row['status_info']['text']; ?>
+                                    <i
+                                        class="bi <?= $row['status_info']['icon']; ?> me-1"></i><?= $row['status_info']['text']; ?>
                                 </span>
                             </td>
                             <td>
@@ -236,82 +245,107 @@ if ($q && mysqli_num_rows($q) > 0) {
                                     <?php else: ?>
                                         <?php foreach ($row['attachments'] as $file): ?>
                                             <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank" class="text-danger"
-                                                title="<?= $file['label']; ?>" style="font-size: 1.2rem; line-height: 1;">
-                                                <i class="bi bi-file-earmark-pdf-fill"></i>
-                                            </a>
+                                                style="font-size: 1.2rem; line-height: 1;"><i
+                                                    class="bi bi-file-earmark-pdf-fill"></i></a>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
-
-                                    <?php
-                                    // เช็คสิทธิ์ก่อนว่าไม่ใช่ viewer ถึงจะโชว์ปุ่มจัดการสถานะ
-                                    if ($user_role !== 'viewer'):
-                                        ?>
+                                    <?php if ($user_role !== 'viewer'): ?>
                                         <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-row"
-                                                data-id="<?= $row['id']; ?>" title="อนุมัติงาน">
-                                                <i class="bi bi-check-lg"></i> อนุมัติ
-                                            </button>
+                                                data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
                                         <?php endif; ?>
-
                                         <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
                                             <button type="button" class="btn btn-sm btn-info text-white btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="In Progress" title="เริ่มดำเนินการ">
-                                                <i class="bi bi-play-fill"></i> ดำเนินการ
-                                            </button>
+                                                data-id="<?= $row['id']; ?>" data-status="In Progress"><i
+                                                    class="bi bi-play-fill"></i> ดำเนินการ</button>
                                         <?php endif; ?>
-
                                         <?php if ($row['status'] == 'In Progress'): ?>
                                             <button type="button" class="btn btn-sm btn-primary btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="Completed" title="จบงานเรียบร้อย">
-                                                <i class="bi bi-flag-fill"></i> จบงาน
-                                            </button>
+                                                data-id="<?= $row['id']; ?>" data-status="Completed"><i
+                                                    class="bi bi-flag-fill"></i> จบงาน</button>
                                         <?php endif; ?>
-
                                         <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
                                             <button type="button" class="btn btn-sm btn-outline-danger btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="Cancelled" title="ยกเลิกงานนี้">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                                data-id="<?= $row['id']; ?>" data-status="Cancelled"><i
+                                                    class="bi bi-x-lg"></i> ยกเลิก</button>
                                         <?php endif; ?>
-
-                                    <?php endif; // จบการเช็ค viewer สำหรับกลุ่มปุ่มสถานะ ?>
-
+                                    <?php endif; ?>
                                     <div class="vr mx-1"></div>
-
                                     <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"
                                         title="พิมพ์/ดูรายละเอียด">
                                         <i class="bi bi-printer"></i>
                                     </a>
-
                                     <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
                                         title="จัดการบัญชี/ROI">
                                         <i class="bi bi-cash-coin"></i>
                                     </a>
-
-                                    <?php
-                                    // ส่วน แก้ไข และ ลบ (Viewer ห้ามเห็นแน่นอน)
-                                    if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'):
-                                        ?>
+                                    <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'): ?>
                                         <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
                                             title="แก้ไข">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
-                                            data-id="<?= $row['id']; ?>">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                            data-id="<?= $row['id']; ?>"><i class="bi bi-trash"></i></button>
                                     <?php endif; ?>
-
                                 </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- รายการแบบ Card (สำหรับมือถือ) -->
+        <div class="d-md-none p-2">
+            <?php foreach ($functions_data as $row): ?>
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="function-name-link" style="cursor: pointer; text-decoration: underline;">
+                                <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($row['function_name']); ?></h6>
+                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['formatted_date']; ?></small>
+                            </div>
+                            <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-2">
+                                <?= $row['status_info']['text']; ?>
+                            </span>
+                        </div>
+                        
+                        <p class="text-dark small mb-1"><i class="bi bi-person me-1"></i> <?= htmlspecialchars($row['booking_name']); ?></p>
+                        <p class="text-muted small mb-2"><i class="bi bi-telephone me-1"></i> <?= formatPhoneNumber($row['phone']); ?></p>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                            <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'): ?>
+                                <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"><i class="bi bi-pencil-square"></i></a>
+                            <?php endif; ?>
+
+                            <?php if ($user_role !== 'viewer'): ?>
+                                <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                                    <button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
+                                <?php endif; ?>
+                                <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
+                                    <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $row['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>
+                                <?php endif; ?>
+                                <?php if ($row['status'] == 'In Progress'): ?>
+                                    <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $row['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>
+                                <?php endif; ?>
+                                <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $row['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="pt-2 border-top text-end">
+                            <span class="text-primary fw-bold">฿<?= number_format($row['total_amount'] ?: 0, 2); ?></span>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
@@ -326,6 +360,131 @@ if ($q && mysqli_num_rows($q) > 0) {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Modal รายละเอียดงาน -->
+<div class="modal fade" id="eventDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTitle">จัดการการเงิน</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showEventDetail(title, functionId) {
+        const modalBody = document.getElementById('modalBody');
+        const userRole = '<?php echo htmlspecialchars(strtolower($_SESSION['role'] ?? 'viewer')); ?>';
+        
+        document.getElementById('modalTitle').innerText = 'บัญชี: ' + title;
+
+        loadFinanceModal(functionId, userRole);
+    }
+
+    function loadFinanceModal(functionId, userRole) {
+        fetch(`finance.php?id=${functionId}&ajax=1`)
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const rows = doc.querySelectorAll('tbody tr');
+                let filteredRows = '';
+                
+                rows.forEach(row => {
+                    // Check if role cell contains current user role
+                    const roleBadge = row.querySelector('.badge:last-child');
+                    if (roleBadge && roleBadge.innerText.toLowerCase() === userRole) {
+                        filteredRows += row.outerHTML;
+                    }
+                });
+
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="card border-0 shadow-sm mb-5">
+                        <div class="card-header bg-dark text-white p-3 border-0">
+                            <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>บันทึกรายการบัญชีใหม่</h6>
+                        </div>
+                        <div class="card-body p-3 bg-light">
+                            <form id="modalFinanceForm">
+                                <input type="hidden" name="function_id" value="${functionId}">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted fw-bold mb-1">ประเภท</label>
+                                        <select name="type" class="form-select border-0 shadow-sm" required>
+                                            <option value="income">รายรับ</option>
+                                            <option value="cost">รายจ่าย</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted fw-bold mb-1">รายละเอียด</label>
+                                        <textarea name="detail" class="form-control border-0 shadow-sm" rows="1" placeholder="รายละเอียด" required></textarea>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small text-muted fw-bold mb-1">จำนวนเงิน</label>
+                                        <input type="number" step="0.01" name="amount" class="form-control border-0 shadow-sm" placeholder="0.00" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small text-muted fw-bold mb-1">วันที่</label>
+                                        <input type="date" name="transaction_date" class="form-control border-0 shadow-sm" value="<?= date('Y-m-d') ?>">
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                                            <i class="bi bi-check-lg me-1"></i>บันทึก
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    ${doc.querySelector('thead').innerHTML}
+                                </tr>
+                            </thead>
+                            <tbody id="modalTableBody" class="bg-white">
+                                ${filteredRows || '<tr><td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการสำหรับ Role ของคุณ</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                document.getElementById('modalFinanceForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    fetch('api/finance_handler.php?action=save', {
+                        method: 'POST',
+                        body: new FormData(this)
+                    }).then(res => res.json()).then(data => {
+                        if(data.status === 'success') {
+                            loadFinanceModal(functionId, userRole);
+                        } else {
+                            alert(data.message);
+                        }
+                    });
+                });
+
+                var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+                myModal.show();
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.function-name-link').forEach(el => {
+            el.addEventListener('click', () => {
+                const functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value || el.closest('.card')?.querySelector('input[type="checkbox"]')?.value;
+                const title = el.innerText.trim();
+                if (functionId) {
+                    showEventDetail(title, functionId);
+                }
+            });
+        });
+    });
+</script>
 
 <script src="assets/delete_handler.js"></script>
 <?php include "style/banquet_table.php"; ?>

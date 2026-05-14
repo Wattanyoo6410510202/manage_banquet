@@ -348,6 +348,18 @@ $active_tab = (isset($_GET['edit_user_id'])) ? 'user' : 'company';
                                                 <?php echo (isset($edit_user['role']) && $edit_user['role'] == 'Viewer') ? 'selected' : ''; ?>>
                                                 Viewer (ผู้ดูแลระบบ)
                                             </option>
+                                            <option value="Technician"
+                                                <?php echo (isset($edit_user['role']) && $edit_user['role'] == 'Technician') ? 'selected' : ''; ?>>
+                                                Technician (ช่างเทคนิค)
+                                            </option>
+                                            <option value="Housekeeping"
+                                                <?php echo (isset($edit_user['role']) && $edit_user['role'] == 'Housekeeping') ? 'selected' : ''; ?>>
+                                                Housekeeping (เจ้าหน้าที่ทำความสะอาด)
+                                            </option>
+                                            <option value="Procurement"
+                                                <?php echo (isset($edit_user['role']) && $edit_user['role'] == 'Procurement') ? 'selected' : ''; ?>>
+                                                Procurement (เจ้าหน้าที่จัดซื้อ)
+                                            </option>
                                         </select>
                                     </div>
                                     <button type="submit" class="btn btn-dark btn-sm px-3  flex-shrink-0"><i

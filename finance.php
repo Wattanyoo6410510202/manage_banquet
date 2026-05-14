@@ -86,13 +86,15 @@ if (isset($_GET['ajax'])) {
                         <th>รายการ</th>
                         <th class="text-end">รายรับ</th>
                         <th class="text-end">รายจ่าย</th>
+                        <th>ผู้บันทึก</th>
+                        <th>สิทธิ์</th>
                         <th class="text-center">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($finances)): ?>
                         <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
+                            <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($finances as $f): ?>
@@ -104,6 +106,8 @@ if (isset($_GET['ajax'])) {
                                 </td>
                                 <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                 </td>
+                                <td class="small text-muted"><?= htmlspecialchars($f['created_by_name'] ?? '-') ?></td>
+                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span></td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
                                         data-id="<?= $f['id'] ?>">
@@ -305,6 +309,13 @@ include "header.php";
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <h5 class="card-title mb-3 text-warning"><i class="bi bi-plus-circle"></i> บันทึกรายการ</h5>
+                    
+                    <!-- แสดงข้อมูลผู้บันทึก -->
+                    <div class="alert alert-light border small py-2 mb-3">
+                        <i class="bi bi-person-fill"></i> ผู้บันทึก: <b><?= htmlspecialchars($_SESSION['user_name'] ?? 'ไม่ระบุ') ?></b> 
+                        <span class="badge bg-secondary"><?= htmlspecialchars($_SESSION['role'] ?? 'viewer') ?></span>
+                    </div>
+
                     <form id="financeForm">
                         <input type="hidden" name="function_id" value="<?= $id ?>">
                         <div class="mb-3">
@@ -323,6 +334,15 @@ include "header.php";
                             <label class="form-label small fw-bold">จำนวนเงิน</label>
                             <input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00"
                                 required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ช่องทางการชำระเงิน</label>
+                            <select name="payment_method" class="form-select">
+                                <option value="Cash">เงินสด</option>
+                                <option value="Bank Transfer">โอนเงินผ่านธนาคาร</option>
+                                <option value="Credit Card">บัตรเครดิต</option>
+                                <option value="Other">อื่นๆ</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">วันที่รายการ</label>
@@ -375,13 +395,15 @@ include "header.php";
                                 <th>รายการ</th>
                                 <th class="text-end">รายรับ</th>
                                 <th class="text-end">รายจ่าย</th>
+                                <th>ช่องทาง</th>
+                                <th>สิทธิ์</th>
                                 <th class="text-center d-print-none">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($finances)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($finances as $f): ?>
@@ -391,9 +413,10 @@ include "header.php";
                                         <td class="text-end text-success">
                                             <?= $f['type'] == 'income' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
-                                        <td class="text-end text-danger">
-                                            <?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
+                                        <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
+                                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['payment_method'] ?? '-') ?></span></td>
+                                        <td><span class="badge bg-secondary"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span></td>
                                         <td class="text-center d-print-none">
                                             <?php if (strtolower($_SESSION['role'] ?? 'viewer') !== 'viewer'): ?>
                                                 <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
