@@ -18,6 +18,7 @@ $res = $conn->query($sql);
 
 $mt_checklists = $conn->query("SELECT * FROM master_checklist_mt ORDER BY id ASC");
 $hk_checklists = $conn->query("SELECT * FROM master_checklist_hk ORDER BY id ASC");
+$bk_checklists = $conn->query("SELECT * FROM master_checklist_bk ORDER BY id ASC");
 
 if ($res && $data = $res->fetch_assoc()) {
     $mt_items = [];
@@ -26,11 +27,15 @@ if ($res && $data = $res->fetch_assoc()) {
     $hk_items = [];
     while($row = $hk_checklists->fetch_assoc()) $hk_items[] = $row;
 
+    $bk_items = [];
+    while($row = $bk_checklists->fetch_assoc()) $bk_items[] = $row;
+
     echo json_encode([
         'status' => 'success', 
         'data' => $data,
         'mt_list' => $mt_items,
-        'hk_list' => $hk_items
+        'hk_list' => $hk_items,
+        'bk_list' => $bk_items
     ]);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Data not found']);

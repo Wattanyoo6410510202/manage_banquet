@@ -209,12 +209,14 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff', 'housekeeping', 'technician'])): ?>
                 <li>
                     <a href="manage_banquet.php"
                         class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']); ?>">
                         <i class="bi bi-calendar-event"></i> จัดเลี้ยง (Banquet)
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
                 <li>
@@ -249,6 +251,14 @@ function is_active($pages)
                 <li>
                     <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
                         <i class="bi bi-house-door"></i> แม่บ้านจัดเลี้ยง
+                    </a>
+                </li>
+                <?php endif; ?>
+                
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
+                <li>
+                    <a href="checklist_bk.php" class="<?php echo is_active('checklist_bk.php'); ?>">
+                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง
                     </a>
                 </li>
                 <?php endif; ?>

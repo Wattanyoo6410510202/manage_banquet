@@ -395,6 +395,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 const data = response.data;
                 const mtList = response.mt_list || [];
                 const hkList = response.hk_list || [];
+                const bkList = response.bk_list || [];
                 
                 const renderChecklist = (list, targetTextareaName) => list.map(item => `
                     <div class="form-check">
@@ -407,12 +408,16 @@ if ($q && mysqli_num_rows($q) > 0) {
                     <form id="modalInfoForm" enctype="multipart/form-data">
                         <input type="hidden" name="function_id" value="${functionId}">
                         <div class="row mb-4">
-                            ${(userRole === 'technician' || userRole === 'admin' || userRole === 'gm') ? `
+                            ${(userRole === 'technician' || userRole === 'admin' || userRole === 'gm' || userRole === 'banquet_staff') ? `
                             <div class="col-md-6">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">4. ด้านเทคนิคและงานช่าง</div>
                                     <div class="card-body">
-                                        <textarea name="banquet_style" class="form-control mb-2" placeholder="การจัดงานเลี้ยง">${data.banquet_style || ''}</textarea>
+                                        <label class="small fw-bold">การจัดงานเลี้ยง:</label>
+                                        <textarea name="banquet_style" id="bk_textarea" class="form-control mb-2" placeholder="การจัดงานเลี้ยง">${data.banquet_style || ''}</textarea>
+                                        <div class="p-2 border bg-white rounded mb-3" id="bk_checklist_container">${renderChecklist(bkList, 'bk_textarea')}</div>
+                                        
+                                        <label class="small fw-bold">งานช่างและภาพเสียง:</label>
                                         <textarea name="equipment" id="mt_textarea" class="form-control mb-3" placeholder="งานช่างและภาพเสียง">${data.equipment || ''}</textarea>
                                         <div class="p-2 border bg-white rounded" id="mt_checklist_container">${renderChecklist(mtList, 'mt_textarea')}</div>
                                     </div>
