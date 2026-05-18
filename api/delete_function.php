@@ -20,16 +20,22 @@ if (!empty($ids) && is_array($ids)) {
 
     $conn->begin_transaction();
     try {
-        // 🚀 2. เช็คสิทธิ์ก่อนลบ: ถ้าเป็น Staff ต้องลบได้เฉพาะงานที่ตัวเองสร้าง และยังไม่ Approve
-        if ($user_role === 'staff') {
-            $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by != ? OR approve != 0)";
-            $stmt_check = $conn->prepare($check_sql);
-            $stmt_check->bind_param("s", $current_user);
-            $stmt_check->execute();
-            $res_check = $stmt_check->get_result();
+        // 🚀 2. เช็คสิทธิ์ก่อนลบ
+        if ($user_role !== 'admin') {
+            // ถ้าเป็น Staff ต้องลบได้เฉพาะงานที่ตัวเองสร้าง และยังไม่ Approve
+            if ($user_role === 'staff') {
+                $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by != ? OR approve != 0)";
+                $stmt_check = $conn->prepare($check_sql);
+                $stmt_check->bind_param("s", $current_user);
+                $stmt_check->execute();
+                $res_check = $stmt_check->get_result();
 
-            if ($res_check->num_rows > 0) {
-                throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
+                if ($res_check->num_rows > 0) {
+                    throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
+                }
+            } else {
+                // Roles อื่นที่ไม่ใช่ admin และ staff ห้ามลบ
+                throw new Exception("จาร! จารไม่มีสิทธิ์ลบข้อมูลนะครับ");
             }
         }
 

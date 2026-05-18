@@ -20,10 +20,11 @@ $created_by   = trim($data['created_by'] ?? ''); // ดึงค่าคนส�
 // 🛡️ ด่านที่ 1: ใครเข้าหน้านี้ได้บ้าง? (Admin, GM, และเจ้าของงาน)
 $is_admin = ($user_role === 'admin');
 $is_gm    = ($user_role === 'gm');
+$is_procurement = ($user_role === 'procurement');
 $is_owner = ($created_by === $current_user);
 
-// ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่เจ้าของงาน" => ดีดออกทันที
-if (!$is_admin && !$is_gm && !$is_owner) {
+// ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่เจ้าของงาน" และ "ไม่ใช่ Procurement" => ดีดออกทันที
+if (!$is_admin && !$is_gm && !$is_owner && !$is_procurement) {
     echo "<script>window.location.href='access_denied.php';</script>";
     exit();
 }

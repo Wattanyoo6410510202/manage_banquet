@@ -196,7 +196,7 @@ function is_active($pages)
 
             <ul class="list-unstyled components">
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
-                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li>
                     <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
                         <i class="bi bi-speedometer2"></i> แดชบอร์ด
@@ -209,7 +209,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff', 'housekeeping', 'technician'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff', 'housekeeping', 'technician', 'procurement'])): ?>
                 <li>
                     <a href="manage_banquet.php"
                         class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']); ?>">
@@ -218,7 +218,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li>
                     <a href="quotation_list.php"
                         class="<?php echo is_active(['quotation_list.php', 'add_quote.php', 'quotation_view.php']); ?>">
@@ -233,7 +233,7 @@ function is_active($pages)
                 <?php endif; ?>
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">การจัดการแผนก</small>
                 </li>
@@ -263,7 +263,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
                 </li>

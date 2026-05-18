@@ -20,10 +20,11 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
 // 1. ตรวจสอบ Role และ User
 $user_role = strtolower($_SESSION['role'] ?? 'staff');
 $current_user = $_SESSION['user_name'] ?? '';
-$can_manage = in_array($user_role, ['admin', 'gm', 'manager']); // กำหนดสิทธิ์จัดการ
+$can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement']); // กำหนดสิทธิ์จัดการ
 
 // 2. เตรียม WHERE Clause
 $where_clause = "";
+// ถ้าเป็น Staff หรือ Procurement (ที่ไม่ใช่ admin/gm) ให้เห็นเฉพาะที่เกี่ยวข้อง
 if ($user_role === 'staff') {
     $safe_user = mysqli_real_escape_string($conn, $current_user);
     $where_clause = " WHERE f.created_by = '$safe_user' ";
@@ -129,7 +130,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 </div>
 
                 <?php
-                if ($user_role !== 'viewer'):
+                if (strtolower($user_role) === 'admin'):
                     ?>
                     <button id="deleteSelected" class="btn btn-danger btn-sm py-1 px-2 shadow-sm"
                         style="display:none; font-size: 0.75rem;">
@@ -244,7 +245,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping'])): ?>
+                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
                                         <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-row"
                                                 data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
@@ -276,13 +277,15 @@ if ($q && mysqli_num_rows($q) > 0) {
                                             title="จัดการบัญชี/ROI">
                                             <i class="bi bi-cash-coin"></i>
                                         </a>
-                                        <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && $row['approve'] == 0): ?>
+                                        <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && ($row['approve'] == 0 || $user_role === 'procurement')): ?>
                                             <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
                                                 title="แก้ไข">
                                                 <i class="bi bi-pencil-square"></i>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
-                                                data-id="<?= $row['id']; ?>"><i class="bi bi-trash"></i></button>
+                                            <?php if ($user_role !== 'procurement'): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
+                                                    data-id="<?= $row['id']; ?>"><i class="bi bi-trash"></i></button>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </div>

@@ -31,7 +31,7 @@ if (!$data) {
 $created_by_db = trim($data['created_by']);
 
 
-if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'viewer' && $user_role !== 'technician' && $user_role !== 'housekeeping') {
+if ($user_role !== 'admin' && $user_role !== 'gm' && $user_role !== 'viewer' && $user_role !== 'technician' && $user_role !== 'housekeeping' && $user_role !== 'procurement') {
     if ($created_by_db !== $current_user_name) {
         header("Location: access_denied.php");
         exit();
