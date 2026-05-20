@@ -33,6 +33,31 @@ $res_customers = $conn->query($query_customers);
 $query_breaks = "SELECT id, type_name FROM master_break_types ORDER BY id ASC";
 $res_breaks = $conn->query($query_breaks);
 
+// --- [เพิ่มใหม่] ดึงข้อมูลจากใบเสนอราคา (ถ้ามี) ---
+$quote_id = isset($_GET['quote_id']) ? intval($_GET['quote_id']) : 0;
+$quote_data = null;
+$quote_items = [];
+
+if ($quote_id > 0) {
+    $sql_quote = "SELECT q.*, c.cust_name, c.cust_phone, c.cust_address 
+                  FROM quotations q 
+                  LEFT JOIN customers c ON q.customer_id = c.id 
+                  WHERE q.id = $quote_id AND q.status = 'Approved'";
+    $res_quote = $conn->query($sql_quote);
+    if ($res_quote && $res_quote->num_rows > 0) {
+        $quote_data = $res_quote->fetch_assoc();
+        // ถ้ามีข้อมูลใบเสนอราคา ให้เอาค่าจากใบเสนอราคามาเป็นค่าเริ่มต้น
+        $target_company_id = $quote_data['company_id'];
+        
+        $sql_items = "SELECT * FROM quotation_items WHERE quote_id = $quote_id";
+        $res_items = $conn->query($sql_items);
+        while ($item = $res_items->fetch_assoc()) {
+            $quote_items[] = $item;
+        }
+    }
+}
+// ------------------------------------------
+
 // ต่อท้ายส่วนที่รับค่า $target_company_id
 $current_logo = 'assets/img/default-company.png'; // ค่าเริ่มต้น
 if ($target_company_id > 0) {
@@ -119,24 +144,36 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป (General
                     Information)</h5>
                 <div class="row mb-5">
-                    <div class="col-lg-3">
+                    <div class="col-lg-3 col-md-4">
                         <div class="mb-4 text-center">
                             <label class="small fw-bold text-secondary mb-3 d-block text-start">
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
                             <select name="company_id" class="form-select border-0 bg-light mb-3"
+                                id="company_select"
                                 onchange="updateCompanyLogo(this); renderRooms(this.value);" required
                                 style="border-radius: 10px; height: 42px;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $res_companies->data_seek(0);
-                                while ($row = $res_companies->fetch_assoc()): ?>
-                                    <option value="<?= $row['id']; ?>"
+                                while ($row = $res_companies->fetch_assoc()): 
+                                    $selected = ($row['id'] == $target_company_id) ? 'selected' : '';
+                                ?>
+                                    <option value="<?= $row['id']; ?>" <?= $selected ?>
                                         data-logo="<?= !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png'; ?>">
                                         <?= htmlspecialchars($row['company_name']); ?>
                                     </option>
                                 <?php endwhile; ?>
                             </select>
+                            <script>
+                                // สั่งให้โหลดห้องทันทีถ้ามีค่าโรงแรมเริ่มต้น
+                                window.addEventListener('DOMContentLoaded', (event) => {
+                                    const companySelect = document.getElementById('company_select');
+                                    if(companySelect && companySelect.value) {
+                                        renderRooms(companySelect.value);
+                                    }
+                                });
+                            </script>
                             <div class="company-logo-preview border-0 rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto mb-2"
                                 style="width: 80px; height: 80px; overflow: hidden;">
                                 <img id="companyLogo" src="<?= $current_logo; ?>" class="img-fluid p-2"
@@ -154,15 +191,17 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             </div>
 
                             <div class="mb-3">
-                                <input type="hidden" name="customer_id" id="customer_id_hidden">
+                                <input type="hidden" name="customer_id" id="customer_id_hidden" value="<?= $quote_data['customer_id'] ?? '' ?>">
                                 <select id="customer_selector" name="customer_id"
                                     class="form-select border-0  bg-opacity-10  fw-bold bg-light"
                                     onchange="fillCustomerInfo(this)"
                                     style="border-radius: 10px; height: 42px; font-size: 13px;">
                                     <option value="">-- ค้นหา/เลือกลูกค้าเดิม --</option>
                                     <?php if ($res_customers && $res_customers->num_rows > 0):
-                                        while ($c = $res_customers->fetch_assoc()): ?>
-                                            <option value="<?= $c['id'] ?>" data-name="<?= htmlspecialchars($c['cust_name']) ?>"
+                                        while ($c = $res_customers->fetch_assoc()): 
+                                            $selected = ($c['id'] == ($quote_data['customer_id'] ?? '')) ? 'selected' : '';
+                                        ?>
+                                            <option value="<?= $c['id'] ?>" <?= $selected ?> data-name="<?= htmlspecialchars($c['cust_name']) ?>"
                                                 data-phone="<?= htmlspecialchars($c['cust_phone']) ?>"
                                                 data-address="<?= htmlspecialchars($c['cust_address']) ?>">
                                                 <?= htmlspecialchars($c['cust_name']) ?>
@@ -175,6 +214,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <label class="form-label mb-1" style="font-size: 11px;">ชื่อลูกค้า/ผู้จอง</label>
                                 <input type="text" id="booking_name" name="booking_name"
                                     class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
+                                    value="<?= htmlspecialchars($quote_data['cust_name'] ?? '') ?>"
                                     style="height: 40px; font-size: 13px;">
                             </div>
 
@@ -182,6 +222,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <label class="form-label mb-1" style="font-size: 11px;">เบอร์โทรศัพท์</label>
                                 <input type="text" id="customer_phone" name="phone"
                                     class="form-control border-0 bg-light rounded-3" placeholder="08x-xxx-xxxx"
+                                    value="<?= htmlspecialchars($quote_data['cust_phone'] ?? '') ?>"
                                     style="height: 40px; font-size: 13px;">
                             </div>
 
@@ -189,14 +230,14 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <label class="form-label mb-1" style="font-size: 11px;">หน่วยงาน/ที่อยู่</label>
                                 <textarea id="customer_address" name="organization"
                                     class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                    rows="3" style="font-size: 13px; resize: none;"></textarea>
+                                    rows="3" style="font-size: 13px; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
 
 
 
-                    <div class="col-md-9">
+                    <div class="col-lg-9 col-md-12">
                         <div class="col-md-12 mb-4">
                             <label class="form-label small fw-bold text-secondary mb-3">
                                 <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select
@@ -219,14 +260,17 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         Title)</label>
                                     <input name="function_name" class="form-control border-0 bg-light"
                                         placeholder="พิมพ์ชื่อโครงการหรืองานจัดเลี้ยง..." required
+                                        value="<?= htmlspecialchars($quote_data['event_name'] ?? '') ?>"
                                         style="border-radius: 10px; height: 42px;">
                                 </div>
 
                                 <div class="col-md-4 ">
                                     <label class="form-label small fw-bold text-secondary">ประเภทงาน</label>
-                                    <select name="function_type_id" class="form-select border-0 bg-light" required ...>
+                                    <select name="function_type_id" class="form-select border-0 bg-light" required>
                                         <option value="" disabled selected>-- เลือกประเภท --</option>
-                                        <?php while ($t = $res_types->fetch_assoc()): ?>
+                                        <?php 
+                                        $res_types->data_seek(0);
+                                        while ($t = $res_types->fetch_assoc()): ?>
                                             <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['type_name']) ?>
                                             </option>
                                         <?php endwhile; ?>
@@ -239,6 +283,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             Date & Time)</label>
                                         <input type="datetime-local" name="start_time"
                                             class="form-control border-0 bg-light" required min="1900-01-01T00:00"
+                                            value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T08:00' : '' ?>"
                                             style="border-radius: 10px; height: 42px;">
                                     </div>
                                     <div class="col-md-6 ">
@@ -246,6 +291,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             Date & Time)</label>
                                         <input type="datetime-local" name="end_time"
                                             class="form-control border-0 bg-light" required min="1900-01-01T00:00"
+                                            value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T17:00' : '' ?>"
                                             style="border-radius: 10px; height: 42px;">
                                     </div>
                                 </div>
@@ -300,7 +346,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                 <input type="number" step="0.01" name="total_amount"
                                                     class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-4"
                                                     placeholder="0.00"
-                                                    value="<?php echo isset($row['total_amount']) ? number_format($row['total_amount'], 2, '.', '') : '0.00'; ?>">
+                                                    value="<?= isset($quote_data['grand_total']) ? number_format($quote_data['grand_total'], 2, '.', '') : '0.00' ?>">
                                             </div>
                                         </div>
                                     </div>
@@ -480,37 +526,75 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td><input type="date" name="menu_time[]"
-                                            class="form-control form-control-sm border-0" placeholder="10:30"></td>
-                                    <td>
-                                        <select name="menu_set_id[]" class="form-select form-select-sm border-0"
-                                            onchange="fetchMenuDetail(this)">
-                                            <option value="" disabled selected>-- เลือกเซตเมนู --</option>
-                                            <?php
-                                            // สมมติจารมี $res_menu_sets ที่ดึงมาจากตาราง master_menus
-                                            if ($res_menu_sets):
-                                                $res_menu_sets->data_seek(0);
-                                                while ($m = $res_menu_sets->fetch_assoc()): ?>
-                                                    <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
-                                                    </option>
-                                                <?php endwhile; endif; ?>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <textarea name="menu_detail[]"
-                                            class="form-control form-control-sm border-0 menu-detail-input"
-                                            rows="1"></textarea>
-                                    </td>
-                                    <td><input type="text" name="menu_qty[]"
-                                            class="form-control form-control-sm border-0">
-                                    </td>
-                                    <td><input type="text" name="menu_price[]"
-                                            class="form-control form-control-sm border-0" placeholder="0.00"></td>
-                                    <td class="text-center"><button type="button"
-                                            class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
-                                                class="bi bi-dash-circle"></i></button></td>
-                                </tr>
+                                <?php if (!empty($quote_items)): ?>
+                                    <?php foreach ($quote_items as $item): ?>
+                                        <tr>
+                                            <td><input type="date" name="menu_time[]"
+                                                    class="form-control form-control-sm border-0" 
+                                                    value="<?= $quote_data['event_date'] ?>"></td>
+                                            <td>
+                                                <select name="menu_set_id[]" class="form-select form-select-sm border-0"
+                                                    onchange="fetchMenuDetail(this)">
+                                                    <option value="" selected>-- รายการจากใบเสนอราคา --</option>
+                                                    <?php
+                                                    if ($res_menu_sets):
+                                                        $res_menu_sets->data_seek(0);
+                                                        while ($m = $res_menu_sets->fetch_assoc()): ?>
+                                                            <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
+                                                            </option>
+                                                        <?php endwhile; endif; ?>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <textarea name="menu_detail[]"
+                                                    class="form-control form-control-sm border-0 menu-detail-input"
+                                                    rows="1"><?= htmlspecialchars($item['item_name']) ?></textarea>
+                                            </td>
+                                            <td><input type="text" name="menu_qty[]"
+                                                    class="form-control form-control-sm border-0" 
+                                                    value="<?= $item['quantity'] ?>">
+                                            </td>
+                                            <td><input type="text" name="menu_price[]"
+                                                    class="form-control form-control-sm border-0" 
+                                                    value="<?= number_format($item['unit_price'], 2, '.', '') ?>"></td>
+                                            <td class="text-center"><button type="button"
+                                                    class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
+                                                        class="bi bi-dash-circle"></i></button></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td><input type="date" name="menu_time[]"
+                                                class="form-control form-control-sm border-0" placeholder="10:30"></td>
+                                        <td>
+                                            <select name="menu_set_id[]" class="form-select form-select-sm border-0"
+                                                onchange="fetchMenuDetail(this)">
+                                                <option value="" disabled selected>-- เลือกเซตเมนู --</option>
+                                                <?php
+                                                // สมมติจารมี $res_menu_sets ที่ดึงมาจากตาราง master_menus
+                                                if ($res_menu_sets):
+                                                    $res_menu_sets->data_seek(0);
+                                                    while ($m = $res_menu_sets->fetch_assoc()): ?>
+                                                        <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
+                                                        </option>
+                                                    <?php endwhile; endif; ?>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <textarea name="menu_detail[]"
+                                                class="form-control form-control-sm border-0 menu-detail-input"
+                                                rows="1"></textarea>
+                                        </td>
+                                        <td><input type="text" name="menu_qty[]"
+                                                class="form-control form-control-sm border-0">
+                                        </td>
+                                        <td><input type="text" name="menu_price[]"
+                                                class="form-control form-control-sm border-0" placeholder="0.00"></td>
+                                        <td class="text-center"><button type="button"
+                                                class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
+                                                    class="bi bi-dash-circle"></i></button></td>
+                                    </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                         <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
@@ -520,7 +604,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                     <h5 class="section-title"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
                     </h5>
                     <div class="row g-2">
-                        <div class="col-md-6">
+                        <div class="col-lg-3 col-md-4">
+
                             <div class="p-4 border rounded-4 bg-white  h-100">
                                 <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
                                 <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
@@ -540,7 +625,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-3 col-md-4">
+
                             <div class="p-4 border rounded-4 bg-white  h-100">
                                 <label
                                     class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
@@ -784,7 +870,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                 : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน</span>`;
 
             html += `
-            <div class="col-md-4">
+            <div class="col-lg-3 col-md-4">
+
                 <div class="room-card p-3 rounded-4 border bg-white h-100 position-relative"
                     style="cursor: pointer;" onclick="selectRoom(this, '${r.id}')">
                     <input type="radio" name="room_id" value="${r.id}" class="d-none room-radio">

@@ -212,7 +212,11 @@ $menus = $conn->query($sql_menus);
                 <img src="<?php echo !empty($data['logo_path']) ? $data['logo_path'] : 'assets/img/default-company.png'; ?>"
                     style="max-height: 50px; max-width: 100px;" class="me-3">
                 <div>
-                    <h5 class="mb-0 fw-bold text-dark">FUNCTION MEETING</h5>
+                    <?php if ($data['approve'] == 1): ?>
+                        <h5 class="mb-0 fw-bold text-dark">EVENT ORDER</h5>
+                    <?php else: ?>
+                        <h5 class="mb-0 fw-bold text-dark">QUOTATION</h5>
+                    <?php endif; ?>
                     <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo $data['company_name']; ?></p>
                 </div>
             </div>

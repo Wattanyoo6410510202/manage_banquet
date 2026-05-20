@@ -30,9 +30,10 @@ $result = $conn->query($sql);
         </div>
     </div>
 
-    <div class="card p-3">
-        <div class="table-responsive">
-            <table id="quoteDataTable" class="table table-hover responsive nowrap" style="width:100%">
+    <div class="card p-0 border-0 shadow-sm">
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block">
+            <table id="quoteDataTable" class="table table-hover align-middle mb-0" style="width:100%">
                 <thead>
                     <tr>
                         <th class="text-center" width="15%">เลขที่ใบเสนอราคา</th>
@@ -44,69 +45,119 @@ $result = $conn->query($sql);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
+                    <?php 
+                    $result->data_seek(0);
+                    while ($row = $result->fetch_assoc()): 
+                        $status_map = [
+                            'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
+                            'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
+                            'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
+                            'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
+                        ];
+                        $st = $status_map[$row['status']] ?? $status_map['Draft'];
+                    ?>
                         <tr>
-                            <td class="text-center fw-bold">
-                                <span class="text-primary"><?= $row['quote_no'] ?></span>
-                            </td>
+                            <td class="text-center fw-bold text-primary"><?= $row['quote_no'] ?></td>
                             <td><?= date('d/m/Y', strtotime($row['created_at'])) ?></td>
                             <td>
                                 <div class="fw-bold text-dark"><?= $row['cust_name'] ?></div>
-                                <small class="text-muted"><i
-                                        class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?></small>
+                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?></small>
                             </td>
-                            <td class="text-end fw-bold text-dark">
-                                <?= number_format($row['grand_total'], 2) ?>
-                            </td>
+                            <td class="text-end fw-bold text-dark"><?= number_format($row['grand_total'], 2) ?></td>
                             <td class="text-center">
-                                <?php
-                                $status_map = [
-                                    'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
-                                    'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
-                                    'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
-                                    'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
-                                ];
-                                $st = $status_map[$row['status']] ?? $status_map['Draft'];
-                                ?>
-                                <span class="badge border <?= $st['class'] ?> px-3 py-2">
-                                    <?= $st['text'] ?>
-                                </span>
-
+                                <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
                                 <?php if ($row['status'] == 'Approved' && $row['approved_at']): ?>
                                     <div class="small text-muted mt-1" style="font-size: 0.7rem;">
-                                        อนุมัติเมื่อ: <?= date('d/m/y H:i', strtotime($row['approved_at'])) ?>
+                                        <?= date('d/m/y H:i', strtotime($row['approved_at'])) ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
                                     <?php if ($row['status'] !== 'Approved'): ?>
-                                        <button type="button" class="btn btn-outline-success btn-action btn-approve-quote"
-                                            data-id="<?= $row['id'] ?>" title="อนุมัติ">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $row['id'] ?>"><i class="bi bi-check-circle"></i></button>
                                     <?php endif; ?>
-
-                                    <a href="quotation_view.php?id=<?= $row['id'] ?>"
-                                        class="btn btn-outline-primary btn-action" title="พิมพ์/ดู">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
+                                    <?php if ($row['status'] === 'Approved'): ?>
+                                        <a href="add_event.php?quote_id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
+                                    <?php endif; ?>
+                                    <a href="quotation_view.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
                                     <?php if ($row['status'] !== 'Approved'): ?>
-                                        <a href="edit_quotation.php?id=<?= $row['id'] ?>"
-                                            class="btn btn-outline-warning btn-action" title="แก้ไข">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </a>
+                                        <a href="edit_quotation.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
                                     <?php endif; ?>
-                                    <button type="button" class="btn btn-outline-danger btn-action btn-delete-quote"
-                                        data-id="<?= $row['id'] ?>" title="ลบ">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $row['id'] ?>"><i class="bi bi-trash"></i></button>
                                 </div>
                             </td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="d-md-none p-2">
+            <?php 
+            $result->data_seek(0);
+            while ($row = $result->fetch_assoc()): 
+                $status_map = [
+                    'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
+                    'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
+                    'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
+                    'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
+                ];
+                $st = $status_map[$row['status']] ?? $status_map['Draft'];
+            ?>
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; background: #fff;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="fw-bold text-primary"><?= $row['quote_no'] ?></span>
+                                <div class="text-muted small"><?= date('d/m/Y', strtotime($row['created_at'])) ?></div>
+                            </div>
+                            <span class="badge border <?= $st['class'] ?> px-2 py-1">
+                                <?= $st['text'] ?>
+                            </span>
+                        </div>
+                        
+                        <div class="fw-bold text-dark mb-1"><?= $row['cust_name'] ?></div>
+                        <small class="text-muted d-block mb-3">
+                            <i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?>
+                        </small>
+
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <div class="fw-bold text-dark">
+                                ฿<?= number_format($row['grand_total'], 2) ?>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <?php if ($row['status'] !== 'Approved'): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $row['id'] ?>">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                <?php endif; ?>
+                                
+                                <?php if ($row['status'] === 'Approved'): ?>
+                                    <a href="add_event.php?quote_id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-calendar-plus"></i>
+                                    </a>
+                                <?php endif; ?>
+
+                                <a href="quotation_view.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                
+                                <?php if ($row['status'] !== 'Approved'): ?>
+                                    <a href="edit_quotation.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-warning">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $row['id'] ?>">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
         </div>
     </div>
 </div>
