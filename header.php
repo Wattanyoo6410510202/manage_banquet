@@ -263,6 +263,36 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement', 'technician', 'housekeeping', 'banquet_staff'])): ?>
+                <li class="mt-4 sidebar-header px-3">
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">งานจัดเลี้ยง</small>
+                </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
+                <li>
+                    <a href="banquet_mt.php" class="<?php echo is_active('banquet_mt.php'); ?>">
+                        <i class="bi bi-tools"></i> ช่าง
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
+                <li>
+                    <a href="banquet_bk.php" class="<?php echo is_active('banquet_bk.php'); ?>">
+                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
+                <li>
+                    <a href="banquet_hk.php" class="<?php echo is_active('banquet_hk.php'); ?>">
+                        <i class="bi bi-house-door"></i> แม่บ้าน
+                    </a>
+                </li>
+                <?php endif; ?>
+
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
