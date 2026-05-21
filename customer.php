@@ -30,9 +30,8 @@ if (isset($_POST['action'])) {
             $msg = "inserted";
         }
 
-        // --- แก้ไขตรงส่วนบันทึก (save) ---
         if ($conn->query($sql)) {
-            ob_clean(); // ล้างค้างที่อาจหลุดมา
+            ob_clean(); 
             $new_id = ($id > 0 ? $id : $conn->insert_id);
 
             echo json_encode([
@@ -48,24 +47,21 @@ if (isset($_POST['action'])) {
                     "cust_email" => $cust_email
                 ]
             ]);
-            exit; // 👈 ต้องมีบรรทัดนี้ ไม่งั้นมันจะไปโหลด header.php มาใส่ใน JSON
+            exit; 
         }
     }
 
     // --- 2. Logic การลบ (AJAX) ---
-    // --- 2. Logic การลบ (AJAX) ---
     if ($action == 'delete') {
 
-        // 🚫 ด่านที่ 1: ดักสิทธิ์ Viewer ห้ามลบเด็ดขาด
         if ($user_role === 'viewer') {
-            ob_clean(); // เคลียร์ Output ที่อาจจะค้างอยู่
+            ob_clean();
             echo "คุณไม่มีสิทธิ์ลบข้อมูล (Viewer Mode)";
             exit;
         }
 
         $id = intval($_POST['id']);
 
-        // 🚀 ด่านที่ 2: ถ้าไม่ใช่ Viewer ถึงจะยอมให้รัน Query นี้
         if ($conn->query("DELETE FROM customers WHERE id=$id")) {
             ob_clean();
             echo "success";
@@ -198,6 +194,10 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                         <td><?= htmlspecialchars($row['cust_email']) ?></td>
                                         <td class="text-center">
                                             <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-info border-0" title="ประวัติงาน"
+                                                    onclick="showCustomerHistory(<?= $row['id'] ?>, '<?= htmlspecialchars($row['cust_name']) ?>')">
+                                                    <i class="bi bi-clock-history"></i>
+                                                </button>
                                                 <button class="btn btn-sm btn-outline-primary border-0" title="แก้ไข"
                                                     onclick='editCust(<?= json_encode($row) ?>)'>
                                                     <i class="bi bi-pencil-square"></i>
@@ -219,6 +219,30 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
     </div>
 </div>
 
+<!-- Modal ประวัติลูกค้า -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold">ประวัติงานเลี้ยง: <span id="historyCustName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ชื่องาน</th>
+                            <th>วันที่สร้าง</th>
+                            <th>สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
@@ -227,8 +251,38 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    function showCustomerHistory(custId, custName) {
+        document.getElementById('historyCustName').innerText = custName;
+        const body = document.getElementById('historyBody');
+        body.innerHTML = '<tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr>';
+        
+        const myModal = new bootstrap.Modal(document.getElementById('historyModal'));
+        myModal.show();
+
+        fetch(`api/get_customer_history.php?customer_id=${custId}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    if (res.data.length === 0) {
+                        body.innerHTML = '<tr><td colspan="3" class="text-center">ไม่มีประวัติงาน</td></tr>';
+                        return;
+                    }
+                    body.innerHTML = res.data.map(event => `
+                        <tr>
+                            <td>${event.function_name}</td>
+                            <td>${event.created_at}</td>
+                            <td><span class="badge bg-secondary">${event.status}</span></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    body.innerHTML = '<tr><td colspan="3" class="text-center text-danger">เกิดข้อผิดพลาด</td></tr>';
+                }
+            });
+    }
+
     function editCust(data) {
         document.getElementById('cust_id').value = data.id;
         document.getElementById('cust_name').value = data.cust_name;
@@ -253,7 +307,6 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
         const btn = e.target.querySelector('button[type="submit"]');
         const isEdit = document.getElementById('cust_id').value > 0;
 
-        // ล็อคปุ่มป้องกันการส่งซ้ำ
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
 
@@ -265,10 +318,9 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
             .then(res => {
                 if (res.status === 'success') {
                     const table = $('#customerTable').DataTable();
-                    const d = res.data; // ข้อมูลก้อนใหม่จากฝั่ง PHP
+                    const d = res.data; 
 
                     if (isEdit) {
-                        // ✅ กรณีแก้ไข: ค้นหาแถวเดิมด้วย ID แล้วอัปเดตข้อมูล
                         const rowId = document.getElementById('cust_id').value;
                         const row = $(`button[onclick*="deleteCust(${rowId})"]`).parents('tr');
 
@@ -277,11 +329,10 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                             d.cust_contact_name,
                             d.cust_phone,
                             d.cust_email,
-                            row.find('td:last').html() // รักษา HTML ของกลุ่มปุ่มจัดการเดิมไว้
+                            row.find('td:last').html()
                         ]).draw(false);
 
                     } else {
-                        // ✅ กรณีเพิ่มใหม่: ยัดข้อมูล และสั่งให้คอลัมน์ปุ่มอยู่ตรงกลาง
                         const table = $('#customerTable').DataTable();
                         const d = res.data;
 
@@ -291,6 +342,10 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                             d.cust_phone,
                             d.cust_email,
                             `<div class="btn-group">
+            <button class="btn btn-sm btn-outline-info border-0" title="ประวัติงาน"
+                onclick="showCustomerHistory(${d.id}, '${d.cust_name}')">
+                <i class="bi bi-clock-history"></i>
+            </button>
             <button class="btn btn-sm btn-outline-primary border-0" title="แก้ไข"
                 onclick='editCust(${JSON.stringify(d)})'>
                 <i class="bi bi-pencil-square"></i>
@@ -300,41 +355,23 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                 <i class="bi bi-trash"></i>
             </button>
         </div>`
-                        ]).draw(false).node(); // ดึงก้อน Row (tr) ที่เพิ่งสร้างออกมา
+                        ]).draw(false).node();
 
-                        // บังคับให้คอลัมน์ที่ 5 (index 4) ในแถวนี้มีคลาส text-center เพื่อให้อยู่ตรงกลาง
                         $(newRow).find('td').eq(4).addClass('text-center');
                     }
-
-                    // ล้างฟอร์มให้พร้อมสำหรับรายการถัดไป
                     resetForm();
-
                 } else {
-                    // แจ้งเตือนเฉพาะกรณีเกิด Error จากระบบ (เช่น Data ซ้ำ หรือ SQL พัง)
                     alert('เกิดข้อผิดพลาด: ' + res.message);
                 }
             })
             .catch(err => {
                 console.error("Error:", err);
-                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ (Check PHP or JSON format)');
+                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
             })
             .finally(() => {
-                // คืนค่าปุ่มให้กลับมาใช้งานได้
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า';
             });
-    }
-
-    // ฟังก์ชันแจ้งเตือนแบบเนียนๆ
-    function showNotify(type, msg) {
-        const alertHtml = `
-        <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert" 
-             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 250px;">
-            <i class="bi bi-info-circle me-2"></i> ${msg}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>`;
-        $('body').append(alertHtml);
-        setTimeout(() => { $('.alert').alert('close'); }, 3000);
     }
 
     function deleteCust(id) {
@@ -347,7 +384,6 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                 .then(res => res.text())
                 .then(data => {
                     if (data.trim() === 'success') {
-                        // AJAX ลบแถวทันที
                         let table = $('#customerTable').DataTable();
                         table.row($(`button[onclick="deleteCust(${id})"]`).parents('tr')).remove().draw();
                     } else {
@@ -375,7 +411,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                     extend: 'print',
                     className: 'd-none',
                     exportOptions: { columns: [0, 1, 2, 3] },
-                    title: 'รายการลูกค้า' // ✅ ใส่คอมม่าหน้า title แล้วครับ
+                    title: 'รายการลูกค้า' 
                 },
                 {
                     extend: 'copy',

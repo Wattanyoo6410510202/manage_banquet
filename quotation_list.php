@@ -12,6 +12,9 @@ $sql = "SELECT q.*, f.function_name, c.cust_name
 $result = $conn->query($sql);
 ?>
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
 <div id="alert-container">
     <?php include "assets/alert.php"; ?>
 </div>
@@ -32,7 +35,7 @@ $result = $conn->query($sql);
 
     <div class="card p-0 border-0 shadow-sm">
         <!-- Desktop Table -->
-        <div class="table-responsive d-none d-md-block">
+        <div class="table-responsive d-none d-md-block p-3">
             <table id="quoteDataTable" class="table table-hover align-middle mb-0" style="width:100%">
                 <thead>
                     <tr>
@@ -61,7 +64,7 @@ $result = $conn->query($sql);
                             <td><?= date('d/m/Y', strtotime($row['created_at'])) ?></td>
                             <td>
                                 <div class="fw-bold text-dark"><?= $row['cust_name'] ?></div>
-                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?></small>
+                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?? $row['function_name'] ?></small>
                             </td>
                             <td class="text-end fw-bold text-dark"><?= number_format($row['grand_total'], 2) ?></td>
                             <td class="text-center">
@@ -120,7 +123,7 @@ $result = $conn->query($sql);
                         
                         <div class="fw-bold text-dark mb-1"><?= $row['cust_name'] ?></div>
                         <small class="text-muted d-block mb-3">
-                            <i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?>
+                            <i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?? $row['function_name'] ?>
                         </small>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
@@ -161,48 +164,58 @@ $result = $conn->query($sql);
         </div>
     </div>
 </div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     $(document).ready(function () {
-        // ใช้ Delegation เพื่อรองรับ DataTable และ Row ที่เจนใหม่
+        $('#quoteDataTable').DataTable({
+            "order": [[ 0, "desc" ]],
+            "language": {
+                "search": "ค้นหา:",
+                "lengthMenu": "แสดง _MENU_ รายการ",
+                "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                "paginate": {
+                    "first": "หน้าแรก",
+                    "last": "หน้าสุดท้าย",
+                    "next": "ถัดไป",
+                    "previous": "ก่อนหน้า"
+                }
+            }
+        });
+
         $(document).on('click', '.btn-delete-quote', function (e) {
             e.preventDefault();
+            const quoteId = $(this).attr('data-id');
+            const row = $(this).closest('tr');
 
-            // เก็บปุ่มที่คลิกไว้ในตัวแปร เพื่อเอาไปหาแถว (TR) ที่จะลบทิ้ง
-            const btn = $(this);
-            const quoteId = btn.attr('data-id');
-            const row = btn.closest('tr'); // หาแถว <tr> ที่ปุ่มนี้สังกัดอยู่
-
-            if (confirm("ยืนยันการลบใบเสนอราคานี้? ข้อมูลจะหายไปทันที")) {
-
-                $.ajax({
-                    url: 'api/delete_quote.php',
-                    type: 'POST',
-                    data: { id: quoteId },
-                    success: function (response) {
-                        if (response.trim() === 'success') {
-                            // --- ส่วนที่ทำให้ไม่ต้องโหลดหน้าใหม่ ---
-                            // สั่งให้แถวค่อยๆ จางหายไปแล้วค่อยลบทิ้งจาก DOM
-                            row.fadeOut(10, function () {
-                                $(this).remove();
-
-                                // ถ้าใช้ DataTable ต้องสั่งลบผ่าน API ของมันเพื่อให้ลำดับเลขไม่เพี้ยน (ถ้ามี)
-                                // if ($.fn.DataTable.isDataTable('#quoteDataTable')) {
-                                //     $('#quoteDataTable').DataTable().row(row).remove().draw();
-                                // }
-                            });
-
-                            console.log("Deleted ID:", quoteId);
-                        } else {
-                            alert("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์: " + response);
+            Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: "ข้อมูลนี้จะถูกลบอย่างถาวร!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'ใช่, ลบเลย'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'api/delete_quote.php',
+                        type: 'POST',
+                        data: { id: quoteId },
+                        success: function (response) {
+                            if (response.trim() === 'success') {
+                                $('#quoteDataTable').DataTable().row(row).remove().draw();
+                                Swal.fire('สำเร็จ!', 'ลบข้อมูลเรียบร้อยแล้ว', 'success');
+                            } else {
+                                Swal.fire('ผิดพลาด!', 'เกิดข้อผิดพลาด: ' + response, 'error');
+                            }
                         }
-                    },
-                    error: function () {
-                        alert("ไม่สามารถติดต่อไฟล์ลบได้ กรุณาตรวจสอบพาธ api/delete_quote.php");
-                    }
-                });
-            }
+                    });
+                }
+            });
         });
     });
 
@@ -215,13 +228,12 @@ $result = $conn->query($sql);
             showCancelButton: true,
             confirmButtonColor: '#198754',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'ใช่, อนุมัติเลย',
-            cancelButtonText: 'ยกเลิก'
+            confirmButtonText: 'ใช่, อนุมัติเลย'
         }).then((result) => {
             if (result.isConfirmed) {
-                // ส่งค่าไปที่ไฟล์ PHP สำหรับอัปเดต Status ใน Database
                 window.location.href = 'api/approve_process.php?id=' + id;
             }
         });
     });
 </script>
+<?php include "footer.php"; ?>

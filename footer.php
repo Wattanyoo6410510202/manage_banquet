@@ -2,7 +2,15 @@
 <script>
     // สำหรับ Toggle Sidebar บนมือถือ
     document.getElementById('sidebarCollapse').addEventListener('click', function () {
-        document.getElementById('sidebar').classList.toggle('active');
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
+        
+        if (window.innerWidth <= 991) {
+            sidebar.classList.toggle('active');
+        } else {
+            sidebar.classList.toggle('collapsed');
+            content.classList.toggle('expanded');
+        }
     });
 </script>
 </body>

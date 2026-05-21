@@ -293,41 +293,36 @@ if ($q && mysqli_num_rows($q) > 0) {
         <!-- รายการแบบ Card (สำหรับมือถือ) -->
         <div class="d-md-none p-2">
             <?php foreach ($functions_data as $row): ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 5px solid #212529;">
                     <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="function-name-link" style="cursor: pointer; text-decoration: underline;">
-                                <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($row['function_name']); ?></h6>
-                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['formatted_date']; ?></small>
-                            </div>
-                            <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-dark mb-0 text-truncate" style="max-width: 70%;" onclick="showEventDetail('<?= htmlspecialchars($row['function_name']); ?>', '<?= $row['id']; ?>')" style="cursor: pointer;">
+                                <?= htmlspecialchars($row['function_name']); ?>
+                            </h6>
+                            <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-2 small">
                                 <?= $row['status_info']['text']; ?>
                             </span>
                         </div>
                         
-                        <div class="bg-light p-2 rounded mb-2 small">
-                            <strong class="d-block mb-1">การจัดงานเลี้ยง:</strong>
-                            <?= nl2br(htmlspecialchars($row['banquet_style'] ?: '-')); ?>
+                        <div class="text-muted small mb-2"><i class="bi bi-calendar-event me-1"></i><?= $row['formatted_date']; ?></div>
+                        
+                        <div class="bg-light p-2 rounded mb-3 small">
+                            <strong class="d-block mb-1 text-dark"><i class="bi bi-calendar-check me-1"></i>การจัดงานเลี้ยง:</strong>
+                            <div class="text-secondary"><?= nl2br(htmlspecialchars($row['banquet_style'] ?: '-')); ?></div>
                         </div>
 
-                        <div class="d-flex flex-wrap gap-1 mb-2">
-                            <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                            <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'): ?>
-                                <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"><i class="bi bi-pencil-square"></i></a>
-                            <?php endif; ?>
-
+                        <div class="d-flex flex-wrap gap-1">
+                            <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary shadow-none"><i class="bi bi-printer"></i></a>
+                            
                             <?php if ($user_role !== 'viewer'): ?>
                                 <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                    <button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
+                                    <button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i></button>
                                 <?php endif; ?>
                                 <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
-                                    <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $row['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>
+                                    <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $row['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
                                 <?php endif; ?>
                                 <?php if ($row['status'] == 'In Progress'): ?>
-                                    <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $row['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>
-                                <?php endif; ?>
-                                <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $row['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>
+                                    <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $row['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i></button>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </div>
@@ -375,8 +370,7 @@ if ($q && mysqli_num_rows($q) > 0) {
 <script>
     function showEventDetail(title, functionId) {
         document.getElementById('modalTitle').innerText = 'รายละเอียด: ' + title;
-        // บังคับให้เป็น role banquet_staff เพื่อให้แสดงเฉพาะส่วนที่เกี่ยวข้อง
-        const userRole = 'banquet_staff'; 
+        const userRole = '<?php echo htmlspecialchars(strtolower($_SESSION['role'] ?? 'viewer')); ?>';
         loadEventInfoModal(functionId, userRole);
     }
 
@@ -404,25 +398,78 @@ if ($q && mysqli_num_rows($q) > 0) {
                     <form id="modalInfoForm" enctype="multipart/form-data">
                         <input type="hidden" name="function_id" value="${functionId}">
                         <div class="row mb-4">
-                            <div class="col-md-12">
+                            ${(userRole === 'technician' || userRole === 'admin' || userRole === 'gm' || userRole === 'banquet_staff') ? `
+                            <div class="col-md-6">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
-                                    <div class="card-header bg-transparent fw-bold">4. ด้านเทคนิคและงานจัดเลี้ยง</div>
+                                    <div class="card-header bg-transparent fw-bold">4. ด้านเทคนิคและงานช่าง</div>
                                     <div class="card-body">
                                         <label class="small fw-bold">การจัดงานเลี้ยง:</label>
                                         <textarea name="banquet_style" id="bk_textarea" class="form-control mb-2" placeholder="การจัดงานเลี้ยง">${data.banquet_style || ''}</textarea>
                                         <div class="p-2 border bg-white rounded mb-3" id="bk_checklist_container">${renderChecklist(bkList, 'bk_textarea')}</div>
                                         
-                                        <label class="small fw-bold">งานช่างและภาพเสียง (ดูเท่านั้น):</label>
-                                        <textarea name="equipment" id="mt_textarea" class="form-control mb-3" placeholder="งานช่างและภาพเสียง" readonly>${data.equipment || ''}</textarea>
+                                        <label class="small fw-bold">งานช่างและภาพเสียง:</label>
+                                        <textarea name="equipment" id="mt_textarea" class="form-control mb-3" placeholder="งานช่างและภาพเสียง">${data.equipment || ''}</textarea>
+                                        <div class="p-2 border bg-white rounded" id="mt_checklist_container">${renderChecklist(mtList, 'mt_textarea')}</div>
                                     </div>
                                 </div>
                             </div>
+                            ` : ''}
+                            ${(userRole === 'housekeeping' || userRole === 'admin' || userRole === 'gm') ? `
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm border-0 bg-light mb-3">
+                                    <div class="card-header bg-transparent fw-bold">6. การตกแต่งและการดูแลทำความสะอาด</div>
+                                    <div class="card-body">
+                                        <textarea name="backdrop_detail" class="form-control mb-2" placeholder="รายละเอียดฉากหลัง">${data.backdrop_detail || ''}</textarea>
+                                        <textarea name="hk_florist_detail" id="hk_textarea" class="form-control mb-3" placeholder="พนักงานทำความสะอาดและจัดดอกไม้">${data.hk_florist_detail || ''}</textarea>
+                                        <div class="p-2 border bg-white rounded" id="hk_checklist_container">${renderChecklist(hkList, 'hk_textarea')}</div>
+                                        <label class="small fw-bold mt-3">รูปภาพฉากหลัง:</label>
+                                        <input type="file" name="backdrop_img" class="form-control form-control-sm" accept="image/*">
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
                         </div>
                         <div class="text-end mb-4">
-                            <button type="submit" class="btn btn-success px-4">บันทึกข้อมูล</button>
+                            <button type="submit" class="btn btn-success px-4">บันทึกข้อมูลทั่วไป</button>
                         </div>
                     </form>
                     <hr>
+                    <div class="card border-0 shadow-sm mb-5">
+                        <div class="card-header bg-dark text-white p-3 border-0">
+                            <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>บันทึกรายการบัญชีใหม่</h6>
+                        </div>
+                        <div class="card-body p-3 bg-light">
+                            <form id="modalFinanceForm">
+                                <input type="hidden" name="function_id" value="${functionId}">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted fw-bold mb-1">ประเภท</label>
+                                        <select name="type" class="form-select border-0 shadow-sm" required>
+                                            <option value="income">รายรับ</option>
+                                            <option value="cost">รายจ่าย</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted fw-bold mb-1">รายละเอียด</label>
+                                        <textarea name="detail" class="form-control border-0 shadow-sm" rows="1" placeholder="รายละเอียด" required></textarea>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small text-muted fw-bold mb-1">จำนวนเงิน</label>
+                                        <input type="number" step="0.01" name="amount" class="form-control border-0 shadow-sm" placeholder="0.00" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small text-muted fw-bold mb-1">วันที่</label>
+                                        <input type="date" name="transaction_date" class="form-control border-0 shadow-sm" value="<?= date('Y-m-d') ?>">
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                                            <i class="bi bi-check-lg me-1"></i>บันทึก
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     <div id="financeContainer"></div>
                 `;
                 
@@ -443,7 +490,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 });
 
                 // ตรวจสอบสถานะ Checkbox เมื่อโหลด Modal
-                ['bk_textarea'].forEach(textareaId => {
+                ['mt_textarea', 'hk_textarea'].forEach(textareaId => {
                     const textarea = document.getElementById(textareaId);
                     if (!textarea) return;
                     
@@ -467,9 +514,22 @@ if ($q && mysqli_num_rows($q) > 0) {
                     }).then(res => res.json()).then(data => {
                         if(data.status === 'success') {
                             alert('บันทึกข้อมูลเรียบร้อย');
-                            location.reload();
                         } else {
                             alert(data.message || 'เกิดข้อผิดพลาด');
+                        }
+                    });
+                });
+                
+                document.getElementById('modalFinanceForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    fetch('api/finance_handler.php?action=save', {
+                        method: 'POST',
+                        body: new FormData(this)
+                    }).then(res => res.json()).then(data => {
+                        if(data.status === 'success') {
+                            loadFinanceContent(functionId, userRole);
+                        } else {
+                            alert(data.message);
                         }
                     });
                 });
@@ -495,17 +555,15 @@ if ($q && mysqli_num_rows($q) > 0) {
                     }
                 });
 
-                if (filteredRows) {
-                    document.getElementById('financeContainer').innerHTML = `
-                        <h6 class="fw-bold mb-3">รายการการเงิน (แผนกจัดเลี้ยง)</h6>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light"><tr>${doc.querySelector('thead').innerHTML}</tr></thead>
-                                <tbody class="bg-white">${filteredRows}</tbody>
-                            </table>
-                        </div>
-                    `;
-                }
+                document.getElementById('financeContainer').innerHTML = `
+                    <h6 class="fw-bold mb-3">รายการการเงิน</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light"><tr>${doc.querySelector('thead').innerHTML}</tr></thead>
+                            <tbody class="bg-white">${filteredRows || '<tr><td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการ</td></tr>'}</tbody>
+                        </table>
+                    </div>
+                `;
             });
     }
 
@@ -520,6 +578,7 @@ if ($q && mysqli_num_rows($q) > 0) {
             });
         });
     });
+
 </script>
 
 <script>

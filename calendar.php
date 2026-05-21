@@ -1,5 +1,11 @@
 <?php include "config.php";
-include "header.php"; ?>
+include "header.php"; 
+
+$companies = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
+$rooms = $conn->query("SELECT id, room_name, company_id FROM meeting_rooms WHERE status = 'active' ORDER BY room_name ASC");
+$rooms_json = [];
+while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
+?>
 
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
@@ -9,18 +15,26 @@ include "header.php"; ?>
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-0 pt-3 pb-0">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-                        <div class="d-flex gap-3 small flex-wrap">
-                            <span class="d-flex align-items-center"><i class="bi bi-circle-fill me-1" style="color: #ffc107;"></i> รออนุมัติ</span>
-                            <span class="d-flex align-items-center"><i class="bi bi-circle-fill me-1" style="color: #0dcaf0;"></i> อนุมัติ</span>
-                            <span class="d-flex align-items-center"><i class="bi bi-circle-fill me-1" style="color: #0d6efd;"></i> ดำเนินการ</span>
-                            <span class="d-flex align-items-center"><i class="bi bi-circle-fill me-1" style="color: #198754;"></i> จบงาน</span>
-                            <span class="d-flex align-items-center"><i class="bi bi-circle-fill me-1" style="color: #dc3545;"></i> ยกเลิก</span>
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-md-3">
+                            <select id="companyFilter" class="form-select form-select-sm" onchange="filterRooms()">
+                                <option value="all">ทุกโรงแรม</option>
+                                <?php while ($c = $companies->fetch_assoc()): ?>
+                                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['company_name']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
                         </div>
-                        <select id="timeMode" class="form-select form-select-sm" style="width: auto;" onchange="updateCalendarView()">
-                            <option value="general" selected>อิงตามเวลาจองหลัก (Start/End)</option>
-                            <option value="schedule">อิงตามกำหนดการ (Schedule)</option>
-                        </select>
+                        <div class="col-md-3">
+                            <select id="roomFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
+                                <option value="all">ทุกห้องประชุม</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="timeMode" class="form-select form-select-sm" onchange="updateCalendarEvents()">
+                                <option value="general" selected>อิงตามเวลาจองหลัก (Start/End)</option>
+                                <option value="schedule">อิงตามกำหนดการ (Schedule)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-2">
@@ -28,6 +42,8 @@ include "header.php"; ?>
                 </div>
             </div>
         </div>
+        <!-- ... (Detail Panel ส่วนเดิม) ... -->
+
 
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100 sticky-top" style="top: 20px; z-index: 100;">
@@ -92,6 +108,7 @@ include "header.php"; ?>
                         mainTitle: '<?php echo addslashes($row['function_name']); ?>', 
                         status: '<?php echo $row['status']; ?>', 
                         room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
+                        room_id: '<?php echo $row['room_id'] ?? ''; ?>',
                         customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
                         phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
                         pax: '<?php echo $row['pax']; ?>',
@@ -129,6 +146,7 @@ include "header.php"; ?>
                         mainTitle: '<?php echo addslashes($row['function_name']); ?>', 
                         status: '<?php echo $row['status']; ?>', 
                         room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
+                        room_id: '<?php echo $row['room_id'] ?? ''; ?>',
                         customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
                         phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
                         pax: '<?php echo $row['pax']; ?>',
@@ -189,12 +207,40 @@ include "header.php"; ?>
         updateCalendarView();
     });
 
-    // ฟังก์ชันสลับโหมด (อยู่นอก DOMContentLoaded เพื่อให้เรียกใช้ได้)
-    window.updateCalendarView = function() {
+    // ข้อมูลห้องประชุมทั้งหมด
+    const allRooms = <?php echo json_encode($rooms_json); ?>;
+
+    function filterRooms() {
+        const companyId = document.getElementById('companyFilter').value;
+        const roomSelect = document.getElementById('roomFilter');
+        
+        // ล้างตัวเลือกเดิม
+        roomSelect.innerHTML = '<option value="all">ทุกห้องประชุม</option>';
+        
+        // กรองและเพิ่มห้องใหม่
+        allRooms.forEach(room => {
+            if (companyId === 'all' || room.company_id == companyId) {
+                let opt = document.createElement('option');
+                opt.value = room.id;
+                opt.text = room.room_name;
+                roomSelect.add(opt);
+            }
+        });
+        updateCalendarEvents();
+    }
+
+    function updateCalendarEvents() {
         if(!calendar) return;
+        const companyId = document.getElementById('companyFilter').value;
+        const roomId = document.getElementById('roomFilter').value;
         const mode = document.getElementById('timeMode').value;
+
         calendar.getEvents().forEach(event => {
-            if (event.extendedProps.mode === mode) {
+            let matchesMode = (event.extendedProps.mode === mode);
+            let matchesCompany = true; // หมายเหตุ: ข้อมูลบริษัทอาจต้องดึงเพิ่มถ้าจะกรองเข้มข้น
+            let matchesRoom = (roomId === 'all' || event.extendedProps.room_id == roomId);
+
+            if (matchesMode && matchesCompany && matchesRoom) {
                 event.setProp('display', 'block');
             } else {
                 event.setProp('display', 'none');
