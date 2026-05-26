@@ -383,20 +383,24 @@ if ($q && mysqli_num_rows($q) > 0) {
                         <label class="form-check-label small" for="chk_${targetTextareaName}_${item.id}">${item.task_detail}</label>
                     </div>
                 `).join('');
-                
+
+                // กำหนดขนาด Column ตาม Role
+                const mtColClass = (userRole === 'technician' || userRole === 'banquet_staff') ? 'col-12' : 'col-md-6';
+                const hkColClass = (userRole === 'housekeeping') ? 'col-12' : 'col-md-6';
+
                 document.getElementById('modalBody').innerHTML = `
                     <form id="modalInfoForm" enctype="multipart/form-data">
                         <input type="hidden" name="function_id" value="${functionId}">
                         <div class="row mb-4">
                             ${(userRole === 'technician' || userRole === 'admin' || userRole === 'gm' || userRole === 'banquet_staff') ? `
-                            <div class="col-md-6">
+                            <div class="${mtColClass}">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">4. ด้านเทคนิคและงานช่าง</div>
                                     <div class="card-body">
                                         <label class="small fw-bold">การจัดงานเลี้ยง:</label>
                                         <textarea name="banquet_style" id="bk_textarea" class="form-control mb-2" placeholder="การจัดงานเลี้ยง">${data.banquet_style || ''}</textarea>
                                         <div class="p-2 border bg-white rounded mb-3" id="bk_checklist_container">${renderChecklist(bkList, 'bk_textarea')}</div>
-                                        
+
                                         <label class="small fw-bold">งานช่างและภาพเสียง:</label>
                                         <textarea name="equipment" id="mt_textarea" class="form-control mb-3" placeholder="งานช่างและภาพเสียง">${data.equipment || ''}</textarea>
                                         <div class="p-2 border bg-white rounded" id="mt_checklist_container">${renderChecklist(mtList, 'mt_textarea')}</div>
@@ -405,7 +409,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </div>
                             ` : ''}
                             ${(userRole === 'housekeeping' || userRole === 'admin' || userRole === 'gm') ? `
-                            <div class="col-md-6">
+                            <div class="${hkColClass}">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">6. การตกแต่งและการดูแลทำความสะอาด</div>
                                     <div class="card-body">
@@ -418,8 +422,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </div>
                             </div>
                             ` : ''}
-                        </div>
-                        <div class="text-end mb-4">
+                        </div>                        <div class="text-end mb-4">
                             <button type="submit" class="btn btn-success px-4">บันทึกข้อมูลทั่วไป</button>
                         </div>
                     </form>

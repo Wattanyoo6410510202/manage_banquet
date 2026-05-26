@@ -259,14 +259,14 @@ function is_active($pages)
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement', 'technician', 'housekeeping', 'banquet_staff'])): ?>
                 <li class="mt-4 sidebar-header px-3">
-                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">งานจัดเลี้ยง</small>
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">บันทึกภาระงานแผนก</small>
                 </li>
                 <?php endif; ?>
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
                 <li>
                     <a href="banquet_mt.php" class="<?php echo is_active('banquet_mt.php'); ?>">
-                        <i class="bi bi-tools"></i> ช่าง
+                        <i class="bi bi-tools"></i> งานช่าง
                     </a>
                 </li>
                 <?php endif; ?>
@@ -274,7 +274,7 @@ function is_active($pages)
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
                 <li>
                     <a href="banquet_bk.php" class="<?php echo is_active('banquet_bk.php'); ?>">
-                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง
+                        <i class="bi bi-calendar-check"></i> งานจัดเลี้ยง
                     </a>
                 </li>
                 <?php endif; ?>
@@ -282,21 +282,21 @@ function is_active($pages)
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
                 <li>
                     <a href="banquet_hk.php" class="<?php echo is_active('banquet_hk.php'); ?>">
-                        <i class="bi bi-house-door"></i> แม่บ้าน
+                        <i class="bi bi-house-door"></i> งานแม่บ้าน
                     </a>
                 </li>
                 <?php endif; ?>
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
-                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">การจัดการแผนก</small>
+                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">ตั้งค่ารายการตรวจสอบ</small>
                 </li>
                 <?php endif; ?>
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
                 <li>
                     <a href="checklist_mt.php" class="<?php echo is_active('checklist_mt.php'); ?>">
-                        <i class="bi bi-tools"></i> ช่าง
+                        <i class="bi bi-tools"></i> Checklist ช่าง
                     </a>
                 </li>
                 <?php endif; ?>
@@ -304,7 +304,7 @@ function is_active($pages)
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
                 <li>
                     <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
-                        <i class="bi bi-house-door"></i> แม่บ้านจัดเลี้ยง
+                        <i class="bi bi-house-door"></i> Checklist แม่บ้าน
                     </a>
                 </li>
                 <?php endif; ?>
@@ -312,7 +312,7 @@ function is_active($pages)
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
                 <li>
                     <a href="checklist_bk.php" class="<?php echo is_active('checklist_bk.php'); ?>">
-                        <i class="bi bi-calendar-check"></i> จัดเลี้ยง
+                        <i class="bi bi-calendar-check"></i> Checklist จัดเลี้ยง
                     </a>
                 </li>
                 <?php endif; ?>

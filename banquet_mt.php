@@ -384,12 +384,16 @@ if ($q && mysqli_num_rows($q) > 0) {
                     </div>
                 `).join('');
                 
+                // กำหนดขนาด Column ตาม Role
+                const mtColClass = (userRole === 'technician' || userRole === 'banquet_staff') ? 'col-12' : 'col-md-6';
+                const hkColClass = (userRole === 'housekeeping') ? 'col-12' : 'col-md-6';
+
                 document.getElementById('modalBody').innerHTML = `
                     <form id="modalInfoForm" enctype="multipart/form-data">
                         <input type="hidden" name="function_id" value="${functionId}">
                         <div class="row mb-4">
                             ${(userRole === 'technician' || userRole === 'admin' || userRole === 'gm' || userRole === 'banquet_staff') ? `
-                            <div class="col-md-6">
+                            <div class="${mtColClass}">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">4. ด้านเทคนิคและงานช่าง</div>
                                     <div class="card-body">
@@ -405,7 +409,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </div>
                             ` : ''}
                             ${(userRole === 'housekeeping' || userRole === 'admin' || userRole === 'gm') ? `
-                            <div class="col-md-6">
+                            <div class="${hkColClass}">
                                 <div class="card h-100 shadow-sm border-0 bg-light mb-3">
                                     <div class="card-header bg-transparent fw-bold">6. การตกแต่งและการดูแลทำความสะอาด</div>
                                     <div class="card-body">
