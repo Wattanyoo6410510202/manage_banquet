@@ -12,6 +12,7 @@ if (isset($_POST['update'])) {
     $room_id = intval($_POST['room_id']);           // 👈 มาแล้วจาร!
 
     $function_name = $_POST['function_name'];
+    $draft_name = $_POST['draft_name'] ?? 'Draft'; // [NEW]
     $booking_name = $_POST['booking_name'];
     $organization = $_POST['organization'];
     $phone = $_POST['phone'];
@@ -94,8 +95,8 @@ if (isset($_POST['update'])) {
     // --- 3. อัปเดตตารางหลัก ---
     $sql_update = "UPDATE functions SET 
     company_id=?, customer_id=?, function_type_id=?, room_id=?, 
-    function_name=?, booking_name=?, organization=?, phone=?, booking_room=?, 
-    deposit=?, total_amount=?, -- 👈 เพิ่มตรงนี้
+    function_name=?, draft_name=?, booking_name=?, organization=?, phone=?, booking_room=?, 
+    deposit=?, total_amount=?,
     banquet_style=?, equipment=?, remark=?, main_kitchen_remark=?, 
     backdrop_detail=?, hk_florist_detail=?, backdrop_img=?, pax=?, start_time=?, end_time=?,
     file_attachment1=?, file_attachment2=?, file_attachment3=? 
@@ -103,15 +104,8 @@ if (isset($_POST['update'])) {
 
     $stmt = $conn->prepare($sql_update);
 
-    // สตริงประเภทข้อมูล (ต้องแม่นยำ 100%)
-    // 1-4: i (id ต่างๆ)
-    // 5-9: s (ข้อความ)
-    // 10: d (deposit - decimal)
-    // 11-17: s (รายละเอียดต่างๆ จนถึง backdrop_img)
-    // 18: i (pax - จำนวนคน)
-    // 19-23: s (start, end, file1, file2, file3)
-    // 24: i (WHERE id)
-    $types = "iiiisssssddsssssssssssssi";
+    // iiiis (5) s (1) s (1) s (1) s (1) s (1) d (1) d (1) s (5) s (2) i (1) s (2) s (3) i (1)
+    $types = "iiiissssssddsssssssssssssi"; // 26 ตัว
 
     $stmt->bind_param(
         $types,
@@ -120,26 +114,27 @@ if (isset($_POST['update'])) {
         $function_type_id,     // 3
         $room_id,              // 4
         $function_name,        // 5
-        $booking_name,         // 6
-        $organization,         // 7
-        $phone,                // 8
-        $booking_room,         // 9
-        $deposit,              // 10
-        $total_amount,         // 11 👈 แทรกตัวนี้ลงไปครับจาร!
-        $banquet_style,        // 12 (เลื่อนลำดับลงมา)
-        $equipment,            // 13
-        $remark,               // 14
-        $main_kitchen_remark,  // 15
-        $backdrop_detail,      // 16
-        $hk_florist_detail,    // 17
-        $backdrop_img_path,    // 18
-        $pax,                  // 19
-        $start_time,           // 20
-        $end_time,             // 21
-        $file_attachment_paths[1], // 22
-        $file_attachment_paths[2], // 23
-        $file_attachment_paths[3], // 24
-        $function_id           // 25
+        $draft_name,           // 6 [NEW]
+        $booking_name,         // 7
+        $organization,         // 8
+        $phone,                // 9
+        $booking_room,         // 10
+        $deposit,              // 11
+        $total_amount,         // 12
+        $banquet_style,        // 13
+        $equipment,            // 14
+        $remark,               // 15
+        $main_kitchen_remark,  // 16
+        $backdrop_detail,      // 17
+        $hk_florist_detail,    // 18
+        $backdrop_img_path,    // 19
+        $pax,                  // 20
+        $start_time,           // 21
+        $end_time,             // 22
+        $file_attachment_paths[1], // 23
+        $file_attachment_paths[2], // 24
+        $file_attachment_paths[3], // 25
+        $function_id           // 26
     );
 
     if ($stmt->execute()) {
@@ -195,7 +190,7 @@ if (isset($_POST['update'])) {
 
             $conn->commit();
             $_SESSION['flash_msg'] = "update_success";
-            header("Location: ../manage_banquet.php");
+            header("Location: ../edit.php?id=" . $function_id);
         } catch (Exception $e) {
             $conn->rollback();
             echo "Error: " . $e->getMessage();

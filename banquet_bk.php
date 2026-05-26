@@ -426,44 +426,6 @@ if ($q && mysqli_num_rows($q) > 0) {
                             <button type="submit" class="btn btn-success px-4">บันทึกข้อมูลทั่วไป</button>
                         </div>
                     </form>
-                    <hr>
-                    <div class="card border-0 shadow-sm mb-5">
-                        <div class="card-header bg-dark text-white p-3 border-0">
-                            <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>บันทึกรายการบัญชีใหม่</h6>
-                        </div>
-                        <div class="card-body p-3 bg-light">
-                            <form id="modalFinanceForm">
-                                <input type="hidden" name="function_id" value="${functionId}">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label class="form-label small text-muted fw-bold mb-1">ประเภท</label>
-                                        <select name="type" class="form-select border-0 shadow-sm" required>
-                                            <option value="income">รายรับ</option>
-                                            <option value="cost">รายจ่าย</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small text-muted fw-bold mb-1">รายละเอียด</label>
-                                        <textarea name="detail" class="form-control border-0 shadow-sm" rows="1" placeholder="รายละเอียด" required></textarea>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small text-muted fw-bold mb-1">จำนวนเงิน</label>
-                                        <input type="number" step="0.01" name="amount" class="form-control border-0 shadow-sm" placeholder="0.00" required>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small text-muted fw-bold mb-1">วันที่</label>
-                                        <input type="date" name="transaction_date" class="form-control border-0 shadow-sm" value="<?= date('Y-m-d') ?>">
-                                    </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary w-100 shadow-sm">
-                                            <i class="bi bi-check-lg me-1"></i>บันทึก
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    <div id="financeContainer"></div>
                 `;
                 
                 // ติดตั้ง Event Listener หลังจาก HTML ถูกแทรก
@@ -525,23 +487,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                         }
                     });
                 });
-                
-                document.getElementById('modalFinanceForm').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    fetch('api/finance_handler.php?action=save', {
-                        method: 'POST',
-                        body: new FormData(this)
-                    }).then(res => res.json()).then(data => {
-                        if(data.status === 'success') {
-                            loadFinanceContent(functionId, userRole);
-                            refreshTable();
-                        } else {
-                            alert(data.message);
-                        }
-                    });
-                });
 
-                loadFinanceContent(functionId, userRole);
                 var myModalElement = document.getElementById('eventDetailModal');
                 var myModal = new bootstrap.Modal(myModalElement);
                 
@@ -591,34 +537,6 @@ if ($q && mysqli_num_rows($q) > 0) {
         } else {
             $('#deleteSelected').fadeOut(200);
         }
-    }
-
-
-    function loadFinanceContent(functionId, userRole) {
-        fetch(`finance.php?id=${functionId}&ajax=1`)
-            .then(res => res.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const rows = doc.querySelectorAll('tbody tr');
-                let filteredRows = '';
-                rows.forEach(row => {
-                    const roleBadge = row.querySelector('.badge:last-child');
-                    if (roleBadge && roleBadge.innerText.toLowerCase() === userRole) {
-                        filteredRows += row.outerHTML;
-                    }
-                });
-
-                document.getElementById('financeContainer').innerHTML = `
-                    <h6 class="fw-bold mb-3">รายการการเงิน</h6>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light"><tr>${doc.querySelector('thead').innerHTML}</tr></thead>
-                            <tbody class="bg-white">${filteredRows || '<tr><td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการ</td></tr>'}</tbody>
-                        </table>
-                    </div>
-                `;
-            });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

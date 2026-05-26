@@ -115,52 +115,59 @@ if (isset($_POST['save'])) {
     $conn->begin_transaction();
 
     try {
-        // --- 3. แก้ไข SQL INSERT (เพิ่ม customer_id, function_type_id) ---
-        // --- 3. แก้ไข SQL INSERT (ตรวจสอบจำนวน Column และ ? ให้เท่ากันคือ 21 ตัว) ---
-        // --- 3. แก้ไข SQL INSERT (ตรวจสอบลำดับให้ตรงกับ bind_param) ---
+        // --- [NEW] 2.5 สร้าง Project หลักก่อน ---
+        $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
+        $stmt_project = $conn->prepare($sql_project);
+        $stmt_project->bind_param("siis", $function_name, $customer_id, $company_id, $created_by_name);
+        $stmt_project->execute();
+        $project_id = $conn->insert_id;
+
+        // --- 3. แก้ไข SQL INSERT (เพิ่ม project_id, version_no, is_approved, draft_name) ---
         $sql_main = "INSERT INTO functions (
+            project_id, version_no, is_approved, draft_name,
             company_id, customer_id, function_type_id, room_id, function_name, 
             booking_name, organization, phone, booking_room, deposit, 
-            total_amount, -- เพิ่มตรงนี้
+            total_amount,
             banquet_style, equipment, remark, main_kitchen_remark, 
             backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
             start_time, end_time, file_attachment1, file_attachment2, file_attachment3
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ) VALUES (?, 1, 0, 'Draft V1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_main);
 
-        // นับใหม่: i(4) s(5) d(1) s(7) i(1) i(1) s(2) s(3) 
-// รวมทั้งหมดต้องมี 25 ตัว: iiiisssssdssssssss i i sssss
-        $types = "iiiisssssddssssssssiisssss"; // <--- อันนี้มี 25 ตัวแล้วครับ
+        // รวมทั้งหมดต้องมี 30 ตัว (project_id + 25 เดิม + 4 ที่เพิ่มมาใหม่ใน SQL แต่ version/approved/draft ใส่ hardcode ไปก่อน)
+        // จริงๆ project_id ตัวเดียวที่ต้อง bind เพิ่ม
+        $types = "iiiiisssssddssssssssiisssss"; // เพิ่ม i นำหน้า 1 ตัว
 
         $stmt->bind_param(
             $types,
-            $company_id,         // 1 (i)
-            $customer_id,        // 2 (i)
-            $function_type_id,   // 3 (i)
-            $room_id,            // 4 (i)
-            $function_name,      // 5 (s)
-            $booking_name,       // 6 (s)
-            $organization,       // 7 (s)
-            $phone,              // 8 (s)
-            $booking_room,       // 9 (s)
-            $deposit,            // 10 (d)
-            $total_amount,       // 11 (d) **เพิ่มใหม่ตรงนี้**
-            $banquet_style,      // 12 (s)
-            $equipment,          // 13 (s)
-            $remark,             // 14 (s)
-            $main_kitchen_remark,// 15 (s)
-            $backdrop_detail,    // 16 (s)
-            $hk_florist_detail,  // 17 (s)
-            $backdrop_img_path,  // 18 (s)
-            $created_by_name,    // 19 (s)
-            $created_by_id,      // 20 (i)
-            $pax,                // 21 (i)
-            $start_date,         // 22 (s)
-            $end_date,           // 23 (s)
-            $attach_paths[1],    // 24 (s)
-            $attach_paths[2],    // 25 (s)
-            $attach_paths[3]     // 26 (s)
+            $project_id,         // 1 (i) [NEW]
+            $company_id,         // 2 (i)
+            $customer_id,        // 3 (i)
+            $function_type_id,   // 4 (i)
+            $room_id,            // 5 (i)
+            $function_name,      // 6 (s)
+            $booking_name,       // 7 (s)
+            $organization,       // 8 (s)
+            $phone,              // 9 (s)
+            $booking_room,       // 10 (s)
+            $deposit,            // 11 (d)
+            $total_amount,       // 12 (d)
+            $banquet_style,      // 13 (s)
+            $equipment,          // 14 (s)
+            $remark,             // 15 (s)
+            $main_kitchen_remark,// 16 (s)
+            $backdrop_detail,    // 17 (s)
+            $hk_florist_detail,  // 18 (s)
+            $backdrop_img_path,  // 19 (s)
+            $created_by_name,    // 20 (s)
+            $created_by_id,      // 21 (i)
+            $pax,                // 22 (i)
+            $start_date,         // 23 (s)
+            $end_date,           // 24 (s)
+            $attach_paths[1],    // 25 (s)
+            $attach_paths[2],    // 26 (s)
+            $attach_paths[3]     // 27 (s)
         );
 
         if (!$stmt->execute()) {

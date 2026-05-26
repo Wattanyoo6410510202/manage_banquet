@@ -34,8 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->bind_param("isiiii", $approve_val, $status, $approve_val, $approve_val, $user_id, $id);
             
             if ($stmt->execute()) {
-                // --- ✅ ส่วนที่จารย์ต้องการ: ส่ง Session ตามสถานะที่กด ---
+                // --- [NEW] Draft & Project System Management ---
                 if ($status === 'Confirmed') {
+                    // 1. ดึง project_id ของ draft นี้
+                    $p_res = $conn->query("SELECT project_id FROM functions WHERE id = $id");
+                    if ($p_row = $p_res->fetch_assoc()) {
+                        $project_id = $p_row['project_id'];
+                        
+                        // 2. เคลียร์ Draft อื่นให้หมด (Master Only)
+                        $conn->query("UPDATE functions SET is_approved = 0 WHERE project_id = $project_id");
+                        
+                        // 3. ตั้ง Draft นี้เป็น Master
+                        $conn->query("UPDATE functions SET is_approved = 1 WHERE id = $id");
+                        
+                        // 4. อัปเดตสถานะ Project หลัก
+                        $conn->query("UPDATE event_projects SET status = 'Approved' WHERE id = $project_id");
+                    }
                     $_SESSION['flash_msg'] = "approved";
                 } elseif ($status === 'In Progress') {
                     $_SESSION['flash_msg'] = "in_progress";

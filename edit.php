@@ -54,6 +54,18 @@ $res_companies = $conn->query($query_companies);
 
 // 3. ดึงข้อมูลจากตารางลูกทั้งหมด
 $schedules = $conn->query("SELECT * FROM function_schedules WHERE function_id = $id ORDER BY id ASC");
+
+// --- [NEW] Draft Management Logic ---
+$project_id = intval($data['project_id']);
+$all_drafts = [];
+if ($project_id > 0) {
+    $res_drafts = $conn->query("SELECT id, version_no, is_approved, draft_name, status FROM functions WHERE project_id = $project_id ORDER BY version_no ASC");
+    while($d = $res_drafts->fetch_assoc()) {
+        $all_drafts[] = $d;
+    }
+}
+// ------------------------------------
+
 $kitchens = $conn->query("SELECT * FROM function_kitchens WHERE function_id = $id ORDER BY id ASC");
 $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDER BY id ASC");
 
@@ -131,12 +143,15 @@ while($row = $all_rooms_res->fetch_assoc()) {
                 <div class="d-flex justify-content-between align-items-center">
                     <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i> EDIT FUNCTION MEETING
                     </h4>
-                    <div style="width: 100%; max-width: 450px;">
-                        <div class="d-flex align-items-center gap-2">
+                    <div style="width: 100%; max-width: 500px;">
+                        <div class="d-flex align-items-center gap-2 justify-content-end">
+                            <a href="manage_banquet.php" class="btn btn-outline-secondary btn-sm px-3">
+                                <i class="bi bi-arrow-left"></i> กลับรายการ
+                            </a>
                             <button name="update" type="submit" class="btn btn-primary btn-sm px-3 flex-shrink-0">
                                 <i class="bi bi-cloud-upload-fill me-2"></i> อัปเดตข้อมูล
                             </button>
-                            <div class="input-group input-group-sm">
+                            <div class="input-group input-group-sm" style="width: 150px;">
                                 <span
                                     class="input-group-text bg-dark border-secondary text-gold small fw-bold">NO.</span>
                                 <input type="text" name="function_code"
@@ -147,6 +162,33 @@ while($row = $all_rooms_res->fetch_assoc()) {
                     </div>
                 </div>
             </div>
+
+            <!-- --- [NEW] Draft Management Bar --- -->
+            <?php if ($project_id > 0): ?>
+            <div class="bg-light border-bottom px-4 py-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="small fw-bold text-secondary"><i class="bi bi-layers-half me-1"></i> รายการ Draft:</span>
+                    <div class="d-flex gap-2">
+                        <?php foreach ($all_drafts as $draft): ?>
+                            <?php 
+                                $is_current = ($draft['id'] == $id);
+                                $btn_class = $is_current ? 'btn-dark' : 'btn-outline-dark';
+                                $approved_icon = ($draft['is_approved'] == 1) ? '<i class="bi bi-patch-check-fill text-info ms-1"></i>' : '';
+                            ?>
+                            <a href="edit.php?id=<?= $draft['id'] ?>" class="btn btn-xs <?= $btn_class ?> px-2 py-1 rounded-pill small" style="font-size: 11px;">
+                                <?= htmlspecialchars($draft['draft_name']) ?> <?= $approved_icon ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-success btn-xs px-3 py-1 rounded-pill small" style="font-size: 11px;" onclick="duplicateDraft(<?= $id ?>)">
+                        <i class="bi bi-plus-circle me-1"></i> คัดลอกเป็น Draft ใหม่
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+            <!-- --------------------------------- -->
 
             <div class="card-body p-4 p-lg-5">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป</h5>
@@ -338,9 +380,19 @@ while($row = $all_rooms_res->fetch_assoc()) {
                             <div class="row g-2">
     <div class="col-md-2">
         <div class="p-3 rounded-4 bg-primary bg-opacity-10 h-100">
-            <label class="small fw-bold text-primary mb-1 d-block">Booking Number</label>
-            <input name="booking_room"
+            <label class="small fw-bold text-primary mb-1 d-block">Draft Name</label>
+            <input name="draft_name"
                 class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
+                placeholder="Draft V1"
+                value="<?= htmlspecialchars($data['draft_name'] ?? 'Draft V1') ?>">
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
+            <label class="small fw-bold text-secondary mb-1 d-block">Booking Number</label>
+            <input name="booking_room"
+                class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-5"
                 placeholder="BK-XXXX"
                 value="<?= htmlspecialchars($data['booking_room']) ?>">
         </div>
@@ -796,6 +848,7 @@ async function fetchBreakMenu(selectEl) {
     }
 }
 
+// ฟังก์ชันดึงรายละเอียดเมนูหลัก
 async function fetchMenuDetail(selectEl) {
     const row = selectEl.closest('tr');
     const textarea = row.querySelector('.menu-detail-input'); // มั่นใจว่าคลาสตรงกัน
@@ -816,6 +869,61 @@ async function fetchMenuDetail(selectEl) {
     } catch (error) {
         console.error("Fetch Menu Error:", error);
     }
+}
+
+// [NEW] ฟังก์ชันสำหรับ Duplicate Draft
+function duplicateDraft(id) {
+    if(!confirm('คุณต้องการคัดลอกข้อมูลรายการนี้เป็น Draft ใหม่ใช่หรือไม่?')) return;
+    
+    fetch('api/duplicate_draft.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + encodeURIComponent(id)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if(data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'คัดลอกสำเร็จ!',
+                text: 'กำลังพาคุณไปยัง Draft ใหม่...',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = 'edit.php?id=' + data.new_id;
+            });
+        } else {
+            console.error('API Error:', data);
+            alert('เกิดข้อผิดพลาดจาก Server: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Fetch Error:', error);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ (Network Error). ลองเช็ค Console (F12)');
+    });
+}
+
+/**
+ * SECTION: CUSTOMER FETCHING
+ */
+function fillCustomerInfo(select) {
+    const selectedOption = select.options[select.selectedIndex];
+    const customerId = select.value; 
+    const customerName = selectedOption.getAttribute('data-name');
+    const customerPhone = selectedOption.getAttribute('data-phone');
+    const customerAddress = selectedOption.getAttribute('data-address');
+
+    document.getElementById('customer_id_hidden').value = customerId;
+    document.getElementById('booking_name').value = customerName || '';
+    document.getElementById('customer_phone').value = customerPhone || '';
+    document.getElementById('customer_address').value = customerAddress || '';
 }
 </script>
 <script>

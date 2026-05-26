@@ -233,7 +233,11 @@ $menus = $conn->query($sql_menus);
                 <div class="col-7">
                     <div class="row g-2">
                         <div class="col-12"><strong>ชื่องาน:</strong> <span
-                                class="data-value"><?php echo $data['function_name']; ?></span></div>
+                                class="data-value"><?php echo $data['function_name']; ?> 
+                                <span class="badge bg-secondary rounded-pill fw-normal ms-1" style="font-size: 8px;">
+                                    <?= htmlspecialchars($data['draft_name'] ?? 'Draft V1') ?>
+                                </span>
+                            </span></div>
                         <div class="col-12"><strong>ประเภทงาน:</strong> <span
                                 class="data-value"><?php echo $data['function_type_name'] ?? '-'; ?></span></div>
 

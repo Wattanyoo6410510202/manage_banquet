@@ -62,7 +62,8 @@ if ($q && mysqli_num_rows($q) > 0) {
             </td>';
         echo '<td class="ps-4">
                 <div class="fw-bold text-dark text-wrap function-name-link" style="max-width: 400px; cursor: pointer; text-decoration: underline;">
-                    ' . htmlspecialchars($row['function_name']) . '
+                    ' . htmlspecialchars($row['function_name']) . ' 
+                    <span class="badge bg-secondary rounded-pill fw-normal ms-1" style="font-size: 10px;">' . htmlspecialchars($row['draft_name']) . '</span>
                 </div>
                 <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $formatted_date . '</div>
             </td>';
