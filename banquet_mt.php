@@ -507,7 +507,20 @@ if ($q && mysqli_num_rows($q) > 0) {
                         body: formData
                     }).then(res => res.json()).then(data => {
                         if(data.status === 'success') {
-                            alert('บันทึกข้อมูลเรียบร้อย');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'บันทึกสำเร็จ',
+                                text: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            
+                            // ปิด Modal ทันที
+                            const modalElement = document.getElementById('eventDetailModal');
+                            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                            if (modalInstance) modalInstance.hide();
+                            
+                            refreshTable();
                         } else {
                             alert(data.message || 'เกิดข้อผิดพลาด');
                         }
@@ -522,6 +535,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                     }).then(res => res.json()).then(data => {
                         if(data.status === 'success') {
                             loadFinanceContent(functionId, userRole);
+                            refreshTable();
                         } else {
                             alert(data.message);
                         }
@@ -529,10 +543,56 @@ if ($q && mysqli_num_rows($q) > 0) {
                 });
 
                 loadFinanceContent(functionId, userRole);
-                var myModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+                var myModalElement = document.getElementById('eventDetailModal');
+                var myModal = new bootstrap.Modal(myModalElement);
+                
+                // เพิ่ม event listener เมื่อปิด modal ให้รีเฟรชตารางด้วย (เผื่อมีการแก้ไขแล้วลืมกดบันทึกหรืออื่นๆ)
+                myModalElement.addEventListener('hidden.bs.modal', function () {
+                    refreshTable();
+                }, { once: true });
+
                 myModal.show();
             });
     }
+
+    function refreshTable() {
+        const table = $('#banquetTable').DataTable();
+        fetch('api/fetch_banquet_table.php?type=mt')
+            .then(res => res.text())
+            .then(html => {
+                const scrollPos = $('.dataTables_scrollBody').scrollTop();
+                table.destroy();
+                document.querySelector('#banquetTable tbody').innerHTML = html;
+                
+                // เรียกใช้ global function จาก style/banquet_table.php
+                window.banquetTable = initDataTable();
+                attachTableEvents(window.banquetTable);
+
+                setTimeout(() => {
+                    $('.dataTables_scrollBody').scrollTop(scrollPos);
+                }, 100);
+            });
+    }
+
+    function attachTableEvents(table) {
+        document.querySelectorAll('.function-name-link').forEach(el => {
+            el.onclick = () => {
+                const functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value;
+                const title = el.innerText.trim();
+                if (functionId) {
+                    showEventDetail(title, functionId);
+                }
+            };
+        });
+    }
+
+    function updateDeleteButton() {
+        var count = $('.row-checkbox:checked').length;
+        $('#selectCount').text(count);
+        (count > 0) ? $('#deleteSelected').fadeIn(200) : $('#deleteSelected').fadeOut(200);
+    }
+
+
 
     function loadFinanceContent(functionId, userRole) {
         fetch(`finance.php?id=${functionId}&ajax=1`)

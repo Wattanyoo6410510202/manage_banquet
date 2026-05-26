@@ -204,62 +204,64 @@
 </style>
 <script>
     $(document).ready(function () {
-        // คำนวณความสูงตาราง
-        var dynamicHeight = 'calc(100vh - 240px)';
+        if (typeof initDataTable !== 'function') {
+            window.initDataTable = function() {
+                // คำนวณความสูงตาราง
+                var dynamicHeight = 'calc(100vh - 240px)';
 
-        var table = $('#banquetTable').DataTable({
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
-            },
-            "order": [],
-            "pageLength": 10,
-            "autoWidth": false,
-            "scrollY": dynamicHeight,
-            "scrollX": true,
-            "scrollCollapse": true,
-            "paging": true,
-            "fixedColumns": {
-                right: 1
-            },
-            "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
-            "buttons": [
-                { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง'},
-                { extend: 'print', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง' }
-            ],
-            "columnDefs": [
-                { "orderable": false, "targets": [0, -1] }
-                
-            ],
-            "initComplete": function () {
-                $(window).on('resize', function () {
-                    table.columns.adjust();
+                var table = $('#banquetTable').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
+                    },
+                    "order": [],
+                    "pageLength": 10,
+                    "autoWidth": false,
+                    "scrollY": dynamicHeight,
+                    "scrollX": true,
+                    "scrollCollapse": true,
+                    "paging": true,
+                    "fixedColumns": {
+                        right: 1
+                    },
+                    "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
+                    "buttons": [
+                        { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง'},
+                        { extend: 'print', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง' }
+                    ],
+                    "columnDefs": [
+                        { "orderable": false, "targets": [0, -1] }
+                        
+                    ],
+                    "initComplete": function () {
+                        $(window).on('resize', function () {
+                            table.columns.adjust();
+                        });
+                        setTimeout(function () {
+                            table.columns.adjust();
+                        }, 500);
+                    }
                 });
-                setTimeout(function () {
-                    table.columns.adjust();
-                }, 500);
-            }
-        });
 
-        // คุมปุ่ม Export
-        $('#btnExportExcel').click(function () { table.button('.buttons-excel').trigger(); });
-        $('#btnExportPrint').click(function () { table.button('.buttons-print').trigger(); });
+                // คุมปุ่ม Export
+                $('#btnExportExcel').off('click').on('click', function () { table.button('.buttons-excel').trigger(); });
+                $('#btnExportPrint').off('click').on('click', function () { table.button('.buttons-print').trigger(); });
 
-        // Select All Logic
-        $('#selectAll').on('click', function () {
-            var rows = table.rows({ 'search': 'applied' }).nodes();
-            $('input[type="checkbox"]', rows).prop('checked', this.checked);
-            updateDeleteButton();
-        });
+                // Select All Logic
+                $('#selectAll').off('click').on('click', function () {
+                    var rows = table.rows({ 'search': 'applied' }).nodes();
+                    $('input[type="checkbox"]', rows).prop('checked', this.checked);
+                    if (typeof updateDeleteButton === 'function') updateDeleteButton();
+                });
 
-        $('#banquetTable tbody').on('change', 'input[type="checkbox"]', function () {
-            updateDeleteButton();
-        });
+                $('#banquetTable tbody').off('change', 'input[type="checkbox"]').on('change', 'input[type="checkbox"]', function () {
+                    if (typeof updateDeleteButton === 'function') updateDeleteButton();
+                });
 
-        function updateDeleteButton() {
-            var count = $('.row-checkbox:checked').length;
-            $('#selectCount').text(count);
-            (count > 0) ? $('#deleteSelected').fadeIn(200) : $('#deleteSelected').fadeOut(200);
+                return table;
+            };
         }
+
+        window.banquetTable = initDataTable();
     
         // --- 3. ปุ่มอนุมัติ (เปลี่ยนหน้าปกติ) ---
         window.confirmApprove = function (id) {
