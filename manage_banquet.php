@@ -20,7 +20,7 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
 // 1. ตรวจสอบ Role และ User
 $user_role = strtolower($_SESSION['role'] ?? 'staff');
 $current_user = $_SESSION['user_name'] ?? '';
-$can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement']); // กำหนดสิทธิ์จัดการ
+$can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement', 'staff']); // กำหนดสิทธิ์จัดการ
 
 // 2. เตรียม WHERE Clause
 $where_clause = "";
@@ -43,6 +43,7 @@ $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_
 
 $q = mysqli_query($conn, $sql);
 $projects_data = [];
+$functions_data = [];
 
 // 4. วนลูปเก็บข้อมูลลง Array และจัดการกลุ่ม Draft
 if ($q && mysqli_num_rows($q) > 0) {
@@ -70,6 +71,9 @@ if ($q && mysqli_num_rows($q) > 0) {
                 $row['attachments'][] = ['path' => $row['file_attachment' . $i]];
             }
         }
+
+        // เก็บข้อมูลดิบไว้สำหรับ mobile card
+        $functions_data[] = $row;
 
         // จัดกลุ่มตาม Project
         $pid = $row['project_id'] ?: 'single_' . $row['id'];
@@ -249,6 +253,13 @@ if ($q && mysqli_num_rows($q) > 0) {
                                     <?php endif; ?>
                                     
                                     <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-eye"></i></a>
+                                    
+                                    <?php if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])): ?>
+                                        <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI">
+                                            <i class="bi bi-cash-coin"></i>
+                                        </a>
+                                    <?php endif; ?>
+
                                     <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>
                                 </div>
                             </td>
@@ -316,6 +327,13 @@ if ($q && mysqli_num_rows($q) > 0) {
 
                         <div class="d-flex flex-wrap gap-1 mb-2">
                             <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                            
+                            <?php if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])): ?>
+                                <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI">
+                                    <i class="bi bi-cash-coin"></i>
+                                </a>
+                            <?php endif; ?>
+
                             <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'): ?>
                                 <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"><i class="bi bi-pencil-square"></i></a>
                             <?php endif; ?>

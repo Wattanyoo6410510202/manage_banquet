@@ -17,14 +17,15 @@ $current_user = trim($_SESSION['user_name'] ?? '');
 $user_role    = strtolower(trim($_SESSION['role'] ?? 'viewer'));
 $created_by   = trim($data['created_by'] ?? ''); // ดึงค่าคนสร้างมา trim ป้องกันช่องว่าง
 
-// 🛡️ ด่านที่ 1: ใครเข้าหน้านี้ได้บ้าง? (Admin, GM, และเจ้าของงาน)
+// 🛡️ ด่านที่ 1: ใครเข้าหน้านี้ได้บ้าง? (Admin, GM, Staff, และเจ้าของงาน)
 $is_admin = ($user_role === 'admin');
 $is_gm    = ($user_role === 'gm');
+$is_staff = ($user_role === 'staff');
 $is_procurement = ($user_role === 'procurement');
 $is_owner = ($created_by === $current_user);
 
-// ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่เจ้าของงาน" และ "ไม่ใช่ Procurement" => ดีดออกทันที
-if (!$is_admin && !$is_gm && !$is_owner && !$is_procurement) {
+// ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่ Staff" และ "ไม่ใช่เจ้าของงาน" และ "ไม่ใช่ Procurement" => ดีดออกทันที
+if (!$is_admin && !$is_gm && !$is_staff && !$is_owner && !$is_procurement) {
     echo "<script>window.location.href='access_denied.php';</script>";
     exit();
 }
@@ -33,9 +34,9 @@ if (!$is_admin && !$is_gm && !$is_owner && !$is_procurement) {
 require_once "header.php";
 // เอา access_control ออกตามที่จารย์บอก เพื่อไม่ให้มันไปบล็อก GM ซ้ำซ้อน
 
-// 🛡️ ด่านที่ 2: เช็คสถานะอนุมัติ (ล็อกเฉพาะ Staff ที่ไม่ใชเจ้าของ หรือสิทธิ์เล็ก)
-// ในที่นี้ให้ Admin และ GM แก้ไขได้เสมอ แม้จะ Approve แล้ว
-$can_bypass_approve = ($is_admin || $is_gm);
+// 🛡️ ด่านที่ 2: เช็คสถานะอนุมัติ (ล็อกเฉพาะสิทธิ์เล็กที่ไม่ได้ระบุให้ข้ามได้)
+// ในที่นี้ให้ Admin, GM และ Staff (Sales) แก้ไขได้เสมอ แม้จะ Approve แล้ว ตามความต้องการล่าสุด
+$can_bypass_approve = ($is_admin || $is_gm || $is_staff);
 
 if (isset($data['approve']) && $data['approve'] != 0 && !$can_bypass_approve) {
     echo "<script>
