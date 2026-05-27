@@ -24,10 +24,12 @@ $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement']); /
 
 // 2. เตรียม WHERE Clause
 $where_clause = "";
-// ถ้าเป็น Staff หรือ Procurement (ที่ไม่ใช่ admin/gm) ให้เห็นเฉพาะที่เกี่ยวข้อง
-if ($user_role === 'staff') {
-    $safe_user = mysqli_real_escape_string($conn, $current_user);
-    $where_clause = " WHERE f.created_by = '$safe_user' ";
+// ปรับปรุง: ให้ Staff เห็นงานได้ทุกงานเหมือน Admin/GM ตามคำขอ
+if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
+    $where_clause = ""; // เห็นทั้งหมด
+} else {
+    // สำหรับ Role อื่นๆ (ถ้ามี) ให้เห็นเฉพาะที่เกี่ยวข้องหรือว่างเปล่า
+    $where_clause = ""; 
 }
 
 // 3. SQL Query

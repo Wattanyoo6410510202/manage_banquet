@@ -13,9 +13,11 @@ $type = $_GET['type'] ?? 'mt'; // mt, hk, bk
 $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement']);
 
 $where_clause = "";
-if ($user_role === 'staff') {
-    $safe_user = mysqli_real_escape_string($conn, $current_user);
-    $where_clause = " WHERE f.created_by = '$safe_user' ";
+// ปรับปรุง: ให้ Staff เห็นงานได้ทุกงานเหมือน Admin/GM ตามคำขอ
+if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
+    $where_clause = ""; 
+} else {
+    $where_clause = ""; 
 }
 
 $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,

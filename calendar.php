@@ -102,7 +102,6 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                     start: '<?php echo $row['start_time']; ?>',
                     end: '<?php echo $row['end_time']; ?>',
                     color: '<?php echo $color; ?>',
-                    display: 'none',
                     mode: 'general',
                     extendedProps: { 
                         mainTitle: '<?php echo addslashes($row['function_name']); ?>', 
@@ -183,7 +182,7 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                     <ul class="list-group list-group-flush border-top">
                         <li class="list-group-item px-0"><strong><i class="bi bi-person me-2"></i>ลูกค้า:</strong> ${props.customer || 'ไม่ได้ระบุ'}</li>
                         <li class="list-group-item px-0"><strong><i class="bi bi-telephone me-2"></i>เบอร์โทร:</strong> ${props.phone || '-'}</li>
-                        <li class="list-group-item px-0 text-primary"><strong><i class="bi bi-geo-alt me-2"></i>สถานที่:</strong> ${props.room}</li>
+                        <li class="list-group-item px-0 text-primary"><strong><i class="bi Geo-alt me-2"></i>สถานที่:</strong> ${props.room}</li>
                         <li class="list-group-item px-0 text-danger"><strong><i class="bi bi-people me-2"></i>จำนวนคน:</strong> ${props.pax} ท่าน</li>
                         <li class="list-group-item px-0"><strong><i class="bi bi-cash-stack me-2"></i>มัดจำ:</strong> ฿${props.deposit}</li>
                         <li class="list-group-item px-0 fw-bold"><strong><i class="bi bi-wallet2 me-2"></i>มูลค่ารวม:</strong> ฿${props.total}</li>
@@ -204,7 +203,7 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
             }
         });
         calendar.render();
-        updateCalendarView();
+        updateCalendarEvents();
     });
 
     // ข้อมูลห้องประชุมทั้งหมด
