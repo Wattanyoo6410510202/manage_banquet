@@ -69,78 +69,162 @@ if ($q && mysqli_num_rows($q) > 0) {
     }
 }
 
-foreach ($projects_data as $pid => $project) {
-    $drafts = $project['drafts'];
-    $master = null;
-    foreach ($drafts as $d) {
-        if ($d['is_approved'] == 1) { $master = $d; break; }
-    }
-    if (!$master) $master = $drafts[0];
-    $has_drafts = count($drafts) > 1;
-
-    // --- Main Row ---
-    echo '<tr class="project-header-row ' . ($has_drafts ? 'has-sub' : '') . '" data-pid="' . $pid . '">';
-    echo '<td class="ps-4">';
-    if($has_drafts) echo '<i class="bi bi-plus-square text-gold toggle-drafts me-2" style="cursor: pointer;"></i>';
-    echo '<input type="checkbox" class="row-checkbox form-check-input" value="' . $master['id'] . '"></td>';
-    
-    echo '<td><div class="hotel-logo-container">';
-    $logo = !empty($project['logo_path']) ? $project['logo_path'] : 'assets/img/default-company.png';
-    echo '<img src="' . htmlspecialchars($logo) . '" style="width:30px; height:30px; object-fit:contain;"></div></td>';
-    
-    echo '<td><div class="fw-bold text-dark project-title-link">' . htmlspecialchars($project['project_name']);
-    if($has_drafts) echo ' <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;">' . count($drafts) . ' Versions</span>';
-    echo '</div><div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $master['formatted_date'] . '</div></td>';
-    
-    echo '<td><div class="text-dark fw-medium small mb-1">' . htmlspecialchars($project['booking_name']) . '</div>';
-    echo '<div class="text-muted small"><i class="bi bi-telephone me-1"></i>' . htmlspecialchars($project['phone']) . '</div></td>';
-    
-    echo '<td><div class="text-primary fw-bold">฿' . number_format($master['total_amount'] ?: 0, 2) . '</div>';
-    echo '<small class="text-muted" style="font-size: 0.7rem;">Draft: ' . htmlspecialchars($master['draft_name']) . '</small></td>';
-    
-    echo '<td><span class="badge bg-light text-dark border fw-normal small">#' . htmlspecialchars($master['function_code']) . '</span></td>';
-    
-    echo '<td><span class="badge ' . $master['status_info']['class'] . ' rounded-pill px-3"><i class="bi ' . $master['status_info']['icon'] . ' me-1"></i>' . $master['status_info']['text'] . '</span></td>';
-    
-    echo '<td><div class="text-dark small fw-medium">' . htmlspecialchars($master['created_by'] ?: '-') . '</div></td>';
-    
-    echo '<td><div class="d-flex flex-wrap gap-1">';
-    foreach ($master['attachments'] as $file) {
-        echo '<a href="' . htmlspecialchars($file['path']) . '" target="_blank" class="text-danger fs-5"><i class="bi bi-file-earmark-pdf-fill"></i></a>';
-    }
-    echo '</div></td>';
-    
-    echo '<td class="text-center sticky-col"><div class="d-flex justify-content-center gap-1">';
-    
-    if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])) {
-        echo '<button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="' . $master['id'] . '"><i class="bi bi-check-lg"></i> อนุมัติ</button>';
-    }
-
-    echo '<a href="view.php?id=' . $master['id'] . '" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>';
-    echo '<a href="edit.php?id=' . $master['id'] . '" class="btn btn-sm btn-outline-dark"><i class="bi bi-pencil-square"></i></a>';
-    echo '</div></td></tr>';
-
-    // --- Draft Sub-rows ---
-    foreach ($drafts as $row) {
-        echo '<tr class="draft-sub-row bg-light" data-parent-pid="' . $pid . '" style="display: none; border-left: 4px solid var(--hotel-gold-solid);">';
-        echo '<td class="ps-5 text-center"><i class="bi bi-arrow-return-right text-muted"></i></td>';
-        echo '<td></td>';
-        echo '<td><div class="fw-medium text-secondary small function-name-link">' . htmlspecialchars($row['draft_name']);
-        if($row['is_approved']) echo ' <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>';
-        echo '</div><small class="text-muted">' . htmlspecialchars($row['function_name']) . '</small></td>';
-        echo '<td><small class="text-muted">' . htmlspecialchars($row['booking_name']) . '</small></td>';
-        echo '<td><div class="small fw-bold">฿' . number_format($row['total_amount'] ?: 0, 2) . '</div></td>';
-        echo '<td><span class="badge bg-white text-dark border small fw-normal">#' . htmlspecialchars($row['function_code']) . '</span></td>';
-        echo '<td><span class="badge ' . $row['status_info']['class'] . ' opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">' . $row['status_info']['text'] . '</span></td>';
-        echo '<td><small class="text-muted" style="font-size: 0.7rem;">' . date('d/m/y H:i', strtotime($row['modify'])) . '</small></td>';
-        echo '<td></td>';
-        echo '<td class="text-center"><div class="btn-group">';
-        if (!$row['is_approved'] && in_array($user_role, ['admin', 'gm'])) {
-            echo '<button type="button" class="btn btn-xs btn-success btn-approve-draft py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-check-lg small"></i> อนุมัติ</button>';
+if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
+    // แผนกช่าง, จัดเลี้ยง, แม่บ้าน (7 คอลัมน์)
+    foreach ($projects_data as $pid => $project) {
+        foreach ($project['drafts'] as $row) {
+            echo '<tr>';
+            echo '<td><input type="checkbox" class="row-checkbox form-check-input" value="' . $row['id'] . '"></td>';
+            
+            echo '<td><div class="d-flex align-items-center"><div class="me-2 hotel-logo-container">';
+            $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'assets/img/default-company.png';
+            echo '<img src="' . htmlspecialchars($logo) . '" style="width:30px; height:30px; object-fit:contain;"></div></div></td>';
+            
+            echo '<td class="ps-4"><div class="fw-bold text-dark text-wrap function-name-link" style="max-width: 400px; cursor: pointer; text-decoration: underline;">' . htmlspecialchars($row['function_name']) . '</div>';
+            echo '<div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $row['formatted_date'] . '</div></td>';
+            
+            echo '<td><div class="text-dark small text-wrap" style="max-width: 250px;">';
+            if ($type === 'mt') {
+                echo nl2br(htmlspecialchars($row['equipment'] ?: '-'));
+            } elseif ($type === 'bk') {
+                echo nl2br(htmlspecialchars($row['banquet_style'] ?: '-'));
+            } elseif ($type === 'hk') {
+                echo '<strong>ฉากหลัง:</strong> ' . htmlspecialchars($row['backdrop_detail'] ?: '-') . '<br>';
+                echo '<strong>ดอกไม้/ความสะอาด:</strong> ' . htmlspecialchars($row['hk_florist_detail'] ?: '-');
+            }
+            echo '</div></td>';
+            
+            echo '<td><span class="badge ' . $row['status_info']['class'] . ' rounded-pill px-3"><i class="bi ' . $row['status_info']['icon'] . ' me-1"></i>' . $row['status_info']['text'] . '</span></td>';
+            
+            echo '<td><div class="d-flex flex-wrap gap-2">';
+            if (empty($row['attachments'])) {
+                echo '<span class="text-muted small">-</span>';
+            } else {
+                foreach ($row['attachments'] as $file) {
+                    echo '<a href="' . htmlspecialchars($file['path']) . '" target="_blank" class="text-danger" style="font-size: 1.2rem; line-height: 1;"><i class="bi bi-file-earmark-pdf-fill"></i></a>';
+                }
+            }
+            echo '</div></td>';
+            
+            echo '<td class="text-center sticky-col"><div class="d-flex justify-content-center gap-1">';
+            
+            // ปุ่มจัดการตามสิทธิ์
+            if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])) {
+                if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])) {
+                    echo '<button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="' . $row['id'] . '"><i class="bi bi-check-lg"></i> อนุมัติ</button>';
+                }
+                if ($row['approve'] == 1 && $row['status'] == 'Confirmed') {
+                    echo '<button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="' . $row['id'] . '" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>';
+                }
+                if ($row['status'] == 'In Progress') {
+                    echo '<button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="' . $row['id'] . '" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>';
+                }
+                if (!in_array($row['status'], ['Completed', 'Cancelled'])) {
+                    echo '<button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="' . $row['id'] . '" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>';
+                }
+            }
+            
+            echo '<div class="vr mx-1"></div>';
+            echo '<a href="view.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="พิมพ์/ดูรายละเอียด"><i class="bi bi-printer"></i></a>';
+            
+            if (!in_array($user_role, ['technician', 'housekeeping'])) {
+                echo '<a href="finance.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>';
+                if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && ($row['approve'] == 0 || $user_role === 'procurement')) {
+                    echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>';
+                    if ($user_role !== 'procurement') {
+                        echo '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="' . $row['id'] . '"><i class="bi bi-trash"></i></button>';
+                    }
+                }
+            }
+            
+            echo '</div></td></tr>';
         }
-        echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-xs btn-outline-secondary py-0 px-2"><i class="bi bi-pencil small"></i></a>';
-        echo '<button type="button" class="btn btn-xs btn-outline-danger btn-delete-row py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-trash small"></i></button>';
+    }
+} else {
+    // แบบ Project/Draft (สำหรับ manage_banquet.php - 10 คอลัมน์)
+    foreach ($projects_data as $pid => $project) {
+        $drafts = $project['drafts'];
+        $master = null;
+        $is_project_approved = false;
+        foreach ($drafts as $d) {
+            if ($d['is_approved'] == 1) { 
+                $master = $d; 
+                $is_project_approved = true;
+                break; 
+            }
+        }
+        if (!$master) $master = $drafts[0];
+        $has_drafts = count($drafts) > 1;
+
+        // --- Main Row ---
+        echo '<tr class="project-header-row ' . ($has_drafts ? 'has-sub' : '') . '" data-pid="' . $pid . '">';
+        echo '<td class="ps-4">';
+        if($has_drafts) echo '<i class="bi bi-plus-square text-gold toggle-drafts me-2" style="cursor: pointer;"></i>';
+        echo '<input type="checkbox" class="row-checkbox form-check-input" value="' . $master['id'] . '"></td>';
+        
+        echo '<td><div class="hotel-logo-container">';
+        $logo = !empty($project['logo_path']) ? $project['logo_path'] : 'assets/img/default-company.png';
+        echo '<img src="' . htmlspecialchars($logo) . '" style="width:30px; height:30px; object-fit:contain;"></div></td>';
+        
+        echo '<td><div class="fw-bold text-dark project-title-link">' . htmlspecialchars($project['project_name']);
+        if($has_drafts) echo ' <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;">' . count($drafts) . ' Versions</span>';
+        echo '</div><div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $master['formatted_date'] . '</div></td>';
+        
+        echo '<td><div class="text-dark fw-medium small mb-1">' . htmlspecialchars($project['booking_name']) . '</div>';
+        echo '<div class="text-muted small"><i class="bi bi-telephone me-1"></i>' . htmlspecialchars($project['phone']) . '</div></td>';
+        
+        echo '<td><div class="text-primary fw-bold">฿' . number_format($master['total_amount'] ?: 0, 2) . '</div>';
+        echo '<small class="text-muted" style="font-size: 0.7rem;">Draft: ' . htmlspecialchars($master['draft_name']) . '</small></td>';
+        
+        echo '<td><span class="badge bg-light text-dark border fw-normal small">#' . htmlspecialchars($master['function_code']) . '</span></td>';
+        
+        echo '<td><span class="badge ' . $master['status_info']['class'] . ' rounded-pill px-3"><i class="bi ' . $master['status_info']['icon'] . ' me-1"></i>' . $master['status_info']['text'] . '</span></td>';
+        
+        echo '<td><div class="text-dark small fw-medium">' . htmlspecialchars($master['created_by'] ?: '-') . '</div><small class="text-muted" style="font-size: 0.7rem;">Master Version</small></td>';
+        
+        echo '<td><div class="d-flex flex-wrap gap-1">';
+        foreach ($master['attachments'] as $file) {
+            echo '<a href="' . htmlspecialchars($file['path']) . '" target="_blank" class="text-danger fs-5"><i class="bi bi-file-earmark-pdf-fill"></i></a>';
+        }
+        echo '</div></td>';
+        
+        echo '<td class="text-center sticky-col"><div class="d-flex justify-content-center gap-1">';
+        
+        if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])) {
+            echo '<button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="' . $master['id'] . '"><i class="bi bi-check-lg"></i> อนุมัติ</button>';
+        }
+
+        echo '<a href="view.php?id=' . $master['id'] . '" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>';
+        
+        if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
+            echo '<a href="finance.php?id=' . $master['id'] . '" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>';
+        }
+
+        echo '<a href="edit.php?id=' . $master['id'] . '" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>';
         echo '</div></td></tr>';
+
+        // --- Draft Sub-rows ---
+        foreach ($drafts as $row) {
+            echo '<tr class="draft-sub-row bg-light" data-parent-pid="' . $pid . '" style="display: none; border-left: 4px solid var(--hotel-gold-solid);">';
+            echo '<td class="ps-5 text-center"><i class="bi bi-arrow-return-right text-muted"></i></td>';
+            echo '<td></td>';
+            echo '<td><div class="fw-medium text-secondary small function-name-link">' . htmlspecialchars($row['draft_name']);
+            if($row['is_approved']) echo ' <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>';
+            echo '</div><small class="text-muted">' . htmlspecialchars($row['function_name']) . '</small></td>';
+            echo '<td><small class="text-muted">' . htmlspecialchars($row['booking_name']) . '</small></td>';
+            echo '<td><div class="small fw-bold">฿' . number_format($row['total_amount'] ?: 0, 2) . '</div></td>';
+            echo '<td><span class="badge bg-white text-dark border small fw-normal">#' . htmlspecialchars($row['function_code']) . '</span></td>';
+            echo '<td><span class="badge ' . $row['status_info']['class'] . ' opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">' . $row['status_info']['text'] . '</span></td>';
+            echo '<td><small class="text-muted" style="font-size: 0.7rem;">' . date('d/m/y H:i', strtotime($row['modify'])) . '</small></td>';
+            echo '<td></td>';
+            echo '<td class="text-center"><div class="btn-group">';
+            if (!$is_project_approved && in_array($user_role, ['admin', 'gm'])) {
+                echo '<button type="button" class="btn btn-xs btn-success btn-approve-draft py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-check-lg small"></i> อนุมัติ</button>';
+            }
+            echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-xs btn-outline-secondary py-0 px-2"><i class="bi bi-pencil small"></i></a>';
+            echo '<button type="button" class="btn btn-xs btn-outline-danger btn-delete-row py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-trash small"></i></button>';
+            echo '</div></td></tr>';
+        }
     }
 }
 ?>

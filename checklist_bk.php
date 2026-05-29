@@ -1,6 +1,7 @@
 <?php
 include "header.php";
-include "config.php"; // เปลี่ยนจาก config.php เป็น includes/db.php ตามโครงสร้างโครงการ
+access_control(['admin', 'banquet_staff']);
+include "config.php"; 
 
 // จัดการการเพิ่ม/ลบ
 $msg = "";

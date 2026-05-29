@@ -5,7 +5,7 @@ include "header.php";
 $user_role = strtolower($_SESSION['role'] ?? '');
 
 // ป้องกันการเข้าถึงหากไม่ใช่ Role ที่เกี่ยวข้อง
-if (!in_array($user_role, ['admin', 'staff', 'gm', 'banquet_staff'])) {
+if (!in_array($user_role, ['admin', 'banquet_staff'])) {
     echo "<script>window.location.href='access_denied.php';</script>";
     exit;
 }

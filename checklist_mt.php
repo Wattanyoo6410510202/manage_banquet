@@ -1,5 +1,6 @@
 <?php
 include "header.php";
+access_control(['admin', 'technician']);
 include "config.php";
 
 // จัดการการเพิ่ม/ลบ

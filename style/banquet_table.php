@@ -220,9 +220,6 @@
                     "scrollX": true,
                     "scrollCollapse": true,
                     "paging": true,
-                    "fixedColumns": {
-                        right: 1
-                    },
                     "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
                     "buttons": [
                         { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง'},

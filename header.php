@@ -58,6 +58,8 @@ function is_active($pages)
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sarabun:wght@300;400;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Driver.js for Tutorial -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <style>
         /* ล็อค Navbar บน */
         .navbar {
@@ -68,6 +70,23 @@ function is_active($pages)
             /* เพิ่มให้สูงกว่า Sidebar */
             height: 56px;
             background-color: #1a1a1a !important;
+        }
+
+        /* ปรับแต่งปุ่ม Tutorial */
+        .btn-tutorial {
+            color: #b89441;
+            border: 1px solid #b89441;
+            transition: all 0.3s;
+        }
+        .btn-tutorial:hover {
+            background-color: #b89441;
+            color: #fff;
+        }
+        /* ซ่อนข้อความ Tutorial ในมือถือ */
+        @media (max-width: 576px) {
+            .btn-tutorial span {
+                display: none;
+            }
         }
 
         /* ล็อค Sidebar ข้าง */
@@ -192,6 +211,11 @@ function is_active($pages)
             </div>
 
             <div class="d-flex align-items-center gap-2 gap-sm-3">
+                <button type="button" id="startTutorial" class="btn btn-tutorial btn-sm d-flex align-items-center shadow-none">
+                    <i class="bi bi-question-circle me-sm-1"></i>
+                    <span class="small">โหมดสอนใช้งาน</span>
+                </button>
+
                 <div class="d-flex align-items-center text-white-50">
                     <i class="bi bi-person-circle text-gold fs-5 me-1 me-sm-2"></i>
                     <span class="fw-bold text-white user-name">
@@ -220,7 +244,7 @@ function is_active($pages)
 
             <ul class="list-unstyled components">
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
                 <li>
                     <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
                         <i class="bi bi-speedometer2"></i> แดชบอร์ด
@@ -233,7 +257,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'manager', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'])): ?>
                 <li>
                     <a href="manage_banquet.php"
                         class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']); ?>">
@@ -242,7 +266,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
                 <li>
                     <a href="quotation_list.php"
                         class="<?php echo is_active(['quotation_list.php', 'add_quote.php', 'quotation_view.php']); ?>">
@@ -257,13 +281,13 @@ function is_active($pages)
                 <?php endif; ?>
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement', 'technician', 'housekeeping', 'banquet_staff'])): ?>
+                <?php if (in_array($role, ['admin', 'procurement', 'technician', 'housekeeping', 'banquet_staff'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">บันทึกภาระงานแผนก</small>
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
+                <?php if (in_array($role, ['admin', 'technician'])): ?>
                 <li>
                     <a href="banquet_mt.php" class="<?php echo is_active('banquet_mt.php'); ?>">
                         <i class="bi bi-tools"></i> งานช่าง
@@ -271,7 +295,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
+                <?php if (in_array($role, ['admin', 'banquet_staff'])): ?>
                 <li>
                     <a href="banquet_bk.php" class="<?php echo is_active('banquet_bk.php'); ?>">
                         <i class="bi bi-calendar-check"></i> งานจัดเลี้ยง
@@ -279,7 +303,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
+                <?php if (in_array($role, ['admin', 'housekeeping'])): ?>
                 <li>
                     <a href="banquet_hk.php" class="<?php echo is_active('banquet_hk.php'); ?>">
                         <i class="bi bi-house-door"></i> งานแม่บ้าน
@@ -287,13 +311,13 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">ตั้งค่ารายการตรวจสอบ</small>
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'technician'])): ?>
+                <?php if (in_array($role, ['admin', 'technician'])): ?>
                 <li>
                     <a href="checklist_mt.php" class="<?php echo is_active('checklist_mt.php'); ?>">
                         <i class="bi bi-tools"></i> Checklist ช่าง
@@ -301,7 +325,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'housekeeping'])): ?>
+                <?php if (in_array($role, ['admin', 'housekeeping'])): ?>
                 <li>
                     <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
                         <i class="bi bi-house-door"></i> Checklist แม่บ้าน
@@ -309,7 +333,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
                 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'banquet_staff'])): ?>
+                <?php if (in_array($role, ['admin', 'banquet_staff'])): ?>
                 <li>
                     <a href="checklist_bk.php" class="<?php echo is_active('checklist_bk.php'); ?>">
                         <i class="bi bi-calendar-check"></i> Checklist จัดเลี้ยง
@@ -317,7 +341,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
                 </li>

@@ -1,5 +1,6 @@
 <?php
 include "header.php";
+access_control(['admin', 'housekeeping']);
 include "config.php";
 
 // จัดการการเพิ่ม/ลบ

@@ -186,8 +186,13 @@ if ($q && mysqli_num_rows($q) > 0) {
                     <?php foreach ($projects_data as $pid => $project): 
                         $drafts = $project['drafts'];
                         $master = null;
+                        $is_project_approved = false;
                         foreach ($drafts as $d) {
-                            if ($d['is_approved'] == 1) { $master = $d; break; }
+                            if ($d['is_approved'] == 1) { 
+                                $master = $d; 
+                                $is_project_approved = true;
+                                break; 
+                            }
                         }
                         if (!$master) $master = $drafts[0];
                         $has_drafts = count($drafts) > 1;
@@ -291,7 +296,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <td></td>
                                 <td class="text-center">
                                     <div class="btn-group">
-                                        <?php if (!$row['is_approved'] && in_array($user_role, ['admin', 'gm'])): ?>
+                                        <?php if (!$is_project_approved && in_array($user_role, ['admin', 'gm'])): ?>
                                             <button type="button" class="btn btn-xs btn-success btn-approve-draft py-0 px-2" data-id="<?= $row['id']; ?>" title="เลือกดราฟนี้เป็นหลัก">
                                                 <i class="bi bi-check-lg small"></i> อนุมัติ
                                             </button>
