@@ -39,17 +39,19 @@ if ($user_role === 'staff') {
 }
 
 // 3. SQL Query
-$sql = "SELECT f.*, c.company_name, c.logo_path,
+$sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,
         (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id
+        LEFT JOIN event_projects p ON f.project_id = p.id
         $where_clause
         ORDER BY f.modify DESC, f.id DESC";
 
 $q = mysqli_query($conn, $sql);
+$projects_data = [];
 $functions_data = [];
 
-// 4. วนลูปเก็บข้อมูลลง Array และจัดการ Format ให้พร้อมใช้
+// 4. วนลูปเก็บข้อมูลลง Array และจัดการกลุ่ม Draft
 if ($q && mysqli_num_rows($q) > 0) {
     while ($row = mysqli_fetch_assoc($q)) {
         // จัดการเรื่องวันที่
@@ -58,34 +60,13 @@ if ($q && mysqli_num_rows($q) > 0) {
 
         // จัดการสถานะ (Status Mapping)
         $status_map = [
-            'Confirmed' => [
-                'text' => 'อนุมัติแล้ว',
-                'class' => 'bg-success-subtle text-success',
-                'icon' => 'bi-check-circle'
-            ],
-            'In Progress' => [
-                'text' => 'ดำเนินการ',
-                'class' => 'bg-info-subtle text-info',
-                'icon' => 'bi-play-circle'
-            ],
-            'Completed' => [
-                'text' => 'จบงานแล้ว',
-                'class' => 'bg-primary-subtle text-primary',
-                'icon' => 'bi-flag'
-            ],
-            'Cancelled' => [
-                'text' => 'ยกเลิก',
-                'class' => 'bg-danger-subtle text-danger',
-                'icon' => 'bi-x-circle'
-            ],
-            'Pending' => [
-                'text' => 'รออนุมัติ',
-                'class' => 'bg-warning-subtle text-warning',
-                'icon' => 'bi-clock-history'
-            ]
+            'Confirmed' => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success', 'icon' => 'bi-check-circle'],
+            'In Progress' => ['text' => 'ดำเนินการ', 'class' => 'bg-info-subtle text-info', 'icon' => 'bi-play-circle'],
+            'Completed' => ['text' => 'จบงานแล้ว', 'class' => 'bg-primary-subtle text-primary', 'icon' => 'bi-flag'],
+            'Cancelled' => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-x-circle'],
+            'Pending' => ['text' => 'รออนุมัติ', 'class' => 'bg-warning-subtle text-warning', 'icon' => 'bi-clock-history']
         ];
 
-        // ดึงค่าสถานะจากคอลัมน์ status มาแมป (ถ้าไม่มีใน map ให้ดึง Pending เป็นค่าเริ่มต้น)
         $current_status = $row['status'] ?? 'Pending';
         $row['status_info'] = $status_map[$current_status] ?? $status_map['Pending'];
 
@@ -93,14 +74,26 @@ if ($q && mysqli_num_rows($q) > 0) {
         $row['attachments'] = [];
         for ($i = 1; $i <= 3; $i++) {
             if (!empty($row['file_attachment' . $i])) {
-                $row['attachments'][] = [
-                    'path' => $row['file_attachment' . $i],
-                    'label' => 'ไฟล์แนบ ' . $i
-                ];
+                $row['attachments'][] = ['path' => $row['file_attachment' . $i]];
             }
         }
 
+        // เก็บข้อมูลดิบไว้สำหรับ mobile card
         $functions_data[] = $row;
+
+        // จัดกลุ่มตาม Project
+        $pid = $row['project_id'] ?: 'single_' . $row['id'];
+        if (!isset($projects_data[$pid])) {
+            $projects_data[$pid] = [
+                'project_name' => $row['main_project_name'] ?: $row['function_name'],
+                'company_name' => $row['company_name'],
+                'logo_path' => $row['logo_path'],
+                'booking_name' => $row['booking_name'],
+                'phone' => $row['phone'],
+                'drafts' => []
+            ];
+        }
+        $projects_data[$pid]['drafts'][] = $row;
     }
 }
 ?>
@@ -193,99 +186,120 @@ if ($q && mysqli_num_rows($q) > 0) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($functions_data as $row): ?>
-                        <tr>
-                            <td><input type="checkbox" class="row-checkbox form-check-input" value="<?= $row['id']; ?>">
+                    <?php foreach ($projects_data as $pid => $project): 
+                        $drafts = $project['drafts'];
+                        $master = null;
+                        $is_project_approved = false;
+                        foreach ($drafts as $d) {
+                            if ($d['is_approved'] == 1) { 
+                                $master = $d; 
+                                $is_project_approved = true;
+                                break; 
+                            }
+                        }
+                        if (!$master) $master = $drafts[0];
+                        $has_drafts = count($drafts) > 1;
+                    ?>
+                        <!-- Main Project Row -->
+                        <tr class="project-header-row <?= $has_drafts ? 'has-sub' : '' ?>" data-pid="<?= $pid ?>">
+                            <td class="ps-4">
+                                <?php if($has_drafts): ?>
+                                    <i class="bi bi-plus-square text-gold toggle-drafts me-2" style="cursor: pointer;"></i>
+                                <?php endif; ?>
+                                <input type="checkbox" class="row-checkbox form-check-input" value="<?= $master['id']; ?>">
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="me-2 hotel-logo-container">
-                                        <?php $logo = !empty($row['logo_path']) ? $row['logo_path'] : 'default-logo.png'; ?>
-                                        <img src="<?= htmlspecialchars($logo); ?>" alt="Logo"
-                                            style="width:30px; height:30px; object-fit:contain;">
+                                        <?php $logo = !empty($project['logo_path']) ? $project['logo_path'] : 'assets/img/default-company.png'; ?>
+                                        <img src="<?= htmlspecialchars($logo); ?>" alt="Logo" style="width:30px; height:30px; object-fit:contain;">
                                     </div>
                                 </div>
                             </td>
-                            <td class="ps-4">
-                                <div class="fw-bold text-dark text-wrap function-name-link" style="max-width: 400px; cursor: pointer; text-decoration: underline;">
-                                    <?= htmlspecialchars($row['function_name']); ?>
+                            <td>
+                                <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;" data-id="<?= $master['id'] ?>">
+                                    <?= htmlspecialchars($project['project_name']); ?>
+                                    <?php if($has_drafts): ?>
+                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                    <?php endif; ?>
                                 </div>
-                                <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i>
-                                    <?= $row['formatted_date']; ?></div>
+                                <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> <?= $master['formatted_date']; ?></div>
                             </td>
                             <td>
                                 <div class="text-dark small text-wrap" style="max-width: 250px;">
-                                    <strong>ฉากหลัง:</strong> <?= htmlspecialchars($row['backdrop_detail'] ?: '-'); ?><br>
-                                    <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($row['hk_florist_detail'] ?: '-'); ?>
+                                    <strong>ฉากหลัง:</strong> <?= htmlspecialchars($master['backdrop_detail'] ?: '-'); ?><br>
+                                    <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($master['hk_florist_detail'] ?: '-'); ?>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-3">
-                                    <i
-                                        class="bi <?= $row['status_info']['icon']; ?> me-1"></i><?= $row['status_info']['text']; ?>
+                                <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-3">
+                                    <i class="bi <?= $master['status_info']['icon']; ?> me-1"></i><?= $master['status_info']['text']; ?>
                                 </span>
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <?php if (empty($row['attachments'])): ?>
-                                        <span class="text-muted small">-</span>
-                                    <?php else: ?>
-                                        <?php foreach ($row['attachments'] as $file): ?>
-                                            <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank" class="text-danger"
-                                                style="font-size: 1.2rem; line-height: 1;"><i
-                                                    class="bi bi-file-earmark-pdf-fill"></i></a>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                    <?php foreach ($master['attachments'] as $file): ?>
+                                        <a href="<?= htmlspecialchars($file['path']); ?>" target="_blank" class="text-danger fs-5"><i class="bi bi-file-earmark-pdf-fill"></i></a>
+                                    <?php endforeach; ?>
                                 </div>
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
                                     <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
-                                        <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                            <button type="button" class="btn btn-sm btn-success btn-approve-row"
-                                                data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
+                                        <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                                            <button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="<?= $master['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
                                         <?php endif; ?>
-                                        <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
-                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="In Progress"><i
-                                                    class="bi bi-play-fill"></i> ดำเนินการ</button>
-                                        <?php endif; ?>
-                                        <?php if ($row['status'] == 'In Progress'): ?>
-                                            <button type="button" class="btn btn-sm btn-primary btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="Completed"><i
-                                                    class="bi bi-flag-fill"></i> จบงาน</button>
-                                        <?php endif; ?>
-                                        <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change"
-                                                data-id="<?= $row['id']; ?>" data-status="Cancelled"><i
-                                                    class="bi bi-x-lg"></i> ยกเลิก</button>
+                                        <?php if ($master['approve'] == 1 && $master['status'] == 'Confirmed'): ?>
+                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $master['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
                                         <?php endif; ?>
                                     <?php endif; ?>
-                                    <div class="vr mx-1"></div>
-                                    <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"
-                                        title="พิมพ์/ดูรายละเอียด">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
+                                    
+                                    <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-eye"></i></a>
                                     
                                     <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
-                                        <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning"
-                                            title="จัดการบัญชี/ROI">
-                                            <i class="bi bi-cash-coin"></i>
-                                        </a>
-                                        <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && ($row['approve'] == 0 || $user_role === 'procurement')): ?>
-                                            <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"
-                                                title="แก้ไข">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </a>
-                                            <?php if ($user_role !== 'procurement'): ?>
-                                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row"
-                                                    data-id="<?= $row['id']; ?>"><i class="bi bi-trash"></i></button>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
+                                        <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>
+                                        <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
                                     <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
+
+                        <!-- Draft Rows (Sub-items) -->
+                        <?php foreach ($drafts as $row): ?>
+                            <tr class="draft-sub-row bg-light" data-parent-pid="<?= $pid ?>" style="display: none; border-left: 4px solid var(--hotel-gold-solid);">
+                                <td class="ps-5 text-center"><i class="bi bi-arrow-return-right text-muted"></i></td>
+                                <td></td>
+                                <td>
+                                    <div class="fw-medium text-secondary small function-name-link" style="cursor: pointer;" data-id="<?= $row['id'] ?>">
+                                        <?= htmlspecialchars($row['draft_name']); ?>
+                                        <?php if($row['is_approved']): ?>
+                                            <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <small class="text-muted"><?= htmlspecialchars($row['function_name']); ?></small>
+                                </td>
+                                <td>
+                                    <div class="text-muted small">
+                                        <strong>ฉากหลัง:</strong> <?= htmlspecialchars($row['backdrop_detail'] ?: '-'); ?><br>
+                                        <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($row['hk_florist_detail'] ?: '-'); ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                        <?= $row['status_info']['text']; ?>
+                                    </span>
+                                </td>
+                                <td></td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-primary py-0 px-2"><i class="bi bi-eye small"></i></a>
+                                        <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
+                                            <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-secondary py-0 px-2"><i class="bi bi-pencil small"></i></a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -293,43 +307,98 @@ if ($q && mysqli_num_rows($q) > 0) {
 
         <!-- รายการแบบ Card (สำหรับมือถือ) -->
         <div class="d-md-none p-2">
-            <?php foreach ($functions_data as $row): ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 5px solid #0d6efd;">
+            <?php foreach ($projects_data as $pid => $project): 
+                $drafts = $project['drafts'];
+                $master = null;
+                foreach ($drafts as $d) {
+                    if ($d['is_approved'] == 1) { 
+                        $master = $d; 
+                        break; 
+                    }
+                }
+                if (!$master) $master = $drafts[0];
+                $has_drafts = count($drafts) > 1;
+            ?>
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
                     <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold text-dark mb-0 text-truncate" style="max-width: 70%;" onclick="showEventDetail('<?= htmlspecialchars($row['function_name']); ?>', '<?= $row['id']; ?>')" style="cursor: pointer;">
-                                <?= htmlspecialchars($row['function_name']); ?>
-                            </h6>
-                            <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-2 small">
-                                <?= $row['status_info']['text']; ?>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="hotel-logo-container me-2">
+                                    <?php $logo = !empty($project['logo_path']) ? $project['logo_path'] : 'assets/img/default-company.png'; ?>
+                                    <img src="<?= htmlspecialchars($logo); ?>" alt="Logo" style="width:35px; height:35px; object-fit:contain;">
+                                </div>
+                                <div class="function-name-link" style="cursor: pointer;" data-id="<?= $master['id'] ?>">
+                                    <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($project['project_name']); ?></h6>
+                                    <?php if($has_drafts): ?>
+                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-2">
+                                <?= $master['status_info']['text']; ?>
                             </span>
                         </div>
-                        
-                        <div class="text-muted small mb-2"><i class="bi bi-calendar-event me-1"></i><?= $row['formatted_date']; ?></div>
-                        
-                        <div class="bg-light p-2 rounded mb-3 small">
-                            <strong class="d-block mb-1 text-primary"><i class="bi bi-house-door me-1"></i>งานแม่บ้าน:</strong>
-                            <div class="text-secondary">
-                                <strong>ฉากหลัง:</strong> <?= htmlspecialchars($row['backdrop_detail'] ?: '-'); ?><br>
-                                <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($row['hk_florist_detail'] ?: '-'); ?>
+
+                        <div class="mb-2">
+                            <div class="small text-muted mb-1">
+                                <i class="bi bi-calendar-event me-1 text-gold"></i> <?= $master['formatted_date']; ?>
+                                <span class="mx-2 text-light">|</span>
+                                <i class="bi bi-hash me-1 text-gold"></i> <?= htmlspecialchars($master['function_code']); ?>
+                            </div>
+                            <div class="bg-light p-2 rounded mb-2 small">
+                                <strong class="d-block mb-1 text-gold"><i class="bi bi-house-door me-1"></i>งานแม่บ้าน:</strong>
+                                <div class="text-secondary">
+                                    <strong>ฉากหลัง:</strong> <?= htmlspecialchars($master['backdrop_detail'] ?: '-'); ?><br>
+                                    <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($master['hk_florist_detail'] ?: '-'); ?>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="d-flex flex-wrap gap-1">
-                            <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary shadow-none"><i class="bi bi-printer"></i></a>
-                            
-                            <?php if ($user_role !== 'viewer'): ?>
-                                <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                    <button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i></button>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-outline-primary btn-sm w-100 py-2">
+                                    <i class="bi bi-eye d-block fs-5 mb-1"></i> ดูข้อมูล
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
+                                    <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-outline-dark btn-sm w-100 py-2">
+                                        <i class="bi bi-pencil-square d-block fs-5 mb-1"></i> แก้ไข
+                                    </a>
+                                <?php else: ?>
+                                     <button class="btn btn-outline-secondary btn-sm w-100 py-2 disabled">
+                                        <i class="bi bi-lock d-block fs-5 mb-1"></i> แก้ไข
+                                    </button>
                                 <?php endif; ?>
-                                <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
-                                    <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $row['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
-                                <?php endif; ?>
-                                <?php if ($row['status'] == 'In Progress'): ?>
-                                    <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $row['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i></button>
-                                <?php endif; ?>
-                            <?php endif; ?>
+                            </div>
                         </div>
+
+                        <?php if($has_drafts): ?>
+                            <div class="mt-3 pt-2 border-top">
+                                <button class="btn btn-link btn-sm text-gold text-decoration-none w-100 p-0 toggle-mobile-drafts" data-pid="<?= $pid ?>">
+                                    <i class="bi bi-chevron-down me-1"></i> ดูเวอร์ชันอื่น ๆ (<?= count($drafts)-1 ?>)
+                                </button>
+                                <div class="mobile-drafts-container mt-2" id="mobile-drafts-<?= $pid ?>" style="display: none;">
+                                    <?php foreach($drafts as $row): if($row['id'] == $master['id']) continue; ?>
+                                        <div class="card mb-2 border-0 bg-light">
+                                            <div class="card-body p-2 small">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
+                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
+                                                </div>
+                                                <div class="text-secondary mb-2">
+                                                    <strong>ฉากหลัง:</strong> <?= htmlspecialchars($row['backdrop_detail'] ?: '-'); ?><br>
+                                                    <strong>ดอกไม้/ความสะอาด:</strong> <?= htmlspecialchars($row['hk_florist_detail'] ?: '-'); ?>
+                                                </div>
+                                                <div class="text-end">
+                                                    <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -522,37 +591,75 @@ if ($q && mysqli_num_rows($q) > 0) {
             });
     }
 
-    function attachTableEvents(table) {
-        document.querySelectorAll('.function-name-link').forEach(el => {
-            el.onclick = () => {
-                const functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value;
-                const title = el.innerText.trim();
-                if (functionId) {
-                    showEventDetail(title, functionId);
-                }
-            };
-        });
-    }
-
-    function updateDeleteButton() {
-        var count = $('.row-checkbox:checked').length;
-        if($('#selectCount').length) $('#selectCount').text(count);
-        if(count > 0) {
-            $('#deleteSelected').fadeIn(200);
-        } else {
-            $('#deleteSelected').fadeOut(200);
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.function-name-link').forEach(el => {
+        document.querySelectorAll('.function-name-link, .project-title-link').forEach(el => {
             el.addEventListener('click', () => {
-                const functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value || el.closest('.card')?.querySelector('input[type="checkbox"]')?.value;
+                let functionId = el.getAttribute('data-id');
+                if (!functionId) {
+                    functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value;
+                }
                 const title = el.innerText.trim();
                 if (functionId) {
                     showEventDetail(title, functionId);
                 }
             });
+        });
+    });
+
+    $(document).on('click', '.toggle-drafts', function() {
+        const tr = $(this).closest('tr');
+        const pid = tr.data('pid');
+        const subRows = $(`.draft-sub-row[data-parent-pid="${pid}"]`);
+        
+        if (subRows.is(':visible')) {
+            subRows.fadeOut(200);
+            $(this).removeClass('bi-dash-square').addClass('bi-plus-square');
+        } else {
+            subRows.fadeIn(200);
+            $(this).removeClass('bi-plus-square').addClass('bi-dash-square');
+        }
+    });
+
+    $(document).on('click', '.toggle-mobile-drafts', function() {
+        const pid = $(this).data('pid');
+        const container = $(`#mobile-drafts-${pid}`);
+        if (container.is(':visible')) {
+            container.slideUp(200);
+            $(this).html('<i class="bi bi-chevron-down me-1"></i> ดูเวอร์ชันอื่น ๆ');
+        } else {
+            container.slideDown(200);
+            $(this).html('<i class="bi bi-chevron-up me-1"></i> ปิดเวอร์ชันอื่น ๆ');
+        }
+    });
+
+    $(document).on('click', '.btn-approve-draft', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติ Draft นี้?',
+            text: "Draft นี้จะกลายเป็นรายการหลักของโครงการ และสถานะโครงการจะถูกเปลี่ยนเป็น Approved",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#b89441',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ยืนยันการอนุมัติ',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'approve_event.php',
+                    type: 'POST',
+                    data: { id: id, status: 'Confirmed' },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            Swal.fire('สำเร็จ!', 'อนุมัติ Draft เรียบร้อยแล้ว', 'success').then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire('ผิดพลาด!', response.message, 'error');
+                        }
+                    }
+                });
+            }
         });
     });
 </script>

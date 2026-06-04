@@ -214,7 +214,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </div>
                             </td>
                             <td>
-                                <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;">
+                                <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <?= htmlspecialchars($project['project_name']); ?>
                                     <?php if($has_drafts): ?>
                                         <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
@@ -314,54 +314,116 @@ if ($q && mysqli_num_rows($q) > 0) {
 
         <!-- รายการแบบ Card (สำหรับมือถือ) -->
         <div class="d-md-none p-2">
-            <?php foreach ($functions_data as $row): ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+            <?php foreach ($projects_data as $pid => $project): 
+                $drafts = $project['drafts'];
+                $master = null;
+                foreach ($drafts as $d) {
+                    if ($d['is_approved'] == 1) { 
+                        $master = $d; 
+                        break; 
+                    }
+                }
+                if (!$master) $master = $drafts[0];
+                $has_drafts = count($drafts) > 1;
+            ?>
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="function-name-link" style="cursor: pointer; text-decoration: underline;">
-                                <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($row['function_name']); ?></h6>
-                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['formatted_date']; ?></small>
+                            <div class="d-flex align-items-center">
+                                <div class="hotel-logo-container me-2">
+                                    <?php $logo = !empty($project['logo_path']) ? $project['logo_path'] : 'assets/img/default-company.png'; ?>
+                                    <img src="<?= htmlspecialchars($logo); ?>" alt="Logo" style="width:35px; height:35px; object-fit:contain;">
+                                </div>
+                                <div class="function-name-link" style="cursor: pointer;" data-id="<?= $master['id'] ?>">
+                                    <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($project['project_name']); ?></h6>
+                                    <?php if($has_drafts): ?>
+                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                            <span class="badge <?= $row['status_info']['class']; ?> rounded-pill px-2">
-                                <?= $row['status_info']['text']; ?>
+                            <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-2">
+                                <?= $master['status_info']['text']; ?>
                             </span>
                         </div>
-                        
-                        <p class="text-dark small mb-1"><i class="bi bi-person me-1"></i> <?= htmlspecialchars($row['booking_name']); ?></p>
-                        <p class="text-muted small mb-2"><i class="bi bi-telephone me-1"></i> <?= formatPhoneNumber($row['phone']); ?></p>
 
-                        <div class="d-flex flex-wrap gap-1 mb-2">
-                            <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                            
-                            <?php if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])): ?>
-                                <a href="finance.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI">
-                                    <i class="bi bi-cash-coin"></i>
+                        <div class="mb-2">
+                            <div class="small text-muted mb-1">
+                                <i class="bi bi-calendar-event me-1 text-gold"></i> <?= $master['formatted_date']; ?>
+                                <span class="mx-2 text-light">|</span>
+                                <i class="bi bi-hash me-1 text-gold"></i> <?= htmlspecialchars($master['function_code']); ?>
+                            </div>
+                            <div class="small fw-bold text-dark">
+                                <i class="bi bi-person me-1 text-gold"></i> <?= htmlspecialchars($project['booking_name']); ?>
+                            </div>
+                            <div class="small">
+                                <a href="tel:<?= $project['phone']; ?>" class="text-muted text-decoration-none">
+                                    <i class="bi bi-telephone me-1 text-gold"></i> <?= formatPhoneNumber($project['phone']); ?>
                                 </a>
-                            <?php endif; ?>
-
-                            <?php if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed'): ?>
-                                <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-outline-dark"><i class="bi bi-pencil-square"></i></a>
-                            <?php endif; ?>
-
-                            <?php if ($user_role !== 'viewer'): ?>
-                                <?php if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                    <button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="<?= $row['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
-                                <?php endif; ?>
-                                <?php if ($row['approve'] == 1 && $row['status'] == 'Confirmed'): ?>
-                                    <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $row['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>
-                                <?php endif; ?>
-                                <?php if ($row['status'] == 'In Progress'): ?>
-                                    <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $row['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>
-                                <?php endif; ?>
-                                <?php if (!in_array($row['status'], ['Completed', 'Cancelled'])): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $row['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>
-                                <?php endif; ?>
-                            <?php endif; ?>
+                            </div>
                         </div>
 
-                        <div class="pt-2 border-top text-end">
-                            <span class="text-primary fw-bold">฿<?= number_format($row['total_amount'] ?: 0, 2); ?></span>
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                            <span class="small text-muted">มูลค่ารวม:</span>
+                            <span class="text-primary fw-bold fs-5">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></span>
                         </div>
+
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-outline-primary btn-sm w-100 py-2">
+                                    <i class="bi bi-eye d-block fs-5 mb-1"></i> ดูข้อมูล
+                                </a>
+                            </div>
+                            <div class="col-4">
+                                <?php if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])): ?>
+                                    <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-outline-warning btn-sm w-100 py-2">
+                                        <i class="bi bi-cash-coin d-block fs-5 mb-1"></i> บัญชี
+                                    </a>
+                                <?php else: ?>
+                                     <button class="btn btn-outline-secondary btn-sm w-100 py-2 disabled">
+                                        <i class="bi bi-lock d-block fs-5 mb-1"></i> บัญชี
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                            <div class="col-4">
+                                <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-outline-dark btn-sm w-100 py-2">
+                                    <i class="bi bi-pencil-square d-block fs-5 mb-1"></i> แก้ไข
+                                </a>
+                            </div>
+                        </div>
+
+                        <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                            <button type="button" class="btn btn-success btn-sm w-100 mt-2 py-2 btn-approve-draft" data-id="<?= $master['id']; ?>">
+                                <i class="bi bi-check-lg me-1"></i> อนุมัติรายการนี้
+                            </button>
+                        <?php endif; ?>
+
+                        <?php if($has_drafts): ?>
+                            <div class="mt-3 pt-2 border-top">
+                                <button class="btn btn-link btn-sm text-gold text-decoration-none w-100 p-0 toggle-mobile-drafts" data-pid="<?= $pid ?>">
+                                    <i class="bi bi-chevron-down me-1"></i> ดูเวอร์ชันอื่น ๆ (<?= count($drafts)-1 ?>)
+                                </button>
+                                <div class="mobile-drafts-container mt-2" id="mobile-drafts-<?= $pid ?>" style="display: none;">
+                                    <?php foreach($drafts as $row): if($row['id'] == $master['id']) continue; ?>
+                                        <div class="card mb-2 border-0 bg-light">
+                                            <div class="card-body p-2 small">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
+                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="text-muted">#<?= $row['function_code'] ?></span>
+                                                    <span class="text-primary fw-bold">฿<?= number_format($row['total_amount'], 2) ?></span>
+                                                </div>
+                                                <div class="text-end mt-2">
+                                                    <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
+                                                    <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-dark py-0 px-2">แก้ไข</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -608,9 +670,12 @@ if ($q && mysqli_num_rows($q) > 0) {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.function-name-link').forEach(el => {
+        document.querySelectorAll('.function-name-link, .project-title-link').forEach(el => {
             el.addEventListener('click', () => {
-                const functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value || el.closest('.card')?.querySelector('input[type="checkbox"]')?.value;
+                let functionId = el.getAttribute('data-id');
+                if (!functionId) {
+                    functionId = el.closest('tr')?.querySelector('.row-checkbox')?.value;
+                }
                 const title = el.innerText.trim();
                 if (functionId) {
                     showEventDetail(title, functionId);
@@ -632,6 +697,18 @@ if ($q && mysqli_num_rows($q) > 0) {
         } else {
             subRows.fadeIn(200);
             $(this).removeClass('bi-plus-square').addClass('bi-dash-square');
+        }
+    });
+
+    $(document).on('click', '.toggle-mobile-drafts', function() {
+        const pid = $(this).data('pid');
+        const container = $(`#mobile-drafts-${pid}`);
+        if (container.is(':visible')) {
+            container.slideUp(200);
+            $(this).html('<i class="bi bi-chevron-down me-1"></i> ดูเวอร์ชันอื่น ๆ');
+        } else {
+            container.slideDown(200);
+            $(this).html('<i class="bi bi-chevron-up me-1"></i> ปิดเวอร์ชันอื่น ๆ');
         }
     });
 
