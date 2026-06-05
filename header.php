@@ -281,9 +281,17 @@ function is_active($pages)
                 <?php endif; ?>
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
 
-                <?php if (in_array($role, ['admin', 'procurement', 'technician', 'housekeeping', 'banquet_staff'])): ?>
+                <?php if (in_array($role, ['admin', 'procurement', 'technician', 'housekeeping', 'banquet_staff', 'staff', 'gm', 'sale'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">บันทึกภาระงานแผนก</small>
+                </li>
+                <?php endif; ?>
+
+                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale'])): ?>
+                <li>
+                    <a href="sales_dept.php" class="<?php echo is_active('sales_dept.php'); ?>">
+                        <i class="bi bi-graph-up-arrow"></i> แผนกขาย
+                    </a>
                 </li>
                 <?php endif; ?>
 

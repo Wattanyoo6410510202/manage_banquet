@@ -24,7 +24,7 @@ if (isset($_GET['edit_user_id'])) {
 }
 
 // เช็กว่าควรเปิด Tab ไหน (Auto-switch เมื่อกดแก้ไข)
-$active_tab = (isset($_GET['edit_user_id'])) ? 'user' : 'company';
+$active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 'company');
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -477,6 +477,13 @@ $(document).ready(function() {
     });
 
     $('#userTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json'
+        },
+        pageLength: 10
+    });
+
+    $('#salesTargetTable').DataTable({
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json'
         },
