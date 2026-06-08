@@ -2,14 +2,18 @@
 include "config.php";
 include "header.php";
 
-// เพิ่มการ JOIN ตาราง customers (c) เพื่อเอาชื่อลูกค้า (cust_name)
-$sql = "SELECT q.*, f.function_name, c.cust_name 
+$sql = "SELECT q.*, f.function_name, c.cust_name, p.project_name 
         FROM quotations q
         LEFT JOIN functions f ON q.function_id = f.id
         LEFT JOIN customers c ON q.customer_id = c.id
+        LEFT JOIN event_projects p ON q.project_id = p.id
         ORDER BY q.id DESC";
 
 $result = $conn->query($sql);
+$quotes = [];
+while ($row = $result->fetch_assoc()) {
+    $quotes[] = $row;
+}
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
@@ -39,74 +43,74 @@ $result = $conn->query($sql);
             <table id="quoteDataTable" class="table table-hover align-middle mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th class="text-center" width="15%">เลขที่ใบเสนอราคา</th>
-                        <th width="15%">วันที่ออกเอกสาร</th>
+                        <th class="text-center" width="12%">เลขที่ใบเสนอราคา</th>
+                        <th width="12%">วันที่ออกเอกสาร</th>
                         <th>ชื่อลูกค้า / โครงการ</th>
-                        <th class="text-end" width="15%">ยอดสุทธิ</th>
-                        <th class="text-center" width="12%">สถานะ</th>
+                        <th class="text-end" width="12%">ยอดสุทธิ</th>
+                        <th class="text-center" width="10%">สถานะ</th>
+                        <th class="text-center" width="10%">เลือกใช้งาน</th>
                         <th class="text-center" width="15%">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php 
-                    $result->data_seek(0);
-                    while ($row = $result->fetch_assoc()): 
-                        $status_map = [
-                            'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
-                            'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
-                            'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
-                            'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
-                        ];
-                        $st = $status_map[$row['status']] ?? $status_map['Draft'];
+                    $status_map = [
+                        'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
+                        'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
+                        'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
+                        'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
+                    ];
+                    foreach ($quotes as $q): 
+                        $st = $status_map[$q['status']] ?? $status_map['Draft'];
                     ?>
-                        <tr>
-                            <td class="text-center fw-bold text-primary"><?= $row['quote_no'] ?></td>
-                            <td><?= date('d/m/Y', strtotime($row['created_at'])) ?></td>
-                            <td>
-                                <div class="fw-bold text-dark"><?= $row['cust_name'] ?></div>
-                                <small class="text-muted"><i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?? $row['function_name'] ?></small>
+                        <tr style="<?= $q['is_selected'] ? 'background-color: #f0f7ff;' : '' ?>">
+                            <td class="text-center fw-bold text-primary">
+                                <?= $q['quote_no'] ?>
+                                <?php if ($q['is_selected']): ?>
+                                    <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                <?php endif; ?>
                             </td>
-                            <td class="text-end fw-bold text-dark"><?= number_format($row['grand_total'], 2) ?></td>
+                            <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
+                            <td>
+                                <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
+                                <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
+                            </td>
+                            <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                             <td class="text-center">
                                 <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
-                                <?php if ($row['status'] == 'Approved' && $row['approved_at']): ?>
-                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">
-                                        <?= date('d/m/y H:i', strtotime($row['approved_at'])) ?>
-                                    </div>
+                            </td>
+                            <td class="text-center">
+                                <?php if ($q['is_selected']): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
+                                        <i class="bi bi-x-lg"></i> ยกเลิก
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
+                                        เลือกใช้งาน
+                                    </button>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($row['status'] !== 'Approved'): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $row['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                    <?php if ($q['status'] !== 'Approved'): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
                                     <?php endif; ?>
-                                    <?php if ($row['status'] === 'Approved'): ?>
-                                        <a href="add_event.php?quote_id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
+                                    <?php if ($q['status'] === 'Approved'): ?>
+                                        <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
                                     <?php endif; ?>
-                                    <a href="quotation_view.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                                    <?php if ($row['status'] !== 'Approved'): ?>
-                                        <a href="edit_quotation.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
-                                    <?php endif; ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $row['id'] ?>"><i class="bi bi-trash"></i></button>
+                                    <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
                                 </div>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
 
         <!-- Mobile Card View -->
         <div class="d-md-none p-2">
-            <?php 
-            $result->data_seek(0);
-            while ($row = $result->fetch_assoc()): 
-                $status_map = [
-                    'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
-                    'Sent' => ['class' => 'bg-info-subtle text-info', 'text' => 'ส่งแล้ว'],
-                    'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
-                    'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
-                ];
+            <?php foreach ($quotes as $row): 
                 $st = $status_map[$row['status']] ?? $status_map['Draft'];
             ?>
                 <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; background: #fff;">
@@ -131,6 +135,15 @@ $result = $conn->query($sql);
                                 ฿<?= number_format($row['grand_total'], 2) ?>
                             </div>
                             <div class="d-flex gap-1">
+                                <?php if ($row['is_selected']): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $row['id'] ?>">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $row['id'] ?>">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                <?php endif; ?>
                                 <?php if ($row['status'] !== 'Approved'): ?>
                                     <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $row['id'] ?>">
                                         <i class="bi bi-check-circle"></i>
@@ -160,7 +173,7 @@ $result = $conn->query($sql);
                         </div>
                     </div>
                 </div>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
@@ -232,6 +245,66 @@ $result = $conn->query($sql);
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = 'api/approve_process.php?id=' + id;
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-deselect-quote', function () {
+        let id = $(this).data('id');
+        Swal.fire({
+            title: 'ยกเลิกการเลือกใบเสนอราคานี้?',
+            text: "ใบเสนอราคานี้จะไม่ถูกใช้งานเป็นหลักอีกต่อไป",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ใช่, ยกเลิกเลย'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'api/select_quote.php',
+                    type: 'GET',
+                    data: { id: id, deselect: 1 },
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            Swal.fire('สำเร็จ!', 'ยกเลิกการเลือกเรียบร้อยแล้ว', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('ผิดพลาด!', response.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-select-quote', function () {
+        let id = $(this).data('id');
+        Swal.fire({
+            title: 'เลือกใบเสนอราคานี้?',
+            text: "ต้องการเลือกใบนี้เป็นใบที่ใช้งานหลักสำหรับโครงการนี้ใช่หรือไม่?",
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#0d6efd',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ใช่, เลือกเลย'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'api/select_quote.php',
+                    type: 'GET',
+                    data: { id: id },
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            Swal.fire('สำเร็จ!', 'เลือกใบเสนอราคาเรียบร้อยแล้ว', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('ผิดพลาด!', response.message, 'error');
+                        }
+                    }
+                });
             }
         });
     });

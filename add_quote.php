@@ -6,8 +6,13 @@ include "header.php";
 $customers_sql = "SELECT id, cust_name FROM customers ORDER BY cust_name ASC";
 $customers_res = $conn->query($customers_sql);
 
+// 1.5 ดึงรายชื่อ Project ทั้งหมด
+$projects_sql = "SELECT id, project_name FROM event_projects ORDER BY project_name ASC";
+$projects_res = $conn->query($projects_sql);
+
 // 2. ตั้งค่าตัวแปรเริ่มต้น
 $function_id = $_GET['function_id'] ?? null;
+$project_id = $_GET['project_id'] ?? null;
 $selected_customer_id = "";
 $event_name = "";
 $event_date = date('Y-m-d');
@@ -23,6 +28,7 @@ if ($function_id) {
         $event_name = $row['function_name'];
         $selected_customer_id = $row['customer_id'];
         $event_date = $row['event_date'];
+        $project_id = $row['project_id']; // ดึง project_id มาด้วย
     }
 }
 ?>
@@ -49,6 +55,22 @@ if ($function_id) {
                     <label class="form-label fw-bold">เลขที่ใบเสนอราคา</label>
                     <input type="text" name="quote_no" class="form-control bg-light" value="QT-<?= date('Ymd-Hi') ?>"
                         readonly>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-dark">อ้างอิงโครงการ (Project)</label>
+                    <select name="project_id" class="form-select select2">
+                        <option value="">--- ไม่ระบุโครงการ ---</option>
+                        <?php
+                        if ($projects_res->num_rows > 0) {
+                            $projects_res->data_seek(0);
+                            while ($p = $projects_res->fetch_assoc()):
+                                $selected = ($p['id'] == $project_id) ? "selected" : "";
+                                echo "<option value='{$p['id']}' $selected>{$p['project_name']}</option>";
+                            endwhile;
+                        }
+                        ?>
+                    </select>
                 </div>
 
                 <div class="col-md-3">

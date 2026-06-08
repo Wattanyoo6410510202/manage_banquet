@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 
 // 1. ตรวจสอบ Login และสิทธิ์
 $current_user = $_SESSION['user_name'] ?? '';
-$user_role = $_SESSION['role'] ?? 'staff';
+$user_role = strtolower($_SESSION['role'] ?? 'staff');
 
 // รับค่าจาก AJAX (ids เป็น array)
 $ids = isset($_POST['ids']) ? $_POST['ids'] : [];
@@ -21,7 +21,7 @@ if (!empty($ids) && is_array($ids)) {
     $conn->begin_transaction();
     try {
         // 🚀 2. เช็คสิทธิ์ก่อนลบ
-        if ($user_role !== 'admin') {
+        if (!in_array($user_role, ['admin', 'gm', 'manager', 'procurement'])) {
             // ถ้าเป็น Staff ต้องลบได้เฉพาะงานที่ตัวเองสร้าง และยังไม่ Approve
             if ($user_role === 'staff') {
                 $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by != ? OR approve != 0)";
@@ -34,7 +34,7 @@ if (!empty($ids) && is_array($ids)) {
                     throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
                 }
             } else {
-                // Roles อื่นที่ไม่ใช่ admin และ staff ห้ามลบ
+                // Roles อื่นที่ไม่ใช่ admin, gm, manager, procurement และ staff ห้ามลบ
                 throw new Exception("จาร! จารไม่มีสิทธิ์ลบข้อมูลนะครับ");
             }
         }

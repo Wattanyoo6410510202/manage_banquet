@@ -12,7 +12,7 @@ $user_role = strtolower(trim($_SESSION['role'] ?? 'staff'));
 // 3. ดึงข้อมูลจากฐานข้อมูล (ปรับใหม่ให้ JOIN ครบทุกอย่าง)
 $sql = "SELECT f.*, 
                c.company_name, c.logo_path,
-               ft.type_name as function_type_name, 
+               ft.type_name as function_type_name, ft.prefix as type_prefix,
                r.room_name as master_room_name
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id 
@@ -223,7 +223,7 @@ $menus = $conn->query($sql_menus);
             <div class="text-end">
                 <div class="p-1 border rounded bg-light text-center" style="min-width: 130px;">
                     <small class="text-muted d-block" style="font-size: 8px;">DOCUMENT NO.</small>
-                    <span class="fw-bold " style="font-size: 14px;"><?php echo $data['function_code']; ?></span>
+                    <span class="fw-bold " style="font-size: 14px;"><?php echo htmlspecialchars($data['type_prefix']) . htmlspecialchars($data['function_code']); ?></span>
                 </div>
             </div>
         </div>
@@ -465,7 +465,7 @@ $menus = $conn->query($sql_menus);
         var fileDownload = document.createElement("a");
         document.body.appendChild(fileDownload);
         fileDownload.href = source;
-        fileDownload.download = 'FS-<?php echo $data['function_code']; ?>.doc';
+        fileDownload.download = 'FS-<?php echo htmlspecialchars($data['type_prefix']) . htmlspecialchars($data['function_code']); ?>.doc';
         fileDownload.click();
         document.body.removeChild(fileDownload);
     }
@@ -480,7 +480,7 @@ $menus = $conn->query($sql_menus);
         const opt = {
             // [top, left, bottom, right] - ปรับเป็น 2mm คือชิดมากแล้วครับ
             margin: [2, 2, 2, 2],
-            filename: 'FS-<?php echo $data['function_code']; ?>.pdf',
+            filename: 'FS-<?php echo htmlspecialchars($data['type_prefix']) . htmlspecialchars($data['function_code']); ?>.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: {
                 scale: 3, // เพิ่ม scale เป็น 3 เพื่อความคมชัดเวลาขอบชิด

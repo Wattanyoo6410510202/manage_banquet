@@ -20,13 +20,13 @@ if (isset($_GET['id'])) {
         
         if ($stmt->execute([$admin_id, $id])) {
             // อัปเดตสำเร็จ ส่งกลับไปหน้าเดิมพร้อม Parameter แจ้งเตือน
-            header("Location: quotation_list.php?status=success");
+            header("Location: ../quotation_list.php");
         } else {
-            header("Location: quotation_list.php?status=error");
+            header("Location: ../quotation_list.php");
         }
     } catch (PDOException $e) {
         // กรณีเกิด Error ใน SQL
-        header("Location: quotation_list.php?status=db_error&msg=" . urlencode($e->getMessage()));
+        header("Location: ../quotation_list.php?status=db_error&msg=" . urlencode($e->getMessage()));
     }
     exit();
 }

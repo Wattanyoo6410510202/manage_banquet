@@ -42,7 +42,7 @@ if ($quote_id > 0) {
     $sql_quote = "SELECT q.*, c.cust_name, c.cust_phone, c.cust_address 
                   FROM quotations q 
                   LEFT JOIN customers c ON q.customer_id = c.id 
-                  WHERE q.id = $quote_id AND q.status = 'Approved'";
+                   WHERE q.id = $quote_id AND q.status != 'Cancelled'";
     $res_quote = $conn->query($sql_quote);
     if ($res_quote && $res_quote->num_rows > 0) {
         $quote_data = $res_quote->fetch_assoc();
@@ -192,6 +192,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
 
                             <div class="mb-3">
                                 <input type="hidden" name="customer_id" id="customer_id_hidden" value="<?= $quote_data['customer_id'] ?? '' ?>">
+                                <input type="hidden" name="quotation_id" value="<?= $quote_id ?>">
+                                <input type="hidden" name="project_id" value="<?= $quote_data['project_id'] ?? '' ?>">
                                 <select id="customer_selector" name="customer_id"
                                     class="form-select border-0  bg-opacity-10  fw-bold bg-light"
                                     onchange="fillCustomerInfo(this)"
@@ -793,7 +795,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
 
         newRow.innerHTML = `
         <td><input type="date" name="k_date[]" class="form-control form-control-sm border-0 bg-light"></td>
-        <td><select name="k_type[]" class="form-select form-select-sm border-0 bg-light" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
+        <td><select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
         <td><textarea name="k_item[]" class="form-control form-control-sm border-0 bg-light break-menu-input" rows="3" onfocus="initFirstLine(this)"></textarea></td>
         <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center"></td>
         <td> <button type="button" class="btn text-danger btn-sm border-0"

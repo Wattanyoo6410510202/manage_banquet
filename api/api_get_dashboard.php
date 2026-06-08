@@ -51,9 +51,9 @@ try {
 
     // --- ใหม่: ระยะเวลาอนุมัติเฉลี่ย (Lead Time) 6 เดือน ---
     $lead_sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as month, 
-                 AVG(DATEDIFF(approved_at, created_at)) as avg_days 
+                 AVG(DATEDIFF(approve_date, created_at)) as avg_days 
                  FROM functions 
-                 WHERE approved_at IS NOT NULL 
+                 WHERE approve_date IS NOT NULL 
                  GROUP BY month ORDER BY month ASC LIMIT 6";
     $lead_data = [];
     $l_res = $conn->query($lead_sql);
@@ -64,9 +64,13 @@ try {
     $current_year = date('Y');
     $sales_sql = "SELECT u.name, 
                   (SELECT IFNULL(target_amount, 0) FROM sales_targets WHERE user_id = u.id AND target_month = $current_month AND target_year = $current_year LIMIT 1) as target,
-                  IFNULL((SELECT SUM(grand_total) FROM quotations WHERE created_by = u.id AND status = 'Approved' AND MONTH(event_date) = $current_month AND YEAR(event_date) = $current_year), 0) as actual
+                  (
+                    IFNULL((SELECT SUM(total_amount) FROM functions WHERE created_by_id = u.id AND MONTH(event_date) = $current_month AND YEAR(event_date) = $current_year), 0)
+                    +
+                    IFNULL((SELECT SUM(grand_total) FROM quotations WHERE created_by = u.id AND status = 'Approved' AND MONTH(event_date) = $current_month AND YEAR(event_date) = $current_year), 0)
+                  ) as actual
                   FROM users u
-                  WHERE u.role IN ('Staff', 'Banquet_Staff', 'Admin', 'GM', 'Sale')
+                  WHERE u.role = 'Staff'
                   ORDER BY actual DESC";
     $sales_performance = [];
     $s_res = $conn->query($sales_sql);

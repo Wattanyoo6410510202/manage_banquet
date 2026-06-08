@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. รับค่าจากฟอร์ม (รวมส่วนที่เพิ่มใหม่)
     $company_id  = (!empty($_POST['company_id'])) ? intval($_POST['company_id']) : null;
     $function_id = (!empty($_POST['function_id'])) ? intval($_POST['function_id']) : null;
+    $project_id  = (!empty($_POST['project_id'])) ? intval($_POST['project_id']) : null;
     $customer_id = intval($_POST['customer_id']);
     $quote_no    = $_POST['quote_no'];
     $event_name  = $_POST['event_name'];
@@ -36,20 +37,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quote_no .= "-" . date('is'); // ถ้าซ้ำเติม นาที+วินาที
         }
 
-        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by)
+        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id)
         $sql_quote = "INSERT INTO quotations (
-            company_id, function_id, customer_id, quote_no, event_name, 
+            company_id, function_id, project_id, customer_id, quote_no, event_name, 
             event_date, expiry_date, subtotal, service_charge, vat, 
             grand_total, status, remarks, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?)";
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?)";
 
         $stmt = $conn->prepare($sql_quote);
         
-        // "iiissssddddsi" -> i=int, s=string, d=decimal
+        // "iiiissssddddsi" -> i=int, s=string, d=decimal
         $stmt->bind_param(
-            "iiissssddddsi",
+            "iiiissssddddsi",
             $company_id,
             $function_id,
+            $project_id,
             $customer_id,
             $quote_no,
             $event_name,

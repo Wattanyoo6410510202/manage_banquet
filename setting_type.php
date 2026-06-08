@@ -10,19 +10,21 @@ if (isset($_POST['action'])) {
     if ($action == 'save') {
         $id = intval($_POST['id'] ?? 0);
         $type_name = $conn->real_escape_string($_POST['type_name']);
+        $prefix = strtoupper($conn->real_escape_string($_POST['prefix']));
 
         if ($id > 0) {
-            $sql = "UPDATE function_types SET type_name='$type_name' WHERE id=$id";
+            $sql = "UPDATE function_types SET type_name='$type_name', prefix='$prefix' WHERE id=$id";
             $conn->query($sql);
-            echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $type_name]);
+            echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $type_name, 'prefix' => $prefix]);
         } else {
-            $sql = "INSERT INTO function_types (type_name) VALUES ('$type_name')";
+            $sql = "INSERT INTO function_types (type_name, prefix) VALUES ('$type_name', '$prefix')";
             $conn->query($sql);
             $new_id = $conn->insert_id;
             echo json_encode([
                 'status' => 'inserted', 
                 'id' => $new_id, 
-                'name' => $type_name, 
+                'name' => $type_name,
+                'prefix' => $prefix,
                 'date' => date('d/m/Y H:i')
             ]);
         }
@@ -61,6 +63,11 @@ require_once "header.php";
                             <label class="small fw-bold text-muted">ชื่อประเภทงาน (Event Type)</label>
                             <input type="text" name="type_name" id="type_name" class="form-control form-control-lg" required placeholder="เช่น Wedding, Seminar">
                         </div>
+                        <div class="mb-3">
+                            <label class="small fw-bold text-muted">คำนำหน้า (Prefix)</label>
+                            <input type="text" name="prefix" id="type_prefix" class="form-control" maxlength="10" placeholder="เช่น MT, BK, WED" style="text-transform:uppercase;">
+                            <small class="text-muted">ใช้ในการสร้างเลขที่เอกสารอัตโนมัติ เช่น MT250669001</small>
+                        </div>
                         
                         <div class="d-grid gap-2">
                             <button type="submit" id="btnSubmit" class="btn btn-dark fw-bold">
@@ -85,6 +92,7 @@ require_once "header.php";
                             <thead class="table-light">
                                 <tr class="small text-muted text-center">
                                     <th width="100">ID</th>
+                                    <th width="120">คำนำหน้า</th>
                                     <th class="text-start">ชื่อประเภทงาน</th>
                                     <th>วันที่สร้าง</th>
                                     <th width="120">จัดการ</th>
@@ -95,6 +103,7 @@ require_once "header.php";
                                     <?php while($row = $types->fetch_assoc()): ?>
                                     <tr id="type-row-<?= $row['id'] ?>" class="text-center">
                                         <td><span class="text-muted small">#<?= $row['id'] ?></span></td>
+                                        <td><span class="badge bg-dark text-gold fw-bold px-3 type-prefix-cell"><?= htmlspecialchars($row['prefix']) ?></span></td>
                                         <td class="text-start fw-bold text-dark type-name-cell"><?= htmlspecialchars($row['type_name']) ?></td>
                                         <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
                                         <td>
@@ -110,7 +119,7 @@ require_once "header.php";
                                     </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr id="no-data-row"><td colspan="4" class="text-center p-5 text-muted">ยังไม่มีข้อมูลประเภทงาน</td></tr>
+                                    <tr id="no-data-row"><td colspan="5" class="text-center p-5 text-muted">ยังไม่มีข้อมูลประเภทงาน</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -133,27 +142,26 @@ function saveType(e) {
     .then(res => res.json())
     .then(res => {
         if (res.status === 'updated') {
-            // อัปเดตข้อมูลในตารางทันที
             const row = document.getElementById('type-row-' + res.id);
             row.querySelector('.type-name-cell').innerText = res.name;
+            row.querySelector('.type-prefix-cell').innerText = res.prefix;
             
             // เอฟเฟกต์สีฟ้าแจ้งเตือนการแก้ไข
             row.style.backgroundColor = '#e0f2fe';
             setTimeout(() => row.style.backgroundColor = 'transparent', 1000);
             
         } else if (res.status === 'inserted') {
-            // ลบแถว "ไม่มีข้อมูล" ถ้ามี
             const noData = document.getElementById('no-data-row');
             if (noData) noData.remove();
 
-            // เพิ่มแถวใหม่ลงในตาราง (บนสุด)
             const newRow = `
                 <tr id="type-row-${res.id}" class="text-center" style="background-color: #f0fdf4; transition: 0.5s;">
                     <td><span class="text-muted small">#${res.id}</span></td>
+                    <td><span class="badge bg-dark text-gold fw-bold px-3 type-prefix-cell">${res.prefix}</span></td>
                     <td class="text-start fw-bold text-dark type-name-cell">${res.name}</td>
                     <td class="small text-muted">${res.date}</td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-outline-primary border-0" onclick='editType({"id":"${res.id}","type_name":"${res.name}"})'>
+                        <button type="button" class="btn btn-sm btn-outline-primary border-0" onclick='editType({"id":"${res.id}","type_name":"${res.name}","prefix":"${res.prefix}"})'>
                             <i class="bi bi-pencil-square"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="deleteType(${res.id})">
@@ -163,12 +171,10 @@ function saveType(e) {
                 </tr>`;
             document.getElementById('typeTableBody').insertAdjacentHTML('afterbegin', newRow);
             
-            // เอฟเฟกต์สีเขียวจางหาย
             setTimeout(() => {
                 document.getElementById('type-row-' + res.id).style.backgroundColor = 'transparent';
             }, 1000);
             
-            // อัปเดตตัวเลขจำนวนรายการ
             updateCount(1);
         }
         resetForm();
@@ -180,6 +186,7 @@ function editType(data) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     document.getElementById('type_id').value = data.id;
     document.getElementById('type_name').value = data.type_name;
+    document.getElementById('type_prefix').value = data.prefix || '';
     
     const header = document.getElementById('formHeader');
     header.classList.replace('bg-dark', 'bg-primary');

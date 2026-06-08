@@ -18,6 +18,8 @@ if (isset($_POST['save'])) {
     // --- 1. รับค่าข้อมูลทั่วไป (เพิ่ม 2 ฟิลด์ที่ขาดไป) ---
     $company_id = !empty($_POST['company_id']) ? intval($_POST['company_id']) : null;
     $customer_id = !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null; // เพิ่มใหม่
+    $quotation_id = !empty($_POST['quotation_id']) ? intval($_POST['quotation_id']) : null; // เพิ่มใหม่
+    $project_id = !empty($_POST['project_id']) ? intval($_POST['project_id']) : null; // เพิ่มใหม่
     $function_type_id = !empty($_POST['function_type_id']) ? intval($_POST['function_type_id']) : null; // เพิ่มใหม่
     $room_id = !empty($_POST['room_id']) ? intval($_POST['room_id']) : null;
 
@@ -115,39 +117,45 @@ if (isset($_POST['save'])) {
     $conn->begin_transaction();
 
     try {
-        // --- [NEW] 2.5 สร้าง Project หลักก่อน ---
-        $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
-        $stmt_project = $conn->prepare($sql_project);
-        $stmt_project->bind_param("siis", $function_name, $customer_id, $company_id, $created_by_name);
-        $stmt_project->execute();
-        $project_id = $conn->insert_id;
+        // --- [NEW] 2.5 จัดการ Project ---
+        if ($project_id > 0) {
+            // ถ้ามี project_id ส่งมาจากใบเสนอราคา ให้ใช้ตัวเดิมได้เลย (อาจจะอัปเดตชื่อโครงการถ้าจำเป็น)
+            $conn->query("UPDATE event_projects SET project_name = '$function_name' WHERE id = $project_id");
+        } else {
+            // ถ้าไม่มี ให้สร้าง Project ใหม่
+            $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
+            $stmt_project = $conn->prepare($sql_project);
+            $stmt_project->bind_param("siis", $function_name, $customer_id, $company_id, $created_by_name);
+            $stmt_project->execute();
+            $project_id = $conn->insert_id;
+        }
 
-        // --- 3. แก้ไข SQL INSERT (เพิ่ม project_id, version_no, is_approved, draft_name) ---
+        // --- 3. แก้ไข SQL INSERT ---
         $sql_main = "INSERT INTO functions (
-            project_id, version_no, is_approved, draft_name,
+            project_id, quotation_id, version_no, is_approved, draft_name,
             company_id, customer_id, function_type_id, room_id, function_name, 
             booking_name, organization, phone, booking_room, deposit, 
             total_amount,
             banquet_style, equipment, remark, main_kitchen_remark, 
             backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
             start_time, end_time, file_attachment1, file_attachment2, file_attachment3
-        ) VALUES (?, 1, 0, 'Draft V1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ) VALUES (?, ?, 1, 0, 'Draft V1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_main);
 
-        // รวมทั้งหมดต้องมี 30 ตัว (project_id + 25 เดิม + 4 ที่เพิ่มมาใหม่ใน SQL แต่ version/approved/draft ใส่ hardcode ไปก่อน)
-        // จริงๆ project_id ตัวเดียวที่ต้อง bind เพิ่ม
-        $types = "iiiiisssssddssssssssiisssss"; // เพิ่ม i นำหน้า 1 ตัว
+        // รวมทั้งหมดต้องมี 31 ตัว (project_id + quotation_id + 25 เดิม + 4 ที่เพิ่มมาใหม่ใน SQL)
+        $types = "iiiiiisssssddssssssssiisssss"; // 28 ตัว ตรงกับ 28 ?
 
         $stmt->bind_param(
             $types,
             $project_id,         // 1 (i) [NEW]
-            $company_id,         // 2 (i)
-            $customer_id,        // 3 (i)
-            $function_type_id,   // 4 (i)
-            $room_id,            // 5 (i)
-            $function_name,      // 6 (s)
-            $booking_name,       // 7 (s)
+            $quotation_id,       // 2 (i) [NEW]
+            $company_id,         // 3 (i)
+            $customer_id,        // 4 (i)
+            $function_type_id,   // 5 (i)
+            $room_id,            // 6 (i)
+            $function_name,      // 7 (s)
+            $booking_name,       // 8 (s)
             $organization,       // 8 (s)
             $phone,              // 9 (s)
             $booking_room,       // 10 (s)
@@ -224,7 +232,7 @@ if (isset($_POST['save'])) {
                     $m_qty = $_POST['menu_qty'][$k] ?? ''; // รับเป็น string หรือ int ตามโครงสร้างตาราง
                     $m_price = floatval($_POST['menu_price'][$k] ?? 0);
 
-                    $stmt_m->bind_param("isisds", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price);
+                    $stmt_m->bind_param("isissd", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price);
                     $stmt_m->execute();
                 }
             }

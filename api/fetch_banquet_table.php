@@ -21,7 +21,8 @@ if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
 }
 
 $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,
-        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
+        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
+        (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id
         LEFT JOIN event_projects p ON f.project_id = p.id
@@ -81,6 +82,9 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
             echo '<img src="' . htmlspecialchars($logo) . '" style="width:30px; height:30px; object-fit:contain;"></div></div></td>';
             
             echo '<td class="ps-4"><div class="fw-bold text-dark text-wrap function-name-link" style="max-width: 400px; cursor: pointer; text-decoration: underline;">' . htmlspecialchars($row['function_name']) . '</div>';
+            if (!empty($row['quote_no'])) {
+                echo '<div class="text-info small"><i class="bi bi-file-earmark-text me-1"></i> Quote: ' . htmlspecialchars($row['quote_no']) . '</div>';
+            }
             echo '<div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $row['formatted_date'] . '</div></td>';
             
             echo '<td><div class="text-dark small text-wrap" style="max-width: 250px;">';
@@ -168,7 +172,11 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
         
         echo '<td><div class="fw-bold text-dark project-title-link">' . htmlspecialchars($project['project_name']);
         if($has_drafts) echo ' <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;">' . count($drafts) . ' Versions</span>';
-        echo '</div><div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $master['formatted_date'] . '</div></td>';
+        echo '</div>';
+        if (!empty($master['quote_no'])) {
+            echo '<div class="text-info small"><i class="bi bi-file-earmark-text me-1"></i> Quote: ' . htmlspecialchars($master['quote_no']) . '</div>';
+        }
+        echo '<div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> ' . $master['formatted_date'] . '</div></td>';
         
         echo '<td><div class="text-dark fw-medium small mb-1">' . htmlspecialchars($project['booking_name']) . '</div>';
         echo '<div class="text-muted small"><i class="bi bi-telephone me-1"></i>' . htmlspecialchars($project['phone']) . '</div></td>';
@@ -210,7 +218,22 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
             echo '<td></td>';
             echo '<td><div class="fw-medium text-secondary small function-name-link">' . htmlspecialchars($row['draft_name']);
             if($row['is_approved']) echo ' <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>';
-            echo '</div><small class="text-muted">' . htmlspecialchars($row['function_name']) . '</small></td>';
+            echo '</div>';
+            
+            // แสดงรายการใบเสนอราคาที่เกี่ยวข้อง
+            if (!empty($row['all_quotes'])) {
+                echo '<div class="mt-1 d-flex flex-wrap gap-1">';
+                $quotes_list = explode('|', $row['all_quotes']);
+                foreach ($quotes_list as $q_str) {
+                    list($q_id, $q_no, $q_sel) = explode(':', $q_str);
+                    $q_class = ($q_sel == 1) ? 'bg-primary text-white' : 'bg-light text-muted border';
+                    $q_icon = ($q_sel == 1) ? '<i class="bi bi-check-circle-fill me-1"></i>' : '<i class="bi bi-file-earmark-text me-1"></i>';
+                    echo '<a href="quotation_view.php?id=' . $q_id . '" target="_blank" class="badge ' . $q_class . ' text-decoration-none" style="font-size: 0.6rem;">' . $q_icon . htmlspecialchars($q_no) . '</a>';
+                }
+                echo '</div>';
+            }
+
+            echo '<small class="text-muted d-block mt-1">' . htmlspecialchars($row['function_name']) . '</small></td>';
             echo '<td><small class="text-muted">' . htmlspecialchars($row['booking_name']) . '</small></td>';
             echo '<td><div class="small fw-bold">฿' . number_format($row['total_amount'] ?: 0, 2) . '</div></td>';
             echo '<td><span class="badge bg-white text-dark border small fw-normal">#' . htmlspecialchars($row['function_code']) . '</span></td>';

@@ -39,11 +39,17 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                 </div>
                 <div class="card-body p-2">
                     <div id='calendar'></div>
+                    <div class="d-flex flex-wrap gap-2 mt-2 px-1">
+                        <span class="badge" style="background:#ffc107;">รออนุมัติ</span>
+                        <span class="badge" style="background:#0dcaf0; color:#000;">อนุมัติแล้ว</span>
+                        <span class="badge" style="background:#0d6efd;">ดำเนินการ</span>
+                        <span class="badge" style="background:#198754;">จบงานแล้ว</span>
+                        <span class="badge" style="background:#dc3545;">ยกเลิก</span>
+                        <span class="badge" style="background:#6c757d;">อื่น ๆ</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- ... (Detail Panel ส่วนเดิม) ... -->
-
 
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 h-100 sticky-top" style="top: 20px; z-index: 100;">
@@ -80,13 +86,23 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
             dayMaxEvents: 3,
             events: [
                 <?php
-                // 1. งานจากตาราง functions (General Mode)
+                // 1. งานจากตาราง functions (General Mode) — เลือกเฉพาะ master ที่ approve แล้ว
                 $sql_f = "SELECT f.*, r.room_name, c.cust_name, c.cust_phone 
                           FROM functions f 
                           LEFT JOIN meeting_rooms r ON f.room_id = r.id
-                          LEFT JOIN customers c ON f.customer_id = c.id";
+                          LEFT JOIN customers c ON f.customer_id = c.id
+                          ORDER BY f.project_id ASC, f.id ASC";
                 $q_f = mysqli_query($conn, $sql_f);
+                $func_groups = [];
                 while ($row = mysqli_fetch_assoc($q_f)) {
+                    $gid = $row['project_id'] ?: 'single_' . $row['id'];
+                    if (!isset($func_groups[$gid])) {
+                        $func_groups[$gid] = $row;
+                    } elseif ($row['is_approved'] == 1) {
+                        $func_groups[$gid] = $row;
+                    }
+                }
+                foreach ($func_groups as $row) {
                     $st = strtolower(trim($row['status']));
                     if($st === 'pending') $color = '#ffc107';
                     elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';

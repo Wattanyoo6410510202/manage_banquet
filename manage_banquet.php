@@ -34,7 +34,8 @@ if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
 
 // 3. SQL Query
 $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,
-        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 
+        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
+        (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id
         LEFT JOIN event_projects p ON f.project_id = p.id
@@ -89,6 +90,56 @@ if ($q && mysqli_num_rows($q) > 0) {
         }
         $projects_data[$pid]['drafts'][] = $row;
     }
+}
+
+// 5. ดึงข้อมูลใบเสนอราคาทั้งหมด จัดกลุ่มตาม project_id หรือ function_id (กรณีไม่มี project)
+$quotations_by_project = [];
+$q_quotes = $conn->query("
+    SELECT q.*, c.cust_name 
+    FROM quotations q 
+    LEFT JOIN customers c ON q.customer_id = c.id 
+    ORDER BY q.id DESC
+");
+
+// 5a. รวบรวม function_id ที่ quotation อ้างถึงแบบไม่มี project_id เพื่อ map ไปยัง project_id
+$all_qts = [];
+$func_to_project = [];
+$orphan_fids = [];
+if ($q_quotes) {
+    while ($qt = $q_quotes->fetch_assoc()) {
+        $all_qts[] = $qt;
+        if (!$qt['project_id'] && $qt['function_id']) {
+            $orphan_fids[] = intval($qt['function_id']);
+        }
+    }
+    if (!empty($orphan_fids)) {
+        $fid_list = implode(',', array_unique($orphan_fids));
+        $fr = $conn->query("SELECT id, project_id FROM functions WHERE id IN ($fid_list)");
+        if ($fr) {
+            while ($frow = $fr->fetch_assoc()) {
+                $func_to_project[$frow['id']] = $frow['project_id'];
+            }
+        }
+    }
+}
+
+foreach ($all_qts as $qt) {
+    if ($qt['project_id']) {
+        $pid = $qt['project_id'];
+    } elseif ($qt['function_id']) {
+        $fid = intval($qt['function_id']);
+        if (!empty($func_to_project[$fid])) {
+            $pid = $func_to_project[$fid];
+        } else {
+            $pid = 'single_' . $fid;
+        }
+    } else {
+        $pid = 'q_orphan_' . $qt['id'];
+    }
+    if (!isset($quotations_by_project[$pid])) {
+        $quotations_by_project[$pid] = [];
+    }
+    $quotations_by_project[$pid][] = $qt;
 }
 ?>
 <div id="alert-container">
@@ -194,8 +245,36 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 break; 
                             }
                         }
-                        if (!$master) $master = $drafts[0];
-                        $has_drafts = count($drafts) > 1;
+                        if (!$master && !empty($drafts)) $master = $drafts[0];
+                        $project_quotes = $quotations_by_project[$pid] ?? [];
+                        $has_drafts = count($drafts) > 1 || !empty($project_quotes);
+                        // ถ้าไม่มีฟังก์ชั่นเลย แต่มีใบเสนอราคา ให้สร้าง master เสมือนจากใบเสนอราคาแรก
+                        if (!$master && !empty($project_quotes)) {
+                            $first_q = $project_quotes[0];
+                            $master = [
+                                'id' => 'q_' . $first_q['id'],
+                                'formatted_date' => date('d M Y', strtotime($first_q['created_at'])),
+                                'total_amount' => $first_q['grand_total'] ?: 0,
+                                'draft_name' => 'ใบเสนอราคา',
+                                'function_code' => $first_q['quote_no'],
+                                'status_info' => ['text' => $first_q['status'], 'class' => 'bg-secondary-subtle text-secondary'],
+                                'created_by' => '-',
+                                'attachments' => [],
+                                'approve' => 1
+                            ];
+                        }
+                        // หาใบเสนอราคาที่ถูกเลือก (is_selected)
+                        $selected_quote_no = '';
+                        $selected_quote_id = 0;
+                        $selected_quote_total = 0;
+                        foreach ($project_quotes as $qt) {
+                            if ($qt['is_selected']) {
+                                $selected_quote_no = $qt['quote_no'];
+                                $selected_quote_id = $qt['id'];
+                                $selected_quote_total = $qt['grand_total'];
+                                break;
+                            }
+                        }
                     ?>
                         <!-- Main Project Row -->
                         <tr class="project-header-row <?= $has_drafts ? 'has-sub' : '' ?>" data-pid="<?= $pid ?>">
@@ -216,7 +295,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             <td>
                                 <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <?= htmlspecialchars($project['project_name']); ?>
-                                    <?php if($has_drafts): ?>
+                                    <?php if(count($drafts) > 1): ?>
                                         <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
@@ -227,11 +306,21 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <div class="text-muted small"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars(formatPhoneNumber($project['phone'])); ?></div>
                             </td>
                             <td>
-                                <div class="text-primary fw-bold">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></div>
-                                <small class="text-muted" style="font-size: 0.7rem;">Draft: <?= htmlspecialchars($master['draft_name']); ?></small>
+                                <?php $display_total = $selected_quote_total ?: $master['total_amount']; ?>
+                                <div class="text-primary fw-bold">฿<?= number_format($display_total ?: 0, 2); ?></div>
+                                <small class="text-muted" style="font-size: 0.7rem;">
+                                    <?php if ($selected_quote_total): ?>
+                                        <i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคา
+                                    <?php else: ?>
+                                        Draft: <?= htmlspecialchars($master['draft_name']); ?>
+                                    <?php endif; ?>
+                                </small>
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark border fw-normal small">#<?= htmlspecialchars($master['function_code']); ?></span>
+                                <?php if ($selected_quote_no): ?>
+                                    <div><a href="quotation_view.php?id=<?= $selected_quote_id ?>" class="text-decoration-none"><span class="badge bg-warning-subtle text-warning border fw-normal small mt-1"><i class="bi bi-file-earmark-text me-1"></i><?= htmlspecialchars($selected_quote_no) ?></span></a></div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-3">
@@ -251,21 +340,32 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                        <button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="<?= $master['id']; ?>">
-                                            <i class="bi bi-check-lg"></i> อนุมัติ
-                                        </button>
+                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
+                                        <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
+                                            <button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="<?= $master['id']; ?>">
+                                                <i class="bi bi-check-lg"></i> อนุมัติ
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if ($master['approve'] == 1 && $master['status'] == 'Confirmed'): ?>
+                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $master['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
+                                        <?php endif; ?>
+                                        <?php if ($master['status'] == 'In Progress'): ?>
+                                            <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $master['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i></button>
+                                        <?php endif; ?>
+                                        <?php if (!in_array($master['status'], ['Completed', 'Cancelled'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $master['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i></button>
+                                        <?php endif; ?>
+                                        <div class="vr mx-1"></div>
                                     <?php endif; ?>
                                     
                                     <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-eye"></i></a>
                                     
-                                    <?php if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])): ?>
+                                    <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
                                         <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI">
                                             <i class="bi bi-cash-coin"></i>
                                         </a>
+                                        <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>
                                     <?php endif; ?>
-
-                                    <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -307,6 +407,53 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </td>
                             </tr>
                         <?php endforeach; ?>
+
+                        <!-- Quotation Sub-rows -->
+                        <?php foreach ($project_quotes as $qt): 
+                            $qt_status_map = [
+                                'Draft' => ['text' => 'ฉบับร่าง', 'class' => 'bg-secondary-subtle text-secondary'],
+                                'Sent' => ['text' => 'ส่งแล้ว', 'class' => 'bg-info-subtle text-info'],
+                                'Approved' => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success'],
+                                'Cancelled' => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger']
+                            ];
+                            $qt_st = $qt_status_map[$qt['status']] ?? $qt_status_map['Draft'];
+                        ?>
+                            <tr class="draft-sub-row bg-light" data-parent-pid="<?= $pid ?>" style="display: none; border-left: 4px solid var(--hotel-gold-solid);">
+                                <td class="ps-5 text-center"><i class="bi bi-arrow-return-right text-muted"></i></td>
+                                <td></td>
+                                <td>
+                                    <div class="fw-medium small">
+                                        <span class="badge bg-warning-subtle text-warning border me-1" style="font-size: 0.6rem;">ใบเสนอราคา</span>
+                                        <?= htmlspecialchars($qt['quote_no']) ?>
+                                        <?php if($qt['is_selected']): ?>
+                                            <span class="badge bg-primary text-white ms-1" style="font-size: 0.6rem;">Selected</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <small class="text-muted d-block mt-1"><?= htmlspecialchars($qt['event_name'] ?: $qt['cust_name']) ?></small>
+                                </td>
+                                <td><small class="text-muted"><?= htmlspecialchars($qt['cust_name']) ?></small></td>
+                                <td><div class="small fw-bold">฿<?= number_format($qt['grand_total'] ?: 0, 2) ?></div></td>
+                                <td><span class="badge bg-white text-dark border small fw-normal">#<?= htmlspecialchars($qt['quote_no']) ?></span></td>
+                                <td>
+                                    <span class="badge <?= $qt_st['class'] ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                        <?= $qt_st['text'] ?>
+                                    </span>
+                                </td>
+                                <td><small class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/y', strtotime($qt['created_at'])) ?></small></td>
+                                <td></td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <a href="quotation_view.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2" title="ดู"><i class="bi bi-eye"></i></a>
+                                        <?php if ($qt['status'] == 'Approved'): ?>
+                                            <a href="add_event.php?quote_id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-info py-0 px-2" title="สร้างงานจากใบเสนอราคา"><i class="bi bi-calendar-plus"></i></a>
+                                        <?php endif; ?>
+                                        <?php if ($qt['status'] != 'Approved'): ?>
+                                            <a href="edit_quotation.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-warning py-0 px-2" title="แก้ไข"><i class="bi bi-pencil"></i></a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -323,8 +470,34 @@ if ($q && mysqli_num_rows($q) > 0) {
                         break; 
                     }
                 }
-                if (!$master) $master = $drafts[0];
-                $has_drafts = count($drafts) > 1;
+                if (!$master && !empty($drafts)) $master = $drafts[0];
+                $project_quotes = $quotations_by_project[$pid] ?? [];
+                $has_drafts = count($drafts) > 1 || !empty($project_quotes);
+                if (!$master && !empty($project_quotes)) {
+                    $first_q = $project_quotes[0];
+                    $master = [
+                        'id' => 'q_' . $first_q['id'],
+                        'formatted_date' => date('d M Y', strtotime($first_q['created_at'])),
+                        'total_amount' => $first_q['grand_total'] ?: 0,
+                        'draft_name' => 'ใบเสนอราคา',
+                        'function_code' => $first_q['quote_no'],
+                        'status_info' => ['text' => $first_q['status'], 'class' => 'bg-secondary-subtle text-secondary'],
+                        'created_by' => '-',
+                        'attachments' => [],
+                        'approve' => 1
+                    ];
+                }
+                $selected_quote_no = '';
+                $selected_quote_id = 0;
+                $selected_quote_total = 0;
+                foreach ($project_quotes as $qt) {
+                    if ($qt['is_selected']) {
+                        $selected_quote_no = $qt['quote_no'];
+                        $selected_quote_id = $qt['id'];
+                        $selected_quote_total = $qt['grand_total'];
+                        break;
+                    }
+                }
             ?>
                 <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
                     <div class="card-body p-3">
@@ -336,8 +509,8 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </div>
                                 <div class="function-name-link" style="cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($project['project_name']); ?></h6>
-                                    <?php if($has_drafts): ?>
-                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                    <?php if(count($drafts) > 1): ?>
+                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -351,6 +524,9 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <i class="bi bi-calendar-event me-1 text-gold"></i> <?= $master['formatted_date']; ?>
                                 <span class="mx-2 text-light">|</span>
                                 <i class="bi bi-hash me-1 text-gold"></i> <?= htmlspecialchars($master['function_code']); ?>
+                                <?php if ($selected_quote_no): ?>
+                                    <br><a href="quotation_view.php?id=<?= $selected_quote_id ?>" class="text-decoration-none"><span class="badge bg-warning-subtle text-warning border fw-normal small mt-1"><i class="bi bi-file-earmark-text me-1"></i><?= htmlspecialchars($selected_quote_no) ?></span></a>
+                                <?php endif; ?>
                             </div>
                             <div class="small fw-bold text-dark">
                                 <i class="bi bi-person me-1 text-gold"></i> <?= htmlspecialchars($project['booking_name']); ?>
@@ -363,8 +539,9 @@ if ($q && mysqli_num_rows($q) > 0) {
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                            <?php $display_total = $selected_quote_total ?: $master['total_amount']; ?>
                             <span class="small text-muted">มูลค่ารวม:</span>
-                            <span class="text-primary fw-bold fs-5">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></span>
+                            <span class="text-primary fw-bold fs-5">฿<?= number_format($display_total ?: 0, 2); ?></span>
                         </div>
 
                         <div class="row g-2">
@@ -400,7 +577,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                         <?php if($has_drafts): ?>
                             <div class="mt-3 pt-2 border-top">
                                 <button class="btn btn-link btn-sm text-gold text-decoration-none w-100 p-0 toggle-mobile-drafts" data-pid="<?= $pid ?>">
-                                    <i class="bi bi-chevron-down me-1"></i> ดูเวอร์ชันอื่น ๆ (<?= count($drafts)-1 ?>)
+                                    <i class="bi bi-chevron-down me-1"></i> ดูรายการอื่น ๆ (<?= max(0, count($drafts) - 1) + count($project_quotes) ?>)
                                 </button>
                                 <div class="mobile-drafts-container mt-2" id="mobile-drafts-<?= $pid ?>" style="display: none;">
                                     <?php foreach($drafts as $row): if($row['id'] == $master['id']) continue; ?>
@@ -417,6 +594,42 @@ if ($q && mysqli_num_rows($q) > 0) {
                                                 <div class="text-end mt-2">
                                                     <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
                                                     <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-dark py-0 px-2">แก้ไข</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php
+                                    $project_quotes = $quotations_by_project[$pid] ?? [];
+                                    $qt_status_map = [
+                                        'Draft' => ['text' => 'ฉบับร่าง', 'class' => 'bg-secondary-subtle text-secondary'],
+                                        'Sent' => ['text' => 'ส่งแล้ว', 'class' => 'bg-info-subtle text-info'],
+                                        'Approved' => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success'],
+                                        'Cancelled' => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger']
+                                    ];
+                                    foreach ($project_quotes as $qt):
+                                        $qt_st = $qt_status_map[$qt['status']] ?? $qt_status_map['Draft'];
+                                    ?>
+                                        <div class="card mb-2 border-0 bg-light" style="border-left: 3px solid #ffc107;">
+                                            <div class="card-body p-2 small">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-bold text-dark">
+                                                        <span class="badge bg-warning-subtle text-warning border me-1" style="font-size: 0.6rem;">ใบเสนอราคา</span>
+                                                        <?= htmlspecialchars($qt['quote_no']) ?>
+                                                    </span>
+                                                    <span class="badge <?= $qt_st['class'] ?> px-2" style="font-size: 0.6rem;"><?= $qt_st['text'] ?></span>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="text-muted"><?= htmlspecialchars($qt['cust_name']) ?></span>
+                                                    <span class="text-primary fw-bold">฿<?= number_format($qt['grand_total'] ?: 0, 2) ?></span>
+                                                </div>
+                                                <div class="text-end mt-2">
+                                                    <a href="quotation_view.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
+                                                    <?php if ($qt['status'] == 'Approved'): ?>
+                                                        <a href="add_event.php?quote_id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-info py-0 px-2">สร้างงาน</a>
+                                                    <?php endif; ?>
+                                                    <?php if ($qt['status'] != 'Approved'): ?>
+                                                        <a href="edit_quotation.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-warning py-0 px-2">แก้ไข</a>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
