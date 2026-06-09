@@ -140,7 +140,7 @@ if ($function_id) {
                             <td>
                                 <textarea name="item_name[]" class="form-control"
                                     placeholder="ระบุรายการ เช่น ค่าอาหาร..." rows="2"
-                                    style="resize: none; min-width: 200px; resize-y;" required></textarea>
+                                    style="resize: vertical; min-width: 200px;" required></textarea>
                             </td>
                             <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1"
                                     min="1"></td>
@@ -222,7 +222,7 @@ if ($function_id) {
             let rowCount = $('#itemTable tbody tr').length + 1;
             let newRow = `<tr>
                 <td class="text-center">${rowCount}</td>
-                <td><input type="text" name="item_name[]" class="form-control" required></td>
+                <td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical; min-width: 200px;" required></textarea></td>
                 <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1" min="1"></td>
                 <td><input type="number" name="unit_price[]" class="form-control text-end price" value="0.00" step="0.01"></td>
                 <td><input type="number" name="total_price[]" class="form-control text-end row-total" value="0.00" readonly></td>

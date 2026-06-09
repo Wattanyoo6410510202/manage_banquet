@@ -94,6 +94,7 @@ while ($row = $result->fetch_assoc()) {
                                 <div class="d-flex justify-content-center gap-1">
                                     <?php if ($q['status'] !== 'Approved'): ?>
                                         <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                        <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
                                     <?php endif; ?>
                                     <?php if ($q['status'] === 'Approved'): ?>
                                         <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>

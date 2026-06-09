@@ -247,7 +247,7 @@ foreach ($all_qts as $qt) {
                         }
                         if (!$master && !empty($drafts)) $master = $drafts[0];
                         $project_quotes = $quotations_by_project[$pid] ?? [];
-                        $has_drafts = count($drafts) > 1 || !empty($project_quotes);
+                        $has_drafts = count($drafts) > 1;
                         // ถ้าไม่มีฟังก์ชั่นเลย แต่มีใบเสนอราคา ให้สร้าง master เสมือนจากใบเสนอราคาแรก
                         if (!$master && !empty($project_quotes)) {
                             $first_q = $project_quotes[0];
@@ -306,14 +306,9 @@ foreach ($all_qts as $qt) {
                                 <div class="text-muted small"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars(formatPhoneNumber($project['phone'])); ?></div>
                             </td>
                             <td>
-                                <?php $display_total = $selected_quote_total ?: $master['total_amount']; ?>
-                                <div class="text-primary fw-bold">฿<?= number_format($display_total ?: 0, 2); ?></div>
+                                <div class="text-primary fw-bold">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></div>
                                 <small class="text-muted" style="font-size: 0.7rem;">
-                                    <?php if ($selected_quote_total): ?>
-                                        <i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคา
-                                    <?php else: ?>
-                                        Draft: <?= htmlspecialchars($master['draft_name']); ?>
-                                    <?php endif; ?>
+                                    Draft: <?= htmlspecialchars($master['draft_name']); ?>
                                 </small>
                             </td>
                             <td>
@@ -408,52 +403,6 @@ foreach ($all_qts as $qt) {
                             </tr>
                         <?php endforeach; ?>
 
-                        <!-- Quotation Sub-rows -->
-                        <?php foreach ($project_quotes as $qt): 
-                            $qt_status_map = [
-                                'Draft' => ['text' => 'ฉบับร่าง', 'class' => 'bg-secondary-subtle text-secondary'],
-                                'Sent' => ['text' => 'ส่งแล้ว', 'class' => 'bg-info-subtle text-info'],
-                                'Approved' => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success'],
-                                'Cancelled' => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger']
-                            ];
-                            $qt_st = $qt_status_map[$qt['status']] ?? $qt_status_map['Draft'];
-                        ?>
-                            <tr class="draft-sub-row bg-light" data-parent-pid="<?= $pid ?>" style="display: none; border-left: 4px solid var(--hotel-gold-solid);">
-                                <td class="ps-5 text-center"><i class="bi bi-arrow-return-right text-muted"></i></td>
-                                <td></td>
-                                <td>
-                                    <div class="fw-medium small">
-                                        <span class="badge bg-warning-subtle text-warning border me-1" style="font-size: 0.6rem;">ใบเสนอราคา</span>
-                                        <?= htmlspecialchars($qt['quote_no']) ?>
-                                        <?php if($qt['is_selected']): ?>
-                                            <span class="badge bg-primary text-white ms-1" style="font-size: 0.6rem;">Selected</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <small class="text-muted d-block mt-1"><?= htmlspecialchars($qt['event_name'] ?: $qt['cust_name']) ?></small>
-                                </td>
-                                <td><small class="text-muted"><?= htmlspecialchars($qt['cust_name']) ?></small></td>
-                                <td><div class="small fw-bold">฿<?= number_format($qt['grand_total'] ?: 0, 2) ?></div></td>
-                                <td><span class="badge bg-white text-dark border small fw-normal">#<?= htmlspecialchars($qt['quote_no']) ?></span></td>
-                                <td>
-                                    <span class="badge <?= $qt_st['class'] ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
-                                        <?= $qt_st['text'] ?>
-                                    </span>
-                                </td>
-                                <td><small class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/y', strtotime($qt['created_at'])) ?></small></td>
-                                <td></td>
-                                <td class="text-center">
-                                    <div class="btn-group">
-                                        <a href="quotation_view.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2" title="ดู"><i class="bi bi-eye"></i></a>
-                                        <?php if ($qt['status'] == 'Approved'): ?>
-                                            <a href="add_event.php?quote_id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-info py-0 px-2" title="สร้างงานจากใบเสนอราคา"><i class="bi bi-calendar-plus"></i></a>
-                                        <?php endif; ?>
-                                        <?php if ($qt['status'] != 'Approved'): ?>
-                                            <a href="edit_quotation.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-warning py-0 px-2" title="แก้ไข"><i class="bi bi-pencil"></i></a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -472,21 +421,7 @@ foreach ($all_qts as $qt) {
                 }
                 if (!$master && !empty($drafts)) $master = $drafts[0];
                 $project_quotes = $quotations_by_project[$pid] ?? [];
-                $has_drafts = count($drafts) > 1 || !empty($project_quotes);
-                if (!$master && !empty($project_quotes)) {
-                    $first_q = $project_quotes[0];
-                    $master = [
-                        'id' => 'q_' . $first_q['id'],
-                        'formatted_date' => date('d M Y', strtotime($first_q['created_at'])),
-                        'total_amount' => $first_q['grand_total'] ?: 0,
-                        'draft_name' => 'ใบเสนอราคา',
-                        'function_code' => $first_q['quote_no'],
-                        'status_info' => ['text' => $first_q['status'], 'class' => 'bg-secondary-subtle text-secondary'],
-                        'created_by' => '-',
-                        'attachments' => [],
-                        'approve' => 1
-                    ];
-                }
+                $has_drafts = count($drafts) > 1;
                 $selected_quote_no = '';
                 $selected_quote_id = 0;
                 $selected_quote_total = 0;
@@ -539,9 +474,8 @@ foreach ($all_qts as $qt) {
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-                            <?php $display_total = $selected_quote_total ?: $master['total_amount']; ?>
                             <span class="small text-muted">มูลค่ารวม:</span>
-                            <span class="text-primary fw-bold fs-5">฿<?= number_format($display_total ?: 0, 2); ?></span>
+                            <span class="text-primary fw-bold fs-5">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></span>
                         </div>
 
                         <div class="row g-2">
@@ -577,7 +511,7 @@ foreach ($all_qts as $qt) {
                         <?php if($has_drafts): ?>
                             <div class="mt-3 pt-2 border-top">
                                 <button class="btn btn-link btn-sm text-gold text-decoration-none w-100 p-0 toggle-mobile-drafts" data-pid="<?= $pid ?>">
-                                    <i class="bi bi-chevron-down me-1"></i> ดูรายการอื่น ๆ (<?= max(0, count($drafts) - 1) + count($project_quotes) ?>)
+                                    <i class="bi bi-chevron-down me-1"></i> ดูรายการอื่น ๆ (<?= max(0, count($drafts) - 1) ?>)
                                 </button>
                                 <div class="mobile-drafts-container mt-2" id="mobile-drafts-<?= $pid ?>" style="display: none;">
                                     <?php foreach($drafts as $row): if($row['id'] == $master['id']) continue; ?>
@@ -594,42 +528,6 @@ foreach ($all_qts as $qt) {
                                                 <div class="text-end mt-2">
                                                     <a href="view.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
                                                     <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-xs btn-outline-dark py-0 px-2">แก้ไข</a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                    <?php
-                                    $project_quotes = $quotations_by_project[$pid] ?? [];
-                                    $qt_status_map = [
-                                        'Draft' => ['text' => 'ฉบับร่าง', 'class' => 'bg-secondary-subtle text-secondary'],
-                                        'Sent' => ['text' => 'ส่งแล้ว', 'class' => 'bg-info-subtle text-info'],
-                                        'Approved' => ['text' => 'อนุมัติแล้ว', 'class' => 'bg-success-subtle text-success'],
-                                        'Cancelled' => ['text' => 'ยกเลิก', 'class' => 'bg-danger-subtle text-danger']
-                                    ];
-                                    foreach ($project_quotes as $qt):
-                                        $qt_st = $qt_status_map[$qt['status']] ?? $qt_status_map['Draft'];
-                                    ?>
-                                        <div class="card mb-2 border-0 bg-light" style="border-left: 3px solid #ffc107;">
-                                            <div class="card-body p-2 small">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="fw-bold text-dark">
-                                                        <span class="badge bg-warning-subtle text-warning border me-1" style="font-size: 0.6rem;">ใบเสนอราคา</span>
-                                                        <?= htmlspecialchars($qt['quote_no']) ?>
-                                                    </span>
-                                                    <span class="badge <?= $qt_st['class'] ?> px-2" style="font-size: 0.6rem;"><?= $qt_st['text'] ?></span>
-                                                </div>
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <span class="text-muted"><?= htmlspecialchars($qt['cust_name']) ?></span>
-                                                    <span class="text-primary fw-bold">฿<?= number_format($qt['grand_total'] ?: 0, 2) ?></span>
-                                                </div>
-                                                <div class="text-end mt-2">
-                                                    <a href="quotation_view.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-primary py-0 px-2">ดู</a>
-                                                    <?php if ($qt['status'] == 'Approved'): ?>
-                                                        <a href="add_event.php?quote_id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-info py-0 px-2">สร้างงาน</a>
-                                                    <?php endif; ?>
-                                                    <?php if ($qt['status'] != 'Approved'): ?>
-                                                        <a href="edit_quotation.php?id=<?= $qt['id'] ?>" class="btn btn-xs btn-outline-warning py-0 px-2">แก้ไข</a>
-                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>

@@ -127,7 +127,7 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                                 <tr>
                                     <td class="text-center fw-bold"><?= $i++ ?></td>
                                     <td>
-                                        <textarea name="item_name[]" class="form-control" rows="2" style="resize:none;"
+                                        <textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical;"
                                             required><?= htmlspecialchars($item['item_name']) ?></textarea>
                                     </td>
                                     <td><input type="number" name="quantity[]" class="form-control text-center qty"
@@ -228,7 +228,7 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
             let rowCount = $('#itemTable tbody tr').length + 1;
             let newRow = `<tr>
                 <td class="text-center fw-bold">${rowCount}</td>
-                <td><textarea name="item_name[]" class="form-control" rows="2" style="resize:none;" required></textarea></td>
+                <td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical;" required></textarea></td>
                 <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1" min="1"></td>
                 <td><input type="number" name="unit_price[]" class="form-control text-end price" value="0.00" step="0.01"></td>
                 <td><input type="number" name="total_price[]" class="form-control text-end row-total" value="0.00" readonly></td>

@@ -129,6 +129,10 @@ if (isset($_POST['save'])) {
             $stmt_project->execute();
             $project_id = $conn->insert_id;
         }
+        // อัปเดต project_id ของใบเสนอราคาให้ตรงกับ function ที่สร้าง
+        if ($quotation_id) {
+            $conn->query("UPDATE quotations SET project_id = $project_id WHERE id = $quotation_id");
+        }
 
         // --- 3. แก้ไข SQL INSERT ---
         $sql_main = "INSERT INTO functions (

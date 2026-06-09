@@ -152,8 +152,8 @@ $items = $conn->query($sql_items);
                                     </tr>
                                     <tr>
                                         <th class="bg-light text-muted fw-normal">ชื่องาน / Event</th>
-                                        <td class="text-end text-truncate" style="max-width: 120px;">
-                                            <?= htmlspecialchars($quote['event_name']) ?>
+                                        <td class="text-end" style="max-width: 200px;">
+                                            <textarea class="form-control border-0 bg-transparent fw-bold p-0 event-name-ta" rows="1" readonly style="resize: none; width: 100%; overflow: hidden; text-align: right;"><?= htmlspecialchars($quote['event_name']) ?></textarea>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -183,7 +183,7 @@ $items = $conn->query($sql_items);
                             <tr>
                                 <td class="text-center"><?= $i++ ?></td>
                                 <td>
-                                    <div class="fw-bold"><?= htmlspecialchars($item['item_name']) ?></div>
+                                    <textarea class="form-control border-0 bg-transparent fw-bold p-0 item-desc" rows="1" readonly style="resize: none; min-width: 100%; overflow: hidden;"><?= htmlspecialchars($item['item_name']) ?></textarea>
                                 </td>
                                 <td class="text-center"><?= number_format($item['quantity']) ?></td>
                                 <td class="text-end"><?= number_format($item['unit_price'], 2) ?></td>
@@ -419,4 +419,12 @@ $items = $conn->query($sql_items);
     }
 </style>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.item-desc, .event-name-ta').forEach(function(ta) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+    });
+});
+</script>
 <?php include "footer.php"; ?>
