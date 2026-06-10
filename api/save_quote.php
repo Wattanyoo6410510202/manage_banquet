@@ -22,8 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vat         = floatval($_POST['vat']);
     $grand_total = floatval($_POST['grand_total']);
     $service_charge = floatval($_POST['service_charge'] ?? 0);
-    $remarks     = $_POST['remarks'] ?? ''; // รับค่าหมายเหตุ
-    $created_by  = $_SESSION['user_id'] ?? null; // เก็บ ID ผู้สร้าง (ถ้ามี session)
+    $remarks     = $_POST['remarks'] ?? '';
+    $lost_reason = $_POST['lost_reason'] ?? '';
+    $lead_source = $_POST['lead_source'] ?? '';
+    $result = $_POST['result'] ?? '';
+    $inspection_date = !empty($_POST['inspection_date']) ? $_POST['inspection_date'] : null;
+    $follow_up_date = !empty($_POST['follow_up_date']) ? $_POST['follow_up_date'] : null;
+    $approved_at = !empty($_POST['approved_at']) ? $_POST['approved_at'] : null;
+    $created_by  = $_SESSION['user_id'] ?? null;
 
     $conn->begin_transaction();
 
@@ -37,18 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quote_no .= "-" . date('is'); // ถ้าซ้ำเติม นาที+วินาที
         }
 
-        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id)
+        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id, lost_reason)
         $sql_quote = "INSERT INTO quotations (
             company_id, function_id, project_id, customer_id, quote_no, event_name, 
             event_date, expiry_date, subtotal, service_charge, vat, 
-            grand_total, status, remarks, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?)";
+            grand_total, status, remarks, lost_reason,
+            lead_source, result, inspection_date, follow_up_date, approved_at, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_quote);
         
-        // "iiiissssddddsi" -> i=int, s=string, d=decimal
         $stmt->bind_param(
-            "iiiissssddddsi",
+            "iiiissssddddsssssssi",
             $company_id,
             $function_id,
             $project_id,
@@ -62,6 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $vat,
             $grand_total,
             $remarks,
+            $lost_reason,
+            $lead_source,
+            $result,
+            $inspection_date,
+            $follow_up_date,
+            $approved_at,
             $created_by
         );
         $stmt->execute();

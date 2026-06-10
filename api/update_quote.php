@@ -12,6 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expiry_date = $_POST['expiry_date'];
     $event_name = $_POST['event_name'] ?? '';
     $remarks = $_POST['remarks'] ?? '';
+    $lost_reason = $_POST['lost_reason'] ?? '';
+    $lead_source = $_POST['lead_source'] ?? '';
+    $result = $_POST['result'] ?? '';
+    $inspection_date = !empty($_POST['inspection_date']) ? $_POST['inspection_date'] : null;
+    $follow_up_date = !empty($_POST['follow_up_date']) ? $_POST['follow_up_date'] : null;
+    $approved_at = !empty($_POST['approved_at']) ? $_POST['approved_at'] : null;
 
     // ข้อมูลตัวเลข (คูณค่าให้เป็น Float เพื่อความแม่นยำ)
     $subtotal = floatval($_POST['subtotal']);
@@ -23,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // 2. อัปเดตข้อมูลหลักในตาราง quotations 
-        // (ปรับชื่อคอลัมน์ให้ตรงกับที่คุณส่งมา: subtotal, vat, grand_total, remarks)
+        // (ปรับชื่อคอลัมน์ให้ตรงกับที่คุณส่งมา: subtotal, vat, grand_total, remarks, lost_reason)
         $sql_update = "UPDATE quotations SET 
                         customer_id = ?, 
                         company_id = ?, 
@@ -34,14 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         vat = ?, 
                         grand_total = ?, 
                         remarks = ?,
+                        lost_reason = ?,
+                        lead_source = ?,
+                        result = ?,
+                        inspection_date = ?,
+                        follow_up_date = ?,
+                        approved_at = ?,
                         updated_at = NOW() 
                       WHERE id = ?";
 
         $stmt = $conn->prepare($sql_update);
 
-        // s = string, i = integer, d = double (decimal)
         $stmt->bind_param(
-            "iisssdddsi",
+            "iisssdddsssssssi",
             $customer_id,
             $company_id,
             $event_date,
@@ -51,6 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $vat,
             $grand_total,
             $remarks,
+            $lost_reason,
+            $lead_source,
+            $result,
+            $inspection_date,
+            $follow_up_date,
+            $approved_at,
             $quote_id
         );
 

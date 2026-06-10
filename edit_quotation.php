@@ -34,6 +34,7 @@ $customers_res = $conn->query("SELECT id, cust_name FROM customers ORDER BY cust
 $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 ?>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <div class="container-fluid p-0">
     <form action="api/update_quote.php" method="POST" id="mainQuoteForm">
         <div class="card p-4 border-0 shadow-sm">
@@ -59,17 +60,17 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
 
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
-                    <select name="customer_id" class="form-select select2">
-                        <option value="">--- เลือกรายชื่อลูกค้า ---</option>
-                        <?php
-                        if ($customers_res) {
-                            $customers_res->data_seek(0);
-                            while ($c = $customers_res->fetch_assoc()):
-                                $selected = ($c['id'] == $quote['customer_id']) ? "selected" : "";
-                                echo "<option value='{$c['id']}' $selected>{$c['cust_name']}</option>";
-                            endwhile;
-                        }
+                    <select name="customer_id" class="form-select select2-ajax-customer" required>
+                        <?php if ($quote['customer_id']): 
+                            $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                            $c_stmt->bind_param("i", $quote['customer_id']);
+                            $c_stmt->execute();
+                            $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
                         ?>
+                            <option value="<?= $quote['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
+                        <?php else: ?>
+                            <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -103,6 +104,45 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                         }
                         ?>
                     </select>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-warning"><i class="bi bi-tag me-1"></i> ที่มา Lead</label>
+                    <select name="lead_source" class="form-select">
+                        <option value="">-- เลือก --</option>
+                        <option value="โทรเข้า" <?= ($quote['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
+                        <option value="FB / Social" <?= ($quote['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
+                        <option value="แนะนำ" <?= ($quote['lead_source'] ?? '') === 'แนะนำ' ? 'selected' : '' ?>>แนะนำ</option>
+                        <option value="Walk-in" <?= ($quote['lead_source'] ?? '') === 'Walk-in' ? 'selected' : '' ?>>Walk-in</option>
+                        <option value="อื่นๆ" <?= ($quote['lead_source'] ?? '') === 'อื่นๆ' ? 'selected' : '' ?>>อื่นๆ</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-info"><i class="bi bi-graph-up me-1"></i> ผลการดำเนินงาน</label>
+                    <select name="result" class="form-select">
+                        <option value="">-- เลือก --</option>
+                        <option value="ปิดงานสำเร็จ" <?= ($quote['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
+                        <option value="ปิดงานไม่สำเร็จ" <?= ($quote['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
+                        <option value="รอการตัดสินใจ" <?= ($quote['result'] ?? '') === 'รอการตัดสินใจ' ? 'selected' : '' ?>>รอการตัดสินใจ</option>
+                        <option value="ติดต่อไม่ได้" <?= ($quote['result'] ?? '') === 'ติดต่อไม่ได้' ? 'selected' : '' ?>>ติดต่อไม่ได้</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-success"><i class="bi bi-binoculars me-1"></i> วันที่ Inspection</label>
+                    <input type="date" name="inspection_date" class="form-control"
+                        value="<?= $quote['inspection_date'] ?? '' ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-danger"><i class="bi bi-clock-history me-1"></i> วันที่ Follow Up</label>
+                    <input type="date" name="follow_up_date" class="form-control"
+                        value="<?= $quote['follow_up_date'] ?? '' ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold"><i class="bi bi-check2-square me-1"></i> วันที่ Confirmed</label>
+                    <input type="date" name="approved_at" class="form-control"
+                        value="<?= preg_match('/^\d{4}-\d{2}-\d{2}$/', $quote['approved_at'] ?? '') ? $quote['approved_at'] : '' ?>">
                 </div>
             </div>
 
@@ -156,10 +196,21 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
             <div class="row">
                 <div class="col-md-7">
                     <div class="card border-0 bg-light p-3 h-100">
-                        <label class="form-label fw-bold"><i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม
-                            (Remarks)</label>
-                        <textarea name="remarks" class="form-control" rows="6"
-                            placeholder="ระบุเงื่อนไขเพิ่มเติม..."><?= htmlspecialchars($quote['remarks']) ?></textarea>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม
+                                (Remarks)</label>
+                            <textarea name="remarks" class="form-control" rows="3"
+                                placeholder="ระบุเงื่อนไขเพิ่มเติม..."><?= htmlspecialchars($quote['remarks']) ?></textarea>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold text-danger"><i class="bi bi-x-circle me-1"></i>
+                                สาเหตุที่ปิดงานไม่ได้ (Lost Reason)</label>
+                            <textarea name="lost_reason" class="form-control" rows="3"
+                                placeholder="ระบุสาเหตุที่ลูกค้าไม่ตกลง..."><?= htmlspecialchars($quote['lost_reason'] ?? '') ?></textarea>
+                            <div class="form-text text-muted">
+                                * สำหรับบันทึกภายใน (ไม่แสดงในเอกสาร PDF)
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-5">
@@ -200,18 +251,10 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
     </form>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
         // 1. คำนวณยอดเริ่มต้นทันทีเมื่อโหลดหน้า (เพื่อให้สอดคล้องกับสถานะ Toggle จาก DB)
         calculateAll();
-
-        // เริ่มต้นระบบ Select2 สำหรับค้นหาลูกค้า
-        $('.select2').select2({
-            theme: "classic",
-            width: '100%'
-        });
 
         // เมื่อมีการคลิก Toggle VAT (เปิด-ปิด)
         $('#vatToggle').change(function() {

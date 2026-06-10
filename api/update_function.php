@@ -29,6 +29,10 @@ if (isset($_POST['update'])) {
     $main_kitchen_remark = $_POST['main_kitchen_remark'];
     $backdrop_detail = $_POST['backdrop_detail'];
     $hk_florist_detail = $_POST['hk_florist_detail'];
+    $lead_source = $_POST['lead_source'] ?? '';
+    $result = $_POST['result'] ?? '';
+    $inspection_date = !empty($_POST['inspection_date']) ? $_POST['inspection_date'] : null;
+    $follow_up_date = !empty($_POST['follow_up_date']) ? $_POST['follow_up_date'] : null;
 
     // --- 2. จัดการรูปภาพ ---
     $backdrop_img_path = $_POST['old_backdrop_img'];
@@ -99,13 +103,13 @@ if (isset($_POST['update'])) {
     deposit=?, total_amount=?,
     banquet_style=?, equipment=?, remark=?, main_kitchen_remark=?, 
     backdrop_detail=?, hk_florist_detail=?, backdrop_img=?, pax=?, start_time=?, end_time=?,
+    lead_source=?, result=?, inspection_date=?, follow_up_date=?,
     file_attachment1=?, file_attachment2=?, file_attachment3=? 
     WHERE id=?";
 
     $stmt = $conn->prepare($sql_update);
 
-    // iiiis (5) s (1) s (1) s (1) s (1) s (1) d (1) d (1) s (5) s (2) i (1) s (2) s (3) i (1)
-    $types = "iiiissssssddsssssssssssssi"; // 26 ตัว
+    $types = "iiiissssssddsssssssisssssssi"; // 30 chars
 
     $stmt->bind_param(
         $types,
@@ -114,7 +118,7 @@ if (isset($_POST['update'])) {
         $function_type_id,     // 3
         $room_id,              // 4
         $function_name,        // 5
-        $draft_name,           // 6 [NEW]
+        $draft_name,           // 6
         $booking_name,         // 7
         $organization,         // 8
         $phone,                // 9
@@ -131,10 +135,14 @@ if (isset($_POST['update'])) {
         $pax,                  // 20
         $start_time,           // 21
         $end_time,             // 22
-        $file_attachment_paths[1], // 23
-        $file_attachment_paths[2], // 24
-        $file_attachment_paths[3], // 25
-        $function_id           // 26
+        $lead_source,          // 23
+        $result,               // 24
+        $inspection_date,      // 25
+        $follow_up_date,       // 26
+        $file_attachment_paths[1], // 27
+        $file_attachment_paths[2], // 28
+        $file_attachment_paths[3], // 29
+        $function_id           // 30
     );
 
     if ($stmt->execute()) {

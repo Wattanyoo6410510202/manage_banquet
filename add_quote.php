@@ -33,6 +33,7 @@ if ($function_id) {
 }
 ?>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <div class="container-fluid p-0">
     <form action="api/save_quote.php" method="POST" id="mainQuoteForm">
         <div class="card p-4 border-0 shadow-sm">
@@ -75,17 +76,17 @@ if ($function_id) {
 
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
-                    <select name="customer_id" id="customer_select" class="form-select select2">
-                        <option value="">--- เลือกรายชื่อลูกค้า ---</option>
-                        <?php
-                        if ($customers_res->num_rows > 0) {
-                            $customers_res->data_seek(0);
-                            while ($c = $customers_res->fetch_assoc()):
-                                $selected = ($c['id'] == $selected_customer_id) ? "selected" : "";
-                                echo "<option value='{$c['id']}' $selected>{$c['cust_name']}</option>";
-                            endwhile;
-                        }
+                    <select name="customer_id" id="customer_select" class="form-select select2-ajax-customer" required>
+                        <?php if ($selected_customer_id): 
+                            $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                            $c_stmt->bind_param("i", $selected_customer_id);
+                            $c_stmt->execute();
+                            $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
                         ?>
+                            <option value="<?= $selected_customer_id ?>" selected><?= htmlspecialchars($c_name) ?></option>
+                        <?php else: ?>
+                            <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <div class="col-md-3 mt-3">
@@ -117,6 +118,39 @@ if ($function_id) {
                             </option>
                         <?php endwhile; ?>
                     </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-warning"><i class="bi bi-tag me-1"></i> ที่มา Lead</label>
+                    <select name="lead_source" class="form-select">
+                        <option value="">-- เลือก --</option>
+                        <option value="โทรเข้า">โทรเข้า</option>
+                        <option value="FB / Social">FB / Social</option>
+                        <option value="แนะนำ">แนะนำ</option>
+                        <option value="Walk-in">Walk-in</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-info"><i class="bi bi-graph-up me-1"></i> ผลการดำเนินงาน</label>
+                    <select name="result" class="form-select">
+                        <option value="">-- เลือก --</option>
+                        <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
+                        <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
+                        <option value="รอการตัดสินใจ">รอการตัดสินใจ</option>
+                        <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-success"><i class="bi bi-binoculars me-1"></i> วันที่ Inspection</label>
+                    <input type="date" name="inspection_date" class="form-control" value="">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-danger"><i class="bi bi-clock-history me-1"></i> วันที่ Follow Up</label>
+                    <input type="date" name="follow_up_date" class="form-control" value="">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold"><i class="bi bi-check2-square me-1"></i> วันที่ Confirmed</label>
+                    <input type="date" name="approved_at" class="form-control" value="">
                 </div>
             </div>
 
@@ -160,13 +194,22 @@ if ($function_id) {
             <div class="row mt-4">
                 <div class="col-md-7 col-lg-8">
                     <div class="card border-0 bg-light-subtle p-3 h-100">
-                        <label class="form-label fw-bold text-dark">
-                            <i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม (Remarks)
-                        </label>
-                        <textarea name="remarks" class="form-control" rows="6"
-                            placeholder="ระบุเงื่อนไขเพิ่มเติมที่ต้องการให้แสดงในใบเสนอราคา..."><?= $remarks ?? '' ?></textarea>
-                        <div class="form-text text-muted mt-2">
-                            * ข้อมูลนี้จะปรากฏที่ส่วนล่างของเอกสารใบเสนอราคา
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">
+                                <i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม (Remarks)
+                            </label>
+                            <textarea name="remarks" class="form-control" rows="3"
+                                placeholder="ระบุเงื่อนไขเพิ่มเติมที่ต้องการให้แสดงในใบเสนอราคา..."><?= $remarks ?? '' ?></textarea>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold text-danger">
+                                <i class="bi bi-x-circle me-1"></i> สาเหตุที่ปิดงานไม่ได้ (Lost Reason)
+                            </label>
+                            <textarea name="lost_reason" class="form-control" rows="3"
+                                placeholder="ระบุสาเหตุที่ลูกค้าไม่ตกลง หรือต้องยกเลิกใบเสนอราคานี้..."></textarea>
+                            <div class="form-text text-muted">
+                                * สำหรับบันทึกภายใน (ไม่แสดงในเอกสาร PDF)
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -207,16 +250,8 @@ if ($function_id) {
     </form>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
-        // 1. ระบบค้นหาใน Dropdown (Select2)
-        $('.select2').select2({
-            theme: "classic",
-            width: '100%'
-        });
-
         // 2. เพิ่มแถวรายการใหม่
         $('#addRow').click(function () {
             let rowCount = $('#itemTable tbody tr').length + 1;

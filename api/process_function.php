@@ -39,6 +39,10 @@ if (isset($_POST['save'])) {
     $main_kitchen_remark = $_POST['main_kitchen_remark'] ?? '';
     $backdrop_detail = $_POST['backdrop_detail'] ?? '';
     $hk_florist_detail = $_POST['hk_florist_detail'] ?? '';
+    $lead_source = $_POST['lead_source'] ?? '';
+    $result = $_POST['result'] ?? '';
+    $inspection_date = !empty($_POST['inspection_date']) ? $_POST['inspection_date'] : null;
+    $follow_up_date = !empty($_POST['follow_up_date']) ? $_POST['follow_up_date'] : null;
 
     $created_by_name = $_SESSION['user_name'] ?? 'Unknown';
     $created_by_id = $_SESSION['user_id'] ?? 0;
@@ -142,44 +146,49 @@ if (isset($_POST['save'])) {
             total_amount,
             banquet_style, equipment, remark, main_kitchen_remark, 
             backdrop_detail, hk_florist_detail, backdrop_img, created_by, created_by_id, pax, 
-            start_time, end_time, file_attachment1, file_attachment2, file_attachment3
-        ) VALUES (?, ?, 1, 0, 'Draft V1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            start_time, end_time,
+            lead_source, result, inspection_date, follow_up_date,
+            file_attachment1, file_attachment2, file_attachment3
+        ) VALUES (?, ?, 1, 0, 'Draft V1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_main);
 
-        // รวมทั้งหมดต้องมี 31 ตัว (project_id + quotation_id + 25 เดิม + 4 ที่เพิ่มมาใหม่ใน SQL)
-        $types = "iiiiiisssssddssssssssiisssss"; // 28 ตัว ตรงกับ 28 ?
+        $types = "iiiiiisssssddssssssssiissssssss"; // 32 chars
 
         $stmt->bind_param(
             $types,
-            $project_id,         // 1 (i) [NEW]
-            $quotation_id,       // 2 (i) [NEW]
+            $project_id,         // 1 (i)
+            $quotation_id,       // 2 (i)
             $company_id,         // 3 (i)
             $customer_id,        // 4 (i)
             $function_type_id,   // 5 (i)
             $room_id,            // 6 (i)
             $function_name,      // 7 (s)
             $booking_name,       // 8 (s)
-            $organization,       // 8 (s)
-            $phone,              // 9 (s)
-            $booking_room,       // 10 (s)
-            $deposit,            // 11 (d)
-            $total_amount,       // 12 (d)
-            $banquet_style,      // 13 (s)
-            $equipment,          // 14 (s)
-            $remark,             // 15 (s)
-            $main_kitchen_remark,// 16 (s)
-            $backdrop_detail,    // 17 (s)
-            $hk_florist_detail,  // 18 (s)
-            $backdrop_img_path,  // 19 (s)
-            $created_by_name,    // 20 (s)
-            $created_by_id,      // 21 (i)
-            $pax,                // 22 (i)
-            $start_date,         // 23 (s)
-            $end_date,           // 24 (s)
-            $attach_paths[1],    // 25 (s)
-            $attach_paths[2],    // 26 (s)
-            $attach_paths[3]     // 27 (s)
+            $organization,       // 9 (s)
+            $phone,              // 10 (s)
+            $booking_room,       // 11 (s)
+            $deposit,            // 12 (d)
+            $total_amount,       // 13 (d)
+            $banquet_style,      // 14 (s)
+            $equipment,          // 15 (s)
+            $remark,             // 16 (s)
+            $main_kitchen_remark,// 17 (s)
+            $backdrop_detail,    // 18 (s)
+            $hk_florist_detail,  // 19 (s)
+            $backdrop_img_path,  // 20 (s)
+            $created_by_name,    // 21 (s)
+            $created_by_id,      // 22 (i)
+            $pax,                // 23 (i)
+            $start_date,         // 24 (s)
+            $end_date,           // 25 (s)
+            $lead_source,        // 26 (s)
+            $result,             // 27 (s)
+            $inspection_date,    // 28 (s)
+            $follow_up_date,     // 29 (s)
+            $attach_paths[1],    // 30 (s)
+            $attach_paths[2],    // 31 (s)
+            $attach_paths[3]     // 32 (s)
         );
 
         if (!$stmt->execute()) {

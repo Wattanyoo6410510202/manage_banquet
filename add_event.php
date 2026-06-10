@@ -195,20 +195,15 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <input type="hidden" name="quotation_id" value="<?= $quote_id ?>">
                                 <input type="hidden" name="project_id" value="<?= $quote_data['project_id'] ?? '' ?>">
                                 <select id="customer_selector" name="customer_id"
-                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light"
-                                    onchange="fillCustomerInfo(this)"
+                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light select2-ajax-customer"
                                     style="border-radius: 10px; height: 42px; font-size: 13px;">
-                                    <option value="">-- ค้นหา/เลือกลูกค้าเดิม --</option>
-                                    <?php if ($res_customers && $res_customers->num_rows > 0):
-                                        while ($c = $res_customers->fetch_assoc()): 
-                                            $selected = ($c['id'] == ($quote_data['customer_id'] ?? '')) ? 'selected' : '';
-                                        ?>
-                                            <option value="<?= $c['id'] ?>" <?= $selected ?> data-name="<?= htmlspecialchars($c['cust_name']) ?>"
-                                                data-phone="<?= htmlspecialchars($c['cust_phone']) ?>"
-                                                data-address="<?= htmlspecialchars($c['cust_address']) ?>">
-                                                <?= htmlspecialchars($c['cust_name']) ?>
-                                            </option>
-                                        <?php endwhile; endif; ?>
+                                    <?php if ($quote_data['customer_id']): ?>
+                                        <option value="<?= $quote_data['customer_id'] ?>" selected>
+                                            <?= htmlspecialchars($quote_data['cust_name']) ?>
+                                        </option>
+                                    <?php else: ?>
+                                        <option value="">-- พิมพ์เพื่อค้นหาลูกค้า --</option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
 
@@ -352,7 +347,49 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                 <div class="row g-2 mt-2">
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-warning bg-opacity-10 h-100">
+            <label class="small fw-bold text-warning mb-1 d-block"><i class="bi bi-tag me-1"></i>ที่มา Lead</label>
+            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6">
+                <option value="">-- เลือก --</option>
+                <option value="โทรเข้า">โทรเข้า</option>
+                <option value="FB / Social">FB / Social</option>
+                <option value="แนะนำ">แนะนำ</option>
+                <option value="Walk-in">Walk-in</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
+            <label class="small fw-bold text-info mb-1 d-block"><i class="bi bi-graph-up me-1"></i>ผลการดำเนินงาน</label>
+            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6">
+                <option value="">-- เลือก --</option>
+                <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
+                <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
+                <option value="รอการตัดสินใจ">รอการตัดสินใจ</option>
+                <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
+            <label class="small fw-bold text-success mb-1 d-block"><i class="bi bi-binoculars me-1"></i>วันที่ Inspection</label>
+            <input type="date" name="inspection_date"
+                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                value="">
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-danger bg-opacity-10 h-100">
+            <label class="small fw-bold text-danger mb-1 d-block"><i class="bi bi-clock-history me-1"></i>วันที่ Follow Up</label>
+            <input type="date" name="follow_up_date"
+                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
+                value="">
+        </div>
+    </div>
+</div>
 
                                 <div class="row g-2">
                                     <?php

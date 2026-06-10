@@ -243,26 +243,21 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                 <input type="hidden" name="customer_id" id="customer_id_hidden"
                                     value="<?= $data['customer_id'] ?>">
                                 <select id="customer_selector"
-                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light"
-                                    onchange="fillCustomerInfo(this)"
+                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light select2-ajax-customer"
                                     style="border-radius: 10px; height: 42px; font-size: 13px;">
-                                    <option value="">-- ค้นหา/เลือกลูกค้าเดิม --</option>
-                                    <?php
-                                    if ($res_customers && $res_customers->num_rows > 0):
-                                        $res_customers->data_seek(0);
-                                        while ($c = $res_customers->fetch_assoc()):
-                                            // 🛠️ แก้จุดนี้: ใช้ trim และเช็คว่า ID ตรงกันจริงๆ (ใช้ == เพื่อไม่ check type ที่เข้มงวดเกินไป)
-                                            $is_selected_cust = (trim($c['id']) == trim($data['customer_id'])) ? 'selected' : '';
-                                            ?>
-                                    <option value="<?= $c['id'] ?>" data-name="<?= htmlspecialchars($c['cust_name']) ?>"
-                                        data-phone="<?= htmlspecialchars($c['cust_phone']) ?>"
-                                        data-address="<?= htmlspecialchars($c['cust_address']) ?>"
-                                        <?= $is_selected_cust ?>> <?= htmlspecialchars($c['cust_name']) ?>
-                                    </option>
-                                    <?php endwhile; endif; ?>
+
+                                    <?php if ($data['customer_id']): 
+                                       $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                                       $c_stmt->bind_param("i", $data['customer_id']);
+                                       $c_stmt->execute();
+                                       $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '-- ค้นหา/เลือกลูกค้าเดิม --';
+                                    ?>
+                                       <option value="<?= $data['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
+                                    <?php else: ?>
+                                       <option value="">-- พิมพ์เพื่อค้นหาลูกค้า --</option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
-
                             <div class="mb-3">
                                 <label class="form-label mb-1 text-muted"
                                     style="font-size: 11px;">ชื่อลูกค้า/ผู้จอง</label>
@@ -437,7 +432,50 @@ while($row = $all_rooms_res->fetch_assoc()) {
     </div>
 </div>
 
-                           
+<div class="row g-2 mt-2">
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-warning bg-opacity-10 h-100">
+            <label class="small fw-bold text-warning mb-1 d-block"><i class="bi bi-tag me-1"></i>ที่มา Lead</label>
+            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6">
+                <option value="">-- เลือก --</option>
+                <option value="โทรเข้า" <?= ($data['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
+                <option value="FB / Social" <?= ($data['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
+                <option value="แนะนำ" <?= ($data['lead_source'] ?? '') === 'แนะนำ' ? 'selected' : '' ?>>แนะนำ</option>
+                <option value="Walk-in" <?= ($data['lead_source'] ?? '') === 'Walk-in' ? 'selected' : '' ?>>Walk-in</option>
+                <option value="อื่นๆ" <?= ($data['lead_source'] ?? '') === 'อื่นๆ' ? 'selected' : '' ?>>อื่นๆ</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
+            <label class="small fw-bold text-info mb-1 d-block"><i class="bi bi-graph-up me-1"></i>ผลการดำเนินงาน</label>
+            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6">
+                <option value="">-- เลือก --</option>
+                <option value="ปิดงานสำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
+                <option value="ปิดงานไม่สำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
+                <option value="รอการตัดสินใจ" <?= ($data['result'] ?? '') === 'รอการตัดสินใจ' ? 'selected' : '' ?>>รอการตัดสินใจ</option>
+                <option value="ติดต่อไม่ได้" <?= ($data['result'] ?? '') === 'ติดต่อไม่ได้' ? 'selected' : '' ?>>ติดต่อไม่ได้</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
+            <label class="small fw-bold text-success mb-1 d-block"><i class="bi bi-binoculars me-1"></i>วันที่ Inspection</label>
+            <input type="date" name="inspection_date"
+                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                value="<?= $data['inspection_date'] ?? '' ?>">
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="p-3 rounded-4 bg-danger bg-opacity-10 h-100">
+            <label class="small fw-bold text-danger mb-1 d-block"><i class="bi bi-clock-history me-1"></i>วันที่ Follow Up</label>
+            <input type="date" name="follow_up_date"
+                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
+                value="<?= $data['follow_up_date'] ?? '' ?>">
+        </div>
+    </div>
+</div>
+                   
                                 <div class="row g-3 mt-1">
                                     <?php 
     $file_colors = ['secondary', 'warning', 'danger']; 
