@@ -92,9 +92,9 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                         </div>
                         <div class="col-md-2">
                             <select id="dataSource" class="form-select form-select-sm" onchange="updateCalendarEvents()">
-                                <option value="all" selected>ทั้งหมด</option>
-                                <option value="eo">Event Order</option>
-                                <option value="quotation">ใบเสนอราคา</option>
+                                <option value="all" selected>ทั้งหมด (All)</option>
+                                <option value="eo">Function Order (EO)</option>
+                                <option value="quotation">ใบเสนอราคา (Quotation)</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -242,24 +242,34 @@ document.addEventListener('DOMContentLoaded', function () {
         events: [
             <?php
             // 1. งานจากตาราง functions (General Mode)
+            // พยายามดึงแบบ Join ก่อน ถ้าล้มเหลว (เช่น ไม่มีคอลัมน์ใหม่) ให้ใช้ Fallback
             $sql_f = "SELECT f.*, r.room_name, c.cust_name, c.cust_phone, u.name as creator_name
                       FROM functions f 
                       LEFT JOIN meeting_rooms r ON f.room_id = r.id
                       LEFT JOIN customers c ON f.customer_id = c.id
                       LEFT JOIN users u ON f.created_by_id = u.id
-                      ORDER BY f.project_id ASC, f.id ASC";
+                      ORDER BY f.id ASC"; 
+            
             $q_f = mysqli_query($conn, $sql_f);
+            if (!$q_f) {
+                $sql_f = "SELECT * FROM functions ORDER BY id ASC";
+                $q_f = mysqli_query($conn, $sql_f);
+            }
+
             $func_groups = [];
-            while ($row = mysqli_fetch_assoc($q_f)) {
-                $gid = $row['project_id'] ?: 'single_' . $row['id'];
-                if (!isset($func_groups[$gid])) {
-                    $func_groups[$gid] = $row;
-                } elseif ($row['is_approved'] == 1) {
-                    $func_groups[$gid] = $row;
+            if ($q_f) {
+                while ($row = mysqli_fetch_assoc($q_f)) {
+                    $gid = (isset($row['project_id']) && $row['project_id']) ? $row['project_id'] : 'single_' . $row['id'];
+                    if (!isset($func_groups[$gid])) {
+                        $func_groups[$gid] = $row;
+                    } elseif (isset($row['is_approved']) && $row['is_approved'] == 1) {
+                        $func_groups[$gid] = $row;
+                    }
                 }
             }
+            
             foreach ($func_groups as $row) {
-                $st = strtolower(trim($row['status']));
+                $st = strtolower(trim($row['status'] ?? ''));
                 if($st === 'pending') $color = '#ffc107';
                 elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
                 elseif($st === 'in progress') $color = '#0d6efd';
@@ -270,79 +280,71 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 id: 'gen_<?php echo $row['id']; ?>',
                 ref_id: '<?php echo $row['id']; ?>',
-                title: '<?php echo addslashes($row['function_name']); ?>',
-                start: '<?php echo $row['start_time']; ?>',
-                end: '<?php echo $row['end_time']; ?>',
+                title: '<?php echo addslashes($row['function_name'] ?? ''); ?>',
+                start: '<?php echo $row['start_time'] ?? ''; ?>',
+                end: '<?php echo $row['end_time'] ?? ''; ?>',
                 color: '<?php echo $color; ?>',
                 mode: 'general',
                 extendedProps: { 
-                    mainTitle: '<?php echo addslashes($row['function_name']); ?>', 
-                    status: '<?php echo $row['status']; ?>', 
-                    room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
-                    room_id: '<?php echo $row['room_id'] ?? ''; ?>',
+                    mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
+                    status: '<?php echo $row['status'] ?? 'Pending'; ?>', 
+                    room: '<?php echo addslashes($row['room_name'] ?? $row['room_id'] ?? ''); ?>',
                     customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
                     phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
-                    pax: '<?php echo $row['pax']; ?>',
-                    deposit: '<?php echo number_format($row['deposit'], 2); ?>',
-                    total: '<?php echo number_format($row['total_amount'], 2); ?>',
-                    remark: '<?php echo addslashes($row['remark']); ?>',
-                    lead_source: '<?php echo addslashes($row['lead_source'] ?? ''); ?>',
-                    result: '<?php echo addslashes($row['result'] ?? ''); ?>',
-                    inspection_date: '<?php echo $row['inspection_date'] ?? ''; ?>',
-                    follow_up_date: '<?php echo $row['follow_up_date'] ?? ''; ?>',
-                    created_at: '<?php echo $row['created_at'] ?? ''; ?>',
-                    created_by_name: '<?php echo addslashes($row['creator_name'] ?? ''); ?>',
-                    confirmed_date: '<?php echo $row['approve_date'] ?? ''; ?>'
+                    pax: '<?php echo $row['pax'] ?? 0; ?>',
+                    deposit: '<?php echo number_format($row['deposit'] ?? 0, 2); ?>',
+                    total: '<?php echo number_format($row['total_amount'] ?? 0, 2); ?>',
+                    remark: '<?php echo addslashes($row['remark'] ?? ''); ?>',
+                    created_by_name: '<?php echo addslashes($row['creator_name'] ?? $row['created_by'] ?? ''); ?>'
                 }
             },
             <?php } 
             
             // 2. งานจากตาราง schedules (Schedule Mode)
             $sql_s = "SELECT s.*, f.function_name, f.status, r.room_name, c.cust_name, c.cust_phone, f.pax, f.deposit, f.total_amount,
-                             f.lead_source, f.result, f.inspection_date, f.follow_up_date, f.created_at, f.approve_date, u.name as creator_name
+                             f.lead_source, f.result, f.inspection_date, f.follow_up_date, f.created_at, f.approve_date, u.name as creator_name, f.created_by
                       FROM function_schedules s 
                       JOIN functions f ON s.function_id = f.id
                       LEFT JOIN meeting_rooms r ON f.room_id = r.id
                       LEFT JOIN customers c ON f.customer_id = c.id
                       LEFT JOIN users u ON f.created_by_id = u.id";
             $q_s = mysqli_query($conn, $sql_s);
-            while ($row = mysqli_fetch_assoc($q_s)) {
-                $st = strtolower(trim($row['status']));
-                if($st === 'pending') $color = '#ffc107';
-                elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
-                elseif($st === 'in progress') $color = '#0d6efd';
-                elseif($st === 'completed') $color = '#198754';
-                elseif($st === 'cancelled') $color = '#dc3545';
-                else $color = '#6c757d';
-            ?>
-            {
-                id: 'sched_<?php echo $row['id']; ?>',
-                ref_id: '<?php echo $row['function_id']; ?>',
-                title: '<?php echo addslashes("[" . $row['schedule_hour'] . "] " . $row['schedule_function']); ?>',
-                start: '<?php echo $row['schedule_date']; ?>',
-                color: '<?php echo $color; ?>',
-                mode: 'schedule',
-                extendedProps: { 
-                    mainTitle: '<?php echo addslashes($row['function_name']); ?>', 
-                    status: '<?php echo $row['status']; ?>', 
-                    room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
-                    room_id: '<?php echo $row['room_id'] ?? ''; ?>',
-                    customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
-                    phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
-                    pax: '<?php echo $row['pax']; ?>',
-                    deposit: '<?php echo number_format($row['deposit'], 2); ?>',
-                    total: '<?php echo number_format($row['total_amount'], 2); ?>',
-                    remark: '<?php echo addslashes($row['schedule_function']); ?>',
-                    lead_source: '<?php echo addslashes($row['lead_source'] ?? ''); ?>',
-                    result: '<?php echo addslashes($row['result'] ?? ''); ?>',
-                    inspection_date: '<?php echo $row['inspection_date'] ?? ''; ?>',
-                    follow_up_date: '<?php echo $row['follow_up_date'] ?? ''; ?>',
-                    created_at: '<?php echo $row['created_at'] ?? ''; ?>',
-                    created_by_name: '<?php echo addslashes($row['creator_name'] ?? ''); ?>',
-                    confirmed_date: '<?php echo $row['approve_date'] ?? ''; ?>'
-                }
-            },
-            <?php } ?>
+            if (!$q_s) {
+                $sql_s = "SELECT s.*, f.function_name, f.status, f.created_by 
+                          FROM function_schedules s 
+                          JOIN functions f ON s.function_id = f.id";
+                $q_s = mysqli_query($conn, $sql_s);
+            }
+
+            if ($q_s) {
+                while ($row = mysqli_fetch_assoc($q_s)) {
+                    $st = strtolower(trim($row['status'] ?? ''));
+                    if($st === 'pending') $color = '#ffc107';
+                    elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
+                    elseif($st === 'in progress') $color = '#0d6efd';
+                    elseif($st === 'completed') $color = '#198754';
+                    elseif($st === 'cancelled') $color = '#dc3545';
+                    else $color = '#6c757d';
+                ?>
+                {
+                    id: 'sched_<?php echo $row['id']; ?>',
+                    ref_id: '<?php echo $row['function_id']; ?>',
+                    title: '<?php echo addslashes("[" . ($row['schedule_hour'] ?? '') . "] " . ($row['schedule_function'] ?? '')); ?>',
+                    start: '<?php echo $row['schedule_date'] ?? ''; ?>',
+                    color: '<?php echo $color; ?>',
+                    mode: 'schedule',
+                    extendedProps: { 
+                        mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
+                        status: '<?php echo $row['status'] ?? 'Pending'; ?>', 
+                        room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
+                        customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
+                        total: '<?php echo number_format($row['total_amount'] ?? 0, 2); ?>',
+                        remark: '<?php echo addslashes($row['schedule_function'] ?? ''); ?>',
+                        created_by_name: '<?php echo addslashes($row['creator_name'] ?? $row['created_by'] ?? ''); ?>'
+                    }
+                },
+                <?php } 
+            } ?>
 
             <?php
             // 3. ใบเสนอราคา (Quotations)
@@ -353,44 +355,39 @@ document.addEventListener('DOMContentLoaded', function () {
                       WHERE q.status NOT IN ('Cancelled')
                       ORDER BY q.id DESC";
             $q_q = mysqli_query($conn, $sql_q);
-            while ($row = mysqli_fetch_assoc($q_q)) {
-                $st = strtolower(trim($row['status']));
-                if($st === 'draft' || $st === 'pending') {
-                    $color = '#6c757d';
-                    $status_text = 'QT (Draft)';
-                } else {
-                    $color = '#fd7e14';
-                    $status_text = 'QT (อนุมัติ)';
-                }
-            ?>
-            {
-                id: 'qt_<?php echo $row['id']; ?>',
-                ref_id: '<?php echo $row['id']; ?>',
-                title: '<?php echo addslashes("[" . $row['quote_no'] . "] " . $row['event_name']); ?>',
-                start: '<?php echo $row['event_date']; ?>',
-                color: '<?php echo $color; ?>',
-                mode: 'general',
-                extendedProps: { 
-                    mainTitle: '<?php echo addslashes($row['event_name']); ?>', 
-                    status: '<?php echo $status_text; ?>', 
-                    room: '-',
-                    room_id: '0',
-                    customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
-                    phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
-                    pax: '-',
-                    deposit: '0.00',
-                    total: '<?php echo number_format($row['grand_total'], 2); ?>',
-                    remark: '<?php echo addslashes($row['remarks']); ?>',
-                    lead_source: '<?php echo addslashes($row['lead_source'] ?? ''); ?>',
-                    result: '<?php echo addslashes($row['result'] ?? ''); ?>',
-                    inspection_date: '<?php echo $row['inspection_date'] ?? ''; ?>',
-                    follow_up_date: '<?php echo $row['follow_up_date'] ?? ''; ?>',
-                    created_at: '<?php echo $row['created_at'] ?? ''; ?>',
-                    created_by_name: '<?php echo addslashes($row['creator_name'] ?? ''); ?>',
-                    confirmed_date: '<?php echo $row['approved_at'] ?? ''; ?>'
-                }
-            },
-            <?php } ?>
+            if (!$q_q) {
+                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled') ORDER BY id DESC";
+                $q_q = mysqli_query($conn, $sql_q);
+            }
+
+            if ($q_q) {
+                while ($row = mysqli_fetch_assoc($q_q)) {
+                    $st = strtolower(trim($row['status'] ?? ''));
+                    if($st === 'draft' || $st === 'pending') {
+                        $color = '#6c757d';
+                        $status_text = 'QT (Draft)';
+                    } else {
+                        $color = '#fd7e14';
+                        $status_text = 'QT (อนุมัติ)';
+                    }
+                ?>
+                {
+                    id: 'qt_<?php echo $row['id']; ?>',
+                    ref_id: '<?php echo $row['id']; ?>',
+                    title: '<?php echo addslashes("[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '')); ?>',
+                    start: '<?php echo $row['event_date'] ?? ''; ?>',
+                    color: '<?php echo $color; ?>',
+                    mode: 'general',
+                    extendedProps: { 
+                        mainTitle: '<?php echo addslashes($row['event_name'] ?? ''); ?>', 
+                        status: '<?php echo $status_text; ?>', 
+                        customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
+                        total: '<?php echo number_format($row['grand_total'] ?? 0, 2); ?>',
+                        created_by_name: '<?php echo addslashes($row['creator_name'] ?? ''); ?>'
+                    }
+                },
+                <?php } 
+            } ?>
         ],
 
         eventClick: function (info) {

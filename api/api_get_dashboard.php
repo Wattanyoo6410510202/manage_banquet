@@ -16,10 +16,17 @@ try {
     }
 
     $stats_sql = "SELECT 
-        COUNT(id) as total_events,
-        SUM(CASE WHEN approve = 0 THEN 1 ELSE 0 END) as pending_count,
-        IFNULL(SUM(deposit), 0) as total_revenue 
-        FROM functions $where_clause";
+        COUNT(f.id) as total_events,
+        SUM(CASE WHEN f.approve = 0 THEN 1 ELSE 0 END) as pending_count,
+        IFNULL(SUM(f.deposit), 0) as total_revenue,
+        (
+            SELECT AVG( ( (f2.total_amount + IFNULL(inc.total_inc, 0)) - (IFNULL(cst.total_cst, 0) + 0) ) / NULLIF(IFNULL(cst.total_cst, 0) + 0, 0) * 100 )
+            FROM functions f2
+            LEFT JOIN (SELECT function_id, SUM(amount) as total_inc FROM function_finance WHERE type='income' GROUP BY function_id) inc ON f2.id = inc.function_id
+            LEFT JOIN (SELECT function_id, SUM(amount) as total_cst FROM function_finance WHERE type='cost' GROUP BY function_id) cst ON f2.id = cst.function_id
+            WHERE f2.approve = 1
+        ) as avg_roi
+        FROM functions f $where_clause";
     $stats = $conn->query($stats_sql)->fetch_assoc();
 
     // --- ใหม่: รายได้ 6 เดือนล่าสุด ---

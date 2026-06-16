@@ -16,17 +16,19 @@ if (isset($_POST['action'])) {
         $cust_contact_name = $conn->real_escape_string($_POST['cust_contact_name']);
         $cust_phone = $conn->real_escape_string($_POST['cust_phone']);
         $cust_email = $conn->real_escape_string($_POST['cust_email']);
+        $sales_name = $conn->real_escape_string($_POST['sales_name']);
 
         if ($id > 0) {
             $sql = "UPDATE customers SET 
                     cust_name='$cust_name', cust_tax_id='$cust_tax_id', 
                     cust_address='$cust_address', cust_contact_name='$cust_contact_name', 
-                    cust_phone='$cust_phone', cust_email='$cust_email' 
+                    cust_phone='$cust_phone', cust_email='$cust_email',
+                    sales_name='$sales_name'
                     WHERE id=$id";
             $msg = "updated";
         } else {
-            $sql = "INSERT INTO customers (cust_name, cust_tax_id, cust_address, cust_contact_name, cust_phone, cust_email) 
-                    VALUES ('$cust_name', '$cust_tax_id', '$cust_address', '$cust_contact_name', '$cust_phone', '$cust_email')";
+            $sql = "INSERT INTO customers (cust_name, cust_tax_id, cust_address, cust_contact_name, cust_phone, cust_email, sales_name) 
+                    VALUES ('$cust_name', '$cust_tax_id', '$cust_address', '$cust_contact_name', '$cust_phone', '$cust_email', '$sales_name')";
             $msg = "inserted";
         }
 
@@ -44,7 +46,8 @@ if (isset($_POST['action'])) {
                     "cust_address" => $cust_address,
                     "cust_contact_name" => $cust_contact_name,
                     "cust_phone" => $cust_phone,
-                    "cust_email" => $cust_email
+                    "cust_email" => $cust_email,
+                    "sales_name" => $sales_name
                 ]
             ]);
             exit; 
@@ -120,9 +123,13 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                     class="form-control form-control-sm">
                             </div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="small fw-bold">อีเมล</label>
                             <input type="email" name="cust_email" id="cust_email" class="form-control form-control-sm">
+                        </div>
+                        <div class="mb-3">
+                            <label class="small fw-bold">เซลที่ดูแล</label>
+                            <input type="text" name="sales_name" id="sales_name" class="form-control form-control-sm" placeholder="ระบุชื่อเซล">
                         </div>
 
                         <div class="d-grid gap-2">
@@ -180,6 +187,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                 <tr>
                                     <th class="small">ชื่อบริษัท/ลูกค้า</th>
                                     <th class="small">ผู้ประสานงาน</th>
+                                    <th class="small">เซลที่ดูแล</th>
                                     <th class="small">เบอร์โทร</th>
                                     <th class="small">อีเมล</th>
                                     <th class="small text-center">จัดการ</th>
@@ -190,6 +198,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                     <tr>
                                         <td class="fw-bold"><?= htmlspecialchars($row['cust_name']) ?></td>
                                         <td><?= htmlspecialchars($row['cust_contact_name']) ?></td>
+                                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($row['sales_name'] ?? '-') ?></span></td>
                                         <td><?= htmlspecialchars($row['cust_phone']) ?></td>
                                         <td><?= htmlspecialchars($row['cust_email']) ?></td>
                                         <td class="text-center">
@@ -291,12 +300,14 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
         document.getElementById('cust_contact_name').value = data.cust_contact_name;
         document.getElementById('cust_phone').value = data.cust_phone;
         document.getElementById('cust_email').value = data.cust_email;
+        document.getElementById('sales_name').value = data.sales_name || '';
         document.querySelector('.card-header.bg-dark').innerHTML = '<i class="bi bi-pencil-square me-2 text-amber"></i>แก้ไขข้อมูลลูกค้า';
     }
 
     function resetForm() {
         document.getElementById('custForm').reset();
         document.getElementById('cust_id').value = 0;
+        document.getElementById('sales_name').value = '';
         document.querySelector('.card-header.bg-dark').innerHTML = '<i class="bi bi-person-plus-fill me-2 text-amber"></i>ข้อมูลลูกค้า / บริษัท';
     }
 
@@ -327,6 +338,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         table.row(row).data([
                             `<span class="fw-bold">${d.cust_name}</span>`,
                             d.cust_contact_name,
+                            `<span class="badge bg-light text-dark border">${d.sales_name || '-'}</span>`,
                             d.cust_phone,
                             d.cust_email,
                             row.find('td:last').html()
@@ -339,6 +351,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         const newRow = table.row.add([
                             `<span class="fw-bold">${d.cust_name}</span>`,
                             d.cust_contact_name,
+                            `<span class="badge bg-light text-dark border">${d.sales_name || '-'}</span>`,
                             d.cust_phone,
                             d.cust_email,
                             `<div class="btn-group">
@@ -357,7 +370,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
         </div>`
                         ]).draw(false).node();
 
-                        $(newRow).find('td').eq(4).addClass('text-center');
+                        $(newRow).find('td').eq(5).addClass('text-center');
                     }
                     resetForm();
                 } else {

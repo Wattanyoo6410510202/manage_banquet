@@ -4,10 +4,17 @@ include "config.php";
 
 // --- 1. สถิติจริงจากตาราง functions ---
 $stats_res = $conn->query("SELECT 
-    COUNT(id) as total_events,
-    SUM(CASE WHEN approve = 0 THEN 1 ELSE 0 END) as pending_count,
-    SUM(deposit) as total_revenue 
-    FROM functions");
+    COUNT(f.id) as total_events,
+    SUM(CASE WHEN f.approve = 0 THEN 1 ELSE 0 END) as pending_count,
+    IFNULL(SUM(f.deposit), 0) as total_revenue,
+    (
+        SELECT AVG( ( (f2.total_amount + IFNULL(inc.total_inc, 0)) - (IFNULL(cst.total_cst, 0) + 0) ) / NULLIF(IFNULL(cst.total_cst, 0) + 0, 0) * 100 )
+        FROM functions f2
+        LEFT JOIN (SELECT function_id, SUM(amount) as total_inc FROM function_finance WHERE type='income' GROUP BY function_id) inc ON f2.id = inc.function_id
+        LEFT JOIN (SELECT function_id, SUM(amount) as total_cst FROM function_finance WHERE type='cost' GROUP BY function_id) cst ON f2.id = cst.function_id
+        WHERE f2.approve = 1
+    ) as avg_roi
+    FROM functions f");
 $stats = $stats_res->fetch_assoc();
 
 // --- 2. รายชื่อบริษัท/โรงแรม ---
@@ -15,6 +22,82 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+.dashboard-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+}
+</style>
+
+<script>
+let charts = {};
+
+function showDetails(type, title) {
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    document.getElementById('modalTitle').innerText = title;
+    const companyId = document.getElementById('companyFilter').value;
+    const header = document.getElementById('detailsTableHeader');
+    const body = document.getElementById('detailsTableBody');
+
+    header.innerHTML = '';
+    body.innerHTML = '<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    
+    modal.show();
+
+    fetch(`api/get_dashboard_details.php?type=${type}&company_id=${companyId}`)
+    .then(res => res.json())
+    .then(res => {
+        if (res.status === 'success') {
+            let htmlHeader = '';
+            let htmlBody = '';
+
+            if (type === 'revenue') {
+                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ยอดมัดจำ</th><th class="text-end">ยอดรวม</th>';
+                res.data.forEach(item => {
+                    htmlBody += `<tr>
+                        <td>${item.event_date}</td>
+                        <td class="fw-bold text-primary">${item.function_name}</td>
+                        <td>${item.company_name}</td>
+                        <td class="text-end fw-bold text-success">฿${parseFloat(item.deposit).toLocaleString()}</td>
+                        <td class="text-end">฿${parseFloat(item.total_amount).toLocaleString()}</td>
+                    </tr>`;
+                });
+            } else if (type === 'roi') {
+                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ต้นทุน</th><th class="text-end">ROI</th>';
+                res.data.forEach(item => {
+                    let roiColor = item.roi > 0 ? 'text-success' : 'text-danger';
+                    htmlBody += `<tr>
+                        <td>${item.event_date}</td>
+                        <td class="fw-bold text-primary">${item.function_name}</td>
+                        <td>${item.company_name}</td>
+                        <td class="text-end">฿${parseFloat(item.total_cost).toLocaleString()}</td>
+                        <td class="text-end fw-bold ${roiColor}">${parseFloat(item.roi).toFixed(2)}%</td>
+                    </tr>`;
+                });
+            } else {
+                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ยอดรวม</th><th>สถานะ</th>';
+                res.data.forEach(item => {
+                    htmlBody += `<tr>
+                        <td>${item.event_date}</td>
+                        <td class="fw-bold text-primary">${item.function_name}</td>
+                        <td>${item.company_name}</td>
+                        <td class="text-end">฿${parseFloat(item.total_amount).toLocaleString()}</td>
+                        <td><span class="badge bg-light text-dark border">${item.status}</span></td>
+                    </tr>`;
+                });
+            }
+
+            header.innerHTML = htmlHeader;
+            body.innerHTML = htmlBody || '<tr><td colspan="5" class="text-center py-5 text-muted">ไม่พบข้อมูล</td></tr>';
+        }
+    });
+}
+</script>
 
 <div class="container-fluid p-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -35,8 +118,8 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
 
     <!-- Stats -->
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('total_events', 'งานทั้งหมด')">
                 <div class="d-flex align-items-center">
                     <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3">
                         <i class="bi bi-calendar-check fs-3"></i>
@@ -48,8 +131,8 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('pending', 'รอการอนุมัติ')">
                 <div class="d-flex align-items-center">
                     <div class="icon-box bg-warning bg-opacity-10 text-warning p-3 rounded-3 me-3">
                         <i class="bi bi-hourglass-split fs-3"></i>
@@ -62,16 +145,55 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('revenue', 'รายได้มัดจำรวม')">
                 <div class="d-flex align-items-center">
                     <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-3 me-3">
                         <i class="bi bi-currency-dollar fs-3"></i>
                     </div>
                     <div>
-                        <h6 class="text-muted mb-0 small fw-bold">ยอดเงินมัดจำรวม</h6>
+                        <h6 class="text-muted mb-0 small fw-bold">รายได้มัดจำรวม</h6>
                         <h3 class="fw-bold mb-0 text-success" id="stat_revenue">
                             ฿<?= number_format($stats['total_revenue'], 2) ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('roi', 'ROI เฉลี่ย')">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-info bg-opacity-10 text-info p-3 rounded-3 me-3">
+                        <i class="bi bi-graph-up fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0 small fw-bold">ROI เฉลี่ย</h6>
+                        <h3 class="fw-bold mb-0 text-info" id="stat_roi"><?= number_format($stats['avg_roi'] ?? 0, 2) ?>%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Details -->
+    <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="modalTitle">รายละเอียด</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="detailsTable">
+                            <thead class="bg-light text-muted small">
+                                <tr id="detailsTableHeader">
+                                    <!-- Header dynamically generated -->
+                                </tr>
+                            </thead>
+                            <tbody id="detailsTableBody">
+                                <!-- Data dynamically generated -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -173,8 +295,6 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
 </div>
 
 <script>
-let charts = {};
-
 function initCharts() {
     charts.revenue = new Chart(document.getElementById('revenueChart').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'รายได้ (บาท)', data: [], backgroundColor: '#0d6efd', borderColor: '#0d6efd', tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } });
     charts.types = new Chart(document.getElementById('typeChart').getContext('2d'), { type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#0d6efd', '#ffc107', '#dc3545', '#198754', '#6610f2'] }] }, options: { responsive: true, maintainAspectRatio: false } });
@@ -193,6 +313,11 @@ function updateDashboardData(data) {
         document.getElementById('stat_total').innerText = Number(data.stats.total_events || 0).toLocaleString();
         document.getElementById('stat_pending').innerText = Number(data.stats.pending_count || 0).toLocaleString();
         document.getElementById('stat_revenue').innerText = '฿' + Number(data.stats.total_revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        // ROI Update
+        if (data.stats.avg_roi) {
+            document.getElementById('stat_roi').innerText = parseFloat(data.stats.avg_roi).toFixed(2) + '%';
+        }
     }
 
     // Charts
