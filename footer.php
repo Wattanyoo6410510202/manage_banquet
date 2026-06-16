@@ -9,39 +9,11 @@
 <script>
     // --- Select2 Global Initializations ---
     $(document).ready(function() {
-        // สำหรับหน้าที่มีลูกค้าแบบค้นหา
-        $('.select2-ajax-customer').select2({
-            width: '100%',
-            ajax: {
-                url: 'api/search_customers.php',
-                dataType: 'json',
-                delay: 250,
-                data: function (params) {
-                    return {
-                        q: params.term
-                    };
-                },
-                processResults: function (data) {
-                    return {
-                        results: data.results
-                    };
-                },
-                cache: true
-            },
-            placeholder: '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---',
-            minimumInputLength: 1
-        }).on('select2:select', function (e) {
-            var data = e.params.data;
-            // ถ้ามีฟิลด์เหล่านี้ในหน้า ให้เติมค่าให้อัตโนมัติ (สำหรับหน้า add_event.php และ edit.php)
-            if($('#booking_name').length) $('#booking_name').val(data.cust_name);
-            if($('#customer_phone').length) $('#customer_phone').val(data.cust_phone);
-            if($('#customer_address').length) $('#customer_address').val(data.cust_address);
-            if($('#customer_id_hidden').length) $('#customer_id_hidden').val(data.id);
-        });
-
-        // สำหรับ Select2 ทั่วไป (เช่น เลือกโรงแรม, โครงการ)
+        // สำหรับ Select2 ทั่วไป
         $('.select2').select2({
-            width: '100%'
+            width: '100%',
+            placeholder: '--- เลือกรายการ ---',
+            allowClear: true
         });
     });
 

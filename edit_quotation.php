@@ -29,12 +29,10 @@ if ($quote_id > 0) {
     exit;
 }
 
-// ดึงรายชื่อลูกค้าและบริษัทสำหรับ Dropdown
-$customers_res = $conn->query("SELECT id, cust_name FROM customers ORDER BY cust_name ASC");
+// ดึงรายชื่อบริษัทสำหรับ Dropdown
 $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 ?>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <div class="container-fluid p-0">
     <form action="api/update_quote.php" method="POST" id="mainQuoteForm">
         <div class="card p-4 border-0 shadow-sm">
@@ -334,3 +332,4 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
         }
     });
 </script>
+<?php include "footer.php"; ?>

@@ -2,11 +2,7 @@
 include "config.php";
 include "header.php";
 
-// 1. ดึงรายชื่อลูกค้าทั้งหมดมาเตรียมไว้ใส่ Dropdown
-$customers_sql = "SELECT id, cust_name FROM customers ORDER BY cust_name ASC";
-$customers_res = $conn->query($customers_sql);
-
-// 1.5 ดึงรายชื่อ Project ทั้งหมด
+// 1. ดึงรายชื่อ Project ทั้งหมด
 $projects_sql = "SELECT id, project_name FROM event_projects ORDER BY project_name ASC";
 $projects_res = $conn->query($projects_sql);
 
@@ -33,7 +29,6 @@ if ($function_id) {
 }
 ?>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <div class="container-fluid p-0">
     <form action="api/save_quote.php" method="POST" id="mainQuoteForm">
         <div class="card p-4 border-0 shadow-sm">
@@ -76,7 +71,7 @@ if ($function_id) {
 
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
-                    <select name="customer_id" id="customer_select" class="form-select select2-ajax-customer" required>
+                    <select name="customer_id" id="customer_select" class="form-select select2-customer-search" required>
                         <?php if ($selected_customer_id): 
                             $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
                             $c_stmt->bind_param("i", $selected_customer_id);
@@ -328,4 +323,48 @@ if ($function_id) {
             });
         }
     });
+</script>
+<?php include "footer.php"; ?>
+
+<style>
+    /* Force Select2 dropdown to be visible and correctly styled */
+    .select2-container { z-index: 999999 !important; }
+    .select2-selection--single { height: 38px !important; line-height: 38px !important; border: 1px solid #ced4da !important; }
+    .select2-selection__rendered { line-height: 38px !important; }
+    .select2-selection__arrow { height: 36px !important; }
+</style>
+
+<script>
+$(window).on('load', function() {
+    console.log("Window loaded, initializing Select2...");
+    
+    const $customerSelect = $('#customer_select');
+    
+    if ($.fn.select2) {
+        $customerSelect.select2({
+            width: '100%',
+            placeholder: '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---',
+            allowClear: true,
+            minimumInputLength: 0,
+            ajax: {
+                url: 'api/search_customers.php?t=' + new Date().getTime(),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { q: params.term };
+                },
+                processResults: function (data) {
+                    console.log("AJAX Success:", data);
+                    return { results: data.results };
+                },
+                error: function(err) {
+                    console.error("AJAX Error:", err);
+                }
+            }
+        });
+        console.log("Select2 Initialized on #customer_select");
+    } else {
+        console.error("Select2 Library not loaded!");
+    }
+});
 </script>
