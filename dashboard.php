@@ -2,7 +2,6 @@
 include "header.php";
 include "config.php";
 
-// --- 1. สถิติจริงจากตาราง functions ---
 $stats_res = $conn->query("SELECT 
     COUNT(f.id) as total_events,
     SUM(CASE WHEN f.approve = 0 THEN 1 ELSE 0 END) as pending_count,
@@ -17,20 +16,356 @@ $stats_res = $conn->query("SELECT
     FROM functions f");
 $stats = $stats_res->fetch_assoc();
 
-// --- 2. รายชื่อบริษัท/โรงแรม ---
 $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-.dashboard-card {
-    transition: all 0.3s ease;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --dash-bg: #f7f5f2;
+    --dash-card: #ffffff;
+    --dash-text: #1c1917;
+    --dash-muted: #a8a29e;
+    --dash-border: #e7e5e4;
+    --dash-rose: #e11d48;
+    --dash-sage: #65a30d;
+    --dash-navy: #1e40af;
+    --dash-amber: #d97706;
+    --dash-teal: #0d9488;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', 'Sarabun', sans-serif;
+    background: var(--dash-bg);
+}
+
+.dash-header {
+    padding: 1.5rem 0 0.5rem;
+    border-bottom: 2px solid var(--dash-border);
+    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+}
+.dash-header h1 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--dash-text);
+    margin: 0;
+    line-height: 1.2;
+}
+.dash-header h1 small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--dash-muted);
+    letter-spacing: 0.04em;
+    margin-top: 0.15rem;
+}
+
+.dash-filter select {
+    border: 1px solid var(--dash-border);
+    border-radius: 12px;
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 1rem center;
+    appearance: none;
+    -webkit-appearance: none;
+    min-width: 200px;
+    color: var(--dash-text);
+    transition: border 0.2s;
     cursor: pointer;
 }
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+.dash-filter select:focus {
+    outline: none;
+    border-color: var(--dash-navy);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
+}
+
+.stat-tile {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 16px;
+    padding: 1.5rem 1.5rem 1.25rem;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.stat-tile:hover {
+    border-color: transparent;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.07);
+    transform: translateY(-2px);
+}
+.stat-tile .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+}
+.stat-tile .stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+.stat-tile .stat-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-top: 0.15rem;
+}
+.stat-tile .stat-hint {
+    font-size: 0.65rem;
+    color: var(--dash-muted);
+    margin-top: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.stat-tile-rose .stat-icon { background: #fef2f2; color: var(--dash-rose); }
+.stat-tile-rose .stat-num { color: var(--dash-rose); }
+.stat-tile-rose .stat-label { color: #7c2d12; }
+.stat-tile-rose:hover { box-shadow: 0 8px 30px rgba(225, 29, 72, 0.1); }
+
+.stat-tile-navy .stat-icon { background: #eff6ff; color: var(--dash-navy); }
+.stat-tile-navy .stat-num { color: var(--dash-navy); }
+.stat-tile-navy .stat-label { color: #1e3a5f; }
+.stat-tile-navy:hover { box-shadow: 0 8px 30px rgba(30, 64, 175, 0.1); }
+
+.stat-tile-sage .stat-icon { background: #f7fee7; color: var(--dash-sage); }
+.stat-tile-sage .stat-num { color: var(--dash-sage); }
+.stat-tile-sage .stat-label { color: #3f6212; }
+.stat-tile-sage:hover { box-shadow: 0 8px 30px rgba(101, 163, 13, 0.1); }
+
+.stat-tile-amber .stat-icon { background: #fffbeb; color: var(--dash-amber); }
+.stat-tile-amber .stat-num { color: var(--dash-amber); }
+.stat-tile-amber .stat-label { color: #78350f; }
+.stat-tile-amber:hover { box-shadow: 0 8px 30px rgba(217, 119, 6, 0.1); }
+
+.chart-box {
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    border-radius: 16px;
+    transition: all 0.25s ease;
+}
+.chart-box:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.05);
+    border-color: transparent;
+}
+.chart-box .chart-head {
+    padding: 1.25rem 1.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.chart-box .chart-head .ch-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.chart-box .chart-head h6 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dash-text);
+}
+.chart-box .chart-body {
+    padding: 1rem 1.5rem 1.25rem;
+}
+
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--dash-border);
+}
+.section-head h5 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dash-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.section-head a {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--dash-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.section-head a:hover { color: var(--dash-text); }
+
+.sales-item {
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: var(--dash-card);
+    border: 1px solid var(--dash-border);
+    transition: border 0.2s;
+    height: 100%;
+}
+.sales-item:hover { border-color: transparent; box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+.sales-item .sales-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--dash-text);
+}
+.sales-item .sales-pct {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 50px;
+}
+.sales-item .bar-track {
+    height: 6px;
+    background: #f1f0ef;
+    border-radius: 50px;
+    margin: 0.5rem 0 0.4rem;
+    overflow: hidden;
+}
+.sales-item .bar-track .bar-fill {
+    height: 100%;
+    border-radius: 50px;
+    transition: width 0.6s ease;
+}
+.sales-item .sales-meta {
+    font-size: 0.72rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.lb-list { padding: 0; }
+.lb-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    transition: background 0.15s;
+}
+.lb-item:hover { background: #f1f0ef; }
+.lb-item + .lb-item { border-top: 1px solid #f5f4f3; }
+.lb-rank {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.lb-item .lb-name {
+    flex: 1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dash-text);
+}
+.lb-item .lb-amount {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.tbl-dash {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.tbl-dash thead th {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dash-muted);
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--dash-border);
+    background: transparent;
+}
+.tbl-dash tbody td {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #f5f4f3;
+    font-size: 0.82rem;
+    vertical-align: middle;
+}
+.tbl-dash tbody tr:last-child td { border-bottom: none; }
+.tbl-dash .room-name {
+    font-weight: 600;
+    color: var(--dash-text);
+}
+.tbl-dash .room-meta {
+    font-size: 0.68rem;
+    color: var(--dash-muted);
+    margin-top: 0.1rem;
+}
+.tbl-dash .room-event {
+    font-weight: 500;
+}
+.room-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.75rem;
+    border-radius: 50px;
+    display: inline-block;
+}
+.room-tag-free {
+    background: #f0fdf4;
+    color: #15803d;
+}
+.room-tag-busy {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.dash-modal .modal-content {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+}
+.dash-modal .modal-header {
+    border: none;
+    padding: 1.5rem 1.5rem 0;
+}
+.dash-modal .modal-body {
+    padding: 1rem 1.5rem 1.5rem;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.slide-up { animation: slideUp 0.45s ease forwards; opacity: 0; }
+.slide-up:nth-child(1) { animation-delay: 0.03s; }
+.slide-up:nth-child(2) { animation-delay: 0.08s; }
+.slide-up:nth-child(3) { animation-delay: 0.13s; }
+.slide-up:nth-child(4) { animation-delay: 0.18s; }
+
+@media (max-width: 768px) {
+    .dash-header { flex-direction: column; align-items: stretch; }
+    .dash-header h1 small { display: inline; margin-left: 0.5rem; }
+    .dash-filter select { width: 100%; }
+    .stat-tile .stat-num { font-size: 1.6rem; }
 }
 </style>
 
@@ -45,70 +380,69 @@ function showDetails(type, title) {
     const body = document.getElementById('detailsTableBody');
 
     header.innerHTML = '';
-    body.innerHTML = '<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></td></tr>';
-    
+    body.innerHTML = '<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-secondary" role="status" style="width:1.5rem;height:1.5rem;"></div></td></tr>';
     modal.show();
 
     fetch(`api/get_dashboard_details.php?type=${type}&company_id=${companyId}`)
     .then(res => res.json())
     .then(res => {
         if (res.status === 'success') {
-            let htmlHeader = '';
-            let htmlBody = '';
-
+            let h = '', b = '';
             if (type === 'revenue') {
-                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ยอดมัดจำ</th><th class="text-end">ยอดรวม</th>';
+                h = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">มัดจำ</th><th class="text-end">ยอดรวม</th>';
                 res.data.forEach(item => {
-                    htmlBody += `<tr>
-                        <td>${item.event_date}</td>
-                        <td class="fw-bold text-primary">${item.function_name}</td>
-                        <td>${item.company_name}</td>
-                        <td class="text-end fw-bold text-success">฿${parseFloat(item.deposit).toLocaleString()}</td>
+                    b += `<tr>
+                        <td><span class="badge bg-light text-dark fw-normal px-3 py-1">${item.event_date}</span></td>
+                        <td class="fw-semibold">${item.function_name}</td>
+                        <td class="text-muted">${item.company_name}</td>
+                        <td class="text-end fw-bold" style="color:#15803d">฿${parseFloat(item.deposit).toLocaleString()}</td>
                         <td class="text-end">฿${parseFloat(item.total_amount).toLocaleString()}</td>
                     </tr>`;
                 });
             } else if (type === 'roi') {
-                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ต้นทุน</th><th class="text-end">ROI</th>';
+                h = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ต้นทุน</th><th class="text-end">ROI</th>';
                 res.data.forEach(item => {
-                    let roiColor = item.roi > 0 ? 'text-success' : 'text-danger';
-                    htmlBody += `<tr>
-                        <td>${item.event_date}</td>
-                        <td class="fw-bold text-primary">${item.function_name}</td>
-                        <td>${item.company_name}</td>
+                    let c = item.roi > 0 ? '#15803d' : '#b91c1c';
+                    b += `<tr>
+                        <td><span class="badge bg-light text-dark fw-normal px-3 py-1">${item.event_date}</span></td>
+                        <td class="fw-semibold">${item.function_name}</td>
+                        <td class="text-muted">${item.company_name}</td>
                         <td class="text-end">฿${parseFloat(item.total_cost).toLocaleString()}</td>
-                        <td class="text-end fw-bold ${roiColor}">${parseFloat(item.roi).toFixed(2)}%</td>
+                        <td class="text-end fw-bold" style="color:${c}">${parseFloat(item.roi).toFixed(2)}%</td>
                     </tr>`;
                 });
             } else {
-                htmlHeader = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ยอดรวม</th><th>สถานะ</th>';
+                h = '<th>วันที่</th><th>ชื่องาน</th><th>โรงแรม</th><th class="text-end">ยอดรวม</th><th>สถานะ</th>';
                 res.data.forEach(item => {
-                    htmlBody += `<tr>
-                        <td>${item.event_date}</td>
-                        <td class="fw-bold text-primary">${item.function_name}</td>
-                        <td>${item.company_name}</td>
+                    b += `<tr>
+                        <td><span class="badge bg-light text-dark fw-normal px-3 py-1">${item.event_date}</span></td>
+                        <td class="fw-semibold">${item.function_name}</td>
+                        <td class="text-muted">${item.company_name}</td>
                         <td class="text-end">฿${parseFloat(item.total_amount).toLocaleString()}</td>
-                        <td><span class="badge bg-light text-dark border">${item.status}</span></td>
+                        <td><span class="badge bg-light text-dark border fw-normal px-3 py-1">${item.status}</span></td>
                     </tr>`;
                 });
             }
-
-            header.innerHTML = htmlHeader;
-            body.innerHTML = htmlBody || '<tr><td colspan="5" class="text-center py-5 text-muted">ไม่พบข้อมูล</td></tr>';
+            header.innerHTML = h;
+            body.innerHTML = b || '<tr><td colspan="5" class="text-center py-5 text-muted">ไม่มีข้อมูล</td></tr>';
         }
     });
 }
 </script>
 
-<div class="container-fluid p-0">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid px-0">
+
+    <!-- Header -->
+    <div class="dash-header slide-up">
         <div>
-            <h4 class="fw-bold mb-0">แดชบอร์ดภาพรวมการดำเนินงาน</h4>
-            <small class="text-muted">ระบบบริหารจัดการงานจัดเลี้ยงและห้องประชุม</small>
+            <h1>
+                ภาพรวมการดำเนินงาน
+                <small>ระบบบริหารจัดการงานจัดเลี้ยงและห้องประชุม</small>
+            </h1>
         </div>
-        <div class="col-md-3">
-            <select class="form-select border-primary shadow-sm" id="companyFilter"
-                onchange="loadRoomStatus(this.value)">
-                <option value="all">-- ทุกโรงแรม --</option> 
+        <div class="dash-filter">
+            <select id="companyFilter" onchange="loadRoomStatus(this.value)">
+                <option value="all">🏨 ทุกโรงแรม</option>
                 <?php while ($c = $companies->fetch_assoc()): ?>
                     <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['company_name']) ?></option>
                 <?php endwhile; ?>
@@ -117,81 +451,144 @@ function showDetails(type, title) {
     </div>
 
     <!-- Stats -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('total_events', 'งานทั้งหมด')">
-                <div class="d-flex align-items-center">
-                    <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-3 me-3">
-                        <i class="bi bi-calendar-check fs-3"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-muted mb-0 small fw-bold">งานทั้งหมด</h6>
-                        <h3 class="fw-bold mb-0" id="stat_total"><?= number_format($stats['total_events']) ?></h3>
-                    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3 slide-up">
+            <div class="stat-tile stat-tile-rose" onclick="showDetails('total_events', 'งานทั้งหมด')">
+                <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
+                <div class="stat-num" id="stat_total"><?= number_format($stats['total_events']) ?></div>
+                <div class="stat-label">งานทั้งหมด</div>
+                <div class="stat-hint"><i class="bi bi-arrow-right-circle"></i> ดูรายละเอียด</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3 slide-up">
+            <div class="stat-tile stat-tile-navy" onclick="showDetails('pending', 'รอการอนุมัติ')">
+                <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                <div class="stat-num" id="stat_pending"><?= number_format($stats['pending_count']) ?></div>
+                <div class="stat-label">รอการอนุมัติ</div>
+                <div class="stat-hint"><i class="bi bi-arrow-right-circle"></i> ดูรายละเอียด</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3 slide-up">
+            <div class="stat-tile stat-tile-sage" onclick="showDetails('revenue', 'รายได้มัดจำรวม')">
+                <div class="stat-icon"><i class="bi bi-currency-dollar"></i></div>
+                <div class="stat-num" id="stat_revenue">฿<?= number_format($stats['total_revenue'], 2) ?></div>
+                <div class="stat-label">รายได้มัดจำรวม</div>
+                <div class="stat-hint"><i class="bi bi-arrow-right-circle"></i> ดูรายละเอียด</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3 slide-up">
+            <div class="stat-tile stat-tile-amber" onclick="showDetails('roi', 'ROI เฉลี่ย')">
+                <div class="stat-icon"><i class="bi bi-graph-up"></i></div>
+                <div class="stat-num" id="stat_roi"><?= number_format($stats['avg_roi'] ?? 0, 2) ?>%</div>
+                <div class="stat-label">ROI เฉลี่ย</div>
+                <div class="stat-hint"><i class="bi bi-arrow-right-circle"></i> ดูรายละเอียด</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6 slide-up">
+            <div class="chart-box">
+                <div class="chart-head">
+                    <div class="ch-icon" style="background:#fef2f2;color:#e11d48;"><i class="bi bi-bar-chart-fill"></i></div>
+                    <h6>รายได้รายเดือน (6 เดือน)</h6>
+                </div>
+                <div class="chart-body">
+                    <canvas id="revenueChart" style="max-height:200px;"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('pending', 'รอการอนุมัติ')">
-                <div class="d-flex align-items-center">
-                    <div class="icon-box bg-warning bg-opacity-10 text-warning p-3 rounded-3 me-3">
-                        <i class="bi bi-hourglass-split fs-3"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-muted mb-0 small fw-bold">รอการอนุมัติ</h6>
-                        <h3 class="fw-bold mb-0 text-warning" id="stat_pending">
-                            <?= number_format($stats['pending_count']) ?></h3>
-                    </div>
+        <div class="col-lg-6 slide-up">
+            <div class="chart-box">
+                <div class="chart-head">
+                    <div class="ch-icon" style="background:#fffbeb;color:#d97706;"><i class="bi bi-pie-chart-fill"></i></div>
+                    <h6>สัดส่วนประเภทงาน</h6>
+                </div>
+                <div class="chart-body">
+                    <canvas id="typeChart" style="max-height:200px;"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('revenue', 'รายได้มัดจำรวม')">
-                <div class="d-flex align-items-center">
-                    <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-3 me-3">
-                        <i class="bi bi-currency-dollar fs-3"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-muted mb-0 small fw-bold">รายได้มัดจำรวม</h6>
-                        <h3 class="fw-bold mb-0 text-success" id="stat_revenue">
-                            ฿<?= number_format($stats['total_revenue'], 2) ?></h3>
-                    </div>
+        <div class="col-lg-6 slide-up">
+            <div class="chart-box">
+                <div class="chart-head">
+                    <div class="ch-icon" style="background:#f7fee7;color:#65a30d;"><i class="bi bi-building"></i></div>
+                    <h6>งานตามโรงแรม (Occupancy)</h6>
+                </div>
+                <div class="chart-body">
+                    <canvas id="occChart" style="max-height:200px;"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white dashboard-card" onclick="showDetails('roi', 'ROI เฉลี่ย')">
-                <div class="d-flex align-items-center">
-                    <div class="icon-box bg-info bg-opacity-10 text-info p-3 rounded-3 me-3">
-                        <i class="bi bi-graph-up fs-3"></i>
-                    </div>
-                    <div>
-                        <h6 class="text-muted mb-0 small fw-bold">ROI เฉลี่ย</h6>
-                        <h3 class="fw-bold mb-0 text-info" id="stat_roi"><?= number_format($stats['avg_roi'] ?? 0, 2) ?>%</h3>
+        <div class="col-lg-6 slide-up">
+            <div class="chart-box">
+                <div class="chart-head">
+                    <div class="ch-icon" style="background:#eff6ff;color:#1e40af;"><i class="bi bi-clock-history"></i></div>
+                    <h6>ระยะเวลาอนุมัติเฉลี่ย (วัน)</h6>
+                </div>
+                <div class="chart-body">
+                    <canvas id="leadChart" style="max-height:200px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales -->
+    <div class="slide-up">
+        <div class="chart-box" style="margin-bottom:1.5rem;">
+            <div class="section-head" style="padding:1.25rem 1.5rem 0;margin-bottom:0;border:none;padding-bottom:0;">
+                <h5><i class="bi bi-graph-up-arrow" style="color:#1e40af;"></i> ผลการดำเนินงานทีมขาย (เดือนนี้)</h5>
+                <a href="sales_dept.php"><i class="bi bi-gear"></i> ตั้งค่าเป้าหมาย</a>
+            </div>
+            <div style="padding:0.75rem 1.5rem 1.25rem;">
+                <div class="row g-2" id="salesPerformanceBody">
+                    <div class="col-12 text-center py-4 text-muted small">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>กำลังโหลด...
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Details -->
-    <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow rounded-4">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold" id="modalTitle">รายละเอียด</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- Leaderboard + Rooms -->
+    <div class="row g-3">
+        <div class="col-lg-4 slide-up">
+            <div class="chart-box h-100">
+                <div class="chart-head" style="padding:1.25rem 1.25rem 0;">
+                    <div class="ch-icon" style="background:#fffbeb;color:#d97706;"><i class="bi bi-trophy-fill"></i></div>
+                    <h6>อันดับยอดขายรายคน</h6>
                 </div>
-                <div class="modal-body">
+                <div style="padding:0.5rem 0.75rem 0.75rem;">
+                    <div id="salesLeaderboardBody">
+                        <div class="text-center py-4 text-muted small">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>กำลังโหลด...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 slide-up">
+            <div class="chart-box h-100">
+                <div class="chart-head" style="padding:1.25rem 1.25rem 0;">
+                    <div class="ch-icon" style="background:#eff6ff;color:#1e40af;"><i class="bi bi-door-open"></i></div>
+                    <h6>สถานะห้องประชุม</h6>
+                </div>
+                <div style="padding:0;">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="detailsTable">
-                            <thead class="bg-light text-muted small">
-                                <tr id="detailsTableHeader">
-                                    <!-- Header dynamically generated -->
+                        <table class="tbl-dash">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">ห้อง / ชั้น</th>
+                                    <th>ชื่องาน</th>
+                                    <th>เวลา</th>
+                                    <th class="pe-4">สถานะ</th>
                                 </tr>
                             </thead>
-                            <tbody id="detailsTableBody">
-                                <!-- Data dynamically generated -->
+                            <tbody id="roomDisplayBody">
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">เลือกโรงแรมจากเมนูด้านบน...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -200,93 +597,23 @@ function showDetails(type, title) {
         </div>
     </div>
 
-    <!-- Sales Performance Row -->
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>ผลการดำเนินงานของทีมขาย (ประจำเดือนนี้)</h6>
-                    <a href="sales_dept.php" class="btn btn-sm btn-outline-primary border-0"><i class="bi bi-gear"></i> ตั้งค่าเป้าหมาย</a>
-                </div>
-                <div class="row g-4" id="salesPerformanceBody">
-                    <div class="col-12 text-center py-3 text-muted">กำลังโหลดข้อมูลการขาย...</div>
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 
-    <!-- Charts Row -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-6">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <h6 class="fw-bold mb-4">รายได้รายเดือน (6 เดือน)</h6>
-                <canvas id="revenueChart" style="max-height: 250px;"></canvas>
+<!-- Modal -->
+<div class="modal fade dash-modal" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalTitle">รายละเอียด</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <h6 class="fw-bold mb-4">สัดส่วนประเภทงาน</h6>
-                <canvas id="typeChart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <h6 class="fw-bold mb-4">งานตามโรงแรม (Occupancy)</h6>
-                <canvas id="occChart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <h6 class="fw-bold mb-4">ระยะเวลาอนุมัติเฉลี่ย (วัน)</h6>
-                <canvas id="leadChart" style="max-height: 250px;"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sales Leaderboard and Room Status -->
-    <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 rounded-4 h-100">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-trophy me-2 text-warning"></i>อันดับยอดขายรายคน</h5>
-                </div>
+            <div class="modal-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light text-muted small">
-                            <tr>
-                                <th class="ps-3">พนักงาน</th>
-                                <th class="text-end pe-3">ยอดขายรวม</th>
-                            </tr>
+                    <table class="tbl-dash w-100" id="detailsTable">
+                        <thead>
+                            <tr id="detailsTableHeader"></tr>
                         </thead>
-                        <tbody id="salesLeaderboardBody">
-                            <tr>
-                                <td colspan="2" class="text-center py-4 text-muted small">กำลังโหลดข้อมูลอันดับ...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 rounded-4 h-100">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-door-open me-2 text-primary"></i>สถานะห้องประชุม</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light text-muted small">
-                            <tr>
-                                <th class="ps-4">ห้อง / ชั้น</th>
-                                <th>ชื่องาน</th>
-                                <th>เวลา</th>
-                                <th>สถานะ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="roomDisplayBody">
-                            <tr>
-                                <td colspan="4" class="text-center py-5 text-muted">กรุณาเลือกโรงแรมจากเมนูด้านบน...</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="detailsTableBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -296,153 +623,228 @@ function showDetails(type, title) {
 
 <script>
 function initCharts() {
-    charts.revenue = new Chart(document.getElementById('revenueChart').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'รายได้ (บาท)', data: [], backgroundColor: '#0d6efd', borderColor: '#0d6efd', tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } });
-    charts.types = new Chart(document.getElementById('typeChart').getContext('2d'), { type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#0d6efd', '#ffc107', '#dc3545', '#198754', '#6610f2'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-    charts.occ = new Chart(document.getElementById('occChart').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'จำนวนงาน', data: [], backgroundColor: '#6c757d' }] }, options: { responsive: true, maintainAspectRatio: false } });
-    charts.lead = new Chart(document.getElementById('leadChart').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'วัน', data: [], backgroundColor: '#ff9f43', borderColor: '#ff9f43' }] }, options: { responsive: true, maintainAspectRatio: false } });
+    const base = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: {
+                    font: { family: "'Plus Jakarta Sans','Sarabun',sans-serif", size: 10 },
+                    boxWidth: 10,
+                    padding: 10
+                }
+            }
+        }
+    };
+
+    charts.revenue = new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{
+            label: 'รายได้',
+            data: [],
+            borderColor: '#e11d48',
+            backgroundColor: 'rgba(225,29,72,0.06)',
+            borderWidth: 2.5,
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#e11d48',
+            pointBorderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }] },
+        options: {
+            ...base,
+            plugins: { ...base.plugins, legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { font: { size: 9 }, callback: v => '฿' + v.toLocaleString() }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    charts.types = new Chart(document.getElementById('typeChart'), {
+        type: 'doughnut',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#e11d48','#d97706','#65a30d','#1e40af','#0d9488','#7c3aed'], borderWidth: 2, borderColor: '#fff' }] },
+        options: {
+            ...base,
+            cutout: '72%',
+            plugins: {
+                ...base.plugins,
+                legend: { position: 'right', labels: { ...base.plugins.legend.labels, padding: 6 } }
+            }
+        }
+    });
+
+    charts.occ = new Chart(document.getElementById('occChart'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{
+            label: 'จำนวนงาน',
+            data: [],
+            backgroundColor: 'rgba(101,163,13,0.65)',
+            borderColor: '#65a30d',
+            borderWidth: 0,
+            borderRadius: 4,
+            barPercentage: 0.55
+        }] },
+        options: {
+            ...base,
+            plugins: { ...base.plugins, legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                x: { ticks: { font: { size: 8 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    charts.lead = new Chart(document.getElementById('leadChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{
+            label: 'วัน',
+            data: [],
+            borderColor: '#1e40af',
+            backgroundColor: 'rgba(30,64,175,0.06)',
+            borderWidth: 2.5,
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#1e40af',
+            pointBorderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }] },
+        options: {
+            ...base,
+            plugins: { ...base.plugins, legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { font: { size: 9 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+            }
+        }
+    });
 }
 
 function updateDashboardData(data) {
-    if (!data) {
-        console.error('No data received from API');
-        return;
-    }
+    if (!data) return;
 
-    // Stats (with defensive checks)
     if (data.stats) {
         document.getElementById('stat_total').innerText = Number(data.stats.total_events || 0).toLocaleString();
         document.getElementById('stat_pending').innerText = Number(data.stats.pending_count || 0).toLocaleString();
         document.getElementById('stat_revenue').innerText = '฿' + Number(data.stats.total_revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
-        
-        // ROI Update
         if (data.stats.avg_roi) {
             document.getElementById('stat_roi').innerText = parseFloat(data.stats.avg_roi).toFixed(2) + '%';
         }
     }
 
-    // Charts
     if (data.revenue) {
         charts.revenue.data.labels = data.revenue.map(r => r.month);
         charts.revenue.data.datasets[0].data = data.revenue.map(r => r.revenue);
         charts.revenue.update();
     }
-
     if (data.types) {
         charts.types.data.labels = data.types.map(t => t.type_name);
         charts.types.data.datasets[0].data = data.types.map(t => t.count);
         charts.types.update();
     }
-
     if (data.occupancy) {
         charts.occ.data.labels = data.occupancy.map(o => o.company_name);
         charts.occ.data.datasets[0].data = data.occupancy.map(o => o.count);
         charts.occ.update();
     }
-
     if (data.lead_time) {
         charts.lead.data.labels = data.lead_time.map(l => l.month);
         charts.lead.data.datasets[0].data = data.lead_time.map(l => parseFloat(l.avg_days || 0).toFixed(1));
         charts.lead.update();
     }
 
-    // Sales Performance
-    let salesHtml = '';
+    // Sales
+    let sHtml = '';
     if (!data.sales || data.sales.length === 0) {
-        salesHtml = '<div class="col-12 text-center text-muted">ไม่พบข้อมูลทีมขาย</div>';
+        sHtml = '<div class="col-12 text-center py-4 text-muted small">ไม่มีข้อมูลทีมขาย</div>';
     } else {
         data.sales.forEach(s => {
             let target = parseFloat(s.target || 0);
             let actual = parseFloat(s.actual || 0);
-            let percent = target > 0 ? (actual / target) * 100 : 0;
-            let barColor = percent >= 100 ? 'bg-success' : (percent >= 50 ? 'bg-primary' : 'bg-warning');
-            
-            let targetDisplay = target > 0 ? `เป้า: ฿${target.toLocaleString()}` : '<span class="text-danger small">ยังไม่ได้ตั้งเป้า</span>';
-            let percentDisplay = target > 0 ? `${percent.toFixed(1)}%` : '-';
-            let progressBar = target > 0 ? `
-                <div class="progress mb-2" style="height: 10px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated ${barColor}" 
-                         role="progressbar" style="width: ${Math.min(percent, 100)}%"></div>
-                </div>` : '<div class="mb-2" style="height: 10px;"></div>';
+            let pct = target > 0 ? (actual / target) * 100 : 0;
+            let barColor = pct >= 100 ? '#65a30d' : (pct >= 50 ? '#1e40af' : '#e11d48');
+            let bgClass = pct >= 100 ? 'style="background:#f0fdf4;color:#15803d;"' :
+                          pct >= 50 ? 'style="background:#eff6ff;color:#1e40af;"' :
+                          'style="background:#fef2f2;color:#b91c1c;"';
 
-            salesHtml += `
+            sHtml += `
                 <div class="col-md-6 col-xl-4">
-                    <div class="p-3 border rounded-3 bg-light bg-opacity-50 h-100">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="fw-bold small">${s.name}</span>
-                            <span class="small text-muted">${percentDisplay}</span>
+                    <div class="sales-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="sales-name">${s.name}</span>
+                            <span class="sales-pct" ${bgClass}>${target > 0 ? pct.toFixed(1) + '%' : '-'}</span>
                         </div>
-                        ${progressBar}
-                        <div class="d-flex justify-content-between x-small">
-                            <span class="fw-bold text-success">ยอดขาย: ฿${actual.toLocaleString()}</span>
-                            <span class="text-muted">${targetDisplay}</span>
+                        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(pct, 100)}%;background:${barColor};"></div></div>
+                        <div class="sales-meta">
+                            <span style="color:#15803d;font-weight:600;">฿${actual.toLocaleString()}</span>
+                            <span style="color:var(--dash-muted);">${target > 0 ? 'เป้า: ฿' + target.toLocaleString() : 'ยังไม่ได้ตั้งเป้า'}</span>
                         </div>
                     </div>
                 </div>`;
         });
     }
-    document.getElementById('salesPerformanceBody').innerHTML = salesHtml;
+    document.getElementById('salesPerformanceBody').innerHTML = sHtml;
 
-    // Sales Leaderboard
-    let leaderboardHtml = '';
-    let sortedSales = [...(data.sales || [])].sort((a, b) => parseFloat(b.actual || 0) - parseFloat(a.actual || 0));
-    
-    if (sortedSales.length === 0) {
-        leaderboardHtml = '<tr><td colspan="2" class="text-center py-4 text-muted small">ไม่มีข้อมูลยอดขาย</td></tr>';
+    // Leaderboard
+    let lbHtml = '';
+    let sorted = [...(data.sales || [])].sort((a, b) => parseFloat(b.actual || 0) - parseFloat(a.actual || 0));
+    if (sorted.length === 0) {
+        lbHtml = '<div class="text-center py-4 text-muted small">ไม่มีข้อมูล</div>';
     } else {
-        sortedSales.forEach((s, index) => {
-            let trophy = '';
-            if (index === 0) trophy = '<i class="bi bi-trophy-fill text-warning me-2"></i>';
-            else if (index === 1) trophy = '<i class="bi bi-trophy-fill text-secondary me-2"></i>';
-            else if (index === 2) trophy = '<i class="bi bi-trophy-fill text-bronze me-2" style="color: #cd7f32;"></i>';
-            
-            leaderboardHtml += `
-                <tr>
-                    <td class="ps-3">
-                        <span class="small fw-bold">${trophy}${s.name}</span>
-                    </td>
-                    <td class="text-end pe-3">
-                        <span class="badge bg-success bg-opacity-10 text-success fw-bold">฿${parseFloat(s.actual || 0).toLocaleString()}</span>
-                    </td>
-                </tr>`;
+        sorted.forEach((s, i) => {
+            let colors = ['#d97706','#78716c','#a8a29e','#d6d3d1','#d6d3d1','#d6d3d1'];
+            let bgColors = ['#fffbeb','#f5f5f4','#f5f5f4','#f5f5f4','#f5f5f4','#f5f5f4'];
+            let rankColor = colors[i] || '#d6d3d1';
+            let rankBg = bgColors[i] || '#f5f5f4';
+            if (i < 3) rankBg = '#fff';
+
+            lbHtml += `
+                <div class="lb-item">
+                    <div class="lb-rank" style="background:${rankBg};color:${rankColor};border:1px solid ${rankColor}20;">${i + 1}</div>
+                    <div class="lb-name">${i === 0 ? '<i class="bi bi-crown-fill me-1" style="color:#d97706;"></i>' : ''}${s.name}</div>
+                    <div class="lb-amount" style="color:#15803d;">฿${parseFloat(s.actual || 0).toLocaleString()}</div>
+                </div>`;
         });
     }
-    document.getElementById('salesLeaderboardBody').innerHTML = leaderboardHtml;
+    document.getElementById('salesLeaderboardBody').innerHTML = lbHtml;
 
-    // Room Status
-    let roomsHtml = '';
-    if(!data.rooms || data.rooms.length === 0) roomsHtml = '<tr><td colspan="4" class="text-center py-5">ไม่พบข้อมูลห้องประชุม</td></tr>';
-    else {
+    // Rooms
+    let rHtml = '';
+    if (!data.rooms || data.rooms.length === 0) {
+        rHtml = '<tr><td colspan="4" class="text-center py-5 text-muted">ไม่มีข้อมูล</td></tr>';
+    } else {
         data.rooms.forEach(item => {
-            let isBusy = item.function_name ? true : false;
-            roomsHtml += `<tr>
+            let busy = !!item.function_name;
+            rHtml += `<tr>
                 <td class="ps-4">
-                    <div class="fw-bold text-dark mb-0">${item.room_name}</div>
-                    <small class="text-muted">${item.company_name} | ชั้น ${item.floor}</small>
+                    <div class="room-name">${item.room_name}</div>
+                    <div class="room-meta">${item.company_name} · ชั้น ${item.floor}</div>
                 </td>
-                <td><span class="${isBusy ? 'text-primary fw-bold' : 'text-muted'}">${item.function_name || '- ว่าง -'}</span></td>
-                <td><small class="text-muted">${isBusy ? item.start_t + ' - ' + item.end_t : '-'}</small></td>
-                <td>${isBusy ? '<span class="badge bg-danger bg-opacity-10 text-danger px-3">ไม่ว่าง</span>' : '<span class="badge bg-success bg-opacity-10 text-success px-3">ว่าง</span>'}</td>
+                <td><span class="room-event" style="color:${busy ? 'var(--dash-text)' : '#a8a29e'}">${item.function_name || '— ว่าง —'}</span></td>
+                <td>${busy ? '<span style="font-size:0.8rem;">' + item.start_t + ' – ' + item.end_t + '</span>' : '<span style="color:#a8a29e;">—</span>'}</td>
+                <td class="pe-4">${busy ? '<span class="room-tag room-tag-busy">ไม่ว่าง</span>' : '<span class="room-tag room-tag-free">ว่าง</span>'}</td>
             </tr>`;
         });
     }
-    document.getElementById('roomDisplayBody').innerHTML = roomsHtml;
+    document.getElementById('roomDisplayBody').innerHTML = rHtml;
 }
 
 function loadRoomStatus(companyId) {
     fetch(`api/api_get_dashboard.php?company_id=${companyId}`)
-    .then(res => res.json())
-    .then(data => {
-        updateDashboardData(data);
-    })
-    .catch(err => {
-        console.error('Dashboard Error:', err);
-        document.getElementById('salesPerformanceBody').innerHTML = '<div class="col-12 text-center text-danger py-3">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+    .then(r => r.json())
+    .then(d => updateDashboardData(d))
+    .catch(() => {
+        document.getElementById('salesPerformanceBody').innerHTML = '<div class="col-12 text-center text-danger py-3">โหลดข้อมูลล้มเหลว</div>';
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { 
-    initCharts(); 
-    loadRoomStatus('all'); 
+document.addEventListener('DOMContentLoaded', () => {
+    initCharts();
+    loadRoomStatus('all');
 });
 </script>
 

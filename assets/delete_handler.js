@@ -160,20 +160,32 @@ $(document).ready(function () {
       },
     };
 
+    const isCancel = newStatus === "Cancelled";
+
     Swal.fire({
       title: "ยืนยันการทำรายการ?",
-      text: `ต้องการเปลี่ยนสถานะเป็น "${newStatus}" ใช่หรือไม่?`,
+      text: isCancel ? "ต้องการเปลี่ยนสถานะเป็นยกเลิก ใช่หรือไม่?" : `ต้องการเปลี่ยนสถานะเป็น "${newStatus}" ใช่หรือไม่?`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "ตกลง",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: newStatus === "Cancelled" ? "#dc3545" : "#198754",
+      confirmButtonColor: isCancel ? "#dc3545" : "#198754",
+      input: isCancel ? "textarea" : undefined,
+      inputPlaceholder: isCancel ? "กรุณาระบุเหตุผลที่ยกเลิก..." : undefined,
+      inputAttributes: isCancel ? { rows: 3, style: "resize:vertical;font-size:0.9rem;" } : undefined,
+      inputValidator: isCancel
+        ? (v) => { if (!v || !v.trim()) return "กรุณากรอกเหตุผลการยกเลิก"; }
+        : undefined,
     }).then((result) => {
       if (result.isConfirmed) {
+        let postData = { id: id, status: newStatus };
+        if (newStatus === "Cancelled" && result.value) {
+          postData.cancel_reason = result.value;
+        }
         $.ajax({
           url: "approve_event.php", // ไฟล์ PHP ที่จารย์ใช้จัดการ DB
           type: "POST",
-          data: { id: id, status: newStatus },
+          data: postData,
           dataType: "json",
           success: function (response) {
             if (response.status === "success") {

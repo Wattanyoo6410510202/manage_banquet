@@ -858,6 +858,6 @@ foreach ($all_qts as $qt) {
 <script>
     const userRole = '<?php echo htmlspecialchars(strtolower($_SESSION['role'] ?? 'viewer')); ?>';
 </script>
-<script src="assets/delete_handler.js"></script>
+<script src="assets/delete_handler.js?v=2"></script>
 <?php include "style/banquet_table.php"; ?>
 <?php include "footer.php"; ?>

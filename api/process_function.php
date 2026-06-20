@@ -153,7 +153,7 @@ if (isset($_POST['save'])) {
 
         $stmt = $conn->prepare($sql_main);
 
-        $types = "iiiiiisssssddssssssssiissssssss"; // 32 chars
+        $types = "iiiiiisssssddssssssssssiisssssss"; // 32 chars: 6i+5s+2d+10s+2i+7s
 
         $stmt->bind_param(
             $types,

@@ -14,6 +14,7 @@ if (!isset($_SESSION['user_id'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $id = $_POST['id'] ?? null;
     $status = $_POST['status'] ?? 'Confirmed'; 
+    $cancel_reason = $_POST['cancel_reason'] ?? '';
     $user_id = $_SESSION['user_id']; 
 
     if ($id && is_numeric($id)) {
@@ -27,11 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     status_updated_at = NOW(),
                     approve_date = IF(approve_date IS NULL AND ? = 1, NOW(), approve_date),
                     approve_by = IF(approve_by IS NULL AND ? = 1, ?, approve_by),
+                    cancel_reason = IF(? = 2, ?, cancel_reason),
                     modify = CURRENT_TIMESTAMP
                 WHERE id = ?";
         
         if ($stmt = $conn->prepare($sql)) {
-            $stmt->bind_param("isiiii", $approve_val, $status, $approve_val, $approve_val, $user_id, $id);
+            $stmt->bind_param("isiiissi", $approve_val, $status, $approve_val, $approve_val, $user_id, $approve_val, $cancel_reason, $id);
             
             if ($stmt->execute()) {
                 // --- [NEW] Draft & Project System Management ---

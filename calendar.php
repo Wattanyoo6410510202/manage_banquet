@@ -71,6 +71,98 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
         </div>
     </div>
 
+    <!-- Room Conflict Card -->
+    <?php
+    $conflict_sql = "SELECT 
+        f1.id AS id1, f1.function_name AS name1, f1.start_time AS start1, f1.end_time AS end1,
+        f2.id AS id2, f2.function_name AS name2, f2.start_time AS start2, f2.end_time AS end2,
+        f1.room_id, mr.room_name,
+        f1.approve AS approve1, f2.approve AS approve2,
+        f1.status AS status1, f2.status AS status2
+    FROM functions f1
+    JOIN functions f2 ON f1.id < f2.id 
+        AND f1.room_id = f2.room_id
+        AND f1.start_time < f2.end_time
+        AND f1.end_time > f2.start_time
+    JOIN meeting_rooms mr ON f1.room_id = mr.id
+    WHERE (f1.approve = 1 OR f2.approve = 1)
+        AND f1.status NOT IN ('Cancelled')
+        AND f2.status NOT IN ('Cancelled')
+    ORDER BY f1.start_time ASC";
+    $conflict_q = mysqli_query($conn, $conflict_sql);
+    $conflicts = [];
+    if ($conflict_q) {
+        while ($cr = mysqli_fetch_assoc($conflict_q)) {
+            $conflicts[] = $cr;
+        }
+    }
+    ?>
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <?php if (!empty($conflicts)): ?>
+            <div class="card border-warning shadow-sm">
+                <div class="card-header bg-warning bg-opacity-10 border-warning d-flex align-items-center gap-2 py-2">
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                    <span class="fw-bold text-warning-emphasis">พบการทับซ้อนของห้อง (<?= count($conflicts) ?> รายการ)</span>
+                    <button class="btn btn-sm btn-outline-warning ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#conflictCollapse" aria-expanded="true">
+                        <i class="bi bi-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="conflictCollapse">
+                    <div class="card-body p-2">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0" style="font-size:0.8rem;">
+                                <thead class="table-warning">
+                                    <tr>
+                                        <th>ห้อง</th>
+                                        <th>งานที่ 1</th>
+                                        <th>เวลาเริ่ม</th>
+                                        <th>เวลาสิ้นสุด</th>
+                                        <th>สถานะ</th>
+                                        <th>งานที่ 2</th>
+                                        <th>เวลาเริ่ม</th>
+                                        <th>เวลาสิ้นสุด</th>
+                                        <th>สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($conflicts as $c): 
+                                        $s1_class = ($c['approve1'] == 1) ? 'bg-success-subtle' : '';
+                                        $s2_class = ($c['approve2'] == 1) ? 'bg-success-subtle' : '';
+                                    ?>
+                                    <tr>
+                                        <td class="fw-bold"><?= htmlspecialchars($c['room_name']) ?></td>
+                                        <td class="<?= $s1_class ?>">
+                                            <a href="edit.php?id=<?= $c['id1'] ?>" target="_blank" class="text-decoration-none"><?= htmlspecialchars($c['name1']) ?></a>
+                                        </td>
+                                        <td><?= date('d/m/Y H:i', strtotime($c['start1'])) ?></td>
+                                        <td><?= date('d/m/Y H:i', strtotime($c['end1'])) ?></td>
+                                        <td><span class="badge <?= $c['approve1'] == 1 ? 'bg-success' : 'bg-secondary' ?>"><?= htmlspecialchars($c['status1']) ?></span></td>
+                                        <td class="<?= $s2_class ?>">
+                                            <a href="edit.php?id=<?= $c['id2'] ?>" target="_blank" class="text-decoration-none"><?= htmlspecialchars($c['name2']) ?></a>
+                                        </td>
+                                        <td><?= date('d/m/Y H:i', strtotime($c['start2'])) ?></td>
+                                        <td><?= date('d/m/Y H:i', strtotime($c['end2'])) ?></td>
+                                        <td><span class="badge <?= $c['approve2'] == 1 ? 'bg-success' : 'bg-secondary' ?>"><?= htmlspecialchars($c['status2']) ?></span></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="card border-success shadow-sm">
+                <div class="card-header bg-success bg-opacity-10 border-success d-flex align-items-center gap-2 py-2">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span class="fw-bold text-success-emphasis">ไม่มีการทับซ้อนของห้อง</span>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <!-- Top row: Calendar + Detail Panel -->
     <div class="row g-3">
         <div class="col-lg-9">

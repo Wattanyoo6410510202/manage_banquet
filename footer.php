@@ -63,7 +63,7 @@
                         }
                     },
                     {
-                        element: '.row.g-4.mb-4', // Stats cards
+                        element: '.dashboard-stat-card:first-child',
                         popover: {
                             title: 'สถิติภาพรวม',
                             description: 'แสดงจำนวนงานทั้งหมด, งานที่รออนุมัติ และยอดเงินมัดจำรวม',

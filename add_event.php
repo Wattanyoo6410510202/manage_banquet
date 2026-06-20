@@ -143,16 +143,18 @@ while ($row = $all_rooms_res->fetch_assoc()) {
             <div class="card-body p-4 p-lg-5">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป (General
                     Information)</h5>
-                <div class="row mb-5">
-                    <div class="col-lg-3 col-md-4">
-                        <div class="mb-4 text-center">
-                            <label class="small fw-bold text-secondary mb-3 d-block text-start">
+
+                <!-- Row: Company + Customer + Basic Info -->
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-3">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
-                            <select name="company_id" class="form-select border-0 bg-light mb-3"
+                            <select name="company_id" class="form-select border-0 bg-light mb-2"
                                 id="company_select"
                                 onchange="updateCompanyLogo(this); renderRooms(this.value);" required
-                                style="border-radius: 10px; height: 42px;">
+                                style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $res_companies->data_seek(0);
@@ -166,7 +168,6 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <?php endwhile; ?>
                             </select>
                             <script>
-                                // สั่งให้โหลดห้องทันทีถ้ามีค่าโรงแรมเริ่มต้น
                                 window.addEventListener('DOMContentLoaded', (event) => {
                                     const companySelect = document.getElementById('company_select');
                                     if(companySelect && companySelect.value) {
@@ -174,97 +175,73 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                     }
                                 });
                             </script>
-                            <div class="company-logo-preview border-0 rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto mb-2"
-                                style="width: 80px; height: 80px; overflow: hidden;">
+                            <div class="company-logo-preview border rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto"
+                                style="width: 70px; height: 70px; overflow: hidden;">
                                 <img id="companyLogo" src="<?= $current_logo; ?>" class="img-fluid p-2"
                                     alt="Company Logo">
                             </div>
                         </div>
+                    </div>
 
-                        <hr class="opacity-10 mb-4">
-
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="small fw-bold text-secondary m-0">
-                                    <i class="bi bi-person-lines-fill me-1 "></i> ข้อมูลลูกค้า
-                                </label>
-                            </div>
-
-                            <div class="mb-3">
-                                <input type="hidden" name="customer_id" id="customer_id_hidden" value="<?= $quote_data['customer_id'] ?? '' ?>">
-                                <input type="hidden" name="quotation_id" value="<?= $quote_id ?>">
-                                <input type="hidden" name="project_id" value="<?= $quote_data['project_id'] ?? '' ?>">
+                    <div class="col-lg-4">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-person-lines-fill me-1 text-primary"></i> ข้อมูลลูกค้า
+                            </label>
+                            <input type="hidden" name="customer_id" id="customer_id_hidden" value="<?= $quote_data['customer_id'] ?? '' ?>">
+                            <input type="hidden" name="quotation_id" value="<?= $quote_id ?>">
+                            <input type="hidden" name="project_id" value="<?= $quote_data['project_id'] ?? '' ?>">
+                            <div class="mb-2">
                                 <select id="customer_selector" name="customer_id"
-                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light select2-ajax-customer"
-                                    style="border-radius: 10px; height: 42px; font-size: 13px;">
+                                    class="form-select border-0 bg-light select2-ajax-customer"
+                                    style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
                                     <?php if ($quote_data['customer_id']): ?>
                                         <option value="<?= $quote_data['customer_id'] ?>" selected>
                                             <?= htmlspecialchars($quote_data['cust_name']) ?>
                                         </option>
                                     <?php else: ?>
-                                        <option value="">-- พิมพ์เพื่อค้นหาลูกค้า --</option>
+                                        <option value="">-- ค้นหาลูกค้า --</option>
                                     <?php endif; ?>
                                 </select>
                             </div>
-
-                            <div class="mb-3">
-                                <label class="form-label mb-1" style="font-size: 11px;">ชื่อลูกค้า/ผู้จอง</label>
-                                <input type="text" id="booking_name" name="booking_name"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
-                                    value="<?= htmlspecialchars($quote_data['cust_name'] ?? '') ?>"
-                                    style="height: 40px; font-size: 13px;">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label mb-1" style="font-size: 11px;">เบอร์โทรศัพท์</label>
-                                <input type="text" id="customer_phone" name="phone"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="08x-xxx-xxxx"
-                                    value="<?= htmlspecialchars($quote_data['cust_phone'] ?? '') ?>"
-                                    style="height: 40px; font-size: 13px;">
-                            </div>
-
-                            <div class="mb-0">
-                                <label class="form-label mb-1" style="font-size: 11px;">หน่วยงาน/ที่อยู่</label>
-                                <textarea id="customer_address" name="organization"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                    rows="3" style="font-size: 13px; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
+                            <div class="row g-1">
+                                <div class="col-6">
+                                    <input type="text" id="booking_name" name="booking_name"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
+                                        value="<?= htmlspecialchars($quote_data['cust_name'] ?? '') ?>"
+                                        style="height: 36px; font-size: 0.8rem;">
+                                </div>
+                                <div class="col-6">
+                                    <input type="text" id="customer_phone" name="phone"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="เบอร์โทร"
+                                        value="<?= htmlspecialchars($quote_data['cust_phone'] ?? '') ?>"
+                                        style="height: 36px; font-size: 0.8rem;">
+                                </div>
+                                <div class="col-12 mt-1">
+                                    <textarea id="customer_address" name="organization"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
+                                        rows="2" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-
-
-                    <div class="col-lg-9 col-md-12">
-                        <div class="col-md-12 mb-4">
-                            <label class="form-label small fw-bold text-secondary mb-3">
-                                <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select
-                                Venue)
+                    <div class="col-lg-5">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-info-circle me-1 text-primary"></i> รายละเอียดการจอง
                             </label>
-                            <div class="row g-3" id="roomContainer">
-                                <div class="col-12 text-center py-5 text-muted">
-                                    โปรดเลือกบริษัทก่อนเพื่อแสดงรายชื่อห้องประชุม
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row text-dark">
-                            <h6 class="fw-bold  text-dark">
-                                <i class="bi bi-info-circle me-2 text-primary"></i>รายละเอียดการจอง
-                            </h6>
-
-                            <div class="row text-dark">
-                                <div class="col-md-8 mb-3">
-                                    <label class="form-label small fw-bold text-secondary">ชื่องาน (Event
-                                        Title)</label>
+                            <div class="row g-1">
+                                <div class="col-7">
                                     <input name="function_name" class="form-control border-0 bg-light"
-                                        placeholder="พิมพ์ชื่อโครงการหรืองานจัดเลี้ยง..." required
+                                        placeholder="ชื่องาน" required
                                         value="<?= htmlspecialchars($quote_data['event_name'] ?? '') ?>"
-                                        style="border-radius: 10px; height: 42px;">
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                 </div>
-
-                                <div class="col-md-4 ">
-                                    <label class="form-label small fw-bold text-secondary">ประเภทงาน</label>
-                                    <select name="function_type_id" class="form-select border-0 bg-light" required>
-                                        <option value="" disabled selected>-- เลือกประเภท --</option>
+                                <div class="col-5">
+                                    <select name="function_type_id" class="form-select border-0 bg-light" required
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        <option value="" disabled selected>ประเภทงาน</option>
                                         <?php 
                                         $res_types->data_seek(0);
                                         while ($t = $res_types->fetch_assoc()): ?>
@@ -273,158 +250,140 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 ">
-                                        <label class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน (Start
-                                            Date & Time)</label>
-                                        <input type="datetime-local" name="start_time"
-                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
-                                            value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T08:00' : '' ?>"
-                                            style="border-radius: 10px; height: 42px;">
-                                    </div>
-                                    <div class="col-md-6 ">
-                                        <label class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน (End
-                                            Date & Time)</label>
-                                        <input type="datetime-local" name="end_time"
-                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
-                                            value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T17:00' : '' ?>"
-                                            style="border-radius: 10px; height: 42px;">
-                                    </div>
+                                <div class="col-6 mt-1">
+                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">เริ่มงาน</label>
+                                    <input type="datetime-local" name="start_time"
+                                        class="form-control border-0 bg-light" required
+                                        value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T08:00' : '' ?>"
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                 </div>
-                            </div>
-                            <div class="row  mb-3">
-                                <div class="row g-2 ">
-                                    <div class="col-md-2">
-                                        <div class="p-3 rounded-4 bg-primary bg-opacity-10 h-100">
-                                            <label class="small fw-bold text-primary mb-1 d-block">Booking
-                                                Number</label>
-                                            <input name="booking_room" value="<?php echo $row['booking_room'] ?? ''; ?>"
-                                                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                                                placeholder="BK-XXXX">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
-                                            <label class="small fw-bold text-info mb-1 d-block">จำนวน (PAX)</label>
-                                            <div class="input-group">
-                                                <input type="number" name="pax" value="<?php echo $row['pax'] ?? ''; ?>"
-                                                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                                                    placeholder="0">
-                                                <span
-                                                    class="input-group-text border-0 bg-transparent text-info fw-bold pe-0 small">Pers.</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
-                                            <label class="small fw-bold text-success mb-1 d-block">มัดจำ
-                                                (Deposit)</label>
-                                            <div class="input-group">
-                                                <span
-                                                    class="input-group-text border-0 bg-transparent text-success fw-bold ps-0 fs-4">฿</span>
-                                                <input type="number" step="0.01" name="deposit"
-                                                    value="<?php echo $row['deposit'] ?? ''; ?>"
-                                                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-4"
-                                                    placeholder="0.00">
-                                            </div>
-                                        </div>
-                                    </div>
-
-
-
-                                    <div class="col-md-4">
-                                        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
-                                            <label class="small fw-bold text-secondary mb-1 d-block">มูลค่างานทั้งหมด
-                                                (Total Amount)</label>
-                                            <div class="input-group">
-                                                <span
-                                                    class="input-group-text border-0 bg-transparent text-secondary fw-bold ps-0 fs-4">฿</span>
-                                                <input type="number" step="0.01" name="total_amount"
-                                                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-4"
-                                                    placeholder="0.00"
-                                                    value="<?= isset($quote_data['grand_total']) ? number_format($quote_data['grand_total'], 2, '.', '') : '0.00' ?>">
-                                            </div>
-                                        </div>
-                                    </div>
-                                 <div class="row g-2 mt-2">
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-warning bg-opacity-10 h-100">
-            <label class="small fw-bold text-warning mb-1 d-block"><i class="bi bi-tag me-1"></i>ที่มา Lead</label>
-            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6">
-                <option value="">-- เลือก --</option>
-                <option value="โทรเข้า">โทรเข้า</option>
-                <option value="FB / Social">FB / Social</option>
-                <option value="แนะนำ">แนะนำ</option>
-                <option value="Walk-in">Walk-in</option>
-                <option value="อื่นๆ">อื่นๆ</option>
-            </select>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
-            <label class="small fw-bold text-info mb-1 d-block"><i class="bi bi-graph-up me-1"></i>ผลการดำเนินงาน</label>
-            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6">
-                <option value="">-- เลือก --</option>
-                <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
-                <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
-                <option value="รอการตัดสินใจ">รอการตัดสินใจ</option>
-                <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
-            </select>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
-            <label class="small fw-bold text-success mb-1 d-block"><i class="bi bi-binoculars me-1"></i>วันที่ Inspection</label>
-            <input type="date" name="inspection_date"
-                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
-                value="">
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-danger bg-opacity-10 h-100">
-            <label class="small fw-bold text-danger mb-1 d-block"><i class="bi bi-clock-history me-1"></i>วันที่ Follow Up</label>
-            <input type="date" name="follow_up_date"
-                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
-                value="">
-        </div>
-    </div>
-</div>
-
-                                <div class="row g-2">
-                                    <?php
-                                    $file_colors = ['secondary', 'warning', 'danger'];
-                                    $file_labels = ['ไฟล์แนบ 1', 'ไฟล์แนบ 2', 'ไฟล์แนบ 3'];
-                                    for ($i = 1; $i <= 3; $i++):
-                                        $color = $file_colors[$i - 1];
-                                        ?>
-                                        <div class="col-md-4">
-                                            <div class="p-3 rounded-4 bg-<?= $color ?> bg-opacity-10">
-                                                <label class="small fw-bold text-<?= $color ?> mb-1 d-block">
-                                                    <i class="bi bi-paperclip"></i>
-                                                    <?= $file_labels[$i - 1] ?>
-                                                </label>
-                                                <input type="file" name="file_attachment<?= $i ?>"
-                                                    class="form-control form-control-sm border-0 bg-transparent p-0">
-
-                                                <input type="hidden" name="old_file_<?= $i ?>"
-                                                    value="<?php echo $row['file_attachment' . $i] ?? ''; ?>">
-
-                                                <?php if (!empty($row['file_attachment' . $i])): ?>
-                                                    <div class="mt-1">
-                                                        <a href="../<?= $row['file_attachment' . $i] ?>" target="_blank"
-                                                            class="badge bg-<?= $color ?> text-decoration-none small">
-                                                            <i class="bi bi-eye"></i> ดูไฟล์ปัจจุบัน
-                                                        </a>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    <?php endfor; ?>
+                                <div class="col-6 mt-1">
+                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">สิ้นสุด</label>
+                                    <input type="datetime-local" name="end_time"
+                                        class="form-control border-0 bg-light" required
+                                        value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T17:00' : '' ?>"
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Row: Room Selection -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="p-3 rounded-4 bg-white border">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select Venue)
+                            </label>
+                            <div class="row g-2" id="roomContainer">
+                                <div class="col-12 text-center py-4 text-muted small">
+                                    โปรดเลือกบริษัทก่อนเพื่อแสดงรายชื่อห้องประชุม
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row: Financial + Tracking -->
+                <div class="row g-2 mb-4">
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-primary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-primary mb-0" style="font-size: 0.65rem;">Booking No.</label>
+                            <input name="booking_room" value="<?php echo $row['booking_room'] ?? ''; ?>"
+                                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
+                                placeholder="BK-XXXX" style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
+                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">จำนวน (PAX)</label>
+                            <div class="input-group">
+                                <input type="number" name="pax" value="<?php echo $row['pax'] ?? ''; ?>"
+                                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-6"
+                                    placeholder="0" style="height: 32px;">
+                                <span class="input-group-text border-0 bg-transparent text-info p-0 small">คน</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
+                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">มัดจำ (Deposit)</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-0 bg-transparent text-success fw-bold p-0">฿</span>
+                                <input type="number" step="0.01" name="deposit"
+                                    value="<?php echo $row['deposit'] ?? ''; ?>"
+                                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                                    placeholder="0.00" style="height: 32px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">มูลค่างานทั้งหมด</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-0 bg-transparent text-secondary fw-bold p-0">฿</span>
+                                <input type="number" step="0.01" name="total_amount"
+                                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-6"
+                                    placeholder="0.00" style="height: 32px;"
+                                    value="<?= isset($quote_data['grand_total']) ? number_format($quote_data['grand_total'], 2, '.', '') : '0.00' ?>">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-warning bg-opacity-10 h-100">
+                            <label class="small fw-bold text-warning mb-0" style="font-size: 0.65rem;">ที่มา Lead</label>
+                            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6" style="height: 32px;">
+                                <option value="">เลือก</option>
+                                <option value="โทรเข้า">โทรเข้า</option>
+                                <option value="FB / Social">FB / Social</option>
+                                <option value="แนะนำ">แนะนำ</option>
+                                <option value="Walk-in">Walk-in</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
+                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">ผลการดำเนินงาน</label>
+                            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6" style="height: 32px;">
+                                <option value="">เลือก</option>
+                                <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
+                                <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
+                                <option value="รอการตัดสินใจ">รอตัดสินใจ</option>
+                                <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
+                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">Inspection</label>
+                            <input type="date" name="inspection_date"
+                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                                style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-danger bg-opacity-10 h-100">
+                            <label class="small fw-bold text-danger mb-0" style="font-size: 0.65rem;">Follow Up</label>
+                            <input type="date" name="follow_up_date"
+                                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
+                                style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
+                            <div class="d-flex gap-1">
+                                <?php for ($i = 1; $i <= 3; $i++): ?>
+                                    <input type="file" name="file_attachment<?= $i ?>"
+                                        class="form-control form-control-sm border-0 bg-transparent p-0"
+                                        style="font-size: 0.6rem;">
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                     <div class="row mb-5">
                         <div class="col-md-7 border-end pe-lg-4">
@@ -642,14 +601,13 @@ while ($row = $all_rooms_res->fetch_assoc()) {
 
                     <h5 class="section-title"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
                     </h5>
-                    <div class="row g-2">
-                        <div class="col-lg-3 col-md-4">
-
-                            <div class="p-4 border rounded-4 bg-white  h-100">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="p-4 border rounded-4 bg-white h-100">
                                 <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
-                                <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
+                                <textarea name="backdrop_detail" class="form-control form-control-sm mb-3"
                                     rows="3"></textarea>
-                                <div class="p-3 border-dashed text-center bg-light">
+                                <div class="p-3 border-dashed text-center bg-light rounded-3">
                                     <input type="file" name="backdrop_img" id="backdropInput"
                                         class="form-control form-control-sm mb-2" accept="image/*"
                                         onchange="previewImage(this)">
@@ -664,13 +622,11 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-md-4">
-
-                            <div class="p-4 border rounded-4 bg-white  h-100">
-                                <label
-                                    class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
+                        <div class="col-lg-6">
+                            <div class="p-4 border rounded-4 bg-white h-100">
+                                <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
                                 <textarea name="hk_florist_detail" class="form-control form-control-sm"
-                                    rows="8"></textarea>
+                                    rows="6"></textarea>
                             </div>
                         </div>
                     </div>
@@ -934,5 +890,52 @@ while ($row = $all_rooms_res->fetch_assoc()) {
 
         container.innerHTML = html;
     }
+
+    // --- Select2 AJAX for customer search ---
+    function initCustomerSelect() {
+        var $sel = $('#customer_selector');
+        if (!$sel.length) return;
+        if (!$.fn.select2) { setTimeout(initCustomerSelect, 200); return; }
+        $sel.select2({
+            width: '100%',
+            placeholder: '-- ค้นหาลูกค้า --',
+            allowClear: true,
+            minimumInputLength: 0,
+            ajax: {
+                url: 'api/search_customers.php?t=' + new Date().getTime(),
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { q: params.term };
+                },
+                processResults: function (data) {
+                    return { results: data.results.map(function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text,
+                            cust_name: item.cust_name,
+                            cust_phone: item.cust_phone,
+                            cust_address: item.cust_address
+                        };
+                    })};
+                }
+            },
+            templateSelection: function(data) {
+                return data.text || data.cust_name || '-- ค้นหาลูกค้า --';
+            }
+        }).on('select2:select', function(e) {
+            var data = e.params.data;
+            document.getElementById('customer_id_hidden').value = data.id;
+            document.getElementById('booking_name').value = data.cust_name || data.text || '';
+            document.getElementById('customer_phone').value = data.cust_phone || '';
+            document.getElementById('customer_address').value = data.cust_address || '';
+        }).on('select2:clear', function() {
+            document.getElementById('customer_id_hidden').value = '';
+            document.getElementById('booking_name').value = '';
+            document.getElementById('customer_phone').value = '';
+            document.getElementById('customer_address').value = '';
+        });
+    }
+    initCustomerSelect();
 </script>
 <?php include "footer.php"; ?>

@@ -73,16 +73,29 @@ if ($function_id) {
                     <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
                     <select name="customer_id" id="customer_select" class="form-select select2-customer-search" required>
                         <?php if ($selected_customer_id): 
-                            $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                            $c_stmt = $conn->prepare("SELECT cust_name, cust_phone, cust_address FROM customers WHERE id = ?");
                             $c_stmt->bind_param("i", $selected_customer_id);
                             $c_stmt->execute();
-                            $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
+                            $c_row = $c_stmt->get_result()->fetch_assoc();
+                            $c_name = $c_row['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
+                            $c_phone = $c_row['cust_phone'] ?? '';
+                            $c_address = $c_row['cust_address'] ?? '';
                         ?>
                             <option value="<?= $selected_customer_id ?>" selected><?= htmlspecialchars($c_name) ?></option>
-                        <?php else: ?>
+                        <?php else: 
+                            $c_phone = '';
+                            $c_address = '';
+                        ?>
                             <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
                         <?php endif; ?>
                     </select>
+
+                    <!-- Customer info display -->
+                    <div id="customer_info" class="mt-2 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: 0.8rem;">
+                        <div class="fw-bold text-dark" id="info_name"><?= htmlspecialchars($selected_customer_id ? $c_name : '') ?></div>
+                        <div class="text-muted small" id="info_phone"><?= htmlspecialchars($c_phone ?? '') ?></div>
+                        <div class="text-muted small" id="info_address"><?= htmlspecialchars($c_address ?? '') ?></div>
+                    </div>
                 </div>
                 <div class="col-md-3 mt-3">
                     <label class="form-label fw-bold text-primary">วันที่จัดงาน</label>
@@ -323,25 +336,14 @@ if ($function_id) {
             });
         }
     });
-</script>
-<?php include "footer.php"; ?>
 
-<style>
-    /* Force Select2 dropdown to be visible and correctly styled */
-    .select2-container { z-index: 999999 !important; }
-    .select2-selection--single { height: 38px !important; line-height: 38px !important; border: 1px solid #ced4da !important; }
-    .select2-selection__rendered { line-height: 38px !important; }
-    .select2-selection__arrow { height: 36px !important; }
-</style>
 
-<script>
-$(window).on('load', function() {
-    console.log("Window loaded, initializing Select2...");
-    
-    const $customerSelect = $('#customer_select');
-    
-    if ($.fn.select2) {
-        $customerSelect.select2({
+    // 8. Initialize Select2 for customer search with AJAX
+    function initCustomerSelect() {
+        var $sel = $('#customer_select');
+        if (!$sel.length) return;
+        if (!$.fn.select2) { setTimeout(initCustomerSelect, 200); return; }
+        $sel.select2({
             width: '100%',
             placeholder: '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---',
             allowClear: true,
@@ -354,17 +356,46 @@ $(window).on('load', function() {
                     return { q: params.term };
                 },
                 processResults: function (data) {
-                    console.log("AJAX Success:", data);
-                    return { results: data.results };
+                    return { results: data.results.map(function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text,
+                            cust_name: item.cust_name,
+                            cust_phone: item.cust_phone,
+                            cust_address: item.cust_address
+                        };
+                    })};
                 },
                 error: function(err) {
                     console.error("AJAX Error:", err);
                 }
+            },
+            templateSelection: function(data) {
+                return data.text || data.cust_name || '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---';
             }
+        }).on('select2:select', function(e) {
+            var data = e.params.data;
+            $('#customer_info').removeClass('d-none');
+            $('#info_name').text(data.cust_name || data.text || '');
+            $('#info_phone').text(data.cust_phone || '');
+            $('#info_address').text(data.cust_address || '');
+        }).on('select2:clear', function() {
+            $('#customer_info').addClass('d-none');
+            $('#info_name').text('');
+            $('#info_phone').text('');
+            $('#info_address').text('');
         });
         console.log("Select2 Initialized on #customer_select");
-    } else {
-        console.error("Select2 Library not loaded!");
     }
-});
+    initCustomerSelect();
 </script>
+
+<style>
+    /* Force Select2 dropdown to be visible and correctly styled */
+    .select2-container { z-index: 999999 !important; }
+    .select2-selection--single { height: 38px !important; line-height: 38px !important; border: 1px solid #ced4da !important; }
+    .select2-selection__rendered { line-height: 38px !important; }
+    .select2-selection__arrow { height: 36px !important; }
+</style>
+
+<?php include "footer.php"; ?>

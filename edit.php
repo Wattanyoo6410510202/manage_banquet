@@ -193,344 +193,311 @@ while($row = $all_rooms_res->fetch_assoc()) {
 
             <div class="card-body p-4 p-lg-5">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป</h5>
-                <div class="row mb-5">
+                <!-- Row: Company + Customer + Event Details (3-column) -->
+                <div class="row g-3 mb-4">
+                    <!-- Company -->
                     <div class="col-lg-3">
-                        <div class="mb-4 text-center">
-                            <label class="small fw-bold text-secondary mb-3 d-block text-start">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
                                 <i class="bi bi-building me-1 text-primary"></i> เลือกโรงแรม
                             </label>
-                            <select name="company_id" class="form-select border-0 bg-light mb-3"
+                            <select name="company_id" class="form-select border-0 bg-light mb-2"
+                                id="company_select"
                                 onchange="updateCompanyLogo(this); filterRooms(this.value);" required
-                                style="border-radius: 10px; height: 42px;">
+                                style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
-                                $current_logo = 'assets/img/default-company.png'; // ค่า Default
+                                $current_logo = 'assets/img/default-company.png';
                                 if ($res_companies && $res_companies->num_rows > 0):
                                     $res_companies->data_seek(0);
                                     while ($row = $res_companies->fetch_assoc()):
-                                        // เช็คข้อมูลเก่า: ถ้า id ตรงกับ $data['company_id'] ให้เลือกไว้
                                         $selected = ($row['company_id'] == $data['company_id']) ? 'selected' : '';
                                         $logo_path = !empty($row['company_logo']) ? $row['company_logo'] : 'assets/img/default-company.png';
-
-                                        // ถ้าถูกเลือก ให้ดึงรูปมาเก็บในตัวแปรแสดงผลทันที
-                                        if ($selected)
-                                            $current_logo = $logo_path;
-                                        ?>
-                                <option value="<?= $row['company_id']; ?>" data-logo="<?= $logo_path; ?>"
-                                    <?= $selected ?>>
+                                        if ($selected) $current_logo = $logo_path;
+                                ?>
+                                <option value="<?= $row['company_id']; ?>" data-logo="<?= $logo_path; ?>" <?= $selected ?>>
                                     <?= htmlspecialchars($row['company_name']); ?>
                                 </option>
                                 <?php endwhile; endif; ?>
                             </select>
-
-                            <div class="company-logo-preview border-0 rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto mb-2"
-                                style="width: 80px; height: 80px; overflow: hidden; border: 1px solid #eee !important;">
-                                <img id="companyLogo" src="<?= $current_logo; ?>" class="img-fluid p-2"
-                                    alt="Company Logo">
-                            </div>
-                        </div>
-
-                        <hr class="opacity-10 mb-4">
-
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="small fw-bold text-secondary m-0">
-                                    <i class="bi bi-person-lines-fill me-1 "></i> ข้อมูลลูกค้า
-                                </label>
-                            </div>
-
-                            <div class="mb-3">
-                                <input type="hidden" name="customer_id" id="customer_id_hidden"
-                                    value="<?= $data['customer_id'] ?>">
-                                <select id="customer_selector"
-                                    class="form-select border-0  bg-opacity-10  fw-bold bg-light select2-ajax-customer"
-                                    style="border-radius: 10px; height: 42px; font-size: 13px;">
-
-                                    <?php if ($data['customer_id']): 
-                                       $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
-                                       $c_stmt->bind_param("i", $data['customer_id']);
-                                       $c_stmt->execute();
-                                       $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '-- ค้นหา/เลือกลูกค้าเดิม --';
-                                    ?>
-                                       <option value="<?= $data['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
-                                    <?php else: ?>
-                                       <option value="">-- พิมพ์เพื่อค้นหาลูกค้า --</option>
-                                    <?php endif; ?>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label mb-1 text-muted"
-                                    style="font-size: 11px;">ชื่อลูกค้า/ผู้จอง</label>
-                                <input type="text" id="booking_name" name="booking_name"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
-                                    style="height: 40px; font-size: 13px;"
-                                    value="<?= htmlspecialchars($data['booking_name']) ?>">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label mb-1 text-muted" style="font-size: 11px;">เบอร์โทรศัพท์</label>
-                                <input type="text" id="customer_phone" name="phone"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="08x-xxx-xxxx"
-                                    style="height: 40px; font-size: 13px;"
-                                    value="<?= htmlspecialchars($data['phone']) ?>">
-                            </div>
-
-                            <div class="mb-0">
-                                <label class="form-label mb-1 text-muted"
-                                    style="font-size: 11px;">หน่วยงาน/ที่อยู่</label>
-                                <textarea id="customer_address" name="organization"
-                                    class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                    rows="3"
-                                    style="font-size: 13px; resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
+                            <div class="company-logo-preview border rounded-3 bg-light d-flex align-items-center justify-content-center mx-auto"
+                                style="width: 70px; height: 70px; overflow: hidden;">
+                                <img id="companyLogo" src="<?= $current_logo; ?>" class="img-fluid p-2" alt="Company Logo">
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-9">
-                        <div class="col-md-12 mb-4">
-                            <label class="form-label small fw-bold text-secondary mb-3">
-                                <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select Venue)
+
+                    <!-- Customer -->
+                    <div class="col-lg-4">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-person-lines-fill me-1 text-primary"></i> ข้อมูลลูกค้า
                             </label>
-                            <div class="row g-3 " id="roomContainer">
-                                <?php if ($res_rooms && $res_rooms->num_rows > 0):
-                $res_rooms->data_seek(0);
-                while ($r = $res_rooms->fetch_assoc()):
-                    $is_premium = ($r['floor'] > 5);
-                    // 🛠️ เช็คว่าห้องนี้คือห้องที่เลือกไว้หรือไม่
-                    $is_selected_room = ($r['id'] == $data['room_id']);
-            ?>
-                                <div class="col-md-4">
-                                    <?php $is_selected = ($r['id'] == $data['room_id']); ?>
-
-                                    <div class="room-card p-3 rounded-4 border h-100  <?= $is_selected ? 'selected' : 'bg-white' ?>"
-                                        onclick="selectRoom(this, '<?= $r['id'] ?>')" style="">
-
-                                        <input type="radio" name="room_id" value="<?= $r['id'] ?>" class="d-none"
-                                            <?= $is_selected ? 'checked' : '' ?>>
-
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <span
-                                                class="badge <?= $is_premium ? 'bg-warning' : 'bg-primary' ?> bg-opacity-10 <?= $is_premium ? 'text-warning' : 'text-primary' ?> rounded-pill">
-                                                Floor <?= $r['floor'] ?>
-                                            </span>
-                                            <i
-                                                class="bi bi-check-circle-fill check-icon text-primary <?= $is_selected ? '' : 'd-none' ?>"></i>
-                                        </div>
-
-                                        <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
-                                        <p class="text-muted small mb-0">Max: 100 ท่าน</p>
-                                    </div>
+                            <input type="hidden" name="customer_id" id="customer_id_hidden" value="<?= $data['customer_id'] ?>">
+                            <div class="mb-2">
+                                <select id="customer_selector"
+                                    class="form-select border-0 bg-light select2-ajax-customer"
+                                    style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
+                                    <?php if ($data['customer_id']): 
+                                        $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                                        $c_stmt->bind_param("i", $data['customer_id']);
+                                        $c_stmt->execute();
+                                        $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '-- ค้นหา/เลือกลูกค้าเดิม --';
+                                    ?>
+                                        <option value="<?= $data['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
+                                    <?php else: ?>
+                                        <option value="">-- พิมพ์เพื่อค้นหาลูกค้า --</option>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="row g-1">
+                                <div class="col-6">
+                                    <input type="text" id="booking_name" name="booking_name"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
+                                        value="<?= htmlspecialchars($data['booking_name']) ?>"
+                                        style="height: 36px; font-size: 0.8rem;">
                                 </div>
-                                <?php endwhile; endif; ?>
+                                <div class="col-6">
+                                    <input type="text" id="customer_phone" name="phone"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="เบอร์โทร"
+                                        value="<?= htmlspecialchars($data['phone']) ?>"
+                                        style="height: 36px; font-size: 0.8rem;">
+                                </div>
+                                <div class="col-12 mt-1">
+                                    <textarea id="customer_address" name="organization"
+                                        class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
+                                        rows="2" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="row">
-                            <h6 class="fw-bold text-dark">
-                                <i class="bi bi-info-circle me-2 text-primary"></i>รายละเอียดการจอง
-                            </h6>
-
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <label class="form-label small fw-bold text-secondary">ชื่องาน (Event Title)</label>
+                    <!-- Event Details -->
+                    <div class="col-lg-5">
+                        <div class="p-3 rounded-4 bg-white border h-100">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-info-circle me-1 text-primary"></i> รายละเอียดการจอง
+                            </label>
+                            <div class="row g-1">
+                                <div class="col-7">
                                     <input name="function_name" class="form-control border-0 bg-light"
-                                        placeholder="พิมพ์ชื่อโครงการหรืองานจัดเลี้ยง..." required
-                                        style="border-radius: 10px; height: 42px;"
-                                        value="<?= htmlspecialchars($data['function_name']) ?>">
+                                        placeholder="ชื่องาน" required
+                                        value="<?= htmlspecialchars($data['function_name']) ?>"
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                 </div>
-
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-bold text-secondary">ประเภทงาน</label>
+                                <div class="col-5">
                                     <select name="function_type_id" class="form-select border-0 bg-light" required
-                                        style="border-radius: 10px; height: 42px;">
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                         <option value="" disabled>-- เลือกประเภท --</option>
                                         <?php 
-                    $res_types->data_seek(0);
-                    while ($t = $res_types->fetch_assoc()): 
-                        $selected_type = ($t['id'] == $data['function_type_id']) ? 'selected' : '';
-                    ?>
-                                        <option value="<?= $t['id'] ?>" <?= $selected_type ?>>
-                                            <?= htmlspecialchars($t['type_name']) ?></option>
+                                        $res_types->data_seek(0);
+                                        while ($t = $res_types->fetch_assoc()): 
+                                            $selected_type = ($t['id'] == $data['function_type_id']) ? 'selected' : '';
+                                        ?>
+                                            <option value="<?= $t['id'] ?>" <?= $selected_type ?>>
+                                                <?= htmlspecialchars($t['type_name']) ?>
+                                            </option>
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
-
-                                <div class="row ">
-                                    <div class="col-md-6">
-                                        <label
-                                            class="form-label small fw-bold text-secondary">วันเวลาที่เริ่มงาน</label>
-                                        <input type="datetime-local" name="start_time"
-                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
-                                            style="border-radius: 10px; height: 42px;"
-                                            value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : (isset($data['start_time']) ? 'ERROR_DATA_EMPTY' : 'ERROR_NO_FIELD') ?>">
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label
-                                            class="form-label small fw-bold text-secondary">วันเวลาที่สิ้นสุดงาน</label>
-                                        <input type="datetime-local" name="end_time"
-                                            class="form-control border-0 bg-light" required min="1900-01-01T00:00"
-                                            style="border-radius: 10px; height: 42px;"
-                                            value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>">
-                                    </div>
+                                <div class="col-6 mt-1">
+                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">เริ่มงาน</label>
+                                    <input type="datetime-local" name="start_time"
+                                        class="form-control border-0 bg-light" required
+                                        value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : '' ?>"
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
                                 </div>
-                            <div class="row g-2">
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-primary bg-opacity-10 h-100">
-            <label class="small fw-bold text-primary mb-1 d-block">Draft Name</label>
-            <input name="draft_name"
-                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-5"
-                placeholder="Draft V1"
-                value="<?= htmlspecialchars($data['draft_name'] ?? 'Draft V1') ?>">
-        </div>
-    </div>
+                                <div class="col-6 mt-1">
+                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">สิ้นสุด</label>
+                                    <input type="datetime-local" name="end_time"
+                                        class="form-control border-0 bg-light" required
+                                        value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>"
+                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
-            <label class="small fw-bold text-secondary mb-1 d-block">Booking Number</label>
-            <input name="booking_room"
-                class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-5"
-                placeholder="BK-XXXX"
-                value="<?= htmlspecialchars($data['booking_room']) ?>">
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
-            <label class="small fw-bold text-success mb-1 d-block">มัดจำ (Deposit)</label>
-            <div class="input-group">
-                <span class="input-group-text border-0 bg-transparent text-success fw-bold ps-0 fs-4">฿</span>
-                <input type="number" step="0.01" name="deposit"
-                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-4"
-                    placeholder="0.00" value="<?= $data['deposit'] ?>">
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
-            <label class="small fw-bold text-info mb-1 d-block">จำนวน (PAX)</label>
-            <div class="input-group">
-                <input type="number" name="pax"
-                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-5"
-                    placeholder="0" value="<?= $data['pax'] ?>">
-                <span class="input-group-text border-0 bg-transparent text-info fw-bold pe-0 small">Pers.</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-secondary bg-opacity-10 h-100">
-            <label class="small fw-bold text-secondary mb-1 d-block">มูลค่างานทั้งหมด (Total Amount)</label>
-            <div class="input-group">
-                <span class="input-group-text border-0 bg-transparent text-secondary fw-bold ps-0 fs-4">฿</span>
-                <input type="number" step="0.01" name="total_amount"
-                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-4"
-                    placeholder="0.00" 
-                    value="<?= isset($data['total_amount']) ? number_format($data['total_amount'], 2, '.', '') : '0.00' ?>">
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-2 mt-2">
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-warning bg-opacity-10 h-100">
-            <label class="small fw-bold text-warning mb-1 d-block"><i class="bi bi-tag me-1"></i>ที่มา Lead</label>
-            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6">
-                <option value="">-- เลือก --</option>
-                <option value="โทรเข้า" <?= ($data['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
-                <option value="FB / Social" <?= ($data['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
-                <option value="แนะนำ" <?= ($data['lead_source'] ?? '') === 'แนะนำ' ? 'selected' : '' ?>>แนะนำ</option>
-                <option value="Walk-in" <?= ($data['lead_source'] ?? '') === 'Walk-in' ? 'selected' : '' ?>>Walk-in</option>
-                <option value="อื่นๆ" <?= ($data['lead_source'] ?? '') === 'อื่นๆ' ? 'selected' : '' ?>>อื่นๆ</option>
-            </select>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="p-3 rounded-4 bg-info bg-opacity-10 h-100">
-            <label class="small fw-bold text-info mb-1 d-block"><i class="bi bi-graph-up me-1"></i>ผลการดำเนินงาน</label>
-            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6">
-                <option value="">-- เลือก --</option>
-                <option value="ปิดงานสำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
-                <option value="ปิดงานไม่สำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
-                <option value="รอการตัดสินใจ" <?= ($data['result'] ?? '') === 'รอการตัดสินใจ' ? 'selected' : '' ?>>รอการตัดสินใจ</option>
-                <option value="ติดต่อไม่ได้" <?= ($data['result'] ?? '') === 'ติดต่อไม่ได้' ? 'selected' : '' ?>>ติดต่อไม่ได้</option>
-            </select>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-success bg-opacity-10 h-100">
-            <label class="small fw-bold text-success mb-1 d-block"><i class="bi bi-binoculars me-1"></i>วันที่ Inspection</label>
-            <input type="date" name="inspection_date"
-                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
-                value="<?= $data['inspection_date'] ?? '' ?>">
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="p-3 rounded-4 bg-danger bg-opacity-10 h-100">
-            <label class="small fw-bold text-danger mb-1 d-block"><i class="bi bi-clock-history me-1"></i>วันที่ Follow Up</label>
-            <input type="date" name="follow_up_date"
-                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
-                value="<?= $data['follow_up_date'] ?? '' ?>">
-        </div>
-    </div>
-</div>
-                   
-                                <div class="row g-3 mt-1">
-                                    <?php 
-    $file_colors = ['secondary', 'warning', 'danger']; 
-    for($i=1; $i<=3; $i++): 
-        $color = $file_colors[$i-1];
-        $file_path = $data['file_attachment'.$i];
-        $file_name = $file_path ? basename($file_path) : '';
-    ?>
+                <!-- Row: Room Selection (full width) -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="p-3 rounded-4 bg-white border">
+                            <label class="small fw-bold text-secondary mb-2 d-block">
+                                <i class="bi bi-grid-3x3-gap-fill me-1 text-primary"></i> เลือกห้องประชุม (Select Venue)
+                            </label>
+                            <div class="row g-2" id="roomContainer">
+                                <?php if ($res_rooms && $res_rooms->num_rows > 0):
+                                    $res_rooms->data_seek(0);
+                                    while ($r = $res_rooms->fetch_assoc()):
+                                        $is_premium = ($r['floor'] > 5);
+                                        $is_selected = ($r['id'] == $data['room_id']);
+                                ?>
                                     <div class="col-md-4">
-                                        <div
-                                            class="p-3 rounded-4 bg-<?=$color?> bg-opacity-10 border border-<?=$color?> border-opacity-25">
-                                            <label class="small fw-bold text-<?=$color?> mb-1 d-block">
-                                                <i class="bi bi-paperclip"></i> ไฟล์แนบ <?=$i?>
-                                            </label>
-
-                                            <?php if($file_path): ?>
-                                            <div id="file_display_<?=$i?>"
-                                                class="d-flex align-items-center justify-content-between mb-2 bg-white p-2 rounded-3 ">
-                                                <div class="text-truncate me-2" style="font-size: 11px;">
-                                                    <a href="<?=$file_path?>" target="_blank"
-                                                        class="text-decoration-none text-dark">
-                                                        <i class="bi bi-file-earmark-check text-<?=$color?>"></i>
-                                                        <?=$file_name?>
-                                                    </a>
-                                                </div>
-
-                                                <div class="ms-1">
-                                                    <button type="button"
-                                                        class="btn btn-outline-danger btn-sm py-0 px-2"
-                                                        style="font-size: 10px; border-radius: 6px;" onclick="if(confirm('ลบไฟล์เดิม?')){ 
-                                    document.getElementById('file_display_<?=$i?>').style.setProperty('display', 'none', 'important'); 
-                                    document.getElementById('delete_flag_<?=$i?>').value = '1'; 
-                                }">
-                                                        <i class="bi bi-trash3"></i> ลบ
-                                                    </button>
-                                                </div>
+                                        <div class="room-card p-3 rounded-4 border h-100 <?= $is_selected ? 'selected' : 'bg-white' ?>"
+                                            onclick="selectRoom(this, '<?= $r['id'] ?>')">
+                                            <input type="radio" name="room_id" value="<?= $r['id'] ?>" class="d-none"
+                                                <?= $is_selected ? 'checked' : '' ?>>
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="badge <?= $is_premium ? 'bg-warning' : 'bg-primary' ?> bg-opacity-10 <?= $is_premium ? 'text-warning' : 'text-primary' ?> rounded-pill">
+                                                    Floor <?= $r['floor'] ?>
+                                                </span>
+                                                <i class="bi bi-check-circle-fill check-icon text-primary <?= $is_selected ? '' : 'd-none' ?>"></i>
                                             </div>
-                                            <?php endif; ?>
-
-                                            <input type="file" name="file_attachment<?=$i?>"
-                                                class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>"
-                                                style="font-size: 11px;">
-
-                                            <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
-                                            <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>"
-                                                value="0">
-
-                                            <div class="mt-1" style="font-size: 9px; color: #666;">
-                                                * อัปโหลดใหม่เพื่อเปลี่ยนไฟล์
-                                            </div>
+                                            <h6 class="fw-bold mb-1"><?= htmlspecialchars($r['room_name']) ?></h6>
+                                            <p class="text-muted small mb-0">Max: 100 ท่าน</p>
                                         </div>
                                     </div>
-                                    <?php endfor; ?>
-                                </div>
+                                <?php endwhile; endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Row: Financial + Tracking (compact) + File Attachments -->
+                <div class="row g-2 mb-4">
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-primary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-primary mb-0" style="font-size: 0.65rem;">Draft Name</label>
+                            <input name="draft_name"
+                                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
+                                placeholder="Draft V1"
+                                value="<?= htmlspecialchars($data['draft_name'] ?? 'Draft V1') ?>"
+                                style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">Booking No.</label>
+                            <input name="booking_room"
+                                class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-6"
+                                placeholder="BK-XXXX"
+                                value="<?= htmlspecialchars($data['booking_room']) ?>"
+                                style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
+                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">จำนวน (PAX)</label>
+                            <div class="input-group">
+                                <input type="number" name="pax"
+                                    class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-6"
+                                    placeholder="0" value="<?= $data['pax'] ?>" style="height: 32px;">
+                                <span class="input-group-text border-0 bg-transparent text-info p-0 small">คน</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
+                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">มัดจำ (Deposit)</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-0 bg-transparent text-success fw-bold p-0">฿</span>
+                                <input type="number" step="0.01" name="deposit"
+                                    class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                                    placeholder="0.00" value="<?= $data['deposit'] ?>" style="height: 32px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">มูลค่างานทั้งหมด</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-0 bg-transparent text-secondary fw-bold p-0">฿</span>
+                                <input type="number" step="0.01" name="total_amount"
+                                    class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-6"
+                                    placeholder="0.00"
+                                    value="<?= isset($data['total_amount']) ? number_format($data['total_amount'], 2, '.', '') : '0.00' ?>"
+                                    style="height: 32px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-warning bg-opacity-10 h-100">
+                            <label class="small fw-bold text-warning mb-0" style="font-size: 0.65rem;">ที่มา Lead</label>
+                            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6" style="height: 32px;">
+                                <option value="">-- เลือก --</option>
+                                <option value="โทรเข้า" <?= ($data['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
+                                <option value="FB / Social" <?= ($data['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
+                                <option value="แนะนำ" <?= ($data['lead_source'] ?? '') === 'แนะนำ' ? 'selected' : '' ?>>แนะนำ</option>
+                                <option value="Walk-in" <?= ($data['lead_source'] ?? '') === 'Walk-in' ? 'selected' : '' ?>>Walk-in</option>
+                                <option value="อื่นๆ" <?= ($data['lead_source'] ?? '') === 'อื่นๆ' ? 'selected' : '' ?>>อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
+                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">ผลการดำเนินงาน</label>
+                            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6" style="height: 32px;">
+                                <option value="">-- เลือก --</option>
+                                <option value="ปิดงานสำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
+                                <option value="ปิดงานไม่สำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
+                                <option value="รอการตัดสินใจ" <?= ($data['result'] ?? '') === 'รอการตัดสินใจ' ? 'selected' : '' ?>>รอการตัดสินใจ</option>
+                                <option value="ติดต่อไม่ได้" <?= ($data['result'] ?? '') === 'ติดต่อไม่ได้' ? 'selected' : '' ?>>ติดต่อไม่ได้</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
+                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">Inspection</label>
+                            <input type="date" name="inspection_date"
+                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
+                                value="<?= $data['inspection_date'] ?? '' ?>" style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 rounded-3 bg-danger bg-opacity-10 h-100">
+                            <label class="small fw-bold text-danger mb-0" style="font-size: 0.65rem;">Follow Up</label>
+                            <input type="date" name="follow_up_date"
+                                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
+                                value="<?= $data['follow_up_date'] ?? '' ?>" style="height: 32px;">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
+                            <div class="row g-1">
+                                <?php 
+                                $file_colors = ['secondary', 'warning', 'danger']; 
+                                for($i=1; $i<=3; $i++): 
+                                    $color = $file_colors[$i-1];
+                                    $file_path = $data['file_attachment'.$i];
+                                    $file_name = $file_path ? basename($file_path) : '';
+                                ?>
+                                    <div class="col-md-4">
+                                        <div class="p-1 rounded-2 bg-white border border-<?=$color?> border-opacity-25 h-100">
+                                            <label class="small fw-bold text-<?=$color?> mb-1 d-block" style="font-size: 0.6rem;">
+                                                <i class="bi bi-paperclip"></i> แนบ <?=$i?>
+                                            </label>
+                                            <?php if($file_path): ?>
+                                                <div id="file_display_<?=$i?>"
+                                                    class="d-flex align-items-center justify-content-between bg-white p-1 rounded-2 mb-1"
+                                                    style="font-size: 9px;">
+                                                    <div class="text-truncate me-1" style="max-width: 70px;">
+                                                        <a href="<?=$file_path?>" target="_blank"
+                                                            class="text-decoration-none text-dark">
+                                                            <i class="bi bi-file-earmark-check text-<?=$color?>"></i>
+                                                            <?=$file_name?>
+                                                        </a>
+                                                    </div>
+                                                    <button type="button"
+                                                        class="btn btn-outline-danger btn-sm py-0 px-1 flex-shrink-0"
+                                                        style="font-size: 8px; border-radius: 4px; line-height: 1.2;"
+                                                        onclick="if(confirm('ลบไฟล์เดิม?')){ 
+                                                            document.getElementById('file_display_<?=$i?>').style.setProperty('display', 'none', 'important'); 
+                                                            document.getElementById('delete_flag_<?=$i?>').value = '1'; 
+                                                        }">
+                                                        <i class="bi bi-trash3"></i>
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
+                                            <input type="file" name="file_attachment<?=$i?>"
+                                                class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>"
+                                                style="font-size: 10px; height: 28px;">
+                                            <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
+                                            <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>" value="0">
+                                        </div>
+                                    </div>
+                                <?php endfor; ?>
                             </div>
                         </div>
                     </div>
@@ -1094,6 +1061,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('ขออภัย! ห้องนี้มีรายการที่ได้รับการอนุมัติแล้วในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่นครับ');
             }
         }
+    });
+
+    // --- Select2 AJAX Customer Search ---
+    $('.select2-ajax-customer').select2({
+        width: '100%',
+        placeholder: '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---',
+        allowClear: true,
+        minimumInputLength: 0,
+        ajax: {
+            url: 'api/search_customers.php',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return { q: params.term };
+            },
+            processResults: function (data) {
+                return { results: data.results || [] };
+            }
+        },
+        templateResult: function (row) {
+            if (row.loading) return row.text;
+            return $(`<div><strong>${row.text}</strong><br><small class="text-muted">${row.cust_phone || ''} ${row.cust_address ? '| ' + row.cust_address : ''}</small></div>`);
+        },
+        templateSelection: function (row) {
+            return row.text || '--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---';
+        }
+    }).on('select2:select', function (e) {
+        const data = e.params.data;
+        document.getElementById('customer_id_hidden').value = data.id;
+        document.getElementById('booking_name').value = data.cust_name || '';
+        document.getElementById('customer_phone').value = data.cust_phone || '';
+        document.getElementById('customer_address').value = data.cust_address || '';
+    }).on('select2:clear', function () {
+        document.getElementById('customer_id_hidden').value = '';
+        document.getElementById('booking_name').value = '';
+        document.getElementById('customer_phone').value = '';
+        document.getElementById('customer_address').value = '';
     });
 });
 </script>

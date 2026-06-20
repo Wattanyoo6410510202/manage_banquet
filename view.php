@@ -435,6 +435,16 @@ $menus = $conn->query($sql_menus);
             </div>
         </div>
     </div>
+
+    <?php if (!empty($data['cancel_reason'])): ?>
+    <div class="section-group mt-3" style="border: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; padding: 10px;">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-x-circle-fill text-danger"></i>
+            <strong class="text-danger" style="font-size: 10px;">เหตุผลการยกเลิก</strong>
+        </div>
+        <p class="mb-0 text-danger" style="font-size: 9px;"><?= nl2br(htmlspecialchars($data['cancel_reason'])) ?></p>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script>

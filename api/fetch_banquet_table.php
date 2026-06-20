@@ -98,7 +98,8 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
             }
             echo '</div></td>';
             
-            echo '<td><span class="badge ' . $row['status_info']['class'] . ' rounded-pill px-3"><i class="bi ' . $row['status_info']['icon'] . ' me-1"></i>' . $row['status_info']['text'] . '</span></td>';
+            $cancelTip = (!empty($row['cancel_reason']) && $row['status'] === 'Cancelled') ? ' title="' . htmlspecialchars($row['cancel_reason']) . '" style="cursor:help;"' : '';
+            echo '<td><span class="badge ' . $row['status_info']['class'] . ' rounded-pill px-3"' . $cancelTip . '><i class="bi ' . $row['status_info']['icon'] . ' me-1"></i>' . $row['status_info']['text'] . '</span></td>';
             
             echo '<td><div class="d-flex flex-wrap gap-2">';
             if (empty($row['attachments'])) {
