@@ -97,18 +97,18 @@ $items = $conn->query($sql_items);
                 <div class="row align-items-start mb-4">
                     <div class="col-7">
                         <div class="mb-4">
-                            <h1 class="fw-bold text-primary mb-0" style="letter-spacing: 2px;">QUOTATION</h1>
-                            <p class="text-muted small text-uppercase">ใบเสนอราคา</p>
+                            <h2 class="fw-bold text-primary mb-0" style="letter-spacing: 2px; font-size: 22px;">QUOTATION</h2>
+                            <p class="text-muted small text-uppercase" style="font-size: 11px;">ใบเสนอราคา</p>
                         </div>
 
                         <div class="customer-info-section">
                             <div class="section-title mb-2">ข้อมูลลูกค้า / Customer Info</div>
                             <div class="ps-3">
-                                <h5 class="fw-bold mb-1"><?= htmlspecialchars($quote['cust_name']) ?></h5>
-                                <div class="small text-muted mb-2" style="line-height: 1.5;">
+                                <h5 class="fw-bold mb-1" style="font-size: 15px;"><?= htmlspecialchars($quote['cust_name']) ?></h5>
+                                <div class="text-muted mb-2" style="font-size: 12px; line-height: 1.5;">
                                     <?= nl2br(htmlspecialchars($quote['cust_address'])) ?>
                                 </div>
-                                <div class="small">
+                                <div style="font-size: 12px;">
                                     <span class="text-muted">โทร / Tel:</span>
                                     <span class="fw-bold"><?= htmlspecialchars($quote['cust_phone']) ?></span>
                                 </div>
@@ -119,11 +119,11 @@ $items = $conn->query($sql_items);
                     <div class="col-5">
                         <div class="d-flex align-items-start justify-content-end gap-3 mb-4">
                             <div class="text-end">
-                                <h5 class="fw-bold text-dark mb-1"><?= htmlspecialchars($quote['company_name']) ?></h5>
-                                <p class="small text-muted mb-0" style="font-size: 10px; line-height: 1.4;">
+                                <h5 class="fw-bold text-dark mb-1" style="font-size: 15px;"><?= htmlspecialchars($quote['company_name']) ?></h5>
+                                <p class="text-muted mb-0" style="font-size: 12px; line-height: 1.4;">
                                     <?= nl2br(htmlspecialchars($quote['comp_address'])) ?>
                                 </p>
-                                <p class="small text-muted mb-0" style="font-size: 10px;">
+                                <p class="text-muted mb-0" style="font-size: 12px;">
                                     โทร: <?= htmlspecialchars($quote['comp_phone']) ?>
                                     <?php if (!empty($quote['comp_email'])): ?>
                                         | <?= htmlspecialchars($quote['comp_email']) ?>
@@ -138,9 +138,9 @@ $items = $conn->query($sql_items);
                             <?php endif; ?>
                         </div>
 
-                        <div class="table-responsive">
+                        <div>
                             <table class="table table-sm table-bordered ms-auto mb-0"
-                                style="width: 100%; max-width: 240px; ">
+                                style="width: 100%; max-width: 240px; font-size: 12px;">
                                 <tbody>
                                     <tr>
                                         <th class="bg-light text-muted fw-normal" style="width: 40%;">เลขที่ / No.</th>
@@ -153,7 +153,7 @@ $items = $conn->query($sql_items);
                                     <tr>
                                         <th class="bg-light text-muted fw-normal">ชื่องาน / Event</th>
                                         <td class="text-end" style="max-width: 200px;">
-                                            <textarea class="form-control border-0 bg-transparent fw-bold p-0 event-name-ta" rows="1" readonly style="resize: none; width: 100%; overflow: hidden; text-align: right;"><?= htmlspecialchars($quote['event_name']) ?></textarea>
+                                            <textarea class="form-control border-0 bg-transparent fw-bold p-0 event-name-ta" rows="1" readonly style="resize: none; width: 100%; overflow: hidden; text-align: right; font-size: 12px;"><?= htmlspecialchars($quote['event_name']) ?></textarea>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -165,14 +165,14 @@ $items = $conn->query($sql_items);
 
             <div class="section-group">
                 <div class="section-title">รายละเอียดรายการ / Description</div>
-                <table class="table table-bordered table-tight">
+                <table class="table table-bordered table-tight" style="font-size: 12px;">
                     <thead>
                         <tr class="text-center bg-light">
-                            <th width="5%">#</th>
-                            <th>รายการ / Description</th>
-                            <th width="12%">จำนวน</th>
-                            <th width="15%">ราคา/หน่วย</th>
-                            <th width="18%">จำนวนเงิน</th>
+                            <th width="5%" style="font-size: 12px;">#</th>
+                            <th style="font-size: 12px;">รายการ / Description</th>
+                            <th width="12%" style="font-size: 12px;">จำนวน</th>
+                            <th width="15%" style="font-size: 12px;">ราคา/หน่วย</th>
+                            <th width="18%" style="font-size: 12px;">จำนวนเงิน</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -197,12 +197,12 @@ $items = $conn->query($sql_items);
             <div class="section-group row ">
                 <div class="col-7">
                     <div class="section-title">หมายเหตุ / Remark</div>
-                    <div class="text-black" style="white-space: pre-line;">
+                    <div class="text-black" style="white-space: pre-line; font-size: 12px;">
                         <?= !empty($quote['remarks']) ? htmlspecialchars($quote['remarks']) : '-' ?>
                     </div>
                 </div>
                 <div class="col-5">
-                    <table class="table table-sm table-borderless table-tight">
+                    <table class="table table-sm table-borderless table-tight" style="font-size: 12px;">
                         <tr>
                             <td class="text-end">รวมเป็นเงิน / Subtotal:</td>
                             <td class="text-end border-bottom" width="40%"><?= number_format($quote['subtotal'], 2) ?>
@@ -217,9 +217,9 @@ $items = $conn->query($sql_items);
                             <td class="text-end border-bottom"><?= number_format($quote['vat'], 2) ?></td>
                         </tr>
                         <tr>
-                            <td class="text-end fw-bold text-primary">ยอดรวมสุทธิ / Grand Total:</td>
-                            <td class="text-end fw-bold h6 text-primary border-bottom"
-                                style="border-bottom: 2px double !important;">
+                            <td class="text-end fw-bold text-primary" style="font-size: 13px;">ยอดรวมสุทธิ / Grand Total:</td>
+                            <td class="text-end fw-bold text-primary border-bottom"
+                                style="border-bottom: 2px double !important; font-size: 15px;">
                                 <?= number_format($quote['grand_total'], 2) ?>
                             </td>
                         </tr>
@@ -232,44 +232,44 @@ $items = $conn->query($sql_items);
             <div class="row">
                 <div class="col-4">
                     <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
                         <?php if (!empty($quote['creator_sig_path'])): ?>
-                            <img src="<?= $quote['creator_sig_path'] ?>" style="max-height: 55px; width: auto;">
+                            <img src="<?= $quote['creator_sig_path'] ?>" style="max-height: 50px; width: auto;">
                         <?php endif; ?>
                     </div>
-                    <p class="small mb-0 fw-bold">ผู้จัดทำ / Prepared By</p>
-                    <p class="small text-muted mb-0">(
+                    <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้จัดทำ / Prepared By</p>
+                    <p class="text-muted mb-0" style="font-size: 12px;">(
                         <?= htmlspecialchars($quote['created_by_name'] ?? '................................') ?> )
                     </p>
-                    <p class="small text-muted">วันที่: <?= date('d/m/Y', strtotime($quote['created_at'])) ?></p>
+                    <p class="text-muted" style="font-size: 12px;">วันที่: <?= date('d/m/Y', strtotime($quote['created_at'])) ?></p>
                 </div>
                 <div class="col-4">
                     <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
                         <?php if (!empty($quote['approver_sig_path'])): ?>
-                            <img src="<?= $quote['approver_sig_path'] ?>" style="max-height: 55px; width: auto;">
+                            <img src="<?= $quote['approver_sig_path'] ?>" style="max-height: 50px; width: auto;">
                         <?php endif; ?>
                     </div>
-                    <p class="small mb-0 fw-bold">ผู้อนุมัติ / Authorized Signature</p>
-                    <p class="small text-muted mb-0">(
+                    <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้อนุมัติ / Authorized Signature</p>
+                    <p class="text-muted mb-0" style="font-size: 12px;">(
                         <?= htmlspecialchars($quote['approved_by_name'] ?? '................................') ?> )
                     </p>
-                    <p class="small text-muted">วันที่:
+                    <p class="text-muted" style="font-size: 12px;">วันที่:
                         <?= !empty($quote['approved_at']) ? date('d/m/Y', strtotime($quote['approved_at'])) : '....../....../......' ?>
                     </p>
                 </div>
                 <div class="col-4">
                     <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
                         <?php if (!empty($quote['customer_signature'])): ?>
-                            <img src="<?= $quote['customer_signature'] ?>" style="max-height: 55px; width: auto;">
+                            <img src="<?= $quote['customer_signature'] ?>" style="max-height: 50px; width: auto;">
                         <?php endif; ?>
                     </div>
-                    <p class="small mb-0 fw-bold">ลูกค้า / Customer </p>
-                    <p class="small text-muted mb-0">(
+                    <p class="mb-0 fw-bold" style="font-size: 12px;">ลูกค้า / Customer </p>
+                    <p class="text-muted mb-0" style="font-size: 12px;">(
                         <?= htmlspecialchars($quote['cust_name'] ?? '................................') ?> )
                     </p>
-                    <p class="small text-muted">วันที่: ....../....../......</p>
+                    <p class="text-muted" style="font-size: 12px;">วันที่: ....../....../......</p>
                 </div>
 
 
@@ -281,11 +281,9 @@ $items = $conn->query($sql_items);
 <style>
     /* --- ส่วนการแสดงผลบนหน้าจอ --- */
     :root {
-        --print-fs: 14px;
-        --print-pad: 3px 5px;
-        /* ลด padding ตารางลงเล็กน้อย */
-        --print-lh: 1.3;
-        /* กระชับระยะบรรทัด */
+        --print-fs: 13px;
+        --print-pad: 2px 6px;
+        --print-lh: 1.5;
     }
 
     body {
@@ -297,7 +295,6 @@ $items = $conn->query($sql_items);
         width: 210mm;
         min-height: 297mm;
         padding: 10mm 15mm;
-        /* ลด padding บน-ล่าง จาก 15 เป็น 10 */
         margin: 20px auto;
         background: white;
         color: black;
@@ -314,10 +311,9 @@ $items = $conn->query($sql_items);
         padding-left: 8px;
         font-weight: 700;
         background: #f8f9fa;
-        margin: 8px 0 5px 0 !important;
-        /* บีบ margin ให้เล็กลง */
+        margin: 6px 0 4px 0 !important;
         text-transform: uppercase;
-        font-size: calc(var(--print-fs) + 1px);
+        font-size: 13px;
     }
 
     .table-tight th,
@@ -349,8 +345,6 @@ $items = $conn->query($sql_items);
 
     .signature-wrapper p {
         margin-bottom: 0 !important;
-        font-size: 14px;
-        /* ลดฟอนต์คำบรรยายลายเซ็นเล็กน้อยเพื่อให้ดูชัดเจนไม่รก */
     }
 
     .content-body {

@@ -33,8 +33,8 @@ $staffs = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff', 'Banq
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3 text-gold"><i class="bi bi-plus-circle me-2"></i>ตั้งเป้าหมายการขายรายเดือน</h6>
-                    <form action="api/save_sales_target.php" method="POST">
-                        <input type="hidden" name="redirect" value="sales_dept.php">
+                    <form action="/manage_banquet/api/save_sales_target.php" method="POST">
+                        <input type="hidden" name="redirect" value="<?= $_SERVER['REQUEST_URI'] ?>">
                         <div class="mb-3">
                             <label class="small fw-bold">เลือกพนักงาน (Sales)</label>
                             <select name="user_id" class="form-select" required>
@@ -97,7 +97,7 @@ $staffs = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff', 'Banq
                                     <td><?= date('F', mktime(0, 0, 0, $t['target_month'], 1)) ?> <?= $t['target_year'] + 543 ?></td>
                                     <td class="fw-bold text-primary">฿<?= number_format($t['target_amount'], 2) ?></td>
                                     <td class="text-end">
-                                        <a href="api/save_sales_target.php?delete_id=<?= $t['id'] ?>&redirect=sales_dept.php" 
+                                        <a href="/manage_banquet/api/save_sales_target.php?delete_id=<?= $t['id'] ?>&redirect=<?= urlencode($_SERVER['REQUEST_URI']) ?>" 
                                            class="btn btn-sm btn-outline-danger border-0" 
                                            onclick="return confirm('ลบเป้าหมายนี้?')">
                                             <i class="bi bi-trash"></i>

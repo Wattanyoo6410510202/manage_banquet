@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 WHERE id = ?";
         
         if ($stmt = $conn->prepare($sql)) {
-            $stmt->bind_param("isiiissi", $approve_val, $status, $approve_val, $approve_val, $user_id, $approve_val, $cancel_reason, $id);
+            $stmt->bind_param("isiiiisi", $approve_val, $status, $approve_val, $approve_val, $user_id, $approve_val, $cancel_reason, $id);
             
             if ($stmt->execute()) {
                 // --- [NEW] Draft & Project System Management ---
