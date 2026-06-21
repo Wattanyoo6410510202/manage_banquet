@@ -2,11 +2,16 @@
 include "config.php";
 include "header.php";
 
+$my_only = !isset($_GET['my']) || $_GET['my'] === '1';
+$user_id = intval($_SESSION['user_id'] ?? 0);
+$filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
+
 $sql = "SELECT q.*, f.function_name, c.cust_name, p.project_name 
         FROM quotations q
         LEFT JOIN functions f ON q.function_id = f.id
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN event_projects p ON q.project_id = p.id
+        $filter_clause
         ORDER BY q.id DESC";
 
 $result = $conn->query($sql);
@@ -24,13 +29,17 @@ while ($row = $result->fetch_assoc()) {
 </div>
 <div class="container-fluid p-0">
     <div class="row mb-4 align-items-center">
-        <div class="col">
+        <div class="col-md">
             <h4 class="fw-bold text-dark mb-0">
-                <i class="bi bi-file-earmark-text me-2 text-gold"></i> รายการใบเสนอราคาทั้งหมด
+                <i class="bi bi-file-earmark-text me-2 text-gold"></i> รายการใบเสนอราคา<?= $my_only ? ' (ของฉัน)' : ' (ทั้งหมด)' ?>
             </h4>
             <p class="text-muted small mb-0">อนุมัติและใช้งาน</p>
         </div>
-        <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <div class="col-md-auto d-flex align-items-center gap-2 mt-3 mt-md-0">
+            <select class="form-select form-select-sm" style="width:auto" onchange="location.href='quotation_list.php?my='+this.value">
+                <option value="0" <?= !$my_only ? 'selected' : '' ?>>ทั้งหมด</option>
+                <option value="1" <?= $my_only ? 'selected' : '' ?>>เฉพาะของฉัน</option>
+            </select>
             <a href="add_quote.php" class="btn btn-dark btn-create">
                 <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
             </a>

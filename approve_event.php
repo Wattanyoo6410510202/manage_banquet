@@ -25,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sql = "UPDATE functions SET 
                     approve = ?, 
                     status = ?, 
-                    status_updated_at = NOW(),
                     approve_date = IF(approve_date IS NULL AND ? = 1, NOW(), approve_date),
                     approve_by = IF(approve_by IS NULL AND ? = 1, ?, approve_by),
                     cancel_reason = IF(? = 2, ?, cancel_reason),
