@@ -97,17 +97,14 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
 $all_rooms_res = $conn->query("
     SELECT 
         r.*, 
-        (SELECT GROUP_CONCAT(DATE_FORMAT(f.start_time, '%d/%m') -- 1. ลองเอา DISTINCT ออกก่อน
+        (SELECT GROUP_CONCAT(DATE_FORMAT(f.start_time, '%d/%m %H:%i')
                 ORDER BY f.start_time ASC SEPARATOR ', ')
          FROM functions f 
          WHERE f.room_id = r.id 
-         AND f.status = 'In Progress'
-         -- 2. เช็คให้ชัวร์ว่างานที่ 2 วันที่มัน >= วันนี้จริงๆ
-         AND DATE(f.start_time) >= CURDATE() 
+         AND f.status != 'Cancelled'
+         AND f.status != 'Completed'
          AND f.start_time IS NOT NULL
-        ) as booking_dates,
-        -- 3. เพิ่มคอลัมน์นี้นับจำนวนงานจริงๆ ในห้องนี้มาดูเลย (เอาไว้ Debug ใน Console)
-        (SELECT COUNT(*) FROM functions f WHERE f.room_id = r.id AND f.status = 'In Progress' AND DATE(f.start_time) >= CURDATE()) as debug_count
+        ) as booking_dates
     FROM meeting_rooms r
     WHERE r.status = 'active' 
     ORDER BY r.floor ASC, r.room_name ASC
@@ -1024,6 +1021,53 @@ function filterRooms(companyId) {
 });
 }
 
+// ฟังก์ชันตรวจสอบห้องว่างแบบ Real-time
+function checkRoomAvailability() {
+    const roomEl = document.querySelector('input[name="room_id"]:checked');
+    if (!roomEl) return;
+    const roomId = roomEl.value;
+    const start = document.querySelector('input[name="start_time"]').value;
+    const end = document.querySelector('input[name="end_time"]').value;
+    const functionId = document.querySelector('input[name="function_id"]').value;
+    const card = roomEl.closest('.room-card');
+    if (!card || !start || !end) return;
+
+    // หา div แสดงสถานะ (หรือสร้างใหม่)
+    let statusDiv = card.querySelector('.room-status');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.className = 'room-status mt-2';
+        card.appendChild(statusDiv);
+    }
+    statusDiv.innerHTML = '<div class="small text-muted text-center"><i class="bi bi-hourglass-split"></i> กำลังตรวจสอบ...</div>';
+
+    fetch(`api/validate_room_booking.php?room_id=${roomId}&start=${start}&end=${end}&exclude_id=${functionId}`)
+        .then(r => r.json())
+        .then(result => {
+            if (result.status === 'conflict') {
+                const ev = result.events[0];
+                statusDiv.innerHTML = `
+                    <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger text-danger" style="font-size: 0.8rem;">
+                        <div class="fw-bold"><i class="bi bi-x-circle-fill me-1"></i> ไม่ว่างช่วงนี้</div>
+                        <div class="small mt-1">${ev.function_name}</div>
+                        <div class="small opacity-75">${ev.start_time} - ${ev.end_time}</div>
+                    </div>
+                `;
+                card.classList.add('border-danger');
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="p-2 rounded bg-success bg-opacity-10 border border-success text-success text-center small">
+                        <i class="bi bi-check-circle-fill me-1"></i> ว่าง / พร้อมใช้งาน
+                    </div>
+                `;
+                card.classList.remove('border-danger');
+            }
+        })
+        .catch(() => {
+            statusDiv.innerHTML = '';
+        });
+}
+
 // ฟังก์ชันคลิกเลือกห้อง
 function selectRoom(card, roomId) {
     document.querySelectorAll('.room-card').forEach(c => {
@@ -1037,6 +1081,8 @@ function selectRoom(card, roomId) {
     card.classList.remove('bg-white');
     card.querySelector('.check-icon').classList.remove('d-none');
     card.querySelector('.room-radio').checked = true;
+
+    checkRoomAvailability();
 }
 
 // สั่งให้ทำงานทันทีตอนโหลดหน้า (เพื่อให้โชว์ห้องของโรงแรมเดิม)
@@ -1044,22 +1090,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentComp = document.querySelector('select[name="company_id"]').value;
     if (currentComp) filterRooms(currentComp);
 
-    // 🛠️ เพิ่มระบบตรวจสอบ Conflict ก่อนกดอัปเดต
-    document.querySelector('form').addEventListener('submit', async function(e) {
-        const roomId = document.querySelector('input[name="room_id"]:checked')?.value;
-        const start = document.querySelector('input[name="start_time"]').value;
-        const end = document.querySelector('input[name="end_time"]').value;
-        const functionId = document.querySelector('input[name="function_id"]').value;
+    // เช็คสถานะห้องอัตโนมัติเมื่อเปลี่ยนเวลาหรือห้อง
+    document.querySelectorAll('input[name="start_time"], input[name="end_time"]').forEach(el => {
+        el.addEventListener('change', checkRoomAvailability);
+        el.addEventListener('input', checkRoomAvailability);
+    });
 
-        if (roomId && start && end) {
-            // เรียกใช้ API ตรวจสอบ
-            const response = await fetch(`api/validate_room_booking.php?room_id=${roomId}&start=${start}&end=${end}&exclude_id=${functionId}`);
-            const result = await response.json();
+    // ถ้ามีห้องถูกเลือกไว้แล้วและมีเวลา ให้ตรวจสอบสถานะทันที
+    setTimeout(checkRoomAvailability, 500);
 
-            if (result.status === 'conflict') {
-                e.preventDefault(); // หยุดการอัปเดต
-                alert('ขออภัย! ห้องนี้มีรายการที่ได้รับการอนุมัติแล้วในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่นครับ');
-            }
+    // ป้องกันการ submit ถ้าห้องไม่ว่าง
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const selCard = document.querySelector('input[name="room_id"]:checked')?.closest('.room-card');
+        if (selCard && selCard.classList.contains('border-danger')) {
+            e.preventDefault();
+            alert('ห้องนี้มีงานในช่วงเวลาที่เลือก กรุณาเปลี่ยนเวลาหรือเลือกห้องอื่น');
         }
     });
 

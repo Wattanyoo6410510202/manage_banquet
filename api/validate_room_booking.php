@@ -11,19 +11,22 @@ if (empty($start_time) || empty($end_time)) {
     exit;
 }
 
-$sql = "SELECT COUNT(*) as conflict_count FROM functions 
-        WHERE room_id = $room_id 
-        AND approve = 1 
-        AND id != $exclude_id 
-        AND (('$start_time' BETWEEN start_time AND end_time) 
-             OR ('$end_time' BETWEEN start_time AND end_time)
-             OR (start_time BETWEEN '$start_time' AND '$end_time'))";
+$sql = "SELECT f.id, f.function_name, f.start_time, f.end_time, c.cust_name
+        FROM functions f
+        LEFT JOIN customers c ON f.customer_id = c.id
+        WHERE f.room_id = $room_id
+        AND f.status != 'Cancelled'
+        AND f.id != $exclude_id
+        AND ((f.start_time <= '$end_time' AND f.end_time >= '$start_time'))";
 
 $res = $conn->query($sql);
-$row = $res->fetch_assoc();
+$conflicts = [];
+while ($row = $res->fetch_assoc()) {
+    $conflicts[] = $row;
+}
 
-if ($row['conflict_count'] > 0) {
-    echo json_encode(['status' => 'conflict']);
+if (count($conflicts) > 0) {
+    echo json_encode(['status' => 'conflict', 'events' => $conflicts]);
 } else {
     echo json_encode(['status' => 'available']);
 }

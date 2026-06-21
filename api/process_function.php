@@ -50,13 +50,12 @@ if (isset($_POST['save'])) {
     $start_date = $_POST['start_time'] ?? null;
     $end_date = $_POST['end_time'] ?? null;
 
-    // --- ตรวจสอบการชนกันของวันเวลา (Conflict Check - เช็คเฉพาะรายการที่อนุมัติแล้ว) ---
+    // --- ตรวจสอบการชนกันของวันเวลา ---
     if ($room_id && $start_date && $end_date) {
-        // เพิ่มเงื่อนไข AND approve = 1 เพื่อเช็คเฉพาะรายการที่อนุมัติแล้ว
         $check_sql = "SELECT id, function_name FROM functions 
                       WHERE room_id = ? 
-                      AND (start_time <= ? AND end_time >= ?)
-                      AND approve = 1";
+                      AND status != 'Cancelled'
+                      AND (start_time <= ? AND end_time >= ?)";
         
         $stmt_check = $conn->prepare($check_sql);
         $stmt_check->bind_param("iss", $room_id, $end_date, $start_date);
