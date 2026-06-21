@@ -9,7 +9,7 @@ if (isset($_POST['update'])) {
     $company_id = intval($_POST['company_id']);
     $customer_id = intval($_POST['customer_id']);       // 👈 มาแล้วจาร!
     $function_type_id = intval($_POST['function_type_id']);  // 👈 มาแล้วจาร!
-    $room_id = intval($_POST['room_id']);           // 👈 มาแล้วจาร!
+    $room_id = !empty($_POST['room_id']) ? intval($_POST['room_id']) : null;
 
     $function_name = $_POST['function_name'];
     $draft_name = $_POST['draft_name'] ?? 'Draft'; // [NEW]
@@ -33,6 +33,27 @@ if (isset($_POST['update'])) {
     $result = $_POST['result'] ?? '';
     $inspection_date = !empty($_POST['inspection_date']) ? $_POST['inspection_date'] : null;
     $follow_up_date = !empty($_POST['follow_up_date']) ? $_POST['follow_up_date'] : null;
+
+    // --- ตรวจสอบการชนกันของวันเวลา (ไม่นับตัวเอง) ---
+    if ($room_id && $start_time && $end_time) {
+        $check_sql = "SELECT id, function_name FROM functions 
+                      WHERE room_id = ? 
+                      AND status != 'Cancelled'
+                      AND approve = 1
+                      AND id != ?
+                      AND (start_time <= ? AND end_time >= ?)";
+        $stmt_check = $conn->prepare($check_sql);
+        $stmt_check->bind_param("iiss", $room_id, $function_id, $end_time, $start_time);
+        $stmt_check->execute();
+        $res_check = $stmt_check->get_result();
+        if ($res_check->num_rows > 0) {
+            echo "<script>
+                    alert('ขออภัย! ห้องนี้มีรายการอื่นในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่น');
+                    window.history.back();
+                  </script>";
+            exit;
+        }
+    }
 
     // --- 2. จัดการรูปภาพ ---
     $backdrop_img_path = $_POST['old_backdrop_img'];
@@ -109,7 +130,7 @@ if (isset($_POST['update'])) {
 
     $stmt = $conn->prepare($sql_update);
 
-    $types = "iiiissssssddsssssssisssssssi"; // 30 chars
+    $types = "iiiissssssddsssssssisssssssssi"; // 30 chars
 
     $stmt->bind_param(
         $types,

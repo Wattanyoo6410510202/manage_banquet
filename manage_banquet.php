@@ -214,6 +214,45 @@ foreach ($all_qts as $qt) {
     </div>
 </div>
 
+<?php
+// ── ตรวจสอบการทับซ้อนของห้อง (เฉพาะงานที่ approve แล้ว) ──
+$conflict_sql = "SELECT 
+    f1.id AS id1, f1.function_name AS name1, f1.start_time AS start1, f1.end_time AS end1,
+    f2.id AS id2, f2.function_name AS name2, f2.start_time AS start2, f2.end_time AS end2,
+    f1.room_id, mr.room_name,
+    COALESCE(f1.approve, 0) AS approve1, COALESCE(f2.approve, 0) AS approve2,
+    f1.status AS status1, f2.status AS status2
+FROM functions f1
+INNER JOIN functions f2 ON f1.id < f2.id 
+    AND f1.room_id IS NOT NULL AND f2.room_id IS NOT NULL
+    AND f1.start_time IS NOT NULL AND f2.start_time IS NOT NULL
+    AND f1.end_time IS NOT NULL AND f2.end_time IS NOT NULL
+    AND f1.room_id = f2.room_id
+    AND f1.start_time < f2.end_time
+    AND f1.end_time > f2.start_time
+INNER JOIN meeting_rooms mr ON f1.room_id = mr.id
+WHERE ((f1.approve = 1 AND f2.approve = 0) OR (f1.approve = 0 AND f2.approve = 1))
+    AND f1.status NOT IN ('Cancelled', 'Completed')
+    AND f2.status NOT IN ('Cancelled', 'Completed')
+ORDER BY f1.start_time ASC";
+$conflict_q = mysqli_query($conn, $conflict_sql);
+$conflict_map = [];
+if ($conflict_q) {
+    while ($cr = mysqli_fetch_assoc($conflict_q)) {
+        $room_name = htmlspecialchars($cr['room_name']);
+        $time2 = date('d/m/Y H:i', strtotime($cr['start2'])) . ' - ' . date('H:i', strtotime($cr['end2']));
+        $time1 = date('d/m/Y H:i', strtotime($cr['start1'])) . ' - ' . date('H:i', strtotime($cr['end1']));
+        // เตือนเฉพาะตัวที่ยังไม่อนุมัติ
+        if ($cr['approve1'] == 0) {
+            $conflict_map[$cr['id1']] = "ทับซ้อนกับ: {$cr['name2']} ({$room_name} {$time2})";
+        }
+        if ($cr['approve2'] == 0) {
+            $conflict_map[$cr['id2']] = "ทับซ้อนกับ: {$cr['name1']} ({$room_name} {$time1})";
+        }
+    }
+}
+?>
+
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
         <!-- ตารางปกติ (สำหรับจอ Desktop) -->
@@ -300,6 +339,9 @@ foreach ($all_qts as $qt) {
                                     <?php endif; ?>
                                 </div>
                                 <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> <?= $master['formatted_date']; ?></div>
+                                <?php if (is_numeric($master['id']) && isset($conflict_map[$master['id']])): ?>
+                                    <div class="mt-1"><span class="badge bg-warning-subtle text-warning border border-warning small" title="<?= $conflict_map[$master['id']] ?>"><i class="bi bi-exclamation-triangle-fill me-1"></i>ห้องซ้อน</span></div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <div class="text-dark fw-medium small mb-1"><?= htmlspecialchars($project['booking_name']); ?></div>
@@ -378,6 +420,9 @@ foreach ($all_qts as $qt) {
                                         <?php endif; ?>
                                     </div>
                                     <small class="text-muted"><?= htmlspecialchars($row['function_name']); ?></small>
+                                    <?php if (isset($conflict_map[$row['id']])): ?>
+                                        <div class="mt-1"><span class="badge bg-warning-subtle text-warning border border-warning small" title="<?= $conflict_map[$row['id']] ?>"><i class="bi bi-exclamation-triangle-fill me-1"></i>ห้องซ้อน</span></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td><small class="text-muted"><?= htmlspecialchars($row['booking_name']); ?></small></td>
                                 <td><div class="small fw-bold">฿<?= number_format($row['total_amount'] ?: 0, 2); ?></div></td>
@@ -448,6 +493,9 @@ foreach ($all_qts as $qt) {
                                         <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
+                                <?php if (is_numeric($master['id']) && isset($conflict_map[$master['id']])): ?>
+                                    <div class="mt-1"><span class="badge bg-warning-subtle text-warning border border-warning small" title="<?= $conflict_map[$master['id']] ?>"><i class="bi bi-exclamation-triangle-fill me-1"></i>ห้องซ้อน</span></div>
+                                <?php endif; ?>
                             </div>
                             <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-2">
                                 <?= $master['status_info']['text']; ?>
@@ -521,6 +569,9 @@ foreach ($all_qts as $qt) {
                                                     <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
                                                     <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
                                                 </div>
+                                                <?php if (isset($conflict_map[$row['id']])): ?>
+                                                    <div class="mt-1"><span class="badge bg-warning-subtle text-warning border border-warning small" title="<?= $conflict_map[$row['id']] ?>"><i class="bi bi-exclamation-triangle-fill me-1"></i>ห้องซ้อน</span></div>
+                                                <?php endif; ?>
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <span class="text-muted">#<?= $row['function_code'] ?></span>
                                                     <span class="text-primary fw-bold">฿<?= number_format($row['total_amount'], 2) ?></span>

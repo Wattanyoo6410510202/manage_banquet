@@ -16,6 +16,7 @@ $sql = "SELECT f.id, f.function_name, f.start_time, f.end_time, c.cust_name
         LEFT JOIN customers c ON f.customer_id = c.id
         WHERE f.room_id = $room_id
         AND f.status != 'Cancelled'
+        AND f.approve = 1
         AND f.id != $exclude_id
         AND ((f.start_time <= '$end_time' AND f.end_time >= '$start_time'))";
 

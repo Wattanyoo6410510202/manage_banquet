@@ -77,17 +77,20 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
         f1.id AS id1, f1.function_name AS name1, f1.start_time AS start1, f1.end_time AS end1,
         f2.id AS id2, f2.function_name AS name2, f2.start_time AS start2, f2.end_time AS end2,
         f1.room_id, mr.room_name,
-        f1.approve AS approve1, f2.approve AS approve2,
+        COALESCE(f1.approve, 0) AS approve1, COALESCE(f2.approve, 0) AS approve2,
         f1.status AS status1, f2.status AS status2
     FROM functions f1
-    JOIN functions f2 ON f1.id < f2.id 
+    INNER JOIN functions f2 ON f1.id < f2.id 
+        AND f1.room_id IS NOT NULL AND f2.room_id IS NOT NULL
+        AND f1.start_time IS NOT NULL AND f2.start_time IS NOT NULL
+        AND f1.end_time IS NOT NULL AND f2.end_time IS NOT NULL
         AND f1.room_id = f2.room_id
         AND f1.start_time < f2.end_time
         AND f1.end_time > f2.start_time
-    JOIN meeting_rooms mr ON f1.room_id = mr.id
+    INNER JOIN meeting_rooms mr ON f1.room_id = mr.id
     WHERE (f1.approve = 1 OR f2.approve = 1)
-        AND f1.status NOT IN ('Cancelled')
-        AND f2.status NOT IN ('Cancelled')
+        AND f1.status NOT IN ('Cancelled', 'Completed')
+        AND f2.status NOT IN ('Cancelled', 'Completed')
     ORDER BY f1.start_time ASC";
     $conflict_q = mysqli_query($conn, $conflict_sql);
     $conflicts = [];
@@ -95,6 +98,8 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
         while ($cr = mysqli_fetch_assoc($conflict_q)) {
             $conflicts[] = $cr;
         }
+    } elseif ($conn->error) {
+        error_log("Calendar conflict SQL error: " . $conn->error);
     }
     ?>
     <div class="row g-3 mb-3">
@@ -667,8 +672,8 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         const events = calendar.getEvents().filter(ev => {
             const evStart = ev.startStr.split('T')[0];
             const isVisible = ev.display !== 'none';
-            const isDraft = ev.id.startsWith('qt_') && ev.extendedProps.status.toLowerCase().includes('draft');
-            return evStart === dateStr && isVisible && !isDraft;
+            const isQt = ev.id.startsWith('qt_');
+            return evStart === dateStr && isVisible && !isQt;
         });
 
         if (events.length === 0) {
@@ -690,16 +695,25 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     const startStr = viewStart.toISOString().split('T')[0];
     const endStr = viewEnd.toISOString().split('T')[0];
 
+    const rangeStart = '2026-05-31', rangeEnd = '2026-06-30';
+    const clampedStart = startStr < rangeStart ? rangeStart : startStr;
+    const clampedEnd = endStr > rangeEnd ? rangeEnd : endStr;
+    if (clampedStart >= clampedEnd) {
+        timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
+        eventCountBadge.classList.add('d-none');
+        document.getElementById('statDayEvents').textContent = '0 งาน';
+        return;
+    }
     const allEvents = calendar.getEvents().filter(ev => {
         const evStart = ev.startStr.split('T')[0];
         const isVisible = ev.display !== 'none';
-        const isDraft = ev.id.startsWith('qt_') && ev.extendedProps.status.toLowerCase().includes('draft');
-        return evStart >= startStr && evStart < endStr && isVisible && !isDraft;
+        const isQt = ev.id.startsWith('qt_');
+        return evStart >= clampedStart && evStart < clampedEnd && isVisible && !isQt;
     }).sort((a, b) => (a.startStr + a.id).localeCompare(b.startStr + b.id));
 
     const totalCount = allEvents.length;
-    const startLabel = new Date(startStr + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-    const endLabel = new Date(endStr + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    const startLabel = new Date(clampedStart + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    const endLabel = new Date(clampedEnd + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
     dateText.innerText = startLabel + ' — ' + endLabel;
 
     if (totalCount === 0) {

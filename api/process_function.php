@@ -55,6 +55,7 @@ if (isset($_POST['save'])) {
         $check_sql = "SELECT id, function_name FROM functions 
                       WHERE room_id = ? 
                       AND status != 'Cancelled'
+                      AND approve = 1
                       AND (start_time <= ? AND end_time >= ?)";
         
         $stmt_check = $conn->prepare($check_sql);
