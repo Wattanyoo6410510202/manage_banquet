@@ -43,15 +43,17 @@ if (isset($_POST['update'])) {
                       AND id != ?
                       AND (start_time <= ? AND end_time >= ?)";
         $stmt_check = $conn->prepare($check_sql);
-        $stmt_check->bind_param("iiss", $room_id, $function_id, $end_time, $start_time);
-        $stmt_check->execute();
-        $res_check = $stmt_check->get_result();
-        if ($res_check->num_rows > 0) {
-            echo "<script>
-                    alert('ขออภัย! ห้องนี้มีรายการอื่นในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่น');
-                    window.history.back();
-                  </script>";
-            exit;
+        if ($stmt_check) {
+            $stmt_check->bind_param("iiss", $room_id, $function_id, $end_time, $start_time);
+            $stmt_check->execute();
+            $res_check = $stmt_check->get_result();
+            if ($res_check->num_rows > 0) {
+                echo "<script>
+                        alert('ขออภัย! ห้องนี้มีรายการอื่นในช่วงเวลาที่เลือก กรุณาเลือกเวลาหรือห้องอื่น');
+                        window.history.back();
+                      </script>";
+                exit;
+            }
         }
     }
 
@@ -77,7 +79,7 @@ if (isset($_POST['update'])) {
 
     for ($i = 1; $i <= 3; $i++) {
         $field_name = "file_attachment" . $i;
-        $old_path = $_POST["old_file_$i"];
+        $old_path = $_POST["old_file_$i"] ?? '';
         $delete_flag = $_POST["delete_file_$i"] ?? '0';
 
         $current_path = $old_path;
@@ -180,11 +182,12 @@ if (isset($_POST['update'])) {
         $conn->query("DELETE FROM function_kitchens WHERE function_id = $function_id");
         $conn->query("DELETE FROM function_menus WHERE function_id = $function_id");
 
-        // --- 7. Re-Insert Schedule (แก้ไขชื่อให้ตรงกับหน้า HTML) ---
+        // --- 7. Re-Insert Schedule ---
         if (!empty($_POST['schedule_function'])) {
             $stmt_s = $conn->prepare("INSERT INTO function_schedules 
         (function_id, schedule_date, schedule_hour, schedule_function, schedule_guarantee) 
         VALUES (?, ?, ?, ?, ?)");
+            if (!$stmt_s) throw new Exception("Prepare schedule failed: " . $conn->error);
 
             foreach ($_POST['schedule_function'] as $key => $func) {
                 $date = $_POST['schedule_date'][$key] ?? null;
@@ -193,7 +196,7 @@ if (isset($_POST['update'])) {
 
                 if (trim($func) != "" || trim($hour) != "") {
                     $stmt_s->bind_param("isssi", $function_id, $date, $hour, $func, $guarantee);
-                    $stmt_s->execute();
+                    if (!$stmt_s->execute()) throw new Exception("Insert schedule failed: " . $stmt_s->error);
                 }
             }
         }
@@ -201,13 +204,15 @@ if (isset($_POST['update'])) {
         // --- 5. Re-Insert Kitchen ---
         if (!empty($_POST['k_item'])) {
             $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt_k) throw new Exception("Prepare kitchen failed: " . $conn->error);
+
             $k_remarks = $_POST['k_remark'] ?? [];
             foreach ($_POST['k_item'] as $key => $item) {
                 if (trim($item) != "") {
                     $k_type_id = intval($_POST['k_type_id'][$key] ?? 0);
                     $k_remark = $k_remarks[$key] ?? '';
                     $stmt_k->bind_param("isisis", $function_id, $_POST['k_date'][$key], $k_type_id, $item, $_POST['k_qty'][$key], $k_remark);
-                    $stmt_k->execute();
+                    if (!$stmt_k->execute()) throw new Exception("Insert kitchen failed: " . $stmt_k->error);
                 }
             }
         }
@@ -215,6 +220,8 @@ if (isset($_POST['update'])) {
         // --- 6. Re-Insert Menu ---
         if (!empty($_POST['menu_detail'])) {
             $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt_m) throw new Exception("Prepare menu failed: " . $conn->error);
+
             $menu_times = $_POST['menu_time'] ?? [];
             $menu_qtys = $_POST['menu_qty'] ?? [];
             $menu_prices = $_POST['menu_price'] ?? [];
@@ -222,7 +229,7 @@ if (isset($_POST['update'])) {
                 if (trim($detail) != "") {
                     $m_set_id = intval($_POST['menu_set_id'][$key] ?? 0);
                     $stmt_m->bind_param("isisds", $function_id, $menu_times[$key] ?? '', $m_set_id, $detail, $menu_qtys[$key] ?? 0, $menu_prices[$key] ?? 0);
-                    $stmt_m->execute();
+                    if (!$stmt_m->execute()) throw new Exception("Insert menu failed: " . $stmt_m->error);
                 }
             }
         }
@@ -231,7 +238,7 @@ if (isset($_POST['update'])) {
         $_SESSION['flash_msg'] = "update_success";
         header("Location: ../edit.php?id=" . $function_id);
         exit;
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         $conn->rollback();
         echo "Error: " . $e->getMessage();
     }
