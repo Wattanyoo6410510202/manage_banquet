@@ -206,12 +206,17 @@ if (isset($_POST['update'])) {
             $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)");
             if (!$stmt_k) throw new Exception("Prepare kitchen failed: " . $conn->error);
 
+            $k_dates = $_POST['k_date'] ?? [];
+            $k_qtys = $_POST['k_qty'] ?? [];
             $k_remarks = $_POST['k_remark'] ?? [];
+            $k_type_ids = $_POST['k_type_id'] ?? [];
             foreach ($_POST['k_item'] as $key => $item) {
                 if (trim($item) != "") {
-                    $k_type_id = intval($_POST['k_type_id'][$key] ?? 0);
-                    $k_remark = $k_remarks[$key] ?? '';
-                    $stmt_k->bind_param("isisis", $function_id, $_POST['k_date'][$key], $k_type_id, $item, $_POST['k_qty'][$key], $k_remark);
+                    $k_date_val = $k_dates[$key] ?? '';
+                    $k_type_id_val = intval($k_type_ids[$key] ?? 0);
+                    $k_qty_val = $k_qtys[$key] ?? 0;
+                    $k_remark_val = $k_remarks[$key] ?? '';
+                    $stmt_k->bind_param("isisis", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_remark_val);
                     if (!$stmt_k->execute()) throw new Exception("Insert kitchen failed: " . $stmt_k->error);
                 }
             }
@@ -225,10 +230,14 @@ if (isset($_POST['update'])) {
             $menu_times = $_POST['menu_time'] ?? [];
             $menu_qtys = $_POST['menu_qty'] ?? [];
             $menu_prices = $_POST['menu_price'] ?? [];
+            $menu_set_ids = $_POST['menu_set_id'] ?? [];
             foreach ($_POST['menu_detail'] as $key => $detail) {
                 if (trim($detail) != "") {
-                    $m_set_id = intval($_POST['menu_set_id'][$key] ?? 0);
-                    $stmt_m->bind_param("isisds", $function_id, $menu_times[$key] ?? '', $m_set_id, $detail, $menu_qtys[$key] ?? 0, $menu_prices[$key] ?? 0);
+                    $menu_time_val = $menu_times[$key] ?? '';
+                    $menu_set_id_val = intval($menu_set_ids[$key] ?? 0);
+                    $menu_qty_val = $menu_qtys[$key] ?? 0;
+                    $menu_price_val = $menu_prices[$key] ?? 0;
+                    $stmt_m->bind_param("isisds", $function_id, $menu_time_val, $menu_set_id_val, $detail, $menu_qty_val, $menu_price_val);
                     if (!$stmt_m->execute()) throw new Exception("Insert menu failed: " . $stmt_m->error);
                 }
             }
