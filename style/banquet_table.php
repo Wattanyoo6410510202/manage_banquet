@@ -222,8 +222,8 @@
                     "paging": true,
                     "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
                     "buttons": [
-                        { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง'},
-                        { extend: 'print', exportOptions: { columns: ':not(:first-child):not(:last-child)' } , title: 'รายการจัดเลี่ยง' }
+                        { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)', rows: function(idx, data, node) { return !$(node).hasClass('draft-sub-row'); } }, title: 'รายการจัดเลี้ยง'},
+                        { extend: 'print', exportOptions: { columns: ':not(:first-child):not(:last-child)', rows: function(idx, data, node) { return !$(node).hasClass('draft-sub-row'); } }, title: 'รายการจัดเลี้ยง' }
                     ],
                     "columnDefs": [
                         { "orderable": false, "targets": [0, -1] }

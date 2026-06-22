@@ -4,11 +4,11 @@ session_start();
 include "../config.php";
 
 if (isset($_POST['update'])) {
-    $function_id = intval($_POST['function_id']);
+    $function_id = intval($_POST['function_id'] ?? 0);
 
-    $company_id = intval($_POST['company_id']);
-    $customer_id = intval($_POST['customer_id']);       // 👈 มาแล้วจาร!
-    $function_type_id = intval($_POST['function_type_id']);  // 👈 มาแล้วจาร!
+    $company_id = intval($_POST['company_id'] ?? 0);
+    $customer_id = intval($_POST['customer_id'] ?? 0);
+    $function_type_id = intval($_POST['function_type_id'] ?? 0);
     $room_id = !empty($_POST['room_id']) ? intval($_POST['room_id']) : null;
 
     $function_name = $_POST['function_name'];
@@ -129,6 +129,9 @@ if (isset($_POST['update'])) {
     WHERE id=?";
 
     $stmt = $conn->prepare($sql_update);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
 
     $types = "iiiissssssddsssssssisssssssssi"; // 30 chars
 
@@ -166,64 +169,71 @@ if (isset($_POST['update'])) {
         $function_id           // 30
     );
 
-    if ($stmt->execute()) {
-        $conn->begin_transaction();
-        try {
-            // --- 4. ล้างและลงข้อมูลตารางลูกใหม่ (Kitchen / Menu / Schedule) ---
-            $conn->query("DELETE FROM function_schedules WHERE function_id = $function_id");
-            $conn->query("DELETE FROM function_kitchens WHERE function_id = $function_id");
-            $conn->query("DELETE FROM function_menus WHERE function_id = $function_id");
+    $conn->begin_transaction();
+    try {
+        if (!$stmt->execute()) {
+            throw new Exception("Update main table failed: " . $stmt->error);
+        }
 
-            // --- 7. Re-Insert Schedule (แก้ไขชื่อให้ตรงกับหน้า HTML) ---
-            if (!empty($_POST['schedule_function'])) {
-                $stmt_s = $conn->prepare("INSERT INTO function_schedules 
+        // --- 4. ล้างและลงข้อมูลตารางลูกใหม่ (Kitchen / Menu / Schedule) ---
+        $conn->query("DELETE FROM function_schedules WHERE function_id = $function_id");
+        $conn->query("DELETE FROM function_kitchens WHERE function_id = $function_id");
+        $conn->query("DELETE FROM function_menus WHERE function_id = $function_id");
+
+        // --- 7. Re-Insert Schedule (แก้ไขชื่อให้ตรงกับหน้า HTML) ---
+        if (!empty($_POST['schedule_function'])) {
+            $stmt_s = $conn->prepare("INSERT INTO function_schedules 
         (function_id, schedule_date, schedule_hour, schedule_function, schedule_guarantee) 
         VALUES (?, ?, ?, ?, ?)");
 
-                foreach ($_POST['schedule_function'] as $key => $func) {
-                    $date = $_POST['schedule_date'][$key] ?? null;
-                    $hour = $_POST['schedule_hour'][$key] ?? '';
-                    $guarantee = intval($_POST['schedule_guarantee'][$key] ?? 0);
+            foreach ($_POST['schedule_function'] as $key => $func) {
+                $date = $_POST['schedule_date'][$key] ?? null;
+                $hour = $_POST['schedule_hour'][$key] ?? '';
+                $guarantee = intval($_POST['schedule_guarantee'][$key] ?? 0);
 
-                    if (trim($func) != "" || trim($hour) != "") {
-                        // "isssi" -> int, string, string, string, int
-                        $stmt_s->bind_param("isssi", $function_id, $date, $hour, $func, $guarantee);
-                        $stmt_s->execute();
-                    }
+                if (trim($func) != "" || trim($hour) != "") {
+                    $stmt_s->bind_param("isssi", $function_id, $date, $hour, $func, $guarantee);
+                    $stmt_s->execute();
                 }
             }
-
-            // --- 5. Re-Insert Kitchen (ใช้ k_type_id ตามที่จารแก้) ---
-            if (!empty($_POST['k_item'])) {
-                $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)");
-                foreach ($_POST['k_item'] as $key => $item) {
-                    if (trim($item) != "") {
-                        $k_type_id = intval($_POST['k_type_id'][$key] ?? 0);
-                        $stmt_k->bind_param("isisis", $function_id, $_POST['k_date'][$key], $k_type_id, $item, $_POST['k_qty'][$key], $_POST['k_remark'][$key]);
-                        $stmt_k->execute();
-                    }
-                }
-            }
-
-            // --- 6. Re-Insert Menu (ใช้ menu_set_id และ menu_detail) ---
-            if (!empty($_POST['menu_detail'])) {
-                $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price) VALUES (?, ?, ?, ?, ?, ?)");
-                foreach ($_POST['menu_detail'] as $key => $detail) {
-                    if (trim($detail) != "") {
-                        $m_set_id = intval($_POST['menu_set_id'][$key] ?? 0);
-                        $stmt_m->bind_param("isisds", $function_id, $_POST['menu_time'][$key], $m_set_id, $detail, $_POST['menu_qty'][$key], $_POST['menu_price'][$key]);
-                        $stmt_m->execute();
-                    }
-                }
-            }
-
-            $conn->commit();
-            $_SESSION['flash_msg'] = "update_success";
-            header("Location: ../edit.php?id=" . $function_id);
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo "Error: " . $e->getMessage();
         }
+
+        // --- 5. Re-Insert Kitchen ---
+        if (!empty($_POST['k_item'])) {
+            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)");
+            $k_remarks = $_POST['k_remark'] ?? [];
+            foreach ($_POST['k_item'] as $key => $item) {
+                if (trim($item) != "") {
+                    $k_type_id = intval($_POST['k_type_id'][$key] ?? 0);
+                    $k_remark = $k_remarks[$key] ?? '';
+                    $stmt_k->bind_param("isisis", $function_id, $_POST['k_date'][$key], $k_type_id, $item, $_POST['k_qty'][$key], $k_remark);
+                    $stmt_k->execute();
+                }
+            }
+        }
+
+        // --- 6. Re-Insert Menu ---
+        if (!empty($_POST['menu_detail'])) {
+            $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price) VALUES (?, ?, ?, ?, ?, ?)");
+            $menu_times = $_POST['menu_time'] ?? [];
+            $menu_qtys = $_POST['menu_qty'] ?? [];
+            $menu_prices = $_POST['menu_price'] ?? [];
+            foreach ($_POST['menu_detail'] as $key => $detail) {
+                if (trim($detail) != "") {
+                    $m_set_id = intval($_POST['menu_set_id'][$key] ?? 0);
+                    $stmt_m->bind_param("isisds", $function_id, $menu_times[$key] ?? '', $m_set_id, $detail, $menu_qtys[$key] ?? 0, $menu_prices[$key] ?? 0);
+                    $stmt_m->execute();
+                }
+            }
+        }
+
+        $conn->commit();
+        $_SESSION['flash_msg'] = "update_success";
+        header("Location: ../edit.php?id=" . $function_id);
+        exit;
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo "Error: " . $e->getMessage();
     }
 }
 ?>

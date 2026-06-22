@@ -165,7 +165,7 @@ $items = $conn->query($sql_items);
 
             <div class="section-group">
                 <div class="section-title">รายละเอียดรายการ / Description</div>
-                <table class="table table-bordered table-tight" style="font-size: 12px;">
+                <table class="table table-bordered table-tight" style="font-size: 11px;">
                     <thead>
                         <tr class="text-center bg-light">
                             <th width="5%" style="font-size: 12px;">#</th>
@@ -183,7 +183,7 @@ $items = $conn->query($sql_items);
                             <tr>
                                 <td class="text-center"><?= $i++ ?></td>
                                 <td>
-                                    <textarea class="form-control border-0 bg-transparent fw-bold p-0 item-desc" rows="1" readonly style="resize: none; min-width: 100%; overflow: hidden;"><?= htmlspecialchars($item['item_name']) ?></textarea>
+                                    <textarea class="form-control border-0 bg-transparent p-0 item-desc" rows="1" readonly style="resize: none; min-width: 100%; overflow: hidden; font-size: 11px;"><?= htmlspecialchars($item['item_name']) ?></textarea>
                                 </td>
                                 <td class="text-center"><?= number_format($item['quantity']) ?></td>
                                 <td class="text-end"><?= number_format($item['unit_price'], 2) ?></td>

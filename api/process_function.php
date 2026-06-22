@@ -47,8 +47,10 @@ if (isset($_POST['save'])) {
     $created_by_name = $_SESSION['user_name'] ?? 'Unknown';
     $created_by_id = $_SESSION['user_id'] ?? 0;
 
-    $start_date = $_POST['start_time'] ?? null;
-    $end_date = $_POST['end_time'] ?? null;
+    $raw_start = $_POST['start_time'] ?? '';
+    $raw_end   = $_POST['end_time'] ?? '';
+    $start_date = !empty($raw_start) ? date('Y-m-d H:i:s', strtotime($raw_start)) : null;
+    $end_date   = !empty($raw_end)   ? date('Y-m-d H:i:s', strtotime($raw_end))   : null;
 
     // --- ตรวจสอบการชนกันของวันเวลา ---
     if ($room_id && $start_date && $end_date) {
@@ -153,7 +155,7 @@ if (isset($_POST['save'])) {
 
         $stmt = $conn->prepare($sql_main);
 
-        $types = "iiiiiisssssddssssssssssiisssssss"; // 32 chars: 6i+5s+2d+10s+2i+7s
+        $types = "iiiiiisssssddssssssssiisssssssss"; // 32 chars: 6i+5s+2d+8s+2i+9s
 
         $stmt->bind_param(
             $types,

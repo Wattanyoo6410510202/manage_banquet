@@ -2,7 +2,14 @@
 include "config.php";
 include "header.php";
 
-$my_only = !isset($_GET['my']) || $_GET['my'] === '1';
+$role = strtolower($_SESSION['role'] ?? 'staff');
+$is_admin_or_gm = in_array($role, ['admin', 'gm']);
+
+if (!isset($_GET['my'])) {
+    $my_only = !$is_admin_or_gm;
+} else {
+    $my_only = $_GET['my'] === '1';
+}
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
 
