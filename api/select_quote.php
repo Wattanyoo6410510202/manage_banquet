@@ -13,22 +13,31 @@ $deselect = isset($_GET['deselect']) && $_GET['deselect'] == 1;
 
 try {
     // 1. ดึงข้อมูล project_id ของใบเสนอราคานี้
-    $res = $conn->query("SELECT project_id FROM quotations WHERE id = $id");
+    $stmt_sel = $conn->prepare("SELECT project_id FROM quotations WHERE id = ?");
+    $stmt_sel->bind_param("i", $id);
+    $stmt_sel->execute();
+    $res = $stmt_sel->get_result();
     $row = $res->fetch_assoc();
-    $project_id = $row['project_id'];
+    $project_id = $row['project_id'] ?? null;
 
     $conn->begin_transaction();
 
     if ($deselect) {
         // ยกเลิกการเลือกใบนี้
-        $conn->query("UPDATE quotations SET is_selected = 0 WHERE id = $id");
+        $stmt_upd = $conn->prepare("UPDATE quotations SET is_selected = 0 WHERE id = ?");
+        $stmt_upd->bind_param("i", $id);
+        $stmt_upd->execute();
     } else {
         // 2. ถ้ามี project_id ให้ยกเลิกการเลือกใบอื่นใน project เดียวกันก่อน
         if ($project_id) {
-            $conn->query("UPDATE quotations SET is_selected = 0 WHERE project_id = $project_id");
+            $stmt_upd = $conn->prepare("UPDATE quotations SET is_selected = 0 WHERE project_id = ?");
+            $stmt_upd->bind_param("i", $project_id);
+            $stmt_upd->execute();
         }
         // 3. เลือกใบนี้เป็นใบหลัก
-        $conn->query("UPDATE quotations SET is_selected = 1 WHERE id = $id");
+        $stmt_upd = $conn->prepare("UPDATE quotations SET is_selected = 1 WHERE id = ?");
+        $stmt_upd->bind_param("i", $id);
+        $stmt_upd->execute();
     }
 
     $conn->commit();

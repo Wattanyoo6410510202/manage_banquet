@@ -63,16 +63,8 @@ if (!empty($ids) && is_array($ids)) {
                     // หาโฟลเดอร์ที่เก็บไฟล์นั้น (เช่นจาก ../uploads/attach_2026/f1.pdf -> ../uploads/attach_2026)
                     $dir_path = dirname($file_relative_path);
 
-                    if (is_dir($dir_path)) {
-                        // 1. ลบไฟล์ทุกไฟล์ที่อยู่ในโฟลเดอร์นั้นก่อน (PHP ลบโฟลเดอร์ที่มีไฟล์ไม่ได้)
-                        $inner_files = glob($dir_path . '/*');
-                        foreach ($inner_files as $f) {
-                            if (is_file($f))
-                                unlink($f);
-                        }
-
-                        // 2. พอข้างในว่างแล้ว สั่งลบโฟลเดอร์ทิ้งเลยจาร
-                        @rmdir($dir_path);
+                    if (is_file($file_relative_path)) {
+                        unlink($file_relative_path);
                     }
                 }
             }

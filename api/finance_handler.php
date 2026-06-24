@@ -25,9 +25,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $sql = "INSERT INTO function_finance (function_id, type, detail, amount, payment_method, transaction_date, created_by_role, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // Check if function is already approved (for post-approval flag)
+        $is_post = 0;
+        $stmt_cf = $conn->prepare("SELECT approve FROM functions WHERE id = ?");
+        $stmt_cf->bind_param("i", $function_id);
+        $stmt_cf->execute();
+        $res_cf = $stmt_cf->get_result();
+        if ($cf = $res_cf->fetch_assoc()) {
+            if ($cf['approve'] == 1) $is_post = 1;
+        }
+
+        $sql = "INSERT INTO function_finance (function_id, type, detail, amount, payment_method, transaction_date, created_by_role, created_by_name, is_post_approval) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issdssss", $function_id, $type, $detail, $amount, $payment_method, $t_date, $created_by_role, $created_by_name);
+        $stmt->bind_param("issdssssi", $function_id, $type, $detail, $amount, $payment_method, $t_date, $created_by_role, $created_by_name, $is_post);
         
         if ($stmt->execute()) {
             echo json_encode(['status' => 'success', 'message' => 'บันทึกข้อมูลเรียบร้อยแล้ว']);
@@ -42,9 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($id > 0) {
             // เช็คก่อนว่ามีข้อมูลไหม (เผื่อโดนลบไปแล้ว)
-            $check = $conn->query("SELECT id FROM function_finance WHERE id = $id");
-            if ($check->num_rows > 0) {
-                if ($conn->query("DELETE FROM function_finance WHERE id = $id")) {
+            $stmt_chk = $conn->prepare("SELECT id FROM function_finance WHERE id = ?");
+            $stmt_chk->bind_param("i", $id);
+            $stmt_chk->execute();
+            $res_chk = $stmt_chk->get_result();
+            if ($res_chk->num_rows > 0) {
+                $stmt_del = $conn->prepare("DELETE FROM function_finance WHERE id = ?");
+                $stmt_del->bind_param("i", $id);
+                if ($stmt_del->execute()) {
                     echo json_encode(['status' => 'success', 'message' => 'ลบรายการเรียบร้อย']);
                 } else {
                     echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถลบข้อมูลได้']);

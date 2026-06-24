@@ -16,26 +16,27 @@ if ($function_id <= 0) {
 $sql = "SELECT banquet_style, equipment, backdrop_detail, hk_florist_detail FROM functions WHERE id = $function_id";
 $res = $conn->query($sql);
 
-$mt_checklists = $conn->query("SELECT * FROM master_checklist_mt ORDER BY id ASC");
-$hk_checklists = $conn->query("SELECT * FROM master_checklist_hk ORDER BY id ASC");
-$bk_checklists = $conn->query("SELECT * FROM master_checklist_bk ORDER BY id ASC");
+$mt_list = [];
+$hk_list = [];
+$bk_list = [];
+
+if ($mt_q = $conn->query("SELECT * FROM master_checklist_mt ORDER BY id ASC")) {
+    while ($row = $mt_q->fetch_assoc()) $mt_list[] = $row;
+}
+if ($hk_q = $conn->query("SELECT * FROM master_checklist_hk ORDER BY id ASC")) {
+    while ($row = $hk_q->fetch_assoc()) $hk_list[] = $row;
+}
+if ($bk_q = $conn->query("SELECT * FROM master_checklist_bk ORDER BY id ASC")) {
+    while ($row = $bk_q->fetch_assoc()) $bk_list[] = $row;
+}
 
 if ($res && $data = $res->fetch_assoc()) {
-    $mt_items = [];
-    while($row = $mt_checklists->fetch_assoc()) $mt_items[] = $row;
-    
-    $hk_items = [];
-    while($row = $hk_checklists->fetch_assoc()) $hk_items[] = $row;
-
-    $bk_items = [];
-    while($row = $bk_checklists->fetch_assoc()) $bk_items[] = $row;
-
     echo json_encode([
         'status' => 'success', 
         'data' => $data,
-        'mt_list' => $mt_items,
-        'hk_list' => $hk_items,
-        'bk_list' => $bk_items
+        'mt_list' => $mt_list,
+        'hk_list' => $hk_list,
+        'bk_list' => $bk_list
     ]);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Data not found']);

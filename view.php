@@ -217,7 +217,7 @@ $menus = $conn->query($sql_menus);
                     <?php else: ?>
                         <h5 class="mb-0 fw-bold text-dark">QUOTATION</h5>
                     <?php endif; ?>
-                    <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo $data['company_name']; ?></p>
+                    <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo htmlspecialchars($data['company_name']); ?></p>
                 </div>
             </div>
             <div class="text-end">
@@ -233,27 +233,27 @@ $menus = $conn->query($sql_menus);
                 <div class="col-7">
                     <div class="row g-2">
                         <div class="col-12"><strong>ชื่องาน:</strong> <span
-                                class="data-value"><?php echo $data['function_name']; ?> 
+                                class="data-value"><?php echo htmlspecialchars($data['function_name']); ?> 
                                 <span class="badge bg-secondary rounded-pill fw-normal ms-1" style="font-size: 8px;">
                                     <?= htmlspecialchars($data['draft_name'] ?? 'Draft V1') ?>
                                 </span>
                             </span></div>
                         <div class="col-12"><strong>ประเภทงาน:</strong> <span
-                                class="data-value"><?php echo $data['function_type_name'] ?? '-'; ?></span></div>
+                                class="data-value"><?php echo htmlspecialchars($data['function_type_name'] ?? '-'); ?></span></div>
 
                         <div class="col-6"><strong>ผู้จอง:</strong> <span
-                                class="data-value"><?php echo $data['booking_name']; ?></span></div>
+                                class="data-value"><?php echo htmlspecialchars($data['booking_name']); ?></span></div>
                         <div class="col-6"><strong>เบอร์โทร:</strong> <span
-                                class="data-value"><?php echo $data['phone']; ?></span></div>
+                                class="data-value"><?php echo htmlspecialchars($data['phone']); ?></span></div>
 
                         <div class="col-12"><strong>หน่วยงาน/ที่อยู่:</strong> <span
-                                class="data-value"><?php echo $data['organization']; ?></span></div>
+                                class="data-value"><?php echo htmlspecialchars($data['organization']); ?></span></div>
                     </div>
                 </div>
                 <div class="col-5 border-start ps-3">
                     <div class="row g-2">
                         <div class="col-12"><strong>สถานที่ประชุม:</strong> <span
-                                class="data-value"><?php echo $data['master_room_name'] ?? $data['room_name']; ?></span>
+                                class="data-value"><?php echo htmlspecialchars($data['master_room_name'] ?? $data['room_name']); ?></span>
                         </div>
 
                         <div class="col-12"><strong>จำนวนผู้เข้าร่วม (PAX):</strong> <span
@@ -261,7 +261,7 @@ $menus = $conn->query($sql_menus);
                                 ท่าน</span></div>
 
                         <div class="col-12"><strong>Booking Room:</strong> <span
-                                class="data-value"><?php echo $data['booking_room'] ?? '-'; ?></span></div>
+                                class="data-value"><?php echo htmlspecialchars($data['booking_room'] ?? '-'); ?></span></div>
                         <div class="col-12 text-primary"><strong>เงินมัดจำ (Deposit):</strong> <span
                                 class="data-value"><?php echo number_format($data['deposit'] ?? 0, 2); ?></span></div>
                     </div>
@@ -324,17 +324,17 @@ $menus = $conn->query($sql_menus);
                     </tbody>
                 </table>
                 <div class="p-2 border rounded bg-light" style="font-size: 8.5px; mb-0">
-                    <strong>หมายเหตุครัว:</strong> <?php echo nl2br($data['main_kitchen_remark'] ?? '-'); ?>
+                    <strong>หมายเหตุครัว:</strong> <?php echo nl2br(htmlspecialchars($data['main_kitchen_remark'] ?? '-')); ?>
                 </div>
             </div>
             <div class="col-5">
                 <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
                 <div class="box-detail">
-                    <?php echo nl2br($data['banquet_style'] ?? 'ตามมาตรฐาน'); ?>
+                    <?php echo nl2br(htmlspecialchars($data['banquet_style'] ?? 'ตามมาตรฐาน')); ?>
                 </div>
 
                 <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
-                <div class="box-detail"><?php echo nl2br($data['equipment'] ?? '-'); ?></div>
+                <div class="box-detail"><?php echo nl2br(htmlspecialchars($data['equipment'] ?? '-')); ?></div>
             </div>
         </div>
     </div>
@@ -371,20 +371,20 @@ $menus = $conn->query($sql_menus);
         <div class="row ">
             <div class="col-6">
                 <div class="section-title">7. ป้ายชื่อและฉาก (BACKDROP & SIGNAGE)</div>
-                <div class="box-detail mb-1"><?php echo nl2br($data['backdrop_detail'] ?? '-'); ?></div>
+                <div class="box-detail mb-1"><?php echo nl2br(htmlspecialchars($data['backdrop_detail'] ?? '-')); ?></div>
                 <?php if (!empty($data['backdrop_img'])): ?>
                     <div class="text-center border p-1 rounded bg-white mt-1">
-                        <img src="<?php echo $data['backdrop_img']; ?>" style="max-height: 80px; max-width: 100%;">
+                        <img src="<?php echo htmlspecialchars($data['backdrop_img']); ?>" style="max-height: 80px; max-width: 100%;">
                     </div>
                 <?php endif; ?>
             </div>
             <div class="col-6">
                 <div class="section-title">8. แม่บ้านและดอกไม้ (FLORIST & HK)</div>
                 <div class="box-detail" style="min-height: 60px;">
-                    <?php echo nl2br($data['hk_florist_detail'] ?? '-'); ?>
+                    <?php echo nl2br(htmlspecialchars($data['hk_florist_detail'] ?? '-')); ?>
                 </div>
                 <div class="mt-2 p-1 border-start border-warning bg-light" style="font-size: 9px;">
-                    <strong>หมายเหตุอื่นๆ:</strong> <?php echo $data['remark'] ?? '-'; ?>
+                    <strong>หมายเหตุอื่นๆ:</strong> <?php echo htmlspecialchars($data['remark'] ?? '-'); ?>
                 </div>
             </div>
         </div>
@@ -401,10 +401,10 @@ $menus = $conn->query($sql_menus);
                     <?php endif; ?>
                 </div>
                 <div class="mx-auto border-top w-75 pt-1">
-                    <div class="fw-bold"><?php echo $data['created_by'] ?? '-'; ?></div>
+                    <div class="fw-bold"><?php echo htmlspecialchars($data['created_by'] ?? '-'); ?></div>
                     ผู้จัดทำ (Event Organizer)
                 </div>
-                <small class="text-muted">วันที่: <?php echo $data['created_at'] ?? '-'; ?></small>
+                <small class="text-muted">วันที่: <?php echo htmlspecialchars($data['created_at'] ?? '-'); ?></small>
             </div>
 
             <div class="col-4 text-center">
@@ -428,7 +428,7 @@ $menus = $conn->query($sql_menus);
             <div class="col-4 text-center">
                 <div class="sig-space"></div>
                 <div class="mx-auto border-top w-75 pt-1">
-                    <div class="fw-bold"><?php echo $data['booking_name'] ?? '-'; ?></div>
+                    <div class="fw-bold"><?php echo htmlspecialchars($data['booking_name'] ?? '-'); ?></div>
                     ลูกค้า (Customer)
                 </div>
                 <small class="text-muted">วันที่: ______/______/______</small>

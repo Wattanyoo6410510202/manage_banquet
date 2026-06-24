@@ -2,13 +2,22 @@
 include "../config.php";
 
 if (isset($_GET['id'])) {
-    $id = $_GET['id'];
-    
-    // ดึง User ID จาก Session (สมมติว่าคุณเก็บไว้ใน $_SESSION['user_id'])
-    $admin_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+    // Check role — only admin/gm/manager can approve quotations
+    $role = strtolower($_SESSION['role'] ?? '');
+    if (!in_array($role, ['admin', 'gm', 'manager'])) {
+        header("Location: ../quotation_list.php?status=forbidden");
+        exit();
+    }
+
+    $id = intval($_GET['id']);
+    $admin_id = intval($_SESSION['user_id'] ?? 0);
+
+    if ($id <= 0) {
+        header("Location: ../quotation_list.php?status=error");
+        exit();
+    }
 
     try {
-        // อัปเดตสถานะเป็น 'Approved', บันทึกผู้อนุมัติ และเวลาที่อนุมัติ
         $sql = "UPDATE quotations SET 
                 status = 'Approved', 
                 approved_by = ?, 
@@ -17,15 +26,10 @@ if (isset($_GET['id'])) {
                 WHERE id = ?";
         
         $stmt = $conn->prepare($sql);
-        
-        if ($stmt->execute([$admin_id, $id])) {
-            // อัปเดตสำเร็จ ส่งกลับไปหน้าเดิมพร้อม Parameter แจ้งเตือน
-            header("Location: ../quotation_list.php");
-        } else {
-            header("Location: ../quotation_list.php");
-        }
-    } catch (PDOException $e) {
-        // กรณีเกิด Error ใน SQL
+        $stmt->bind_param("ii", $admin_id, $id);
+        $stmt->execute();
+        header("Location: ../quotation_list.php");
+    } catch (Exception $e) {
         header("Location: ../quotation_list.php?status=db_error&msg=" . urlencode($e->getMessage()));
     }
     exit();

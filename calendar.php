@@ -1,6 +1,8 @@
 <?php include "config.php";
 include "header.php";
 
+$current_user_name = $_SESSION['user_name'] ?? '';
+$user_role = strtolower($_SESSION['role'] ?? '');
 $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 $rooms = $conn->query("SELECT id, room_name, company_id FROM meeting_rooms WHERE status = 'active' ORDER BY room_name ASC");
 $rooms_json = [];
@@ -278,6 +280,8 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
 <script>
 let calendar;
 let lastTimetableDate = null;
+const currentUserName = '<?php echo addslashes($current_user_name); ?>';
+const currentUserRole = '<?php echo addslashes($user_role); ?>';
 
 document.addEventListener('DOMContentLoaded', function () {
     var calendarEl = document.getElementById('calendar');
@@ -655,6 +659,12 @@ function updateStats() {
     document.getElementById('statRevenue').textContent = '฿' + totalRev.toLocaleString('en-US', { minimumFractionDigits: 2 });
 }
 
+function belongsToUser(ev) {
+    if (currentUserRole === 'admin') return true;
+    const creator = ev.extendedProps.created_by_name || '';
+    return creator === currentUserName;
+}
+
 function updateDayTimetable(date, viewStart, viewEnd) {
     const dateText = document.getElementById('selectedDateText');
     const timetableBody = document.querySelector('#dayTimetable tbody');
@@ -673,7 +683,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
             const evStart = ev.startStr.split('T')[0];
             const isVisible = ev.display !== 'none';
             const isQt = ev.id.startsWith('qt_');
-            return evStart === dateStr && isVisible && !isQt;
+            return evStart === dateStr && isVisible && !isQt && belongsToUser(ev);
         });
 
         if (events.length === 0) {
@@ -695,9 +705,8 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     const startStr = viewStart.toISOString().split('T')[0];
     const endStr = viewEnd.toISOString().split('T')[0];
 
-    const rangeStart = '2026-05-31', rangeEnd = '2026-06-30';
-    const clampedStart = startStr < rangeStart ? rangeStart : startStr;
-    const clampedEnd = endStr > rangeEnd ? rangeEnd : endStr;
+    const clampedStart = startStr;
+    const clampedEnd = endStr;
     if (clampedStart >= clampedEnd) {
         timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
         eventCountBadge.classList.add('d-none');
@@ -708,7 +717,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         const evStart = ev.startStr.split('T')[0];
         const isVisible = ev.display !== 'none';
         const isQt = ev.id.startsWith('qt_');
-        return evStart >= clampedStart && evStart < clampedEnd && isVisible && !isQt;
+        return evStart >= clampedStart && evStart < clampedEnd && isVisible && !isQt && belongsToUser(ev);
     }).sort((a, b) => (a.startStr + a.id).localeCompare(b.startStr + b.id));
 
     const totalCount = allEvents.length;

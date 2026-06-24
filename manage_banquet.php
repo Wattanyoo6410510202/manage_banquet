@@ -13,10 +13,6 @@ function formatPhoneNumber($phone)
 }
 ?>
 <?php
-$user_role = strtolower($_SESSION['role'] ?? '');
-
-$can_manage = in_array($user_role, ['admin', 'staff', 'gm']);
-
 // 1. ตรวจสอบ Role และ User
 $user_role = strtolower($_SESSION['role'] ?? 'staff');
 $current_user = $_SESSION['user_name'] ?? '';

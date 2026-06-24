@@ -290,8 +290,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-primary bg-opacity-10 h-100">
                             <label class="small fw-bold text-primary mb-0" style="font-size: 0.65rem;">Booking No.</label>
-                            <input name="booking_room" value="<?php echo $row['booking_room'] ?? ''; ?>"
-                                class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
+                            <input name="booking_room" value="<?php echo $quote_data['booking_room'] ?? ''; ?>"
+                                                                        class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
                                 placeholder="BK-XXXX" style="height: 32px;">
                         </div>
                     </div>
@@ -299,7 +299,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                         <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
                             <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">จำนวน (PAX)</label>
                             <div class="input-group">
-                                <input type="number" name="pax" value="<?php echo $row['pax'] ?? ''; ?>"
+                                <input type="number" name="pax" value="<?php echo $quote_data['pax'] ?? ''; ?>"
                                     class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-6"
                                     placeholder="0" style="height: 32px;">
                                 <span class="input-group-text border-0 bg-transparent text-info p-0 small">คน</span>
@@ -312,7 +312,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             <div class="input-group">
                                 <span class="input-group-text border-0 bg-transparent text-success fw-bold p-0">฿</span>
                                 <input type="number" step="0.01" name="deposit"
-                                    value="<?php echo $row['deposit'] ?? ''; ?>"
+                                    value="<?php echo $quote_data['deposit'] ?? ''; ?>"
                                     class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
                                     placeholder="0.00" style="height: 32px;">
                             </div>

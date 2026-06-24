@@ -13,17 +13,27 @@ if (!$data) {
 
 // 2. ดึงรายการบัญชี
 $sql_fin = "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
-// 2. ดึงรายการบัญชี (ค่าใช้จ่ายอื่นๆ ที่ไม่ใช่ค่าอาหารที่ดึงออโต้)
 $res_fin = $conn->query($sql_fin);
 $finances = [];
 $total_income = 0;
-$extra_cost = 0; // เปลี่ยนชื่อตัวแปรให้ชัดเจนว่าเป็นค่าใช้จ่ายอื่นๆ
+$extra_cost = 0;
+
+// แยกยอดก่อน/หลังอนุมัติ
+$post_income = 0;
+$post_cost = 0;
 
 while ($f = $res_fin->fetch_assoc()) {
+    if ($f['is_post_approval']) {
+        if ($f['type'] == 'income') {
+            $post_income += $f['amount'];
+        } else {
+            $post_cost += $f['amount'];
+        }
+    }
     if ($f['type'] == 'income') {
         $total_income += $f['amount'];
     } else {
-        $extra_cost += $f['amount']; // เก็บยอดที่คีย์เองแยกไว้
+        $extra_cost += $f['amount'];
     }
     $finances[] = $f;
 }
@@ -61,6 +71,9 @@ if (isset($_GET['ajax'])) {
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">ต้นทุนรวม</small>
                 <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
+                <?php if ($post_cost > 0): ?>
+                    <small class="text-warning">(หลังอนุมัติ <?= number_format($post_cost, 2) ?>)</small>
+                <?php endif; ?>
             </div>
         </div>
         <div class="col-md-3">
@@ -75,6 +88,19 @@ if (isset($_GET['ajax'])) {
                 <h4 class="mb-0"><?= number_format($roi, 2) ?>%</h4>
             </div>
         </div>
+        <?php if ($post_income > 0 || $post_cost > 0): ?>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm p-3 bg-light">
+                <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i> รายการหลังอนุมัติ</small>
+                <div class="d-flex gap-4 mt-1">
+                    <span>รายรับหลังอนุมัติ: <strong class="text-success"><?= number_format($post_income, 2) ?></strong></span>
+                    <span>รายจ่ายหลังอนุมัติ: <strong class="text-danger"><?= number_format($post_cost, 2) ?></strong></span>
+                    <?php $post_profit = $post_income - $post_cost; ?>
+                    <span>ผลต่างหลังอนุมัติ: <strong class="<?= $post_profit >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($post_profit, 2) ?></strong></span>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="card border-0 shadow-sm" id="financeTableContent">
@@ -107,7 +133,12 @@ if (isset($_GET['ajax'])) {
                                 <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                 </td>
                                 <td class="small text-muted"><?= htmlspecialchars($f['created_by_name'] ?? '-') ?></td>
-                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span></td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span>
+                                    <?php if ($f['is_post_approval']): ?>
+                                        <span class="badge bg-warning text-dark">หลังอนุมัติ</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
                                         data-id="<?= $f['id'] ?>">
@@ -196,66 +227,55 @@ function getKitchenCost($conn, $function_id)
 include "header.php";
 ?>
 <style>
+    /* ── Excel-like Print Style ── */
     @media print {
-
-        /* 1. ซ่อนทุกอย่างที่ไม่ใช่โซนตารางสรุป */
-        body * {
-            visibility: hidden;
-        }
-
-        #financeTableContainer,
-        #financeTableContainer * {
-            visibility: visible;
-        }
-
-        /* 2. จัดตำแหน่งโซนที่จะปริ้นให้ชิดขอบบนสุด */
+        body * { visibility: hidden; }
+        #financeTableContainer, #financeTableContainer * { visibility: visible; }
         #financeTableContainer {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0 !important;
-            padding: 0 !important;
+            position: absolute; left: 0; top: 0; width: 100%;
+            margin: 0 !important; padding: 10px !important;
         }
+        .btn, .btn-delete-finance, .no-print, i.bi-trash,
+        #financeForm, .col-md-4:first-child, .d-print-none { display: none !important; }
 
-        /* 3. ซ่อนปุ่มลบ (ถังขยะ) และปุ่มกดย้อนกลับ ไม่ให้ติดไปในกระดาษ */
-        .btn-delete-finance,
-        .no-print,
-        .btn,
-        i.bi-trash {
-            display: none !important;
-        }
-
-        /* 4. ปรับตารางให้มีเส้นขอบชัดเจนในกระดาษ */
-        .table {
-            border-collapse: collapse !important;
-            width: 100% !important;
-        }
-
-        .table th,
-        .table td {
-            border: 1px solid #dee2e6 !important;
-            padding: 8px !important;
+        .table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; font-family: Consolas, 'Courier New', monospace !important; }
+        .table th, .table td {
+            border: 1px solid #000 !important;
+            padding: 6px 6px !important;
             color: #000 !important;
+            background: #fff !important;
         }
+        .table th { background: #e0e0e0 !important; font-weight: bold !important; text-align: center !important; }
+        .table td.text-end { text-align: right !important; }
+        .text-success, .text-danger, .text-primary, .text-warning { color: #000 !important; }
+        .badge { background: transparent !important; color: #000 !important; border: 1px solid #000 !important; }
+        .card { border: 1px solid #000 !important; box-shadow: none !important; }
+        .bg-light { background: #f5f5f5 !important; }
+        .fw-bold { font-weight: bold !important; }
+        h4, h5, h6 { margin: 4px 0; }
 
-        /* 5. ปรับส่วนสรุปด้านล่างให้ดูสะอาดตา */
-        .card {
-            border: none !important;
-        }
-
-        .border-bottom {
-            border-bottom: 1px solid #000 !important;
-        }
-
-        .text-primary,
-        .text-danger,
-        .text-success {
-            color: #000 !important;
-        }
-
-        /* ปริ้นขาวดำจะได้ชัด */
+        /* ต้นทุนรวม card - ซ่อนย่อยเฉพาะตอน print */
+        #summaryWrapper .row.g-3.mb-4 { page-break-after: avoid; }
     }
+
+    .excel-table {
+        font-family: Consolas, 'Courier New', monospace;
+        font-size: 13px;
+        border-collapse: collapse;
+        width: 100%;
+    }
+    .excel-table th, .excel-table td {
+        border: 1px solid #999;
+        padding: 4px 6px;
+    }
+    .excel-table th {
+        background: #4472C4;
+        color: #fff;
+        font-weight: bold;
+        text-align: center;
+    }
+    .excel-table .row-even { background: #f2f2f2; }
+    .excel-table .row-total { background: #DAEEF3; font-weight: bold; }
 </style>
 <div class="container-fluid p-0">
     <div class="d-flex justify-content-between align-items-center mb-4 ">
@@ -267,6 +287,9 @@ include "header.php";
         </div>
 
         <div class="d-flex gap-2">
+            <button type="button" onclick="exportExcel()" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </button>
             <button type="button" onclick="window.print();" class="btn btn-dark btn-sm">
                 <i class="bi bi-printer"></i> พิมพ์รายงาน
             </button>
@@ -285,6 +308,9 @@ include "header.php";
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">ต้นทุนรวม</small>
                     <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
+                    <?php if ($post_cost > 0): ?>
+                        <small class="text-warning">(หลังอนุมัติ <?= number_format($post_cost, 2) ?>)</small>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="col-md-3">
@@ -302,6 +328,21 @@ include "header.php";
                 </div>
             </div>
         </div>
+        <?php if ($post_income > 0 || $post_cost > 0): ?>
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                    <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i> รายการหลังอนุมัติ</small>
+                    <div class="d-flex gap-4 mt-1">
+                        <span>รายรับหลังอนุมัติ: <strong class="text-success"><?= number_format($post_income, 2) ?></strong></span>
+                        <span>รายจ่ายหลังอนุมัติ: <strong class="text-danger"><?= number_format($post_cost, 2) ?></strong></span>
+                        <?php $post_profit = $post_income - $post_cost; ?>
+                        <span>ผลต่างหลังอนุมัติ: <strong class="<?= $post_profit >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($post_profit, 2) ?></strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="row">
@@ -350,16 +391,12 @@ include "header.php";
                                 value="<?= date('Y-m-d') ?>">
                         </div>
                         <div class="mb-3">
-                            <?php
-                            // ✅ ตรวจสอบสถานะ: ถ้า status ยังเป็น 'Pending' (อนุมัติ = 0) ถึงจะให้โชว์ปุ่มบันทึก
-                            if ($data['approve'] == 0):
-                                ?>
-                                <button type="submit" class="btn btn-warning w-100 fw-bold">
-                                    <i class="bi bi-save me-1"></i> บันทึกข้อมูล
-                                </button>
-                            <?php else: ?>
-                                <div class="alert alert-secondary text-center small py-2">
-                                    <i class="bi bi-lock-fill"></i> งานนี้อนุมัติแล้ว ไม่สามารถแก้ไขข้อมูลการเงินได้
+                            <button type="submit" class="btn btn-warning w-100 fw-bold">
+                                <i class="bi bi-save me-1"></i> บันทึกข้อมูล
+                            </button>
+                            <?php if ($data['approve'] == 1): ?>
+                                <div class="alert alert-warning text-center small py-2 mt-2">
+                                    <i class="bi bi-exclamation-triangle"></i> งานนี้ผ่านการอนุมัติแล้ว รายการที่บันทึกจะถูกทำเครื่องหมายเป็น "หลังอนุมัติ"
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -412,7 +449,12 @@ include "header.php";
                                         <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
                                         <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['payment_method'] ?? '-') ?></span></td>
-                                        <td><span class="badge bg-secondary"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span></td>
+                                        <td>
+                                            <span class="badge bg-secondary"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span>
+                                            <?php if ($f['is_post_approval']): ?>
+                                                <span class="badge bg-warning text-dark">หลังอนุมัติ</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-center d-print-none">
                                             <?php if (strtolower($_SESSION['role'] ?? 'viewer') !== 'viewer'): ?>
                                                 <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
@@ -506,6 +548,13 @@ include "header.php";
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Export to Excel
+        function exportExcel() {
+            const id = <?= $id ?>;
+            window.location.href = 'api/export_finance_excel.php?id=' + id;
+        }
+    </script>
     <script>
         // ฟังก์ชันโหลดข้อมูลใหม่แบบ AJAX
         function refreshFinanceData() {

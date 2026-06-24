@@ -115,6 +115,25 @@ while($row = $all_rooms_res->fetch_assoc()) {
     // เก็บเข้า array เพื่อส่งให้ json_encode ใน JS
     $all_rooms_data[] = $row;
 }
+
+$current_status = $data['status'] ?? 'Pending';
+$status_log_res = $conn->query("SELECT old_status FROM function_status_log WHERE function_id = $id ORDER BY id DESC LIMIT 1");
+$has_rollback = ($status_log_res && $status_log_res->num_rows > 0);
+$prev_status = '';
+if ($has_rollback) {
+    $prev_status = $status_log_res->fetch_assoc()['old_status'];
+}
+
+$status_badge_map = [
+    'Pending' => ['class' => 'bg-warning text-dark', 'icon' => 'bi-clock'],
+    'Confirmed' => ['class' => 'bg-info text-dark', 'icon' => 'bi-check-circle'],
+    'Approved' => ['class' => 'bg-info text-dark', 'icon' => 'bi-check-circle'],
+    'In Progress' => ['class' => 'bg-primary text-white', 'icon' => 'bi-play-circle'],
+    'Completed' => ['class' => 'bg-success text-white', 'icon' => 'bi-flag'],
+    'Cancelled' => ['class' => 'bg-danger text-white', 'icon' => 'bi-x-circle'],
+];
+$status_info = $status_badge_map[$current_status] ?? ['class' => 'bg-secondary text-white', 'icon' => 'bi-question-circle'];
+$status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้ว' : ($current_status === 'In Progress' ? 'ดำเนินการ' : ($current_status === 'Completed' ? 'จบงานแล้ว' : ($current_status === 'Cancelled' ? 'ยกเลิก' : ($current_status === 'Pending' ? 'รออนุมัติ' : $current_status))));
 ?>
 <style>
 .room-card.selected {
@@ -154,7 +173,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                     class="input-group-text bg-dark border-secondary text-gold small fw-bold">NO.</span>
                                 <input type="text" name="function_code"
                                     class="form-control border-secondary bg-light fw-bold text-center"
-                                    value="<?php echo $data['function_code']; ?>" readonly>
+                                    value="<?php echo htmlspecialchars($data['function_code']); ?>" readonly>
                             </div>
                         </div>
                     </div>
@@ -187,6 +206,24 @@ while($row = $all_rooms_res->fetch_assoc()) {
             </div>
             <?php endif; ?>
             <!-- --------------------------------- -->
+
+            <!-- Status Bar -->
+            <div class="bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="small fw-bold text-secondary"><i class="bi bi-activity me-1"></i> สถานะปัจจุบัน:</span>
+                    <span class="badge <?= $status_info['class'] ?> rounded-pill px-3 py-2">
+                        <i class="bi <?= $status_info['icon'] ?> me-1"></i> <?= $status_text ?>
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($has_rollback && $current_status !== $prev_status): ?>
+                    <button type="button" id="rollbackStatusBtn" class="btn btn-outline-warning btn-sm px-3" data-id="<?= $id ?>">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> ย้อนกลับสถานะ
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <!-- ----------------- -->
 
             <div class="card-body p-4 p-lg-5">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป</h5>
@@ -588,7 +625,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                                     class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
                         </div>
                         <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2"
-                            rows="3"><?php echo $data['main_kitchen_remark'] ?? ''; ?></textarea>
+                            rows="3"><?php echo htmlspecialchars($data['main_kitchen_remark'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="col-md-5 bg-sidebar p-4 rounded-4">
@@ -597,17 +634,17 @@ while($row = $all_rooms_res->fetch_assoc()) {
                         <div class="mb-4">
                             <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
                             <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                rows="6"><?php echo $data['banquet_style']; ?></textarea>
+                                rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
                         </div>
                         <div class="mb-4">
                             <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
                             <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                rows="5"><?php echo $data['equipment']; ?></textarea>
+                                rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
                         </div>
                         <div class="mb-0">
                             <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
                             <textarea name="remark" class="form-control form-control-sm bg-white"
-                                rows="2"><?php echo $data['remark']; ?></textarea>
+                                rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -679,19 +716,19 @@ while($row = $all_rooms_res->fetch_assoc()) {
                         <div class="p-4 border rounded-4 bg-white h-100">
                             <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
                             <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
-                                rows="3"><?php echo $data['backdrop_detail'] ?? ''; ?></textarea>
+                                rows="3"><?php echo htmlspecialchars($data['backdrop_detail'] ?? ''); ?></textarea>
 
                             <div class="p-3 border-dashed text-center bg-light">
                                 <label class="small d-block mb-2">รูปภาพปัจจุบัน:</label>
                                 <div id="imagePreviewContainer"
                                     class="<?php echo !empty($data['backdrop_img']) ? '' : 'd-none'; ?>">
-                                    <img id="imagePreview" src="<?php echo $data['backdrop_img'] ?: '#'; ?>"
+                                    <img id="imagePreview" src="<?php echo htmlspecialchars($data['backdrop_img'] ?: '#'); ?>"
                                         class="img-thumbnail mb-2" style="max-height: 150px;">
                                 </div>
                                 <input type="file" name="backdrop_img" class="form-control form-control-sm"
                                     accept="image/*" onchange="previewImage(this)">
                                 <input type="hidden" name="old_backdrop_img"
-                                    value="<?php echo $data['backdrop_img']; ?>">
+                                    value="<?php echo htmlspecialchars($data['backdrop_img']); ?>">
                             </div>
                         </div>
                     </div>
@@ -699,7 +736,7 @@ while($row = $all_rooms_res->fetch_assoc()) {
                         <div class="p-4 border rounded-4 bg-white  h-100">
                             <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
                             <textarea name="hk_florist_detail" class="form-control form-control-sm"
-                                rows="8"><?php echo $data['hk_florist_detail']; ?></textarea>
+                                rows="8"><?php echo htmlspecialchars($data['hk_florist_detail']); ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -949,7 +986,7 @@ function confirmRemoveFile(index) {
 <script>
 // แปลงข้อมูล PHP Array เป็น JS Object
 const allRooms = <?php echo json_encode($all_rooms_data); ?>;
-const selectedRoomId = "<?php echo $data['room_id']; ?>"; // ห้องที่เคยจองไว้เดิม
+const selectedRoomId = "<?php echo intval($data['room_id']); ?>"; // ห้องที่เคยจองไว้เดิม
 
 function filterRooms(companyId) {
     const container = document.getElementById('roomContainer');
@@ -1143,6 +1180,52 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('booking_name').value = '';
         document.getElementById('customer_phone').value = '';
         document.getElementById('customer_address').value = '';
+    });
+});
+</script>
+
+<!-- Rollback Status JS -->
+<script>
+$(document).on('click', '#rollbackStatusBtn', function() {
+    const id = $(this).data('id');
+    const btn = $(this);
+
+    Swal.fire({
+        title: 'ย้อนกลับสถานะ?',
+        text: 'คุณต้องการย้อนกลับสถานะไปสถานะก่อนหน้านี้ใช่หรือไม่?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ใช่, ย้อนกลับ',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'api/rollback_status.php',
+                type: 'POST',
+                data: { id: id },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ย้อนกลับสถานะสำเร็จ!',
+                            text: 'สถานะถูกเปลี่ยนเป็น "' + res.old_status + '"',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('ผิดพลาด!', res.message, 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'ไม่สามารถติดต่อ Server ได้', 'error');
+                }
+            });
+        }
     });
 });
 </script>

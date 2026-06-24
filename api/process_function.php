@@ -126,7 +126,9 @@ if (isset($_POST['save'])) {
         // --- [NEW] 2.5 จัดการ Project ---
         if ($project_id > 0) {
             // ถ้ามี project_id ส่งมาจากใบเสนอราคา ให้ใช้ตัวเดิมได้เลย (อาจจะอัปเดตชื่อโครงการถ้าจำเป็น)
-            $conn->query("UPDATE event_projects SET project_name = '$function_name' WHERE id = $project_id");
+            $stmt_upd_project = $conn->prepare("UPDATE event_projects SET project_name = ? WHERE id = ?");
+            $stmt_upd_project->bind_param("si", $function_name, $project_id);
+            $stmt_upd_project->execute();
         } else {
             // ถ้าไม่มี ให้สร้าง Project ใหม่
             $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
@@ -137,7 +139,9 @@ if (isset($_POST['save'])) {
         }
         // อัปเดต project_id ของใบเสนอราคาให้ตรงกับ function ที่สร้าง
         if ($quotation_id) {
-            $conn->query("UPDATE quotations SET project_id = $project_id WHERE id = $quotation_id");
+            $stmt_upd_quote = $conn->prepare("UPDATE quotations SET project_id = ? WHERE id = ?");
+            $stmt_upd_quote->bind_param("ii", $project_id, $quotation_id);
+            $stmt_upd_quote->execute();
         }
 
         // --- 3. แก้ไข SQL INSERT ---
@@ -201,7 +205,9 @@ if (isset($_POST['save'])) {
 
         // สร้างเลขรันงาน
         $final_code = str_pad($last_id, 5, '0', STR_PAD_LEFT) . "/" . date('dm');
-        $conn->query("UPDATE functions SET function_code = '$final_code' WHERE id = $last_id");
+        $stmt_upd_code = $conn->prepare("UPDATE functions SET function_code = ? WHERE id = ?");
+        $stmt_upd_code->bind_param("si", $final_code, $last_id);
+        $stmt_upd_code->execute();
 
         // --- 4. บันทึกตารางย่อย (เหมือนเดิม) ---
 
