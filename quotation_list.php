@@ -4,6 +4,7 @@ include "header.php";
 
 $role = strtolower($_SESSION['role'] ?? 'staff');
 $is_admin_or_gm = in_array($role, ['admin', 'gm']);
+$can_approve = in_array($role, ['admin', 'gm', 'manager']);
 
 if (!isset($_GET['my'])) {
     $my_only = !$is_admin_or_gm;
@@ -59,12 +60,13 @@ while ($row = $result->fetch_assoc()) {
             <table id="quoteDataTable" class="table table-hover align-middle mb-0" style="width:100%">
                 <thead>
                     <tr>
-                        <th class="text-center" width="12%">เลขที่ใบเสนอราคา</th>
-                        <th width="12%">วันที่ออกเอกสาร</th>
+                        <th class="text-center" width="10%">เลขที่ใบเสนอราคา</th>
+                        <th width="8%">วันที่ออก</th>
+                        <th width="12%">วันที่เริ่ม - วันสิ้นสุด</th>
                         <th>ชื่อลูกค้า / โครงการ</th>
-                        <th class="text-end" width="12%">ยอดสุทธิ</th>
-                        <th class="text-center" width="10%">สถานะ</th>
-                        <th class="text-center" width="10%">เลือกใช้งาน</th>
+                        <th class="text-end" width="10%">ยอดสุทธิ</th>
+                        <th class="text-center" width="8%">สถานะ</th>
+                        <th class="text-center" width="8%">เลือกใช้งาน</th>
                         <th class="text-center" width="15%">จัดการ</th>
                     </tr>
                 </thead>
@@ -80,13 +82,18 @@ while ($row = $result->fetch_assoc()) {
                         $st = $status_map[$q['status']] ?? $status_map['Draft'];
                     ?>
                         <tr style="<?= $q['is_selected'] ? 'background-color: #f0f7ff;' : '' ?>">
-                            <td class="text-center fw-bold text-primary">
+                            <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
                                 <?= $q['quote_no'] ?>
                                 <?php if ($q['is_selected']): ?>
                                     <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
                                 <?php endif; ?>
                             </td>
                             <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
+                            <td style="font-size: 0.85rem;">
+                                <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
+                                -
+                                <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
+                            </td>
                             <td>
                                 <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
                                 <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
@@ -109,7 +116,9 @@ while ($row = $result->fetch_assoc()) {
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
                                     <?php if ($q['status'] !== 'Approved'): ?>
+                                        <?php if ($can_approve): ?>
                                         <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                        <?php endif; ?>
                                         <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
                                     <?php endif; ?>
                                     <?php if ($q['status'] === 'Approved'): ?>
@@ -143,8 +152,14 @@ while ($row = $result->fetch_assoc()) {
                         </div>
                         
                         <div class="fw-bold text-dark mb-1"><?= $row['cust_name'] ?></div>
-                        <small class="text-muted d-block mb-3">
+                        <small class="text-muted d-block mb-1">
                             <i class="bi bi-calendar-event me-1"></i><?= $row['event_name'] ?? $row['function_name'] ?>
+                        </small>
+                        <small class="text-muted d-block mb-3">
+                            <i class="bi bi-calendar-range me-1"></i>
+                            <?= !empty($row['event_date']) ? date('d/m/Y', strtotime($row['event_date'])) : '?' ?>
+                            -
+                            <?= !empty($row['expiry_date']) ? date('d/m/Y', strtotime($row['expiry_date'])) : '?' ?>
                         </small>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
@@ -161,7 +176,7 @@ while ($row = $result->fetch_assoc()) {
                                         <i class="bi bi-check-lg"></i>
                                     </button>
                                 <?php endif; ?>
-                                <?php if ($row['status'] !== 'Approved'): ?>
+                                <?php if ($row['status'] !== 'Approved' && $can_approve): ?>
                                     <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $row['id'] ?>">
                                         <i class="bi bi-check-circle"></i>
                                     </button>

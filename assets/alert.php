@@ -34,7 +34,7 @@
         session_start();
     }
 
-    $msg_type = $_SESSION['flash_msg'] ?? $_GET['msg_type'] ?? null;
+    $msg_type = $_SESSION['flash_msg'] ?? $_GET['msg_type'] ?? $_GET['status'] ?? null;
 
     if ($msg_type) {
         $alert_msg = "";
@@ -82,6 +82,12 @@
                 $alert_class = "alert-danger text-danger";
                 $alert_icon = "bi-x-octagon-fill";
                 break;
+            case 'forbidden':
+                $alert_msg = "คุณไม่มีสิทธิ์อนุมัติเฉพาะผู้ดูแลระบบเท่านั้น";
+                $alert_class = "alert-warning text-warning";
+                $alert_icon = "bi-shield-exclamation";
+                break;
+
             case 'error':
             case 'delete_error':
                 $alert_msg = "เกิดข้อผิดพลาด!";
