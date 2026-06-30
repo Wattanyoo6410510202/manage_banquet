@@ -127,39 +127,6 @@ if ($function_id) {
                         <?php endwhile; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-warning"><i class="bi bi-tag me-1"></i> ที่มา Lead</label>
-                    <select name="lead_source" class="form-select">
-                        <option value="">-- เลือก --</option>
-                        <option value="โทรเข้า">โทรเข้า</option>
-                        <option value="FB / Social">FB / Social</option>
-                        <option value="แนะนำ">แนะนำ</option>
-                        <option value="Walk-in">Walk-in</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-info"><i class="bi bi-graph-up me-1"></i> ผลการดำเนินงาน</label>
-                    <select name="result" class="form-select">
-                        <option value="">-- เลือก --</option>
-                        <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
-                        <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
-                        <option value="รอการตัดสินใจ">รอการตัดสินใจ</option>
-                        <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold text-success"><i class="bi bi-binoculars me-1"></i> วันที่ Inspection</label>
-                    <input type="date" name="inspection_date" class="form-control" value="">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold text-danger"><i class="bi bi-clock-history me-1"></i> วันที่ Follow Up</label>
-                    <input type="date" name="follow_up_date" class="form-control" value="">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold"><i class="bi bi-check2-square me-1"></i> วันที่ Confirmed</label>
-                    <input type="date" name="approved_at" class="form-control" value="">
-                </div>
             </div>
 
             <hr>

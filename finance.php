@@ -51,8 +51,11 @@ $grand_total_income = $main_price + $total_income;
 // 🎯 ต้นทุนรวม (จากครัวอัตโนมัติ + รายจ่ายที่คีย์เพิ่มเอง)
 $total_cost = $extra_cost + $kitchen_total;
 
-// 🎯 กำไรสุทธิ (รายรับทั้งหมด - ต้นทุนทั้งหมด)
-$profit = $grand_total_income - $total_cost;
+// 🎯 ค่าบริหาร 3% ของรายรับทั้งหมด
+$management_fee = $grand_total_income * 0.03;
+
+// 🎯 กำไรสุทธิ (รายรับทั้งหมด - ต้นทุนทั้งหมด - ค่าบริหาร)
+$profit = $grand_total_income - $total_cost - $management_fee;
 
 // ROI (%)
 $roi = ($total_cost > 0) ? ($profit / $total_cost) * 100 : 0;
@@ -488,6 +491,10 @@ include "header.php";
                     <div class="d-flex justify-content-between border-bottom pb-1">
                         <span class="text-muted small">ต้นทุนรวมทั้งงาน:</span>
                         <span class="fw-bold text-danger"><?= number_format($total_cost, 2) ?> บาท</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <span class="text-muted small">ค่าบริหาร 3%:</span>
+                        <span class="fw-bold text-dark"><?= number_format($management_fee, 2) ?> บาท</span>
                     </div>
                     <div class="d-flex justify-content-between border-bottom pb-1">
                         <span class="text-muted small">กำไรสุทธิ:</span>

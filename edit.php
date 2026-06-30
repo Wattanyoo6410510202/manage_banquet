@@ -198,7 +198,29 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div>
+                <div class="d-flex gap-2">
+                    <?php
+                    $compare_id = 0;
+                    foreach ($all_drafts as $d) {
+                        if ($d['is_approved'] == 1 && $d['id'] != $id) {
+                            $compare_id = $d['id'];
+                            break;
+                        }
+                    }
+                    if (!$compare_id) {
+                        $prev = null;
+                        foreach ($all_drafts as $d) {
+                            if ($d['id'] == $id) break;
+                            $prev = $d;
+                        }
+                        if ($prev) $compare_id = $prev['id'];
+                    }
+                    ?>
+                    <?php if ($compare_id): ?>
+                    <a href="print_changes.php?id=<?= $id ?>&compare_id=<?= $compare_id ?>" target="_blank" class="btn btn-outline-info btn-xs px-3 py-1 rounded-pill small" style="font-size: 11px;">
+                        <i class="bi bi-file-earmark-diff me-1"></i> พิมพ์รายการที่เปลี่ยนแปลง
+                    </a>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-outline-success btn-xs px-3 py-1 rounded-pill small" style="font-size: 11px;" onclick="duplicateDraft(<?= $id ?>)">
                         <i class="bi bi-plus-circle me-1"></i> คัดลอกเป็น Draft ใหม่
                     </button>
@@ -1229,4 +1251,6 @@ $(document).on('click', '#rollbackStatusBtn', function() {
     });
 });
 </script>
+
+
 <?php include "footer.php"; ?>

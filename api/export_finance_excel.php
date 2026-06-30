@@ -74,7 +74,8 @@ $kitchen_total = getKitchenCost($conn, $id);
 $main_price = (float) ($data['total_amount'] ?? 0);
 $grand_total_income = $main_price + $total_income;
 $total_cost = $extra_cost + $kitchen_total;
-$profit = $grand_total_income - $total_cost;
+$management_fee = $grand_total_income * 0.03;
+$profit = $grand_total_income - $total_cost - $management_fee;
 $roi = ($total_cost > 0) ? ($profit / $total_cost) * 100 : 0;
 
 // ── Output Excel (HTML format) ──
@@ -164,6 +165,12 @@ $fmtDate = function($val) {
     <tr class="bg-yellow">
         <td colspan="2" class="label-cell">ต้นทุนรวมทั้งสิ้น</td>
         <td class="amount fw-bold text-red"><?= number_format($total_cost, 2) ?></td>
+        <td colspan="3"></td>
+    </tr>
+    <tr><td colspan="6" style="height: 4px;"></td></tr>
+    <tr>
+        <td colspan="2" class="label-cell">ค่าบริหาร 3%</td>
+        <td class="amount text-red"><?= number_format($management_fee, 2) ?></td>
         <td colspan="3"></td>
     </tr>
     <tr><td colspan="6" style="height: 4px;"></td></tr>

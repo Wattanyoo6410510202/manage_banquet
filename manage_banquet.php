@@ -29,11 +29,12 @@ if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
 }
 
 // 3. SQL Query
-$sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,
+$sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name, cust.sales_name,
         (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
         (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
         FROM functions f 
         LEFT JOIN companies c ON f.company_id = c.id
+        LEFT JOIN customers cust ON f.customer_id = cust.id
         LEFT JOIN event_projects p ON f.project_id = p.id
         $where_clause
         ORDER BY f.modify DESC, f.id DESC";
@@ -91,7 +92,7 @@ if ($q && mysqli_num_rows($q) > 0) {
 // 5. ดึงข้อมูลใบเสนอราคาทั้งหมด จัดกลุ่มตาม project_id หรือ function_id (กรณีไม่มี project)
 $quotations_by_project = [];
 $q_quotes = $conn->query("
-    SELECT q.*, c.cust_name 
+    SELECT q.*, c.cust_name, c.sales_name
     FROM quotations q 
     LEFT JOIN customers c ON q.customer_id = c.id 
     ORDER BY q.id DESC
@@ -294,6 +295,7 @@ if ($conflict_q) {
                                 'function_code' => $first_q['quote_no'],
                                 'status_info' => ['text' => $first_q['status'], 'class' => 'bg-secondary-subtle text-secondary'],
                                 'created_by' => '-',
+                                'sales_name' => $first_q['sales_name'] ?? '-',
                                 'attachments' => [],
                                 'approve' => 1
                             ];
@@ -362,7 +364,7 @@ if ($conflict_q) {
                             </td>
                             <td>
                                 <div class="text-dark small fw-medium"><?= htmlspecialchars($master['created_by'] ?: '-'); ?></div>
-                                <small class="text-muted" style="font-size: 0.7rem;">Master Version</small>
+                                <small class="text-muted" style="font-size: 0.7rem;">เซลที่ดูแล: <?= htmlspecialchars($master['sales_name'] ?: '-'); ?></small>
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
