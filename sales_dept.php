@@ -114,6 +114,66 @@ $staffs = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff', 'Banq
     </div>
 </div>
 
+<!-- Performance Cards: Staff -->
+<div class="row g-3 mb-4 mt-4">
+    <div class="col-12">
+        <h6 class="fw-bold mb-3"><i class="bi bi-people text-gold me-2"></i>ผลงานพนักงานขาย <?= date('F') ?> <?= date('Y') + 543 ?></h6>
+    </div>
+    <?php
+    $current_month = date('m');
+    $current_year = date('Y');
+    $staff_perf = $conn->query("SELECT
+        u.id, u.name, u.role,
+        COUNT(f.id) as total_events,
+        COALESCE(SUM(CASE WHEN f.approve = 1 AND f.status NOT IN ('Cancelled') THEN f.total_amount ELSE 0 END), 0) as total_revenue,
+        COALESCE(SUM(CASE WHEN f.approve = 1 AND f.status NOT IN ('Cancelled','Completed') THEN f.deposit ELSE 0 END), 0) as total_deposit,
+        COALESCE((SELECT st.target_amount FROM sales_targets st WHERE st.user_id = u.id AND st.target_month = $current_month AND st.target_year = $current_year LIMIT 1), 0) as target_amount
+        FROM users u
+        LEFT JOIN functions f ON f.created_by_id = u.id AND MONTH(f.created_at) = $current_month AND YEAR(f.created_at) = $current_year
+        WHERE u.role IN ('Staff', 'Admin', 'Sale')
+        GROUP BY u.id, u.name, u.role
+        HAVING total_events > 0 OR target_amount > 0
+        ORDER BY total_revenue DESC");
+    while ($s = $staff_perf->fetch_assoc()):
+        $pct = $s['target_amount'] > 0 ? round(($s['total_revenue'] / $s['target_amount']) * 100, 1) : 0;
+        $bar_color = $pct >= 100 ? 'bg-success' : ($pct >= 50 ? 'bg-warning' : 'bg-danger');
+        $text_color = $pct >= 100 ? 'text-success' : ($pct >= 50 ? 'text-warning' : 'text-danger');
+    ?>
+    <div class="col-xl-4 col-md-6">
+        <div class="card border shadow-sm h-100 rounded-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0"><?= htmlspecialchars($s['name']) ?></h6>
+                        <small class="text-muted"><?= $s['total_events'] ?> งาน</small>
+                    </div>
+                    <div class="bg-<?= $pct >= 100 ? 'success' : ($pct >= 50 ? 'warning' : 'danger') ?>-subtle rounded-circle p-3">
+                        <i class="bi bi-person text-<?= $pct >= 100 ? 'success' : ($pct >= 50 ? 'warning' : 'danger') ?> fs-4"></i>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">ยอดขาย</small>
+                        <span class="fw-bold text-primary fs-5">฿<?= number_format($s['total_revenue'], 0) ?></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">เงินมัดจำ</small>
+                        <span class="fw-bold fs-5">฿<?= number_format($s['total_deposit'], 0) ?></span>
+                    </div>
+                </div>
+                <div class="mb-1 d-flex justify-content-between">
+                    <small class="text-muted">เป้าหมาย: ฿<?= number_format($s['target_amount'], 0) ?></small>
+                    <small class="fw-bold <?= $text_color ?>"><?= $pct ?>%</small>
+                </div>
+                <div class="progress" style="height:8px">
+                    <div class="progress-bar <?= $bar_color ?>" style="width:<?= min($pct, 100) ?>%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endwhile; ?>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>

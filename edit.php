@@ -454,7 +454,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
                             <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">มูลค่างานทั้งหมด</label>
                             <div class="input-group">
@@ -467,48 +467,8 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             </div>
                         </div>
                     </div>
+
                     <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-warning bg-opacity-10 h-100">
-                            <label class="small fw-bold text-warning mb-0" style="font-size: 0.65rem;">ที่มา Lead</label>
-                            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6" style="height: 32px;">
-                                <option value="">-- เลือก --</option>
-                                <option value="โทรเข้า" <?= ($data['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
-                                <option value="FB / Social" <?= ($data['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
-                                <option value="แนะนำ" <?= ($data['lead_source'] ?? '') === 'แนะนำ' ? 'selected' : '' ?>>แนะนำ</option>
-                                <option value="Walk-in" <?= ($data['lead_source'] ?? '') === 'Walk-in' ? 'selected' : '' ?>>Walk-in</option>
-                                <option value="อื่นๆ" <?= ($data['lead_source'] ?? '') === 'อื่นๆ' ? 'selected' : '' ?>>อื่นๆ</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
-                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">ผลการดำเนินงาน</label>
-                            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6" style="height: 32px;">
-                                <option value="">-- เลือก --</option>
-                                <option value="ปิดงานสำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
-                                <option value="ปิดงานไม่สำเร็จ" <?= ($data['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
-                                <option value="รอการตัดสินใจ" <?= ($data['result'] ?? '') === 'รอการตัดสินใจ' ? 'selected' : '' ?>>รอการตัดสินใจ</option>
-                                <option value="ติดต่อไม่ได้" <?= ($data['result'] ?? '') === 'ติดต่อไม่ได้' ? 'selected' : '' ?>>ติดต่อไม่ได้</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
-                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">Inspection</label>
-                            <input type="date" name="inspection_date"
-                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
-                                value="<?= $data['inspection_date'] ?? '' ?>" style="height: 32px;">
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-danger bg-opacity-10 h-100">
-                            <label class="small fw-bold text-danger mb-0" style="font-size: 0.65rem;">Follow Up</label>
-                            <input type="date" name="follow_up_date"
-                                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
-                                value="<?= $data['follow_up_date'] ?? '' ?>" style="height: 32px;">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
                             <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
                             <div class="row g-1">
@@ -594,6 +554,16 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                         <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
+    <thead>
+        <tr>
+            <th style="width: 140px; font-size: 11px;" class="text-center text-secondary">วันที่</th>
+            <th style="width: 160px; font-size: 11px;" class="text-center text-secondary">ประเภทเมนู</th>
+            <th style="font-size: 11px;" class="text-center text-secondary">รายการรายละเอียด</th>
+            <th style="width: 80px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
+            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 45px;"></th>
+        </tr>
+    </thead>
     <tbody>
         <?php if ($kitchens->num_rows > 0):
             while ($k = $kitchens->fetch_assoc()): ?>
@@ -633,6 +603,13 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 <input type="number" name="k_qty[]"
                     class="form-control form-control-sm border-0 bg-light text-center"
                     value="<?php echo $k['k_qty']; ?>">
+            </td>
+
+            <td style="width: 100px;">
+                <input type="number" name="k_price[]"
+                    class="form-control form-control-sm border-0 bg-light text-end"
+                    placeholder="0.00" step="0.01"
+                    value="<?php echo number_format($k['k_price'] ?? 0, 2, '.', ''); ?>">
             </td>
 
             <td style="width: 45px;" class="text-center">
@@ -819,6 +796,7 @@ function addKitchenRow() {
                       rows="2" placeholder="รายการ..."></textarea>
         </td>
         <td width="10%"><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="0"></td>
+        <td width="12%"><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end" placeholder="0.00" step="0.01"></td>
         <td width="5%"><button type="button" class="btn text-danger btn-sm border-0"
                                 onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
     `;

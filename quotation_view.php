@@ -213,7 +213,18 @@ $items = $conn->query($sql_items);
                             <td class="text-end border-bottom"><?= number_format($quote['service_charge'], 2) ?></td>
                         </tr>
                         <tr>
-                            <td class="text-end">ภาษีมูลค่าเพิ่ม / VAT (7%):</td>
+                            <td class="text-end">
+                                ภาษีมูลค่าเพิ่ม / VAT (7%) 
+                                <?php 
+                                if (isset($quote['vat_type'])) {
+                                    if ($quote['vat_type'] === 'include') {
+                                        echo '(รวมใน)';
+                                    } elseif ($quote['vat_type'] === 'exclude') {
+                                        echo '(แยกนอก)';
+                                    }
+                                }
+                                ?>:
+                            </td>
                             <td class="text-end border-bottom"><?= number_format($quote['vat'], 2) ?></td>
                         </tr>
                         <tr>

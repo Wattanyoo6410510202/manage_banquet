@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subtotal    = floatval($_POST['subtotal']);
     $vat         = floatval($_POST['vat']);
     $grand_total = floatval($_POST['grand_total']);
+    $vat_type    = $_POST['vat_type'] ?? 'exclude';
     $service_charge = floatval($_POST['service_charge'] ?? 0);
     $remarks     = $_POST['remarks'] ?? '';
     $lost_reason = $_POST['lost_reason'] ?? '';
@@ -43,18 +44,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quote_no .= "-" . date('is'); // ถ้าซ้ำเติม นาที+วินาที
         }
 
-        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id, lost_reason)
+        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id, lost_reason, vat_type)
         $sql_quote = "INSERT INTO quotations (
             company_id, function_id, project_id, customer_id, quote_no, event_name, 
             event_date, expiry_date, subtotal, service_charge, vat, 
-            grand_total, status, remarks, lost_reason,
+            grand_total, vat_type, status, remarks, lost_reason,
             lead_source, result, inspection_date, follow_up_date, approved_at, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?, ?, ?, ?, ?, ?, ?)";
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft', ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $conn->prepare($sql_quote);
         
         $stmt->bind_param(
-            "iiiissssddddsssssssi",
+            "iiiissssddddssssssssi",
             $company_id,
             $function_id,
             $project_id,
@@ -67,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $service_charge,
             $vat,
             $grand_total,
+            $vat_type,
             $remarks,
             $lost_reason,
             $lead_source,

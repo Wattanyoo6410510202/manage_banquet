@@ -41,23 +41,31 @@ while ($row = $res_m->fetch_assoc()) {
 // --- ตะกร้าที่ 2: รายการเบรก/จัดเตรียม (ดึงจาก function_kitchens -> ล้วงราคาจาก function_breaks) ---
 $break_list = [];
 $sum_break = 0;
-$sql_k = "SELECT k_item, k_qty FROM function_kitchens WHERE function_id = $id";
+$sql_k = "SELECT k_item, k_qty, k_price FROM function_kitchens WHERE function_id = $id";
 $res_k = $conn->query($sql_k);
 
 while ($row = $res_k->fetch_assoc()) {
-    foreach (preg_split('/\r\n|\r|\n/', $row['k_item']) as $l) {
-        $name = cleanItemName($l);
-        if (!empty($name)) {
-            $price = 0;
-            $name_esc = $conn->real_escape_string($name);
-            // ล้วงราคาจากตารางเบรก
-            $q_price = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$name_esc%' LIMIT 1");
-            if ($p = $q_price->fetch_assoc()) {
-                $price = (float)$p['break_price'];
+    $price = (float)($row['k_price'] ?? 0);
+    
+    if ($price > 0) {
+        $total = $price * (float)$row['k_qty'];
+        $break_list[] = ['name' => $row['k_item'], 'qty' => (float)$row['k_qty'], 'price' => $price, 'total' => $total];
+        $sum_break += $total;
+    } else {
+        foreach (preg_split('/\r\n|\r|\n/', $row['k_item']) as $l) {
+            $name = cleanItemName($l);
+            if (!empty($name)) {
+                $item_price = 0;
+                $name_esc = $conn->real_escape_string($name);
+                // ล้วงราคาจากตารางเบรก
+                $q_price = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$name_esc%' LIMIT 1");
+                if ($p = $q_price->fetch_assoc()) {
+                    $item_price = (float)$p['break_price'];
+                }
+                $total = $item_price * (float)$row['k_qty'];
+                $break_list[] = ['name' => $name, 'qty' => (float)$row['k_qty'], 'price' => $item_price, 'total' => $total];
+                $sum_break += $total;
             }
-            $total = $price * (float)$row['k_qty'];
-            $break_list[] = ['name' => $name, 'qty' => (float)$row['k_qty'], 'price' => $price, 'total' => $total];
-            $sum_break += $total;
         }
     }
 }

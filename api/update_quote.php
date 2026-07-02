@@ -23,13 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subtotal = floatval($_POST['subtotal']);
     $vat = floatval($_POST['vat']); // ใช้ชื่อให้ตรงกับตาราง (vat)
     $grand_total = floatval($_POST['grand_total']);
+    $vat_type = $_POST['vat_type'] ?? 'exclude';
 
     // เริ่ม Transaction
     $conn->begin_transaction();
 
     try {
         // 2. อัปเดตข้อมูลหลักในตาราง quotations 
-        // (ปรับชื่อคอลัมน์ให้ตรงกับที่คุณส่งมา: subtotal, vat, grand_total, remarks, lost_reason)
+        // (ปรับชื่อคอลัมน์ให้ตรงกับที่คุณส่งมา: subtotal, vat, grand_total, vat_type, remarks, lost_reason)
         $sql_update = "UPDATE quotations SET 
                         customer_id = ?, 
                         company_id = ?, 
@@ -39,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         subtotal = ?, 
                         vat = ?, 
                         grand_total = ?, 
+                        vat_type = ?, 
                         remarks = ?,
                         lost_reason = ?,
                         lead_source = ?,
@@ -52,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare($sql_update);
 
         $stmt->bind_param(
-            "iisssdddsssssssi",
+            "iisssdddssssssssi",
             $customer_id,
             $company_id,
             $event_date,
@@ -61,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $subtotal,
             $vat,
             $grand_total,
+            $vat_type,
             $remarks,
             $lost_reason,
             $lead_source,

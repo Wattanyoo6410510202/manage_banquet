@@ -191,34 +191,40 @@ function getKitchenCost($conn, $function_id)
     }
 
     // --- ส่วนที่ 2: คำนวณจากครัว/เบรก (function_kitchens) ---
-    $sql_k = "SELECT k_item, k_qty FROM function_kitchens WHERE function_id = $function_id";
+    $sql_k = "SELECT k_item, k_qty, k_price FROM function_kitchens WHERE function_id = $function_id";
     $res_k = $conn->query($sql_k);
 
     while ($k = $res_k->fetch_assoc()) {
         $k_qty = (float) $k['k_qty'];
-        $k_lines = explode("\n", str_replace("\r", "", $k['k_item']));
+        $k_price = (float) ($k['k_price'] ?? 0);
 
-        foreach ($k_lines as $line) {
-            $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
-            if (empty($k_name))
-                continue;
+        if ($k_price > 0) {
+            $total_cost += ($k_price * $k_qty);
+        } else {
+            $k_lines = explode("\n", str_replace("\r", "", $k['k_item']));
 
-            $k_name_esc = $conn->real_escape_string($k_name);
-            $unit_price = 0;
+            foreach ($k_lines as $line) {
+                $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
+                if (empty($k_name))
+                    continue;
 
-            // 🔍 หาในตารางเบรกก่อน
-            $q_b = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_name_esc%' LIMIT 1");
-            if ($b = $q_b->fetch_assoc()) {
-                $unit_price = (float) $b['break_price'];
-            }
-            // 🔍 ถ้าไม่เจอ หาในตาราง Details เผื่อเป็นกับข้าวสั่งเพิ่ม
-            else {
-                $q_d = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_name_esc%' LIMIT 1");
-                if ($d = $q_d->fetch_assoc()) {
-                    $unit_price = (float) $d['price_per_pax'];
+                $k_name_esc = $conn->real_escape_string($k_name);
+                $unit_price = 0;
+
+                // 🔍 หาในตารางเบรกก่อน
+                $q_b = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_name_esc%' LIMIT 1");
+                if ($b = $q_b->fetch_assoc()) {
+                    $unit_price = (float) $b['break_price'];
                 }
+                // 🔍 ถ้าไม่เจอ หาในตาราง Details เผื่อเป็นกับข้าวสั่งเพิ่ม
+                else {
+                    $q_d = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_name_esc%' LIMIT 1");
+                    if ($d = $q_d->fetch_assoc()) {
+                        $unit_price = (float) $d['price_per_pax'];
+                    }
+                }
+                $total_cost += ($unit_price * $k_qty);
             }
-            $total_cost += ($unit_price * $k_qty);
         }
     }
 

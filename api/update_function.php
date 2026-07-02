@@ -203,11 +203,12 @@ if (isset($_POST['update'])) {
 
         // --- 5. Re-Insert Kitchen ---
         if (!empty($_POST['k_item'])) {
-            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_remark) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt_k) throw new Exception("Prepare kitchen failed: " . $conn->error);
 
             $k_dates = $_POST['k_date'] ?? [];
             $k_qtys = $_POST['k_qty'] ?? [];
+            $k_prices = $_POST['k_price'] ?? [];
             $k_remarks = $_POST['k_remark'] ?? [];
             $k_type_ids = $_POST['k_type_id'] ?? [];
             foreach ($_POST['k_item'] as $key => $item) {
@@ -215,8 +216,9 @@ if (isset($_POST['update'])) {
                     $k_date_val = $k_dates[$key] ?? '';
                     $k_type_id_val = intval($k_type_ids[$key] ?? 0);
                     $k_qty_val = $k_qtys[$key] ?? 0;
+                    $k_price_val = floatval($k_prices[$key] ?? 0);
                     $k_remark_val = $k_remarks[$key] ?? '';
-                    $stmt_k->bind_param("isisis", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_remark_val);
+                    $stmt_k->bind_param("isisids", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_price_val, $k_remark_val);
                     if (!$stmt_k->execute()) throw new Exception("Insert kitchen failed: " . $stmt_k->error);
                 }
             }

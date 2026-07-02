@@ -296,43 +296,54 @@ $menus = $conn->query($sql_menus);
     </div>
     <div class="section-group mb-0">
         <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
-        <div class="row mt-0">
-            <div class="col-7">
+        <table class="table table-sm table-bordered table-tight mb-0">
+            <thead class="table-light text-center">
+                <tr>
+                    <th width="15%">วันที่</th>
+                    <th width="15%">ประเภท</th>
+                    <th>รายการอาหาร</th>
+                    <th width="10%">จำนวน</th>
+                    <th width="15%">ราคา/หน่วย</th>
+                    <th width="15%">รวม</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
+                while ($row = $kitchens->fetch_assoc()): ?>
+                    <tr>
+                        <td class="text-center"><?php echo $row['k_date']; ?></td>
 
-                <table class="table table-sm table-bordered table-tight mb-0">
-                    <thead class="table-light text-center">
-                        <tr>
-                            <th width="18%">วันที่</th>
-                            <th width="20%">ประเภท</th>
-                            <th>รายการอาหาร</th>
-                            <th width="12%">จำนวน</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
-                        while ($row = $kitchens->fetch_assoc()): ?>
-                            <tr>
-                                <td class="text-center"><?php echo $row['k_date']; ?></td>
+                        <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
 
-                                <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
+                        <td><?php echo nl2br($row['k_item']); ?></td>
+                        <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
+                        <td class="text-end"><?php echo number_format($row['k_price'] ?? 0, 2); ?></td>
+                        <td class="text-end fw-bold">
+                            <?php 
+                            $qty = (float)($row['k_qty'] ?? 0);
+                            $price = (float)($row['k_price'] ?? 0);
+                            echo number_format($qty * $price, 2);
+                            ?>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+        <div class="p-2 border rounded bg-light" style="font-size: 8.5px; mb-0">
+            <strong>หมายเหตุครัว:</strong> <?php echo nl2br(htmlspecialchars($data['main_kitchen_remark'] ?? '-')); ?>
+        </div>
+    </div>
 
-                                <td><?php echo nl2br($row['k_item']); ?></td>
-                                <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-                <div class="p-2 border rounded bg-light" style="font-size: 8.5px; mb-0">
-                    <strong>หมายเหตุครัว:</strong> <?php echo nl2br(htmlspecialchars($data['main_kitchen_remark'] ?? '-')); ?>
-                </div>
-            </div>
-            <div class="col-5">
+    <div class="section-group mb-0">
+        <div class="row">
+            <div class="col-6">
                 <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
                 <div class="box-detail">
                     <?php echo nl2br(htmlspecialchars($data['banquet_style'] ?? 'ตามมาตรฐาน')); ?>
                 </div>
-
+            </div>
+            <div class="col-6">
                 <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
                 <div class="box-detail"><?php echo nl2br(htmlspecialchars($data['equipment'] ?? '-')); ?></div>
             </div>

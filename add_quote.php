@@ -190,11 +190,15 @@ if ($function_id) {
                 </div>
 
                 <div class="col-md-5 col-lg-4">
-                    <div
-                        class="form-check form-switch d-flex justify-content-between align-items-center bg-white p-3 rounded border mb-3 shadow-sm">
-                        <label class="form-check-label fw-bold mb-0" for="includeVat">คำนวณภาษี (VAT 7%)</label>
-                        <input class="form-check-input ms-0" type="checkbox" id="includeVat" name="include_vat"
-                            value="1" checked>
+                    <div class="card p-3 border shadow-sm bg-white mb-3">
+                        <label class="form-label fw-bold text-dark mb-2">
+                            <i class="bi bi-percent text-primary me-1"></i> การคิดภาษี (VAT 7%)
+                        </label>
+                        <select name="vat_type" id="vatType" class="form-select border shadow-sm">
+                            <option value="exclude" selected>แยกนอก (Exclude VAT)</option>
+                            <option value="include">รวมใน (Include VAT)</option>
+                            <option value="no">ไม่มี VAT (No VAT)</option>
+                        </select>
                     </div>
 
                     <div class="card p-3 border shadow-sm bg-white">
@@ -257,37 +261,50 @@ if ($function_id) {
             calculateAll();
         });
 
-        // 5. คลิกเปิด-ปิด VAT
-        $('#includeVat').change(function () {
+        // 5. คลิกเปลี่ยนประเภท VAT
+        $('#vatType').change(function () {
             calculateAll();
             // เอฟเฟกต์จางลงเมื่อไม่เลือก VAT (ต้องมี id="vat-row" ใน HTML)
-            if ($(this).is(':checked')) {
-                $('#vat-row').removeClass('opacity-50');
-            } else {
+            if ($(this).val() === 'no') {
                 $('#vat-row').addClass('opacity-50');
+            } else {
+                $('#vat-row').removeClass('opacity-50');
             }
         });
 
         // 6. ฟังก์ชันหลักในการคำนวณยอดรวมทั้งหมด
         function calculateAll() {
-            let subtotal = 0;
+            let sumItems = 0;
 
             // รวมยอดจากทุกแถว
             $('.row-total').each(function () {
-                subtotal += parseFloat($(this).val()) || 0;
+                sumItems += parseFloat($(this).val()) || 0;
             });
 
             // Service Charge (ถ้าจะใช้ในอนาคต ให้แก้เลข 0 ตรงนี้)
-            let service = subtotal * 0;
+            let service = sumItems * 0;
 
-            // คำนวณ VAT 7% เฉพาะเมื่อ Checkbox ถูกเลือก
+            let vatType = $('#vatType').val();
+            let subtotal = 0;
             let vat = 0;
-            if ($('#includeVat').is(':checked')) {
-                vat = (subtotal + service) * 0.07;
-            }
+            let grand = 0;
 
-            // คำนวณยอดสุทธิ
-            let grand = subtotal + service + vat;
+            if (vatType === 'exclude') {
+                // แยกนอก (Exclude VAT)
+                subtotal = sumItems;
+                vat = (subtotal + service) * 0.07;
+                grand = subtotal + service + vat;
+            } else if (vatType === 'include') {
+                // รวมใน (Include VAT)
+                grand = sumItems + service;
+                subtotal = grand / 1.07;
+                vat = grand - subtotal;
+            } else {
+                // ไม่มี VAT
+                subtotal = sumItems;
+                vat = 0;
+                grand = subtotal + service;
+            }
 
             // แสดงผลลัพธ์
             $('#subtotal').val(subtotal.toFixed(2));

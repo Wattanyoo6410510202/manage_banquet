@@ -306,7 +306,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
                             <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">มัดจำ (Deposit)</label>
                             <div class="input-group">
@@ -330,47 +330,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-warning bg-opacity-10 h-100">
-                            <label class="small fw-bold text-warning mb-0" style="font-size: 0.65rem;">ที่มา Lead</label>
-                            <select name="lead_source" class="form-select border-0 bg-transparent fw-bold text-warning p-0 fs-6" style="height: 32px;">
-                                <option value="">เลือก</option>
-                                <option value="โทรเข้า">โทรเข้า</option>
-                                <option value="FB / Social">FB / Social</option>
-                                <option value="แนะนำ">แนะนำ</option>
-                                <option value="Walk-in">Walk-in</option>
-                                <option value="อื่นๆ">อื่นๆ</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
-                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">ผลการดำเนินงาน</label>
-                            <select name="result" class="form-select border-0 bg-transparent fw-bold text-info p-0 fs-6" style="height: 32px;">
-                                <option value="">เลือก</option>
-                                <option value="ปิดงานสำเร็จ">ปิดงานสำเร็จ</option>
-                                <option value="ปิดงานไม่สำเร็จ">ปิดงานไม่สำเร็จ</option>
-                                <option value="รอการตัดสินใจ">รอตัดสินใจ</option>
-                                <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
-                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">Inspection</label>
-                            <input type="date" name="inspection_date"
-                                class="form-control border-0 bg-transparent fw-bold text-success p-0 fs-6"
-                                style="height: 32px;">
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="p-2 rounded-3 bg-danger bg-opacity-10 h-100">
-                            <label class="small fw-bold text-danger mb-0" style="font-size: 0.65rem;">Follow Up</label>
-                            <input type="date" name="follow_up_date"
-                                class="form-control border-0 bg-transparent fw-bold text-danger p-0 fs-6"
-                                style="height: 32px;">
-                        </div>
-                    </div>
+
                     <div class="col-md-3">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
                             <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
@@ -386,7 +346,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                 </div>
 
                     <div class="row mb-5">
-                        <div class="col-md-7 border-end pe-lg-4">
+                        <div class="col-12 mb-4">
                             <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)
                             </h5>
                             <div class="table-responsive mb-4">
@@ -428,10 +388,11 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 <table class="table table-sm table-hover align-middle" id="kitchenTable">
                                     <thead class="small text-center text-secondary">
                                         <tr>
-                                            <th width="20%">วันที่</th>
-                                            <th width="25%">ประเภทเมนู</th>
+                                            <th width="15%">วันที่</th>
+                                            <th width="20%">ประเภทเมนู</th>
                                             <th>รายการรายละเอียด</th>
-                                            <th width="15%">จำนวน (PAX)</th>
+                                            <th width="12%">จำนวน (PAX)</th>
+                                            <th width="15%">ราคา/หน่วย</th>
                                             <th width="5%"></th>
                                         </tr>
                                     </thead>
@@ -467,6 +428,11 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                     placeholder="0">
                                             </td>
                                             <td>
+                                                <input type="number" name="k_price[]"
+                                                    class="form-control form-control-sm border-0 bg-light text-end"
+                                                    placeholder="0.00" step="0.01">
+                                            </td>
+                                            <td>
                                                 <button type="button" class="btn text-danger btn-sm border-0"
                                                     onclick="removeRow(this)">
                                                     <i class="bi bi-dash-circle"></i>
@@ -481,29 +447,36 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 </button>
                             </div>
 
-
                             <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="3"
                                 placeholder="หมายเหตุเพิ่มเติม..."></textarea>
                         </div>
+                    </div>
 
-                        <div class="col-md-5 bg-sidebar p-4 rounded-4">
-                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4.
-                                ด้านเทคนิคและงานช่าง
-                            </h5>
-                            <div class="mb-4">
-                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                    rows="6"></textarea>
+                    <div class="row mb-5">
+                        <div class="col-md-6 mb-4 mb-md-0">
+                            <div class="bg-sidebar p-4 rounded-4 h-100">
+                                <h5 class="section-title mb-4"><i class="bi bi-building"></i> 4. รูปแบบการจัดงาน (SET-UP)</h5>
+                                <div class="mb-0">
+                                    <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                                    <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                        rows="6"></textarea>
+                                </div>
                             </div>
-                            <div class="mb-4">
-                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                                <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                    rows="5"></textarea>
-                            </div>
-                            <div class="mb-0">
-                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                                <textarea name="remark" class="form-control form-control-sm bg-white"
-                                    rows="2"></textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="bg-sidebar p-4 rounded-4 h-100">
+                                <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 5. ระบบวิศวกรรม (TECHNICAL)</h5>
+                                <div class="mb-4">
+                                    <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                                    <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                        rows="5"></textarea>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                                    <textarea name="remark" class="form-control form-control-sm bg-white"
+                                        rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -790,7 +763,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
         <td><input type="date" name="k_date[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td><select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
         <td><textarea name="k_item[]" class="form-control form-control-sm border-0 bg-light break-menu-input" rows="3" onfocus="initFirstLine(this)"></textarea></td>
-        <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center"></td>
+        <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="0"></td>
+        <td><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end" placeholder="0.00" step="0.01"></td>
         <td> <button type="button" class="btn text-danger btn-sm border-0"
                                                 onclick="removeRow(this)">
                                                 <i class="bi bi-dash-circle"></i>

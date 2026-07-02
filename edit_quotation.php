@@ -212,13 +212,17 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                     </div>
                 </div>
                 <div class="col-md-5">
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="vatToggle" <?= (isset($quote['vat']) && $quote['vat'] > 0) ? 'checked' : '' ?>>
-                        <label class="form-check-label fw-bold" for="vatToggle">คำนวณภาษีมูลค่าเพิ่ม (VAT 7%)</label>
+                    <div class="card p-3 border shadow-sm bg-white mb-3">
+                        <label class="form-label fw-bold text-dark mb-2">
+                            <i class="bi bi-percent text-primary me-1"></i> การคิดภาษี (VAT 7%)
+                        </label>
+                        <?php $v_type = $quote['vat_type'] ?? (($quote['vat'] > 0) ? 'exclude' : 'no'); ?>
+                        <select name="vat_type" id="vatType" class="form-select border shadow-sm">
+                            <option value="exclude" <?= ($v_type == 'exclude') ? 'selected' : '' ?>>แยกนอก (Exclude VAT)</option>
+                            <option value="include" <?= ($v_type == 'include') ? 'selected' : '' ?>>รวมใน (Include VAT)</option>
+                            <option value="no" <?= ($v_type == 'no') ? 'selected' : '' ?>>ไม่มี VAT (No VAT)</option>
+                        </select>
                     </div>
-
-                    <input type="hidden" id="includeVat" name="include_vat"
-                        value="<?= ($quote['vat'] > 0) ? '1' : '0' ?>">
 
                     <div class="card p-3 shadow-sm bg-white border">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -228,7 +232,7 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                                 value="<?= number_format($quote['subtotal'] ?? 0, 2, '.', '') ?>" readonly>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-2 text-muted">
+                        <div class="d-flex justify-content-between align-items-center mb-2 text-muted" id="vat-row">
                             <span>ภาษี (VAT 7%):</span>
                             <input type="number" id="vat" name="vat" class="text-end border-0 bg-transparent w-50"
                                 value="<?= number_format($quote['vat'] ?? 0, 2, '.', '') ?>" readonly>
@@ -254,13 +258,8 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
         // 1. คำนวณยอดเริ่มต้นทันทีเมื่อโหลดหน้า (เพื่อให้สอดคล้องกับสถานะ Toggle จาก DB)
         calculateAll();
 
-        // เมื่อมีการคลิก Toggle VAT (เปิด-ปิด)
-        $('#vatToggle').change(function() {
-            if($(this).is(':checked')) {
-                $('#includeVat').val('1'); // ส่งค่า 1 ไปที่ API
-            } else {
-                $('#includeVat').val('0'); // ส่งค่า 0 ไปที่ API
-            }
+        // เมื่อมีการเปลี่ยนประเภท VAT
+        $('#vatType').change(function() {
             calculateAll(); // สั่งคำนวณยอดใหม่ทันที
         });
 
@@ -303,25 +302,43 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
 
         // ฟังก์ชันคำนวณยอดรวมทั้งหมด (Subtotal, VAT, Grand Total)
         function calculateAll() {
-            let subtotal = 0;
+            let sumItems = 0;
             
             // วนลูปหาผลรวมของทุกแถว
             $('.row-total').each(function () {
-                subtotal += parseFloat($(this).val()) || 0;
+                sumItems += parseFloat($(this).val()) || 0;
             });
 
+            let vatType = $('#vatType').val();
+            let subtotal = 0;
             let vat = 0;
-            // ตรวจสอบสถานะ Toggle ว่าให้คำนวณ VAT หรือไม่
-            if ($('#vatToggle').is(':checked')) {
-                vat = subtotal * 0.07;
-            }
+            let grand = 0;
 
-            let grand = subtotal + vat;
+            if (vatType === 'exclude') {
+                subtotal = sumItems;
+                vat = subtotal * 0.07;
+                grand = subtotal + vat;
+            } else if (vatType === 'include') {
+                grand = sumItems;
+                subtotal = grand / 1.07;
+                vat = grand - subtotal;
+            } else {
+                subtotal = sumItems;
+                vat = 0;
+                grand = subtotal;
+            }
 
             // แสดงผลลงในช่อง Input ต่างๆ
             $('#subtotal').val(subtotal.toFixed(2));
             $('#vat').val(vat.toFixed(2));
             $('#grand_total').val(grand.toFixed(2));
+
+            // เอฟเฟกต์จางลงเมื่อไม่มี VAT
+            if (vatType === 'no') {
+                $('#vat-row').addClass('opacity-50');
+            } else {
+                $('#vat-row').removeClass('opacity-50');
+            }
         }
 
         // ฟังก์ชันเรียงเลขลำดับแถวใหม่ (ใช้ตอนลบแถว)
