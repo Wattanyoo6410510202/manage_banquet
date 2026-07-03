@@ -3,7 +3,10 @@ include "config.php";
 include "header.php";
 
 // 1. ดึงรายชื่อ Project ทั้งหมด
-$projects_sql = "SELECT id, project_name FROM event_projects ORDER BY project_name ASC";
+$projects_sql = "SELECT ep.id, ep.project_name 
+                 FROM event_projects ep 
+                 WHERE EXISTS (SELECT 1 FROM functions f WHERE f.project_id = ep.id)
+                 ORDER BY ep.project_name ASC";
 $projects_res = $conn->query($projects_sql);
 
 // 2. ตั้งค่าตัวแปรเริ่มต้น

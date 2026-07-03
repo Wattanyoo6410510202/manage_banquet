@@ -230,7 +230,7 @@ if (isset($_POST['save'])) {
             $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?)");
             foreach ($_POST['k_item'] as $k => $item) {
                 if (trim($item) != "") {
-                    $k_date = !empty($_POST['k_date'][$k]) ? $_POST['k_date'][$k] : null;
+                    $k_date = !empty($_POST['k_date'][$k]) ? $_POST['k_date'][$k] : date('Y-m-d');
                     $k_type = intval($_POST['k_type_id'][$k] ?? 0);
                     $k_qty = intval($_POST['k_qty'][$k] ?? 0);
                     $k_price = floatval($_POST['k_price'][$k] ?? 0);

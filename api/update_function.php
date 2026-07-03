@@ -213,7 +213,7 @@ if (isset($_POST['update'])) {
             $k_type_ids = $_POST['k_type_id'] ?? [];
             foreach ($_POST['k_item'] as $key => $item) {
                 if (trim($item) != "") {
-                    $k_date_val = $k_dates[$key] ?? '';
+                    $k_date_val = !empty($k_dates[$key]) ? $k_dates[$key] : date('Y-m-d');
                     $k_type_id_val = intval($k_type_ids[$key] ?? 0);
                     $k_qty_val = $k_qtys[$key] ?? 0;
                     $k_price_val = floatval($k_prices[$key] ?? 0);

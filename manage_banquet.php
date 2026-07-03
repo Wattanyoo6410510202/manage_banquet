@@ -361,6 +361,11 @@ if ($conflict_q) {
                                 <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-3">
                                     <i class="bi <?= $master['status_info']['icon']; ?> me-1"></i><?= $master['status_info']['text']; ?>
                                 </span>
+                                <?php if (!empty($master['cancel_reason'])): ?>
+                                    <div class="text-danger small" style="font-size: 0.65rem; max-width: 150px; line-height: 1.2; word-wrap: break-word;">
+                                        <?= htmlspecialchars($master['cancel_reason']); ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <div class="text-dark small fw-medium"><?= htmlspecialchars($master['created_by'] ?: '-'); ?></div>
@@ -429,6 +434,11 @@ if ($conflict_q) {
                                     <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
                                         <?= $row['status_info']['text']; ?>
                                     </span>
+                                    <?php if (!empty($row['cancel_reason'])): ?>
+                                        <div class="text-danger small" style="font-size: 0.6rem; max-width: 120px; line-height: 1.2; word-wrap: break-word;">
+                                            <?= htmlspecialchars($row['cancel_reason']); ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td><small class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/y H:i', strtotime($row['modify'])); ?></small></td>
                                 <td></td>
@@ -498,6 +508,11 @@ if ($conflict_q) {
                             <span class="badge <?= $master['status_info']['class']; ?> rounded-pill px-2">
                                 <?= $master['status_info']['text']; ?>
                             </span>
+                            <?php if (!empty($master['cancel_reason'])): ?>
+                                <div class="text-danger small text-end" style="font-size: 0.6rem; line-height: 1.2; word-wrap: break-word;">
+                                    <?= htmlspecialchars($master['cancel_reason']); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="mb-2">
@@ -566,6 +581,11 @@ if ($conflict_q) {
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
                                                     <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
+                                                    <?php if (!empty($row['cancel_reason'])): ?>
+                                                        <div class="text-danger" style="font-size: 0.55rem; line-height: 1.1; word-wrap: break-word; max-width: 120px;">
+                                                            <?= htmlspecialchars($row['cancel_reason']); ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <?php if (isset($conflict_map[$row['id']])): ?>
                                                     <div class="mt-1"><span class="badge bg-warning-subtle text-warning border border-warning small" title="<?= $conflict_map[$row['id']] ?>"><i class="bi bi-exclamation-triangle-fill me-1"></i>ห้องซ้อน</span></div>
