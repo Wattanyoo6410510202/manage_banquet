@@ -22,24 +22,22 @@ $res_m = $conn->query($sql_m);
 
 while ($row = $res_m->fetch_assoc()) {
     $direct_price = (float)($row['menu_price'] ?? 0);
-    if ($direct_price > 0) {
-        $total = $direct_price * (float)$row['menu_qty'];
-        $main_list[] = ['name' => 'ค่าอาหารรวม (ต่อเซต)', 'qty' => (float)$row['menu_qty'], 'price' => $direct_price, 'total' => $total];
-        $sum_main += $total;
-    } else {
-        foreach (preg_split('/\r\n|\r|\n/', $row['menu_detail']) as $l) {
-            $name = cleanItemName($l);
-            if (!empty($name)) {
-                $price = 0;
+    foreach (preg_split('/\r\n|\r|\n/', $row['menu_detail']) as $l) {
+        $name = cleanItemName($l);
+        if (!empty($name)) {
+            $price = 0;
+            if ($direct_price > 0) {
+                $price = $direct_price;
+            } else {
                 $name_esc = $conn->real_escape_string($name);
                 $q_price = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$name_esc%' LIMIT 1");
                 if ($p = $q_price->fetch_assoc()) {
                     $price = (float)$p['price_per_pax'];
                 }
-                $total = $price * (float)$row['menu_qty'];
-                $main_list[] = ['name' => $name, 'qty' => (float)$row['menu_qty'], 'price' => $price, 'total' => $total];
-                $sum_main += $total;
             }
+            $total = $price * (float)$row['menu_qty'];
+            $main_list[] = ['name' => $name, 'qty' => (float)$row['menu_qty'], 'price' => $price, 'total' => $total];
+            $sum_main += $total;
         }
     }
 }
