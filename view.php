@@ -295,7 +295,7 @@ $menus = $conn->query($sql_menus);
         </table>
     </div>
     <div class="section-group mb-0">
-        <div class="section-title">3. รายการอาหารและเครื่องครัว (MAIN KITCHEN)</div>
+        <div class="section-title">3. รายการเบรก</div>
         <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
                 <tr>
@@ -359,23 +359,34 @@ $menus = $conn->query($sql_menus);
                     <th>รายละเอียดเมนู</th>
                     <th width="10%">จำนวน</th>
                     <th width="12%">ราคา/หน่วย</th>
+                    <th width="12%">ยอดรวม</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                // ลบบรรทัด $menus = $conn->query("SELECT * ...") ทิ้งไปเลยครับ
-                while ($row = $menus->fetch_assoc()): ?>
+                $menu_grand_total = 0;
+                while ($row = $menus->fetch_assoc()):
+                    $menu_qty = (float)($row['menu_qty'] ?? 0);
+                    $menu_price = (float)($row['menu_price'] ?? 0);
+                    $menu_total = $menu_qty * $menu_price;
+                    $menu_grand_total += $menu_total;
+                ?>
                     <tr>
                         <td class="text-center"><?php echo $row['menu_time']; ?></td>
-
                         <td class="text-center"><?php echo $row['set_name'] ?? 'ไม่ได้เลือกเซต'; ?></td>
-
                         <td><?php echo nl2br($row['menu_detail']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
                         <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>
+                        <td class="text-end fw-bold"><?php echo number_format($menu_total, 2); ?></td>
                     </tr>
                 <?php endwhile; ?>
             </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th colspan="5" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                    <th class="text-end fw-bold"><?php echo number_format($menu_grand_total, 2); ?></th>
+                </tr>
+            </tfoot>
         </table>
     </div>
     <div class="section-group mb-0">

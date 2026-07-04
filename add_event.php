@@ -382,17 +382,18 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                     onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> เพิ่มกำหนดการ</button>
                             </div>
 
-                            <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)
+                            <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
                             </h5>
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover align-middle" id="kitchenTable">
                                     <thead class="small text-center text-secondary">
                                         <tr>
-                                            <th width="15%">วันที่</th>
-                                            <th width="20%">ประเภทเมนู</th>
+                                            <th width="13%">วันที่</th>
+                                            <th width="18%">ประเภทเบรก</th>
                                             <th>รายการรายละเอียด</th>
-                                            <th width="12%">จำนวน (PAX)</th>
-                                            <th width="15%">ราคา/หน่วย</th>
+                                            <th width="10%">จำนวน (PAX)</th>
+                                            <th width="13%">ราคา/หน่วย</th>
+                                            <th width="12%">ยอดรวม</th>
                                             <th width="5%"></th>
                                         </tr>
                                     </thead>
@@ -424,14 +425,15 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             </td>
                                             <td>
                                                 <input type="number" name="k_qty[]"
-                                                    class="form-control form-control-sm border-0 bg-light text-center"
-                                                    placeholder="0">
+                                                    class="form-control form-control-sm border-0 bg-light text-center kitchen-qty"
+                                                    placeholder="0" oninput="updateKitchenRowTotal(this)">
                                             </td>
                                             <td>
                                                 <input type="number" name="k_price[]"
-                                                    class="form-control form-control-sm border-0 bg-light text-end"
-                                                    placeholder="0.00" step="0.01">
+                                                    class="form-control form-control-sm border-0 bg-light text-end kitchen-price"
+                                                    placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)">
                                             </td>
+                                            <td class="text-end fw-bold kitchen-row-total">0.00</td>
                                             <td>
                                                 <button type="button" class="btn text-danger btn-sm border-0"
                                                     onclick="removeRow(this)">
@@ -440,6 +442,12 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             </td>
                                         </tr>
                                     </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                                            <th class="text-end fw-bold kitchen-grand-total">0.00</th>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                                 <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
                                     onclick="addKitchenRow()">
@@ -489,16 +497,21 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             <thead class="text-center text-secondary bg-light">
                                 <tr>
                                     <th width="10%">เวลา</th>
-                                    <th width="15%">ประเภทเมนู</th>
+                                    <th width="14%">ประเภทเมนู</th>
                                     <th>รายละเอียด</th>
                                     <th width="10%">จำนวน</th>
-                                    <th width="12%">ราคา</th>
+                                    <th width="12%">ราคา/หน่วย</th>
+                                    <th width="12%">ยอดรวม</th>
                                     <th width="5%"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (!empty($quote_items)): ?>
-                                    <?php foreach ($quote_items as $item): ?>
+                                    <?php foreach ($quote_items as $item): 
+                                        $menu_qty = (float)($item['quantity'] ?? 0);
+                                        $menu_price = (float)($item['unit_price'] ?? 0);
+                                        $menu_total = $menu_qty * $menu_price;
+                                    ?>
                                         <tr>
                                             <td><input type="date" name="menu_time[]"
                                                     class="form-control form-control-sm border-0" 
@@ -522,12 +535,15 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                     rows="1"><?= htmlspecialchars($item['item_name']) ?></textarea>
                                             </td>
                                             <td><input type="text" name="menu_qty[]"
-                                                    class="form-control form-control-sm border-0" 
-                                                    value="<?= $item['quantity'] ?>">
+                                                    class="form-control form-control-sm border-0 menu-qty"
+                                                    value="<?= $item['quantity'] ?>"
+                                                    oninput="updateMenuRowTotal(this)">
                                             </td>
                                             <td><input type="text" name="menu_price[]"
-                                                    class="form-control form-control-sm border-0" 
-                                                    value="<?= number_format($item['unit_price'], 2, '.', '') ?>"></td>
+                                                    class="form-control form-control-sm border-0 menu-price"
+                                                    value="<?= number_format($item['unit_price'], 2, '.', '') ?>"
+                                                    oninput="updateMenuRowTotal(this)"></td>
+                                            <td class="text-end fw-bold menu-row-total"><?php echo number_format($menu_total, 2); ?></td>
                                             <td class="text-center"><button type="button"
                                                     class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
                                                         class="bi bi-dash-circle"></i></button></td>
@@ -542,7 +558,6 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                 onchange="fetchMenuDetail(this)">
                                                 <option value="" disabled selected>-- เลือกเซตเมนู --</option>
                                                 <?php
-                                                // สมมติจารมี $res_menu_sets ที่ดึงมาจากตาราง master_menus
                                                 if ($res_menu_sets):
                                                     $res_menu_sets->data_seek(0);
                                                     while ($m = $res_menu_sets->fetch_assoc()): ?>
@@ -557,16 +572,25 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                 rows="1"></textarea>
                                         </td>
                                         <td><input type="text" name="menu_qty[]"
-                                                class="form-control form-control-sm border-0">
+                                                class="form-control form-control-sm border-0 menu-qty"
+                                                oninput="updateMenuRowTotal(this)">
                                         </td>
                                         <td><input type="text" name="menu_price[]"
-                                                class="form-control form-control-sm border-0" placeholder="0.00"></td>
+                                                class="form-control form-control-sm border-0 menu-price"
+                                                placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+                                        <td class="text-end fw-bold menu-row-total">0.00</td>
                                         <td class="text-center"><button type="button"
                                                 class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
                                                     class="bi bi-dash-circle"></i></button></td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
+                            <tfoot class="table-light bg-light">
+                                <tr>
+                                    <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                                    <th class="text-end fw-bold menu-grand-total">0.00</th>
+                                </tr>
+                            </tfoot>
                         </table>
                         <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
                                 class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
@@ -697,6 +721,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
         const rowCount = tbody.querySelectorAll("tr").length;
         if (rowCount > 1) {
             btn.closest("tr").remove();
+            if (typeof updateKitchenGrandTotal === 'function') updateKitchenGrandTotal();
+            if (typeof updateMenuGrandTotal === 'function') updateMenuGrandTotal();
         } else {
             alert("ต้องมีอย่างน้อย 1 แถวครับจาร");
         }
@@ -737,10 +763,11 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         class="form-control form-control-sm border-0 menu-detail-input"
                                         rows="1"></textarea>
         </td>
-        <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0">
+        <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" oninput="updateMenuRowTotal(this)">
                                 </td>
-                                <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0"
-                                        placeholder="0.00"></td>
+                                <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price"
+                                        placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+                                <td class="text-end fw-bold menu-row-total">0.00</td>
                                 <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
                                         onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
     `;
@@ -763,12 +790,53 @@ while ($row = $all_rooms_res->fetch_assoc()) {
         <td><input type="date" name="k_date[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td><select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
         <td><textarea name="k_item[]" class="form-control form-control-sm border-0 bg-light break-menu-input" rows="3" onfocus="initFirstLine(this)"></textarea></td>
-        <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="0"></td>
-        <td><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end" placeholder="0.00" step="0.01"></td>
+        <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center kitchen-qty" placeholder="0" oninput="updateKitchenRowTotal(this)"></td>
+        <td><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-price" placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)"></td>
+        <td class="text-end fw-bold kitchen-row-total">0.00</td>
         <td> <button type="button" class="btn text-danger btn-sm border-0"
                                                 onclick="removeRow(this)">
                                                 <i class="bi bi-dash-circle"></i>
                                             </button></td>`;
+    }
+
+    function updateKitchenRowTotal(el) {
+        const row = el.closest('tr');
+        const qty = parseFloat(row.querySelector('.kitchen-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.kitchen-price').value) || 0;
+        const total = qty * price;
+        const totalCell = row.querySelector('.kitchen-row-total');
+        if (totalCell) totalCell.textContent = total.toFixed(2);
+        updateKitchenGrandTotal();
+    }
+
+    function updateKitchenGrandTotal() {
+        const table = document.getElementById('kitchenTable');
+        let grandTotal = 0;
+        table.querySelectorAll('.kitchen-row-total').forEach(function(el) {
+            grandTotal += parseFloat(el.textContent) || 0;
+        });
+        const footer = table.querySelector('.kitchen-grand-total');
+        if (footer) footer.textContent = grandTotal.toFixed(2);
+    }
+
+    function updateMenuRowTotal(el) {
+        const row = el.closest('tr');
+        const qty = parseFloat(row.querySelector('.menu-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.menu-price').value) || 0;
+        const total = qty * price;
+        const totalCell = row.querySelector('.menu-row-total');
+        if (totalCell) totalCell.textContent = total.toFixed(2);
+        updateMenuGrandTotal();
+    }
+
+    function updateMenuGrandTotal() {
+        const table = document.getElementById('menuTable');
+        let grandTotal = 0;
+        table.querySelectorAll('.menu-row-total').forEach(function(el) {
+            grandTotal += parseFloat(el.textContent) || 0;
+        });
+        const footer = table.querySelector('.menu-grand-total');
+        if (footer) footer.textContent = grandTotal.toFixed(2);
     }
 
     /**

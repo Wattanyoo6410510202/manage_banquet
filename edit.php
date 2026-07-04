@@ -551,30 +551,35 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     class="bi bi-plus-lg"></i> เพิ่มกำหนดการ</button>
                         </div>
 
-                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. Main Kitchen (ครัว)</h5>
+                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก</h5>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
     <thead>
         <tr>
-            <th style="width: 140px; font-size: 11px;" class="text-center text-secondary">วันที่</th>
-            <th style="width: 160px; font-size: 11px;" class="text-center text-secondary">ประเภทเมนู</th>
+            <th style="width: 130px; font-size: 11px;" class="text-center text-secondary">วันที่</th>
+            <th style="width: 140px; font-size: 11px;" class="text-center text-secondary">ประเภทเบรก</th>
             <th style="font-size: 11px;" class="text-center text-secondary">รายการรายละเอียด</th>
-            <th style="width: 80px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
-            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
     </thead>
     <tbody>
         <?php if ($kitchens->num_rows > 0):
-            while ($k = $kitchens->fetch_assoc()): ?>
+            while ($k = $kitchens->fetch_assoc()):
+                $k_qty = (float)($k['k_qty'] ?? 0);
+                $k_price = (float)($k['k_price'] ?? 0);
+                $k_total = $k_qty * $k_price;
+            ?>
         <tr>
-            <td style="width: 140px;">
+            <td style="width: 130px;">
                 <input type="date" name="k_date[]"
                     class="form-control form-control-sm border-0 bg-light"
                     value="<?php echo $k['k_date']; ?>">
             </td>
 
-            <td style="width: 160px;">
+            <td style="width: 140px;">
                 <select name="k_type_id[]"
                     class="form-select form-select-sm border-0 bg-light">
                     <option value="">-- เลือกประเภท --</option>
@@ -599,18 +604,22 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 ><?php echo $k['k_item']; ?></textarea>
             </td>
 
-            <td style="width: 80px;">
+            <td style="width: 70px;">
                 <input type="number" name="k_qty[]"
-                    class="form-control form-control-sm border-0 bg-light text-center"
-                    value="<?php echo $k['k_qty']; ?>">
+                    class="form-control form-control-sm border-0 bg-light text-center kitchen-qty"
+                    value="<?php echo $k['k_qty']; ?>"
+                    oninput="updateKitchenRowTotal(this)">
             </td>
 
-            <td style="width: 100px;">
+            <td style="width: 90px;">
                 <input type="number" name="k_price[]"
-                    class="form-control form-control-sm border-0 bg-light text-end"
+                    class="form-control form-control-sm border-0 bg-light text-end kitchen-price"
                     placeholder="0.00" step="0.01"
-                    value="<?php echo number_format($k['k_price'] ?? 0, 2, '.', ''); ?>">
+                    value="<?php echo number_format($k['k_price'] ?? 0, 2, '.', ''); ?>"
+                    oninput="updateKitchenRowTotal(this)">
             </td>
+
+            <td style="width: 100px;" class="text-end fw-bold kitchen-row-total"><?php echo number_format($k_total, 2); ?></td>
 
             <td style="width: 45px;" class="text-center">
                 <button type="button" class="btn text-danger btn-sm border-0"
@@ -619,6 +628,19 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         </tr>
         <?php endwhile; endif; ?>
     </tbody>
+    <tfoot class="table-light">
+        <?php
+        $kitchens->data_seek(0);
+        $kitchen_grand = 0;
+        while ($k = $kitchens->fetch_assoc()):
+            $kitchen_grand += (float)($k['k_qty'] ?? 0) * (float)($k['k_price'] ?? 0);
+        endwhile;
+        ?>
+        <tr>
+            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+            <th class="text-end fw-bold kitchen-grand-total"><?php echo number_format($kitchen_grand, 2); ?></th>
+        </tr>
+    </tfoot>
 </table>
                             <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addKitchenRow()"><i
                                     class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
@@ -652,16 +674,31 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 </h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle" id="menuTable" style="table-layout: fixed; width: 100%;">
+    <thead>
+        <tr>
+            <th style="width: 130px; font-size: 11px;" class="text-center text-secondary">เวลา</th>
+            <th style="width: 150px; font-size: 11px;" class="text-center text-secondary">ประเภทเมนู</th>
+            <th style="font-size: 11px;" class="text-center text-secondary">รายละเอียด</th>
+            <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
+            <th style="width: 45px;"></th>
+        </tr>
+    </thead>
     <tbody>
         <?php if ($menus->num_rows > 0):
-            while ($m = $menus->fetch_assoc()): ?>
+            while ($m = $menus->fetch_assoc()):
+                $menu_qty = (float)($m['menu_qty'] ?? 0);
+                $menu_price = (float)($m['menu_price'] ?? 0);
+                $menu_total = $menu_qty * $menu_price;
+            ?>
         <tr>
-            <td style="width: 150px;">
+            <td style="width: 130px;">
                 <input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"
                     value="<?php echo $m['menu_time']; ?>">
             </td>
 
-            <td style="width: 180px;">
+            <td style="width: 150px;">
                 <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light">
                     <option value="">-- เลือกเซตเมนู --</option>
                     <?php if ($res_menu_sets && $res_menu_sets->num_rows > 0):
@@ -684,19 +721,23 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 ><?php echo htmlspecialchars($m['menu_detail'] ?? ''); ?></textarea>
             </td>
 
-            <td style="width: 90px;">
-                <input type="number" name="menu_qty[]" class="form-control form-control-sm border-0 bg-light text-center" 
+            <td style="width: 70px;">
+                <input type="number" name="menu_qty[]" class="form-control form-control-sm border-0 bg-light text-center menu-qty" 
                     placeholder="จำนวน"
-                    value="<?php echo $m['menu_qty']; ?>">
+                    value="<?php echo $m['menu_qty']; ?>"
+                    oninput="updateMenuRowTotal(this)">
             </td>
 
-            <td style="width: 110px;">
-                <input type="number" step="0.01" name="menu_price[]" class="form-control form-control-sm border-0 bg-light text-end" 
+            <td style="width: 90px;">
+                <input type="number" step="0.01" name="menu_price[]" class="form-control form-control-sm border-0 bg-light text-end menu-price" 
                     placeholder="ราคา"
-                    value="<?php echo $m['menu_price']; ?>">
+                    value="<?php echo $m['menu_price']; ?>"
+                    oninput="updateMenuRowTotal(this)">
             </td>
 
-            <td style="width: 50px;" class="text-center">
+            <td style="width: 100px;" class="text-end fw-bold menu-row-total"><?php echo number_format($menu_total, 2); ?></td>
+
+            <td style="width: 45px;" class="text-center">
                 <button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)">
                     <i class="bi bi-dash-circle fs-5"></i>
                 </button>
@@ -704,6 +745,19 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         </tr>
         <?php endwhile; endif; ?>
     </tbody>
+    <tfoot class="table-light">
+        <?php
+        $menus->data_seek(0);
+        $menu_grand = 0;
+        while ($m = $menus->fetch_assoc()):
+            $menu_grand += (float)($m['menu_qty'] ?? 0) * (float)($m['menu_price'] ?? 0);
+        endwhile;
+        ?>
+        <tr>
+            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+            <th class="text-end fw-bold menu-grand-total"><?php echo number_format($menu_grand, 2); ?></th>
+        </tr>
+    </tfoot>
 </table>
                     <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addMenuRow()"><i
                             class="bi bi-plus-lg"></i> เพิ่มรายการอาหาร</button>
@@ -795,8 +849,9 @@ function addKitchenRow() {
                       class="form-control form-control-sm border-0 bg-light break-menu-input"  /* 🛠️ เพิ่มคลาสนี้ */
                       rows="2" placeholder="รายการ..."></textarea>
         </td>
-        <td width="10%"><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center" placeholder="0"></td>
-        <td width="12%"><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end" placeholder="0.00" step="0.01"></td>
+        <td width="10%"><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center kitchen-qty" placeholder="0" oninput="updateKitchenRowTotal(this)"></td>
+        <td width="12%"><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-price" placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)"></td>
+        <td class="text-end fw-bold kitchen-row-total">0.00</td>
         <td width="5%"><button type="button" class="btn text-danger btn-sm border-0"
                                 onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
     `;
@@ -826,8 +881,9 @@ function addMenuRow() {
                       class="form-control form-control-sm border-0 bg-white  w-100 menu-detail-input" /* 🛠️ เพิ่มคลาสนี้ */
                       rows="3" placeholder="ระบุรายละเอียดอาหาร..." style="min-width: 100%; resize: vertical;"></textarea>
         </td>
-        <td width="10%"><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 " placeholder="0"></td>
-        <td width="12%"><input type="text" name="menu_price[]" class="form-control form-control-sm border-0" placeholder="0.00"></td>
+        <td width="10%"><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" placeholder="0" oninput="updateMenuRowTotal(this)"></td>
+        <td width="12%"><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price" placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+        <td class="text-end fw-bold menu-row-total">0.00</td>
         <td width="5%" class="text-center">
            <button type="button" class="btn text-danger btn-sm border-0"
                                 onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button>
@@ -837,6 +893,48 @@ function addMenuRow() {
 
 function removeRow(btn) {
     btn.closest("tr").remove();
+    if (typeof updateKitchenGrandTotal === 'function') updateKitchenGrandTotal();
+    if (typeof updateMenuGrandTotal === 'function') updateMenuGrandTotal();
+}
+
+function updateKitchenRowTotal(el) {
+    const row = el.closest('tr');
+    const qty = parseFloat(row.querySelector('.kitchen-qty').value) || 0;
+    const price = parseFloat(row.querySelector('.kitchen-price').value) || 0;
+    const total = qty * price;
+    const totalCell = row.querySelector('.kitchen-row-total');
+    if (totalCell) totalCell.textContent = total.toFixed(2);
+    updateKitchenGrandTotal();
+}
+
+function updateKitchenGrandTotal() {
+    const table = document.getElementById('kitchenTable');
+    let grandTotal = 0;
+    table.querySelectorAll('.kitchen-row-total').forEach(function(el) {
+        grandTotal += parseFloat(el.textContent) || 0;
+    });
+    const footer = table.querySelector('.kitchen-grand-total');
+    if (footer) footer.textContent = grandTotal.toFixed(2);
+}
+
+function updateMenuRowTotal(el) {
+    const row = el.closest('tr');
+    const qty = parseFloat(row.querySelector('.menu-qty').value) || 0;
+    const price = parseFloat(row.querySelector('.menu-price').value) || 0;
+    const total = qty * price;
+    const totalCell = row.querySelector('.menu-row-total');
+    if (totalCell) totalCell.textContent = total.toFixed(2);
+    updateMenuGrandTotal();
+}
+
+function updateMenuGrandTotal() {
+    const table = document.getElementById('menuTable');
+    let grandTotal = 0;
+    table.querySelectorAll('.menu-row-total').forEach(function(el) {
+        grandTotal += parseFloat(el.textContent) || 0;
+    });
+    const footer = table.querySelector('.menu-grand-total');
+    if (footer) footer.textContent = grandTotal.toFixed(2);
 }
 
 function selectRoom(element, roomId) {

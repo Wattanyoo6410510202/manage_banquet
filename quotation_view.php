@@ -239,51 +239,102 @@ $items = $conn->query($sql_items);
             </div>
         </div>
 
-        <div class="signature-wrapper text-center mt-5">
-            <div class="row">
-                <div class="col-4">
-                    <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
-                        <?php if (!empty($quote['creator_sig_path'])): ?>
-                            <img src="<?= $quote['creator_sig_path'] ?>" style="max-height: 50px; width: auto;">
-                        <?php endif; ?>
-                    </div>
-                    <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้จัดทำ / Prepared By</p>
-                    <p class="text-muted mb-0" style="font-size: 12px;">(
-                        <?= htmlspecialchars($quote['created_by_name'] ?? '................................') ?> )
-                    </p>
-                    <p class="text-muted" style="font-size: 12px;">วันที่: <?= date('d/m/Y', strtotime($quote['created_at'])) ?></p>
-                </div>
-                <div class="col-4">
-                    <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
-                        <?php if (!empty($quote['approver_sig_path'])): ?>
-                            <img src="<?= $quote['approver_sig_path'] ?>" style="max-height: 50px; width: auto;">
-                        <?php endif; ?>
-                    </div>
-                    <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้อนุมัติ / Authorized Signature</p>
-                    <p class="text-muted mb-0" style="font-size: 12px;">(
-                        <?= htmlspecialchars($quote['approved_by_name'] ?? '................................') ?> )
-                    </p>
-                    <p class="text-muted" style="font-size: 12px;">วันที่:
-                        <?= !empty($quote['approved_at']) ? date('d/m/Y', strtotime($quote['approved_at'])) : '....../....../......' ?>
-                    </p>
-                </div>
-                <div class="col-4">
-                    <div
-                        style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
-                        <?php if (!empty($quote['customer_signature'])): ?>
-                            <img src="<?= $quote['customer_signature'] ?>" style="max-height: 50px; width: auto;">
-                        <?php endif; ?>
-                    </div>
-                    <p class="mb-0 fw-bold" style="font-size: 12px;">ลูกค้า / Customer </p>
-                    <p class="text-muted mb-0" style="font-size: 12px;">(
-                        <?= htmlspecialchars($quote['cust_name'] ?? '................................') ?> )
-                    </p>
-                    <p class="text-muted" style="font-size: 12px;">วันที่: ....../....../......</p>
-                </div>
+        <!-- เงื่อนไข -->
+        <div class="conditions-section" style="font-size: 10.5px; line-height: 1.6;">
+            <div class="section-title">เงื่อนไขการยืนยันการจัดงานและการชำระเงิน</div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;">
+                <li>ผู้ว่าจ้างตกลงยืนยันการจัดงานเป็นลายลักษณ์อักษร หรือผ่านเอกสารที่สามารถตรวจสอบได้ ไม่น้อยกว่า 15 (สิบห้า) วัน ก่อนวันจัดงาน</li>
+                <li>ผู้ว่าจ้างตกลงชำระค่าบริการทั้งหมด ภายใน 15 (สิบห้า) วัน นับแต่วันที่โรงแรมออกใบแจ้งหนี้ (Tax Invoice) เว้นแต่คู่สัญญาจะตกลงเป็นหนังสือไว้เป็นอย่างอื่น</li>
+                <li>การลงนามในใบเสนอราคา หรือการตอบรับใบเสนอราคาทางอิเล็กทรอนิกส์ ถือเป็นการยอมรับรายละเอียด ราคา ขอบเขตการให้บริการ และเงื่อนไขทั้งหมดที่ระบุไว้ในใบเสนอราคา โดยมีผลผูกพันตามกฎหมาย</li>
+                <li>หากผู้ว่าจ้างผิดนัดชำระเงิน โรงแรมมีสิทธิเรียกดอกเบี้ยผิดนัดในอัตราที่กฎหมายกำหนด นับแต่วันถัดจากวันครบกำหนดชำระ จนกว่าจะชำระเงินครบถ้วน</li>
+                <li>โรงแรมสงวนสิทธิ์ในการระงับการให้บริการ หรือปฏิเสธการรับจองในอนาคต หากผู้ว่าจ้างผิดนัดชำระหนี้โดยไม่มีเหตุอันสมควร</li>
+            </ol>
 
+            <div style="border: 1px solid #333; padding: 8px 12px; margin-bottom: 10px; background: #f9f9f9;">
+                <strong>กรุณาโอนชำระเงินในนาม :</strong> บจก.ดับเบิ้ล เอส กรุ๊ป<br>
+                <strong>ธนาคาร :</strong> กสิกรไทย &nbsp;&nbsp; <strong>เลขที่บัญชี :</strong> 019-3-40644-0<br>
+                <span style="font-size: 10px;">(ภายหลังโอนชำระ กรุณาส่งเอกสารสลิปการโอน มาถึงฝ่ายขาย หลังโอนเสร็จสิ้น)</span>
+            </div>
 
+            <div class="section-title">เงื่อนไขการเปลี่ยนแปลงรายละเอียดการจัดงาน</div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;">
+                <li>กรณีผู้ว่าจ้างประสงค์จะเปลี่ยนแปลงจำนวนผู้เข้าร่วมประชุม รายการอาหาร เครื่องดื่ม หรือรายละเอียดอื่นใด ผู้ว่าจ้างต้องแจ้งให้โรงแรมทราบเป็นลายลักษณ์อักษร ไม่น้อยกว่า 3 (สาม) วัน ก่อนวันจัดงาน</li>
+                <li>หากแจ้งเปลี่ยนแปลงภายหลังระยะเวลาที่กำหนด โรงแรมขอสงวนสิทธิ์เรียกเก็บค่าใช้จ่ายเพิ่มเติม หรือคิดค่าบริการตามจำนวนที่ได้เตรียมการไว้แล้ว ทั้งนี้ตามความเสียหายที่เกิดขึ้นจริง</li>
+                <li>โรงแรมจะดำเนินการเปลี่ยนแปลงตามความพร้อมของวัตถุดิบ บุคลากร และการให้บริการ โดยไม่กระทบต่อคุณภาพมาตรฐานของงาน</li>
+            </ol>
+
+            <div class="section-title">เงื่อนไขการเพิ่มจำนวนผู้เข้าร่วม</div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;">
+                <li>กรณีผู้ว่าจ้างมีความประสงค์เพิ่มจำนวนผู้เข้าร่วมประชุม หรือเพิ่มจำนวนอาหารและเครื่องดื่มภายหลังการยืนยันยอด โรงแรมจะดำเนินการตามศักยภาพในการให้บริการและความพร้อมของวัตถุดิบ</li>
+                <li>โรงแรมขอสงวนสิทธิ์ในการเปลี่ยนแปลงรายการอาหาร เครื่องดื่ม หรือวัสดุอุปกรณ์เป็นรายการที่มีคุณภาพเทียบเท่า โดยไม่ต้องแจ้งให้ทราบล่วงหน้า</li>
+                <li>ผู้ว่าจ้างรับทราบว่า การสั่งเพิ่มอาหารในวันจัดงานอาจใช้ระยะเวลาในการจัดเตรียมเพิ่มเติม และโรงแรมจะดำเนินการโดยเร็วที่สุดตามมาตรฐานการให้บริการ</li>
+            </ol>
+
+            <div class="section-title">ความรับผิดชอบต่อความเสียหาย</div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;">
+                <li>ผู้ว่าจ้างตกลงรับผิดชอบต่อความเสียหาย ความสูญหาย หรือการชำรุดของอาคาร ห้องประชุม อุปกรณ์ เครื่องใช้ เครื่องตกแต่ง ทรัพย์สิน หรือสิ่งอำนวยความสะดวกของโรงแรม อันเกิดจากการกระทำของผู้ว่าจ้าง ผู้เข้าร่วมประชุม วิทยากร ผู้รับจ้างช่วง คณะทำงาน หรือบุคคลที่ผู้ว่าจ้างเชิญเข้าร่วมงาน</li>
+                <li>ผู้ว่าจ้างตกลงชำระค่าเสียหายตามมูลค่าความเสียหายที่เกิดขึ้นจริง รวมถึงค่าใช้จ่ายในการซ่อมแซม เปลี่ยนทดแทน หรือฟื้นฟูทรัพย์สินดังกล่าว ตามที่โรงแรมประเมินโดยสุจริตและสมเหตุสมผล</li>
+                <li>โรงแรมมีสิทธิเรียกเก็บค่าเสียหายดังกล่าวเพิ่มเติมจากค่าบริการตามใบเสนอราคาโรงแรมมีสิทธิเรียกเก็บค่าเสียหายดังกล่าวเพิ่มเติมจากค่าบริการตามใบเสนอราคา</li>
+            </ol>
+
+            <div class="section-title">ข้อกำหนดทั่วไป</div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;">
+                <li>ราคาในใบเสนอราคานี้มีอายุ 30 วัน นับจากวันที่ออกเอกสาร เว้นแต่จะระบุไว้เป็นอย่างอื่น</li>
+                <li>การให้บริการเป็นไปตามข้อกำหนดของโรงแรม และกฎหมายที่เกี่ยวข้อง</li>
+                <li>หากมีเหตุสุดวิสัย (Force Majeure) เช่น ภัยธรรมชาติ การระบาดของโรค การจลาจล คำสั่งของหน่วยงานรัฐ หรือเหตุการณ์ที่อยู่นอกเหนือการควบคุมของคู่สัญญา ซึ่งทำให้ไม่สามารถจัดงานได้ คู่สัญญาจะร่วมกันเจรจาเพื่อกำหนดแนวทางที่เหมาะสม โดยไม่มีฝ่ายใดต้องรับผิดในความเสียหายที่เกิดจากเหตุสุดวิสัยดังกล่าว</li>
+            </ol>
+
+            <ol style="padding-left: 18px; margin-bottom: 6px;" start="4">
+                <li>เงื่อนไขการยกเลิกงาน (Cancellation Policy) เช่น ยกเลิกภายใน 7 วัน คิดค่าบริการ 50% และภายใน 3 วัน คิด 100%</li>
+                <li>การรับมอบบริการ (Acceptance of Service) เมื่องานเสร็จสิ้นและผู้จัดงานใช้บริการ ถือว่าผู้ว่าจ้างรับมอบงาน เว้นแต่จะแจ้งข้อบกพร่องเป็นลายลักษณ์อักษรภายใน 24 ชั่วโมง</li>
+                <li>การระงับการให้บริการ หากผู้ว่าจ้างไม่ปฏิบัติตามเงื่อนไขสำคัญ โรงแรมมีสิทธิระงับการให้บริการโดยไม่ต้องรับผิดในความเสียหายที่เกิดขึ้น</li>
+                <li>ข้อกำหนดเรื่องกฎหมายและเขตอำนาจศาล ระบุให้ข้อพิพาทอยู่ภายใต้กฎหมายไทย และให้ศาลที่โรงแรมตั้งอยู่เป็นศาลที่มีเขตอำนาจ เพื่อความชัดเจนในการดำเนินคดีหากเกิดข้อพิพาทในอนาคต</li>
+            </ol>
+
+            <div class="signature-wrapper text-center mt-5">
+                <div class="row">
+                    <div class="col-4">
+                        <div
+                            style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
+                            <?php if (!empty($quote['creator_sig_path'])): ?>
+                                <img src="<?= $quote['creator_sig_path'] ?>" style="max-height: 50px; width: auto;">
+                            <?php endif; ?>
+                        </div>
+                        <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้จัดทำ / Prepared By</p>
+                        <p class="text-muted mb-0" style="font-size: 12px;">(
+                            <?= htmlspecialchars($quote['created_by_name'] ?? '................................') ?> )
+                        </p>
+                        <p class="text-muted" style="font-size: 12px;">วันที่: <?= date('d/m/Y', strtotime($quote['created_at'])) ?></p>
+                    </div>
+                    <div class="col-4">
+                        <div
+                            style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
+                            <?php if (!empty($quote['approver_sig_path'])): ?>
+                                <img src="<?= $quote['approver_sig_path'] ?>" style="max-height: 50px; width: auto;">
+                            <?php endif; ?>
+                        </div>
+                        <p class="mb-0 fw-bold" style="font-size: 12px;">ผู้อนุมัติ / Authorized Signature</p>
+                        <p class="text-muted mb-0" style="font-size: 12px;">(
+                            <?= htmlspecialchars($quote['approved_by_name'] ?? '................................') ?> )
+                        </p>
+                        <p class="text-muted" style="font-size: 12px;">วันที่:
+                            <?= !empty($quote['approved_at']) ? date('d/m/Y', strtotime($quote['approved_at'])) : '....../....../......' ?>
+                        </p>
+                    </div>
+                    <div class="col-4">
+                        <div
+                            style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
+                            <?php if (!empty($quote['customer_signature'])): ?>
+                                <img src="<?= $quote['customer_signature'] ?>" style="max-height: 50px; width: auto;">
+                            <?php endif; ?>
+                        </div>
+                        <p class="mb-0 fw-bold" style="font-size: 12px;">ลูกค้า / Customer </p>
+                        <p class="text-muted mb-0" style="font-size: 12px;">(
+                            <?= htmlspecialchars($quote['cust_name'] ?? '................................') ?> )
+                        </p>
+                        <p class="text-muted" style="font-size: 12px;">วันที่: ....../....../......</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -389,17 +440,15 @@ $items = $conn->query($sql_items);
             visibility: visible !important;
             position: absolute !important;
             top: -2mm !important;
-            /* ขยับขึ้นไปชิดขอบบนสุด */
             left: 0 !important;
             right: 0 !important;
             width: 210mm !important;
-            height: 297mm !important;
+            min-height: 297mm !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 8mm 12mm !important;
-            /* ลดขอบนอก เพื่อให้ตัวหนังสือดูใหญ่เต็มตา */
             box-shadow: none !important;
             transform: none !important;
-            /* ยกเลิกการ scale เพื่อให้ตัวอักษรชัดเจนที่สุด */
         }
 
         #printableArea * {
@@ -420,6 +469,11 @@ $items = $conn->query($sql_items);
         /* ทำให้ตัวหนาชัดเจนขึ้นตอนพิมพ์ */
         .fw-bold {
             font-weight: 700 !important;
+        }
+
+        .conditions-section {
+            page-break-before: always !important;
+            padding-top: 8mm;
         }
     }
 </style>
