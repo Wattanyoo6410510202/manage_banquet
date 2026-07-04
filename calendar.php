@@ -326,11 +326,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasTime = arg.event.startStr && arg.event.startStr.includes('T');
             const timeStr = hasTime ? arg.event.startStr.split('T')[1].substring(0, 5) : '';
             const st = (props.status || '').toLowerCase();
+            const rawStatus = props.status || '';
             let dotColor = '#0dcaf0';
             if(st === 'pending') dotColor = '#ffc107';
             else if(st === 'in progress' || st === 'อนุมัติแล้ว') dotColor = '#0d6efd';
             else if(st === 'completed' || st === 'จบงานแล้ว') dotColor = '#198754';
             else if(st === 'cancelled' || st === 'ยกเลิก') dotColor = '#dc3545';
+            else if(rawStatus === 'QT (อนุมัติ)') dotColor = '#fd7e14';
+            else if(rawStatus === 'QT (Draft)') dotColor = '#6c757d';
 
             return {
                 html: `<div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;line-height:1.3;">
@@ -471,12 +474,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         $color = '#fd7e14';
                         $status_text = 'QT (อนุมัติ)';
                     }
+                    
+                    $ev_date = $row['event_date'] ?? '';
+                    $ex_date = !empty($row['expiry_date']) ? $row['expiry_date'] : '';
+                    $end_attr = '';
+                    if ($ex_date && $ex_date !== $ev_date) {
+                        $end_attr = 'end: \'' . date('Y-m-d', strtotime($ex_date . ' +1 day')) . '\',';
+                    }
                 ?>
                 {
                     id: 'qt_<?php echo $row['id']; ?>',
                     ref_id: '<?php echo $row['id']; ?>',
                     title: '<?php echo addslashes("[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '')); ?>',
-                    start: '<?php echo $row['event_date'] ?? ''; ?>',
+                    start: '<?php echo $ev_date; ?>',
+                    <?php echo $end_attr; ?>
                     color: '<?php echo $color; ?>',
                     mode: 'general',
                     extendedProps: { 

@@ -78,7 +78,7 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุด (Expiry)</label>
+                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุดงาน</label>
                     <input type="date" name="expiry_date" class="form-control" value="<?= $quote['expiry_date'] ?>">
                 </div>
 

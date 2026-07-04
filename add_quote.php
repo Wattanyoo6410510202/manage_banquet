@@ -105,7 +105,7 @@ if ($function_id) {
                     <input type="date" name="event_date" class="form-control" value="<?= $event_date ?>">
                 </div>
                 <div class="col-md-3 mt-3">
-                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุด (Expiry)</label>
+                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุดงาน</label>
                     <input type="date" name="expiry_date" class="form-control" value="<?= $expiry_date ?>">
                 </div>
                 <div class="col-md-9">

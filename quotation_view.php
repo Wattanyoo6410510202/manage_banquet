@@ -8,7 +8,7 @@ $id = intval($_GET['id'] ?? 0);
 
 // 1. ดึงข้อมูลหลัก + ข้อมูลลูกค้า + บริษัท + ลายเซ็น + ชื่อพนักงาน
 $sql = "SELECT q.*, 
-               c.cust_name, c.cust_address, c.cust_phone, 
+               c.cust_name, c.cust_address, c.cust_phone, c.cust_contact_name,
                f.function_name, 
                comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path,
                u_create.name as created_by_name,
@@ -112,6 +112,12 @@ $items = $conn->query($sql_items);
                                     <span class="text-muted">โทร / Tel:</span>
                                     <span class="fw-bold"><?= htmlspecialchars($quote['cust_phone']) ?></span>
                                 </div>
+                                <?php if (!empty($quote['cust_contact_name'])): ?>
+                                <div style="font-size: 12px; margin-top: 4px;">
+                                    <span class="text-muted">ผู้ประสานงาน:</span>
+                                    <span class="fw-bold"><?= htmlspecialchars($quote['cust_contact_name']) ?></span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
