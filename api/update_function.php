@@ -217,6 +217,23 @@ if (isset($_POST['update'])) {
                     $k_type_id_val = intval($k_type_ids[$key] ?? 0);
                     $k_qty_val = $k_qtys[$key] ?? 0;
                     $k_price_val = floatval($k_prices[$key] ?? 0);
+                    if ($k_price_val == 0 && trim($item) != "") {
+                        $total_unit = 0;
+                        $k_lines = preg_split('/\r\n|\r|\n/', $item);
+                        foreach ($k_lines as $kl) {
+                            $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $kl));
+                            if (empty($k_name)) continue;
+                            $k_esc = $conn->real_escape_string($k_name);
+                            $qb = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_esc%' LIMIT 1");
+                            if ($b = $qb->fetch_assoc()) {
+                                $total_unit += (float)$b['break_price'];
+                            } else {
+                                $qd = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_esc%' LIMIT 1");
+                                if ($d = $qd->fetch_assoc()) $total_unit += (float)$d['price_per_pax'];
+                            }
+                        }
+                        if ($total_unit > 0) $k_price_val = $total_unit;
+                    }
                     $k_remark_val = $k_remarks[$key] ?? '';
                     $stmt_k->bind_param("isisids", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_price_val, $k_remark_val);
                     if (!$stmt_k->execute()) throw new Exception("Insert kitchen failed: " . $stmt_k->error);
@@ -239,6 +256,18 @@ if (isset($_POST['update'])) {
                     $menu_set_id_val = intval($menu_set_ids[$key] ?? 0);
                     $menu_qty_val = $menu_qtys[$key] ?? 0;
                     $menu_price_val = $menu_prices[$key] ?? 0;
+                    if ($menu_price_val == 0 && trim($detail) != "") {
+                        $total_unit = 0;
+                        $m_lines = preg_split('/\r\n|\r|\n/', $detail);
+                        foreach ($m_lines as $ml) {
+                            $m_name = trim(preg_replace('/^[0-9\.\-\s]+/', '', $ml));
+                            if (empty($m_name)) continue;
+                            $m_esc = $conn->real_escape_string($m_name);
+                            $qm = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$m_esc%' LIMIT 1");
+                            if ($p = $qm->fetch_assoc()) $total_unit += (float)$p['price_per_pax'];
+                        }
+                        if ($total_unit > 0) $menu_price_val = $total_unit;
+                    }
                     $stmt_m->bind_param("isisds", $function_id, $menu_time_val, $menu_set_id_val, $detail, $menu_qty_val, $menu_price_val);
                     if (!$stmt_m->execute()) throw new Exception("Insert menu failed: " . $stmt_m->error);
                 }

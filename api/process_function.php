@@ -234,6 +234,23 @@ if (isset($_POST['save'])) {
                     $k_type = intval($_POST['k_type_id'][$k] ?? 0);
                     $k_qty = intval($_POST['k_qty'][$k] ?? 0);
                     $k_price = floatval($_POST['k_price'][$k] ?? 0);
+                    if ($k_price == 0 && trim($item) != "") {
+                        $total_unit = 0;
+                        $k_lines = preg_split('/\r\n|\r|\n/', $item);
+                        foreach ($k_lines as $kl) {
+                            $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $kl));
+                            if (empty($k_name)) continue;
+                            $k_esc = $conn->real_escape_string($k_name);
+                            $qb = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_esc%' LIMIT 1");
+                            if ($b = $qb->fetch_assoc()) {
+                                $total_unit += (float)$b['break_price'];
+                            } else {
+                                $qd = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_esc%' LIMIT 1");
+                                if ($d = $qd->fetch_assoc()) $total_unit += (float)$d['price_per_pax'];
+                            }
+                        }
+                        if ($total_unit > 0) $k_price = $total_unit;
+                    }
                     $k_rem = $_POST['k_remark'][$k] ?? '';
                     $stmt_k->bind_param("isisids", $last_id, $k_date, $k_type, $item, $k_qty, $k_price, $k_rem);
                     $stmt_k->execute();
@@ -253,6 +270,18 @@ if (isset($_POST['save'])) {
                     $m_set = intval($_POST['menu_set_id'][$k] ?? 0);
                     $m_qty = $_POST['menu_qty'][$k] ?? ''; // รับเป็น string หรือ int ตามโครงสร้างตาราง
                     $m_price = floatval($_POST['menu_price'][$k] ?? 0);
+                    if ($m_price == 0 && trim($detail) != "") {
+                        $total_unit = 0;
+                        $m_lines = preg_split('/\r\n|\r|\n/', $detail);
+                        foreach ($m_lines as $ml) {
+                            $m_name = trim(preg_replace('/^[0-9\.\-\s]+/', '', $ml));
+                            if (empty($m_name)) continue;
+                            $m_esc = $conn->real_escape_string($m_name);
+                            $qm = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$m_esc%' LIMIT 1");
+                            if ($p = $qm->fetch_assoc()) $total_unit += (float)$p['price_per_pax'];
+                        }
+                        if ($total_unit > 0) $m_price = $total_unit;
+                    }
 
                     $stmt_m->bind_param("isissd", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price);
                     $stmt_m->execute();
