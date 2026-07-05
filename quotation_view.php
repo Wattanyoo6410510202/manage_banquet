@@ -8,7 +8,7 @@ $id = intval($_GET['id'] ?? 0);
 
 // 1. ดึงข้อมูลหลัก + ข้อมูลลูกค้า + บริษัท + ลายเซ็น + ชื่อพนักงาน
 $sql = "SELECT q.*, 
-               c.cust_name, c.cust_address, c.cust_phone, c.cust_contact_name,
+                c.cust_name, c.cust_address, c.cust_phone, c.cust_contact_name, c.sales_name,
                f.function_name, 
                comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path,
                u_create.name as created_by_name,
@@ -112,12 +112,16 @@ $items = $conn->query($sql_items);
                                     <span class="text-muted">โทร / Tel:</span>
                                     <span class="fw-bold"><?= htmlspecialchars($quote['cust_phone']) ?></span>
                                 </div>
-                                <?php if (!empty($quote['cust_contact_name'])): ?>
+                                <?php if (!empty($quote['cust_contact_name']) || !empty($quote['sales_name'])): ?>
                                 <div style="font-size: 12px; margin-top: 4px;">
-                                    <span class="text-muted">ผู้ประสานงาน:</span>
-                                    <span class="fw-bold"><?= htmlspecialchars($quote['cust_contact_name']) ?></span>
+                                    <span class="text-muted">ผู้ประสานงาน / เซล:</span>
+                                    <span class="fw-bold"><?= htmlspecialchars($quote['cust_contact_name'] ?? '-') ?> / <?= htmlspecialchars($quote['sales_name'] ?? '-') ?></span>
                                 </div>
                                 <?php endif; ?>
+                                <div style="font-size: 12px; margin-top: 4px;">
+                                    <span class="text-muted">วันที่จัดงาน / Event Date:</span>
+                                    <span class="fw-bold"><?= !empty($quote['event_date']) ? date('d/m/Y', strtotime($quote['event_date'])) : '-' ?> - <?= !empty($quote['expiry_date']) ? date('d/m/Y', strtotime($quote['expiry_date'])) : '-' ?></span>
+                                </div>
                             </div>
                         </div>
                     </div>
