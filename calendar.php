@@ -360,19 +360,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 $q_f = mysqli_query($conn, $sql_f);
             }
 
-            $func_groups = [];
+            $rows = [];
             if ($q_f) {
                 while ($row = mysqli_fetch_assoc($q_f)) {
-                    $gid = (isset($row['project_id']) && $row['project_id']) ? $row['project_id'] : 'single_' . $row['id'];
-                    if (!isset($func_groups[$gid])) {
-                        $func_groups[$gid] = $row;
-                    } elseif (isset($row['is_approved']) && $row['is_approved'] == 1) {
-                        $func_groups[$gid] = $row;
-                    }
+                    $rows[] = $row;
                 }
             }
             
-            foreach ($func_groups as $row) {
+            foreach ($rows as $row) {
                 $st = strtolower(trim($row['status'] ?? ''));
                 if($st === 'pending') $color = '#ffc107';
                 elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';

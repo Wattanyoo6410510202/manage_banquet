@@ -1,14 +1,26 @@
 <?php
+session_start();
 include "../config.php";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $id = intval($_POST['id']);
+    $user_role = strtolower($_SESSION['role'] ?? '');
+    $user_id = intval($_SESSION['user_id'] ?? 0);
 
-    // เริ่ม Transaction (เพราะต้องลบ 2 ตาราง: ตารางหลัก และ ตารางลูก)
     $conn->begin_transaction();
 
     try {
-        // 1. ลบรายการย่อยก่อน (quotation_items) เพื่อป้องกัน Error Foreign Key
+        // เช็คสิทธิ์: Admin ลบได้ทุกอย่าง, นอกนั้นลบได้เฉพาะของตัวเอง
+        if ($user_role !== 'admin') {
+            $stmt_check = $conn->prepare("SELECT id FROM quotations WHERE id = ? AND created_by != ?");
+            $stmt_check->bind_param("ii", $id, $user_id);
+            $stmt_check->execute();
+            if ($stmt_check->get_result()->num_rows > 0) {
+                throw new Exception("คุณไม่มีสิทธิ์ลบใบเสนอราคานี้");
+            }
+        }
+
+        // 1. ลบรายการย่อยก่อน (quotation_items)
         $sql_items = "DELETE FROM quotation_items WHERE quote_id = ?";
         $stmt_items = $conn->prepare($sql_items);
         $stmt_items->bind_param("i", $id);

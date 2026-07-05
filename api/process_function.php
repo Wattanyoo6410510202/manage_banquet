@@ -124,19 +124,13 @@ if (isset($_POST['save'])) {
 
     try {
         // --- [NEW] 2.5 จัดการ Project ---
-        if ($project_id > 0) {
-            // ถ้ามี project_id ส่งมาจากใบเสนอราคา ให้ใช้ตัวเดิมได้เลย (อาจจะอัปเดตชื่อโครงการถ้าจำเป็น)
-            $stmt_upd_project = $conn->prepare("UPDATE event_projects SET project_name = ? WHERE id = ?");
-            $stmt_upd_project->bind_param("si", $function_name, $project_id);
-            $stmt_upd_project->execute();
-        } else {
-            // ถ้าไม่มี ให้สร้าง Project ใหม่
-            $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
-            $stmt_project = $conn->prepare($sql_project);
-            $stmt_project->bind_param("siis", $function_name, $customer_id, $company_id, $created_by_name);
-            $stmt_project->execute();
-            $project_id = $conn->insert_id;
-        }
+        // สร้าง Project ใหม่ทุกครั้ง (ไม่ reuse project_id เดิม)
+        $sql_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
+        $stmt_project = $conn->prepare($sql_project);
+        $stmt_project->bind_param("siis", $function_name, $customer_id, $company_id, $created_by_name);
+        $stmt_project->execute();
+        $project_id = $conn->insert_id;
+
         // อัปเดต project_id ของใบเสนอราคาให้ตรงกับ function ที่สร้าง
         if ($quotation_id) {
             $stmt_upd_quote = $conn->prepare("UPDATE quotations SET project_id = ? WHERE id = ?");

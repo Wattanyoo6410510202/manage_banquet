@@ -16,6 +16,7 @@ function formatPhoneNumber($phone)
 // 1. ตรวจสอบ Role และ User
 $user_role = strtolower($_SESSION['role'] ?? 'staff');
 $current_user = $_SESSION['user_name'] ?? '';
+$current_user_id = intval($_SESSION['user_id'] ?? 0);
 $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement', 'staff']); // กำหนดสิทธิ์จัดการ
 
 // 2. เตรียม WHERE Clause
@@ -450,7 +451,9 @@ if ($conflict_q) {
                                             </button>
                                         <?php endif; ?>
                                         <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-secondary py-0 px-2" title="แก้ไขดราฟ"><i class="bi bi-pencil small"></i></a>
+                                        <?php if ($user_role === 'admin' || intval($row['created_by_id']) === $current_user_id): ?>
                                         <button type="button" class="btn btn-xs btn-outline-danger btn-delete-row py-0 px-2" data-id="<?= $row['id']; ?>"><i class="bi bi-trash small"></i></button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

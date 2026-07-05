@@ -26,23 +26,18 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
     $conn->begin_transaction();
 
     try {
-        // 🚀 2. เช็คสิทธิ์เข้มงวด (ดักทั้ง Viewer และ Staff)
-
-        // ด่านที่ 1: ถ้าเป็น Viewer "ห้ามลบทุกกรณี"
-        if ($user_role === 'viewer') {
-            throw new Exception("ขออภัย! คุณมีสิทธิ์เข้าชมอย่างเดียว ไม่สามารถลบข้อมูลได้");
-        }
-
-        // ด่านที่ 2: ถ้าเป็น Staff เช็คสิทธิ์ความเป็นเจ้าของและสถานะ Approve
-        if ($user_role === 'staff') {
-            $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by != ? OR approve != 0)";
+        // 🚀 2. เช็คสิทธิ์ก่อนลบ
+        if ($user_role !== 'admin') {
+            // นอกเหนือจาก Admin: ลบได้เฉพาะงานตัวเองที่ยังไม่ Approve
+            $current_user_id = intval($_SESSION['user_id'] ?? 0);
+            $check_sql = "SELECT id FROM functions WHERE id IN ($ids_string) AND (created_by_id != ? OR approve != 0)";
             $stmt_check = $conn->prepare($check_sql);
-            $stmt_check->bind_param("s", $current_user);
+            $stmt_check->bind_param("i", $current_user_id);
             $stmt_check->execute();
             $res_check = $stmt_check->get_result();
 
             if ($res_check->num_rows > 0) {
-                throw new Exception("จาร! มีบางรายการที่จารไม่มีสิทธิ์ลบ หรือถูกอนุมัติไปแล้วนะ");
+                throw new Exception("คุณไม่มีสิทธิ์ลบรายการนี้ หรือรายการถูกอนุมัติไปแล้ว");
             }
         }
         // 3. จัดการรูปภาพ (ดึง Path มาลบไฟล์ใน Folder)

@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $quote_id = intval($_POST['quote_id']);
     $customer_id = intval($_POST['customer_id']);
     $company_id = intval($_POST['company_id']);
+    $project_id = !empty($_POST['project_id']) ? intval($_POST['project_id']) : null;
     $event_date = $_POST['event_date'];
     $expiry_date = $_POST['expiry_date'];
     $event_name = $_POST['event_name'] ?? '';
@@ -34,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sql_update = "UPDATE quotations SET 
                         customer_id = ?, 
                         company_id = ?, 
+                        project_id = ?,
                         event_date = ?, 
                         expiry_date = ?, 
                         event_name = ?, 
@@ -54,9 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare($sql_update);
 
         $stmt->bind_param(
-            "iisssdddssssssssi",
+            "iiisssdddssssssssi",
             $customer_id,
             $company_id,
+            $project_id,
             $event_date,
             $expiry_date,
             $event_name,

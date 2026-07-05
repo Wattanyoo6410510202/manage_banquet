@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_name'])) {
 
 $user_role = strtolower($_SESSION['role'] ?? 'staff');
 $current_user = $_SESSION['user_name'] ?? '';
+$current_user_id = intval($_SESSION['user_id'] ?? 0);
 $type = $_GET['type'] ?? 'mt'; // mt, hk, bk
 
 $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement']);
@@ -137,7 +138,9 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
                 if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && ($row['approve'] == 0 || $user_role === 'procurement')) {
                     echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>';
                     if ($user_role !== 'procurement') {
-                        echo '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="' . $row['id'] . '"><i class="bi bi-trash"></i></button>';
+                        if ($user_role === 'admin' || intval($row['created_by_id']) === $current_user_id) {
+                            echo '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="' . $row['id'] . '"><i class="bi bi-trash"></i></button>';
+                        }
                     }
                 }
             }
@@ -246,7 +249,9 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
                 echo '<button type="button" class="btn btn-xs btn-success btn-approve-draft py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-check-lg small"></i> อนุมัติ</button>';
             }
             echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-xs btn-outline-secondary py-0 px-2"><i class="bi bi-pencil small"></i></a>';
-            echo '<button type="button" class="btn btn-xs btn-outline-danger btn-delete-row py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-trash small"></i></button>';
+            if ($user_role === 'admin' || intval($row['created_by_id']) === $current_user_id) {
+                echo '<button type="button" class="btn btn-xs btn-outline-danger btn-delete-row py-0 px-2" data-id="' . $row['id'] . '"><i class="bi bi-trash small"></i></button>';
+            }
             echo '</div></td></tr>';
         }
     }

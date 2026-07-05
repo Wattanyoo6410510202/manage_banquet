@@ -3,6 +3,7 @@ include "config.php";
 include "header.php";
 
 $role = strtolower($_SESSION['role'] ?? 'staff');
+$current_user_id = intval($_SESSION['user_id'] ?? 0);
 $is_admin_or_gm = in_array($role, ['admin', 'gm']);
 $can_approve = in_array($role, ['admin', 'gm', 'manager']);
 
@@ -115,8 +116,8 @@ while ($row = $result->fetch_assoc()) {
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($q['status'] !== 'Approved'): ?>
-                                        <?php if ($can_approve): ?>
+                                    <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                        <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
                                         <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
                                         <?php endif; ?>
                                         <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
@@ -125,7 +126,9 @@ while ($row = $result->fetch_assoc()) {
                                         <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
                                     <?php endif; ?>
                                     <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                    <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -192,15 +195,17 @@ while ($row = $result->fetch_assoc()) {
                                     <i class="bi bi-printer"></i>
                                 </a>
                                 
-                                <?php if ($row['status'] !== 'Approved'): ?>
+                                <?php if ($row['status'] !== 'Approved' || $role === 'admin'): ?>
                                     <a href="edit_quotation.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-warning">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
                                 <?php endif; ?>
                                 
+                                <?php if ($role === 'admin' || intval($row['created_by']) === $current_user_id): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $row['id'] ?>">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
