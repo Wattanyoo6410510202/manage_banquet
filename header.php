@@ -220,6 +220,13 @@ function is_active($pages)
                     <span class="small">โหมดสอนใช้งาน</span>
                 </button>
 
+                <a href="https://line.me/R/ti/p/@080cyphf" target="_blank"
+                    class="btn btn-sm d-flex align-items-center gap-1 shadow-none"
+                    style="background:#06C755; color:#fff; border-radius: 50px; font-size: 0.75rem; padding: 2px 10px;">
+                    <i class="bi bi-line" style="font-size: 1rem;"></i>
+                    <span class="d-none d-sm-inline">@080cyphf</span>
+                </a>
+
                 <div class="d-flex align-items-center text-white-50">
                     <i class="bi bi-person-circle text-gold fs-5 me-1 me-sm-2"></i>
                     <span class="fw-bold text-white user-name">

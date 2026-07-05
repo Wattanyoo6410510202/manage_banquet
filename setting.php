@@ -329,6 +329,11 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                                 onclick="togglePass()"><i class="bi bi-eye"></i></button>
                                         </div>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="small fw-bold">LINE User ID <small class="text-muted">(สำหรับแจ้งเตือน)</small></label>
+                                        <input type="text" name="line_user_id" class="form-control"
+                                            value="<?php echo $edit_user['line_user_id'] ?? ''; ?>" placeholder="Uxxxxxxxxxxx">
+                                    </div>
                                     <div class="mb-4">
                                         <label class="small fw-bold">ระดับสิทธิ์ (Role)</label>
                                         <select name="role" class="form-select">
@@ -380,6 +385,7 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                         <th>ชื่อ-นามสกุล</th>
                                         <th>Username</th>
                                         <th>Role</th>
+                                        <th>LINE</th>
                                         <th class="text-end">จัดการ</th>
                                     </tr>
                                 </thead>
@@ -424,6 +430,15 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                                 <i class="bi <?php echo $icon; ?> me-1 <?php echo $color; ?>"></i>
                                                 <?php echo htmlspecialchars($u['role']); ?>
                                             </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($u['line_user_id'])): ?>
+                                                <span class="small text-muted" title="<?= htmlspecialchars($u['line_user_id']) ?>">
+                                                    <i class="bi bi-line text-success"></i> ผูกแล้ว
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="small text-muted"><i class="bi bi-dash"></i></span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
                                             <a href="setting.php?edit_user_id=<?php echo $u['id']; ?>"

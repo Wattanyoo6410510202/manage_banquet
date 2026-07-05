@@ -285,6 +285,29 @@ if (isset($_POST['save'])) {
 
         $conn->commit();
         $_SESSION['flash_msg'] = "success";
+
+        // LINE แจ้งเตือนไปยังทุกแผนก
+        include_once __DIR__ . "/../line_helper.php";
+        $lineMsg = "📢 งานใหม่ / New Event\n"
+            . "━━━━━━━━━━━━━━━━\n"
+            . "📌 ชื่องาน: {$function_name}\n"
+            . "👤 ผู้จอง: {$booking_name}\n"
+            . "📞 โทร: {$phone}\n"
+            . "🪑 ผู้ร่วม: {$pax} คน\n"
+            . "💰 เงินมัดจำ: " . number_format($deposit, 2) . " บาท\n"
+            . "🏠 ห้อง: {$booking_room}\n"
+            . "📅 วันที่เริ่ม: " . date('d/m/Y H:i', strtotime($start_date)) . "\n"
+            . "📅 วันที่สิ้นสุด: " . date('d/m/Y H:i', strtotime($end_date)) . "\n"
+            . "━━━━━━━━━━━━━━━━\n"
+            . "🆔 รหัสงาน: {$final_code}\n"
+            . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
+        sendLineNotifyToRole($conn, 'admin', $lineMsg);
+        sendLineNotifyToRole($conn, 'gm', $lineMsg);
+        sendLineNotifyToRole($conn, 'housekeeping', $lineMsg);
+        sendLineNotifyToRole($conn, 'technician', $lineMsg);
+        sendLineNotifyToRole($conn, 'banquet_staff', $lineMsg);
+        sendLineNotifyToRole($conn, 'procurement', $lineMsg);
+
         header("Location: manage_banquet.php");
         exit();
 

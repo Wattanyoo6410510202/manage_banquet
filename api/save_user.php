@@ -24,25 +24,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = $_POST['name']; 
     $role = $_POST['role'];
     $password = $_POST['password'];
+    $line_user_id = $_POST['line_user_id'] ?? '';
 
     if ($id) {
         // --- กรณี: แก้ไข (Update) ---
         if (!empty($password)) {
-            // ถ้ามีการกรอกรหัสผ่านใหม่เข้ามา ให้ Hash และอัปเดต
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, name = ?, password = ?, role = ? WHERE id = ?");
-            $stmt->bind_param("ssssi", $username, $name, $hashed_password, $role, $id);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, name = ?, password = ?, role = ?, line_user_id = ? WHERE id = ?");
+            $stmt->bind_param("sssssi", $username, $name, $hashed_password, $role, $line_user_id, $id);
         } else {
-            // ถ้าไม่กรอกรหัสผ่าน ให้อัปเดตแค่ข้อมูลส่วนอื่น
-            $stmt = $conn->prepare("UPDATE users SET username = ?, name = ?, role = ? WHERE id = ?");
-            $stmt->bind_param("sssi", $username, $name, $role, $id);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, name = ?, role = ?, line_user_id = ? WHERE id = ?");
+            $stmt->bind_param("ssssi", $username, $name, $role, $line_user_id, $id);
         }
         $msg = "อัปเดตข้อมูลผู้ใช้เรียบร้อย";
     } else {
         // --- กรณี: เพิ่มใหม่ (Insert) ---
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO users (username, name, password, role) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $username, $name, $hashed_password, $role);
+        $stmt = $conn->prepare("INSERT INTO users (username, name, password, role, line_user_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssss", $username, $name, $hashed_password, $role, $line_user_id);
         $msg = "เพิ่มผู้ใช้งานใหม่สำเร็จ";
     }
 
