@@ -244,21 +244,8 @@ if ($q && mysqli_num_rows($q) > 0) {
                             </td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
-                                        <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
-                                            <button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="<?= $master['id']; ?>"><i class="bi bi-check-lg"></i> อนุมัติ</button>
-                                        <?php endif; ?>
-                                        <?php if ($master['approve'] == 1 && $master['status'] == 'Confirmed'): ?>
-                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $master['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                    
                                     <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-eye"></i></a>
-                                    
-                                    <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
-                                        <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>
-                                        <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
-                                    <?php endif; ?>
+                                    <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -285,12 +272,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 </td>
                                 <td></td>
                                 <td class="text-center">
-                                    <div class="btn-group">
-                                        <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-primary py-0 px-2"><i class="bi bi-eye small"></i></a>
-                                        <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
-                                            <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-secondary py-0 px-2"><i class="bi bi-pencil small"></i></a>
-                                        <?php endif; ?>
-                                    </div>
+                                    <a href="view.php?id=<?= $row['id']; ?>" class="btn btn-xs btn-outline-primary py-0 px-2"><i class="bi bi-eye small"></i></a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -346,21 +328,10 @@ if ($q && mysqli_num_rows($q) > 0) {
                         </div>
 
                         <div class="row g-2">
-                            <div class="col-6">
+                            <div class="col-12">
                                 <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-outline-primary btn-sm w-100 py-2">
                                     <i class="bi bi-eye d-block fs-5 mb-1"></i> ดูข้อมูล
                                 </a>
-                            </div>
-                            <div class="col-6">
-                                <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
-                                    <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-outline-dark btn-sm w-100 py-2">
-                                        <i class="bi bi-pencil-square d-block fs-5 mb-1"></i> แก้ไข
-                                    </a>
-                                <?php else: ?>
-                                     <button class="btn btn-outline-secondary btn-sm w-100 py-2 disabled">
-                                        <i class="bi bi-lock d-block fs-5 mb-1"></i> แก้ไข
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         </div>
 

@@ -113,38 +113,8 @@ if ($type === 'mt' || $type === 'hk' || $type === 'bk') {
             echo '</div></td>';
             
             echo '<td class="text-center sticky-col"><div class="d-flex justify-content-center gap-1">';
-            
-            // ปุ่มจัดการตามสิทธิ์
-            if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])) {
-                if ($row['approve'] == 0 && in_array($user_role, ['admin', 'gm'])) {
-                    echo '<button type="button" class="btn btn-sm btn-success btn-approve-row" data-id="' . $row['id'] . '"><i class="bi bi-check-lg"></i> อนุมัติ</button>';
-                }
-                if ($row['approve'] == 1 && $row['status'] == 'Confirmed') {
-                    echo '<button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="' . $row['id'] . '" data-status="In Progress"><i class="bi bi-play-fill"></i> ดำเนินการ</button>';
-                }
-                if ($row['status'] == 'In Progress') {
-                    echo '<button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="' . $row['id'] . '" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>';
-                }
-                if (!in_array($row['status'], ['Completed', 'Cancelled'])) {
-                    echo '<button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="' . $row['id'] . '" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>';
-                }
-            }
-            
-            echo '<div class="vr mx-1"></div>';
             echo '<a href="view.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="พิมพ์/ดูรายละเอียด"><i class="bi bi-printer"></i></a>';
-            
-            if (!in_array($user_role, ['technician', 'housekeeping'])) {
-                echo '<a href="finance.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>';
-                if ($user_role !== 'viewer' && $can_manage && $row['status'] != 'Completed' && ($row['approve'] == 0 || $user_role === 'procurement')) {
-                    echo '<a href="edit.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-dark" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>';
-                    if ($user_role !== 'procurement') {
-                        if ($user_role === 'admin' || intval($row['created_by_id']) === $current_user_id) {
-                            echo '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="' . $row['id'] . '"><i class="bi bi-trash"></i></button>';
-                        }
-                    }
-                }
-            }
-            
+            echo '<a href="finance.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI"><i class="bi bi-cash-coin"></i></a>';
             echo '</div></td></tr>';
         }
     }
