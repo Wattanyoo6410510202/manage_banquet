@@ -10,6 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $search = $_GET['q'] ?? '';
 $search = $conn->real_escape_string($search);
+$by_id = intval($_GET['id'] ?? 0);
 
 $data = [];
 $status = 'success';
@@ -19,12 +20,16 @@ if ($conn->connect_error) {
     $status = 'error';
     $error = 'Database Connection Failed: ' . $conn->connect_error;
 } else {
-    // ค้นหาตามชื่อลูกค้า หรือเบอร์โทร
-    $sql = "SELECT id, cust_name as text, cust_name, cust_phone, cust_address 
-            FROM customers 
-            WHERE cust_name LIKE '%$search%' OR cust_phone LIKE '%$search%'
-            ORDER BY cust_name ASC 
-            LIMIT 20";
+    if ($by_id) {
+        $sql = "SELECT id, cust_name as text, cust_name, cust_phone, cust_address 
+                FROM customers WHERE id = $by_id LIMIT 1";
+    } else {
+        $sql = "SELECT id, cust_name as text, cust_name, cust_phone, cust_address 
+                FROM customers 
+                WHERE cust_name LIKE '%$search%' OR cust_phone LIKE '%$search%'
+                ORDER BY cust_name ASC 
+                LIMIT 20";
+    }
 
     $result = $conn->query($sql);
     if ($result) {

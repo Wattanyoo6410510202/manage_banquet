@@ -16,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customer_id = intval($_POST['customer_id']);
     $quote_no    = $_POST['quote_no'];
     $event_name  = $_POST['event_name'];
-    $event_date  = $_POST['event_date'];
-    $expiry_date = $_POST['expiry_date'];
+    $event_date  = $_POST['event_date_yyyy'] . '-' . $_POST['event_date_mm'] . '-' . $_POST['event_date_dd'];
+    $expiry_date = $_POST['expiry_date_yyyy'] . '-' . $_POST['expiry_date_mm'] . '-' . $_POST['expiry_date_dd'];
     $subtotal    = floatval($_POST['subtotal']);
     $vat         = floatval($_POST['vat']);
     $grand_total = floatval($_POST['grand_total']);

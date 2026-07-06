@@ -2,10 +2,11 @@
 include "config.php";
 include "header.php";
 
-// 1. ดึงรายชื่อ Project ทั้งหมด
-$projects_sql = "SELECT ep.id, ep.project_name 
+// 1. ดึงรายชื่อ Project ทั้งหมด (พร้อมตรวจสอบแหล่งที่มา)
+$projects_sql = "SELECT ep.id, ep.project_name,
+                        (SELECT COUNT(*) FROM functions f WHERE f.project_id = ep.id) as has_eo,
+                        (SELECT COUNT(*) FROM quotations q WHERE q.project_id = ep.id) as has_quotation
                  FROM event_projects ep 
-                 WHERE EXISTS (SELECT 1 FROM functions f WHERE f.project_id = ep.id)
                  ORDER BY ep.project_name ASC";
 $projects_res = $conn->query($projects_sql);
 
@@ -30,6 +31,20 @@ if ($function_id) {
         $project_id = $row['project_id']; // ดึง project_id มาด้วย
     }
 }
+
+// Parse event_date into day, month, year for dropdown
+$ev_parts = explode('-', $event_date ?: date('Y-m-d'));
+$ev_day = (int)$ev_parts[2];
+$ev_month = (int)$ev_parts[1];
+$ev_year_c = (int)$ev_parts[0];
+$ev_year_thai = $ev_year_c + 543;
+
+// Parse expiry_date into day, month, year for dropdown
+$ex_parts = explode('-', $expiry_date ?: date('Y-m-d', strtotime('+30 days')));
+$ex_day = (int)$ex_parts[2];
+$ex_month = (int)$ex_parts[1];
+$ex_year_c = (int)$ex_parts[0];
+$ex_year_thai = $ex_year_c + 543;
 ?>
 
 <div class="container-fluid p-0">
@@ -65,7 +80,11 @@ if ($function_id) {
                             $projects_res->data_seek(0);
                             while ($p = $projects_res->fetch_assoc()):
                                 $selected = ($p['id'] == $project_id) ? "selected" : "";
-                                echo "<option value='{$p['id']}' $selected>{$p['project_name']}</option>";
+                                $sources = [];
+                                if ($p['has_eo'] > 0) $sources[] = 'EO';
+                                if ($p['has_quotation'] > 0) $sources[] = 'QT';
+                                $src_text = !empty($sources) ? ' [' . implode('+', $sources) . ']' : '';
+                                echo "<option value='{$p['id']}' data-sources='" . implode(',', $sources) . "' $selected>{$p['project_name']}{$src_text}</option>";
                             endwhile;
                         }
                         ?>
@@ -101,12 +120,59 @@ if ($function_id) {
                     </div>
                 </div>
                 <div class="col-md-3 mt-3">
-                    <label class="form-label fw-bold text-primary">วันที่จัดงาน</label>
-                    <input type="date" name="event_date" class="form-control" value="<?= $event_date ?>">
+                    <label class="form-label fw-bold text-primary">วัน เดือน ปี</label>
+                    <div class="d-flex gap-1">
+                        <select name="event_date_dd" class="form-select" style="width:30%">
+                            <?php for ($d=1; $d<=31; $d++):
+                                $dv = sprintf('%02d', $d);
+                            ?>
+                                <option value="<?= $dv ?>" <?= $d==$ev_day ? 'selected' : '' ?>><?= $dv ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select name="event_date_mm" class="form-select" style="width:40%">
+                            <?php
+                            $thai_months = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                                           'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+                            for ($m=1; $m<=12; $m++):
+                                $mv = sprintf('%02d', $m);
+                            ?>
+                                <option value="<?= $mv ?>" <?= $m==$ev_month ? 'selected' : '' ?>><?= $thai_months[$m] ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select name="event_date_yyyy" class="form-select" style="width:30%">
+                            <?php for ($y=$ev_year_thai-1; $y<=$ev_year_thai+3; $y++):
+                                $christ_year = $y - 543;
+                            ?>
+                                <option value="<?= $christ_year ?>" <?= $y==$ev_year_thai ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-3 mt-3">
                     <label class="form-label fw-bold text-danger">วันที่สิ้นสุดงาน</label>
-                    <input type="date" name="expiry_date" class="form-control" value="<?= $expiry_date ?>">
+                    <div class="d-flex gap-1">
+                        <select name="expiry_date_dd" class="form-select" style="width:30%">
+                            <?php for ($d=1; $d<=31; $d++):
+                                $dv = sprintf('%02d', $d);
+                            ?>
+                                <option value="<?= $dv ?>" <?= $d==$ex_day ? 'selected' : '' ?>><?= $dv ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select name="expiry_date_mm" class="form-select" style="width:40%">
+                            <?php for ($m=1; $m<=12; $m++):
+                                $mv = sprintf('%02d', $m);
+                            ?>
+                                <option value="<?= $mv ?>" <?= $m==$ex_month ? 'selected' : '' ?>><?= $thai_months[$m] ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select name="expiry_date_yyyy" class="form-select" style="width:30%">
+                            <?php for ($y=$ex_year_thai-1; $y<=$ex_year_thai+3; $y++):
+                                $christ_year = $y - 543;
+                            ?>
+                                <option value="<?= $christ_year ?>" <?= $y==$ex_year_thai ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-9">
                     <label class="form-label fw-bold">ชื่อโครงการ/งาน</label>
@@ -233,6 +299,12 @@ if ($function_id) {
 </div>
 
 <script>
+    function escapeHtml(text) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
     $(document).ready(function () {
         // 2. เพิ่มแถวรายการใหม่
         $('#addRow').click(function () {
@@ -276,7 +348,7 @@ if ($function_id) {
         });
 
         // 6. ฟังก์ชันหลักในการคำนวณยอดรวมทั้งหมด
-        function calculateAll() {
+        window.calculateAll = function calculateAll() {
             let sumItems = 0;
 
             // รวมยอดจากทุกแถว
@@ -322,6 +394,7 @@ if ($function_id) {
                 $(this).find('td:first').text(index + 1);
             });
         }
+
     });
 
 
@@ -375,6 +448,135 @@ if ($function_id) {
         console.log("Select2 Initialized on #customer_select");
     }
     initCustomerSelect();
+
+    // 9. Initialize Select2 for project dropdown with source badges
+    function initProjectSelect() {
+        var $sel = $('select[name="project_id"]');
+        if (!$sel.length) return;
+        if (!$.fn.select2) { setTimeout(initProjectSelect, 200); return; }
+        $sel.select2({
+            width: '100%',
+            placeholder: '--- ไม่ระบุโครงการ ---',
+            allowClear: true,
+            templateResult: function(data) {
+                if (!data.id) return data.text;
+                var name = data.text.replace(/\s*\[.*?\]/g, '');
+                var $el = $('<span>' + name + '</span>');
+                var sources = $(data.element).data('sources') || '';
+                if (sources) {
+                    var parts = sources.split(',');
+                    parts.forEach(function(s) {
+                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size:0.65rem;">EO</span>');
+                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size:0.65rem;">ใบเสนอราคา</span>');
+                    });
+                }
+                return $el;
+            },
+            templateSelection: function(data) {
+                if (!data.id) return data.text;
+                var name = data.text.replace(/\s*\[.*?\]/g, '');
+                var $el = $('<span>' + name + '</span>');
+                var sources = $(data.element).data('sources') || '';
+                if (sources) {
+                    var parts = sources.split(',');
+                    parts.forEach(function(s) {
+                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size:0.65rem;">EO</span>');
+                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size:0.65rem;">QT</span>');
+                    });
+                }
+                return $el;
+            }
+        });
+
+        // เมื่อเลือก Project -> ดึงข้อมูลเก่ามา Auto-fill
+        function loadProjectData(pid) {
+            if (!pid) return;
+            console.log('Loading project data for pid:', pid);
+            $.getJSON('api/get_project_quotations.php?project_id=' + pid + '&t=' + new Date().getTime())
+            .done(function (res) {
+                console.log('API response:', res);
+                if (res.status !== 'success') return;
+                var q = res.quote;
+
+                if (q) {
+                    var baseNo = q.quote_no.replace(/\/\d+$/, '');
+                    $('input[name="quote_no"]').val(baseNo + '/' + res.version);
+                } else {
+                    $('input[name="quote_no"]').val('QT-' + (new Date().toISOString().slice(0,10).replace(/-/g,'')) + '-' +
+                        ('0'+new Date().getHours()).slice(-2) + ('0'+new Date().getMinutes()).slice(-2) + '/' + res.version);
+                }
+
+                if (q) {
+                    if (q.customer_id) {
+                        var $cust = $('#customer_select');
+                        $.getJSON('api/search_customers.php?q=&id=' + q.customer_id, function (cr) {
+                            if (cr.results && cr.results.length > 0) {
+                                var c = cr.results[0];
+                                var opt = new Option(c.text, c.id, true, true);
+                                $cust.append(opt).trigger('change');
+                                $('#customer_info').removeClass('d-none');
+                                $('#info_name').text(c.cust_name || c.text);
+                                $('#info_phone').text(c.cust_phone || '');
+                                $('#info_address').text(c.cust_address || '');
+                            }
+                        });
+                    }
+
+                    if (q.event_name) $('input[name="event_name"]').val(q.event_name);
+
+                    if (q.event_date) {
+                        var parts = q.event_date.split('-');
+                        if (parts.length === 3) {
+                            $('select[name="event_date_dd"]').val(parts[2]);
+                            $('select[name="event_date_mm"]').val(parts[1]);
+                            $('select[name="event_date_yyyy"]').val(parts[0]);
+                        }
+                    }
+
+                    if (q.expiry_date) {
+                        var parts = q.expiry_date.split('-');
+                        if (parts.length === 3) {
+                            $('select[name="expiry_date_dd"]').val(parts[2]);
+                            $('select[name="expiry_date_mm"]').val(parts[1]);
+                            $('select[name="expiry_date_yyyy"]').val(parts[0]);
+                        }
+                    }
+
+                    if (q.company_id) $('select[name="company_id"]').val(q.company_id);
+                    if (q.vat_type) $('#vatType').val(q.vat_type);
+                    if (q.remarks) $('textarea[name="remarks"]').val(q.remarks);
+
+                    if (res.items && res.items.length > 0) {
+                        $('#itemTable tbody').empty();
+                        res.items.forEach(function (item, idx) {
+                            var rowNum = idx + 1;
+                            var row = '<tr>'
+                                + '<td class="text-center">' + rowNum + '</td>'
+                                + '<td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(item.item_name || '') + '</textarea></td>'
+                                + '<td><input type="number" name="quantity[]" class="form-control text-center qty" value="' + (item.quantity || 1) + '" min="1"></td>'
+                                + '<td><input type="number" name="unit_price[]" class="form-control text-end price" value="' + (parseFloat(item.unit_price) || 0).toFixed(2) + '" step="0.01"></td>'
+                                + '<td><input type="number" name="total_price[]" class="form-control text-end row-total" value="' + (parseFloat(item.total_price) || 0).toFixed(2) + '" readonly></td>'
+                                + '<td></td>'
+                                + '</tr>';
+                            $('#itemTable tbody').append(row);
+                        });
+                        calculateAll();
+                    }
+                }
+            }).always(function () {
+                $sel.prop('disabled', false);
+            });
+        }
+
+        $sel.on('select2:select', function (e) {
+            loadProjectData(e.params.data.id);
+        });
+        $sel.on('select2:clear', function () {
+            $('input[name="event_name"]').val('');
+            $('textarea[name="remarks"]').val('');
+        });
+    }
+    initProjectSelect();
 </script>
 
 <style>
@@ -383,6 +585,11 @@ if ($function_id) {
     .select2-selection--single { height: 38px !important; line-height: 38px !important; border: 1px solid #ced4da !important; }
     .select2-selection__rendered { line-height: 38px !important; }
     .select2-selection__arrow { height: 36px !important; }
+
+    /* Project source badges inside Select2 */
+    .select2-container .badge { vertical-align: middle; margin-left: 2px; }
+    .select2-results__option .badge { font-size: 0.65rem !important; }
+    .select2-selection__rendered .badge { font-size: 0.6rem !important; }
 </style>
 
 <?php include "footer.php"; ?>
