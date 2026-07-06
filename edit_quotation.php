@@ -31,6 +31,14 @@ if ($quote_id > 0) {
 
 // ดึงรายชื่อบริษัทสำหรับ Dropdown
 $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
+
+// ดึงรายชื่อ Project
+$projects_sql = "SELECT ep.id, ep.project_name,
+                        (SELECT COUNT(*) FROM functions f WHERE f.project_id = ep.id) as has_eo,
+                        (SELECT COUNT(*) FROM quotations q WHERE q.project_id = ep.id) as has_quotation
+                 FROM event_projects ep
+                 ORDER BY ep.project_name ASC";
+$projects_res = $conn->query($projects_sql);
 ?>
 
 <div class="container-fluid p-0">
@@ -47,50 +55,13 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                 </div>
             </div>
 
-            <div class="row g-3 mb-4">
-                <input type="hidden" name="quote_id" value="<?= $quote['id'] ?>">
+            <input type="hidden" name="quote_id" value="<?= $quote['id'] ?>">
 
+            <!-- Row 1: Company, Quote No, Project -->
+            <div class="row g-3 mb-3">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">เลขที่ใบเสนอราคา</label>
-                    <input type="text" name="quote_no" class="form-control bg-light"
-                        value="<?= htmlspecialchars($quote['quote_no']) ?>" readonly>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
-                    <select name="customer_id" class="form-select select2-ajax-customer" required>
-                        <?php if ($quote['customer_id']): 
-                            $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
-                            $c_stmt->bind_param("i", $quote['customer_id']);
-                            $c_stmt->execute();
-                            $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
-                        ?>
-                            <option value="<?= $quote['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
-                        <?php else: ?>
-                            <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
-                        <?php endif; ?>
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-primary">วันที่จัดงาน</label>
-                    <input type="date" name="event_date" class="form-control" value="<?= $quote['event_date'] ?>">
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุดงาน</label>
-                    <input type="date" name="expiry_date" class="form-control" value="<?= $quote['expiry_date'] ?>">
-                </div>
-
-                <div class="col-md-9">
-                    <label class="form-label fw-bold">ชื่อโครงการ/งาน</label>
-                    <input type="text" name="event_name" class="form-control"
-                        value="<?= htmlspecialchars($quote['event_name']) ?>" placeholder="ระบุชื่องาน">
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label fw-bold"><i class="bi bi-building me-1"></i> บริษัท/ธุรกิจ</label>
-                    <select name="company_id" class="form-select" required>
+                    <label class="form-label fw-bold small mb-1"><i class="bi bi-building me-1"></i> บริษัท/ธุรกิจ</label>
+                    <select name="company_id" class="form-select form-select-sm" required>
                         <option value="">-- เลือกบริษัท --</option>
                         <?php
                         if ($company_res) {
@@ -103,12 +74,77 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                         ?>
                     </select>
                 </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small mb-1">เลขที่ใบเสนอราคา</label>
+                    <input type="text" name="quote_no" class="form-control form-control-sm bg-light"
+                        value="<?= htmlspecialchars($quote['quote_no']) ?>" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small mb-1">อ้างอิงโครงการ (Project)</label>
+                    <select name="project_id" class="form-select form-select-sm select2">
+                        <option value="">--- ไม่ระบุโครงการ ---</option>
+                        <?php
+                        if ($projects_res->num_rows > 0) {
+                            $projects_res->data_seek(0);
+                            while ($p = $projects_res->fetch_assoc()):
+                                $selected = ($p['id'] == $quote['project_id']) ? "selected" : "";
+                                $sources = [];
+                                if ($p['has_eo'] > 0) $sources[] = 'EO';
+                                if ($p['has_quotation'] > 0) $sources[] = 'QT';
+                                $src_text = !empty($sources) ? ' [' . implode('+', $sources) . ']' : '';
+                                echo "<option value='{$p['id']}' data-sources='" . implode(',', $sources) . "' $selected>{$p['project_name']}{$src_text}</option>";
+                            endwhile;
+                        }
+                        ?>
+                    </select>
+                </div>
             </div>
 
+            <!-- Row 2: Customer (full width) -->
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small mb-1 text-danger">เลือกลูกค้า *</label>
+                    <select name="customer_id" class="form-select form-select-sm select2-ajax-customer" required>
+                        <?php if ($quote['customer_id']): 
+                            $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                            $c_stmt->bind_param("i", $quote['customer_id']);
+                            $c_stmt->execute();
+                            $c_name = $c_stmt->get_result()->fetch_assoc()['cust_name'] ?? '--- เลือกรายชื่อลูกค้า ---';
+                        ?>
+                            <option value="<?= $quote['customer_id'] ?>" selected><?= htmlspecialchars($c_name) ?></option>
+                        <?php else: ?>
+                            <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 3: Event name (full width) -->
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small mb-1">ชื่อโครงการ/งาน</label>
+                    <input type="text" name="event_name" class="form-control form-control-sm"
+                        value="<?= htmlspecialchars($quote['event_name']) ?>" placeholder="ระบุชื่องาน">
+                </div>
+            </div>
+
+            <!-- Row 4: Event date, Expiry date -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small mb-1">วันที่จัดงาน</label>
+                    <input type="date" name="event_date" class="form-control form-control-sm" value="<?= $quote['event_date'] ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small mb-1">วันที่สิ้นสุด</label>
+                    <input type="date" name="expiry_date" class="form-control form-control-sm" value="<?= $quote['expiry_date'] ?>">
+                </div>
+            </div>
+
+            <!-- Row 5: Lead tracking fields -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-warning"><i class="bi bi-tag me-1"></i> ที่มา Lead</label>
-                    <select name="lead_source" class="form-select">
+                    <label class="form-label fw-bold small mb-1 text-warning"><i class="bi bi-tag me-1"></i> ที่มา Lead</label>
+                    <select name="lead_source" class="form-select form-select-sm">
                         <option value="">-- เลือก --</option>
                         <option value="โทรเข้า" <?= ($quote['lead_source'] ?? '') === 'โทรเข้า' ? 'selected' : '' ?>>โทรเข้า</option>
                         <option value="FB / Social" <?= ($quote['lead_source'] ?? '') === 'FB / Social' ? 'selected' : '' ?>>FB / Social</option>
@@ -118,8 +154,8 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-info"><i class="bi bi-graph-up me-1"></i> ผลการดำเนินงาน</label>
-                    <select name="result" class="form-select">
+                    <label class="form-label fw-bold small mb-1 text-info"><i class="bi bi-graph-up me-1"></i> ผลการดำเนินงาน</label>
+                    <select name="result" class="form-select form-select-sm">
                         <option value="">-- เลือก --</option>
                         <option value="ปิดงานสำเร็จ" <?= ($quote['result'] ?? '') === 'ปิดงานสำเร็จ' ? 'selected' : '' ?>>ปิดงานสำเร็จ</option>
                         <option value="ปิดงานไม่สำเร็จ" <?= ($quote['result'] ?? '') === 'ปิดงานไม่สำเร็จ' ? 'selected' : '' ?>>ปิดงานไม่สำเร็จ</option>
@@ -128,25 +164,27 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold text-success"><i class="bi bi-binoculars me-1"></i> วันที่ Inspection</label>
-                    <input type="date" name="inspection_date" class="form-control"
+                    <label class="form-label fw-bold small mb-1 text-success"><i class="bi bi-binoculars me-1"></i> Inspection</label>
+                    <input type="date" name="inspection_date" class="form-control form-control-sm"
                         value="<?= $quote['inspection_date'] ?? '' ?>">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold text-danger"><i class="bi bi-clock-history me-1"></i> วันที่ Follow Up</label>
-                    <input type="date" name="follow_up_date" class="form-control"
+                    <label class="form-label fw-bold small mb-1 text-danger"><i class="bi bi-clock-history me-1"></i> Follow Up</label>
+                    <input type="date" name="follow_up_date" class="form-control form-control-sm"
                         value="<?= $quote['follow_up_date'] ?? '' ?>">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold"><i class="bi bi-check2-square me-1"></i> วันที่ Confirmed</label>
-                    <input type="date" name="approved_at" class="form-control"
+                    <label class="form-label fw-bold small mb-1"><i class="bi bi-check2-square me-1"></i> Confirmed</label>
+                    <input type="date" name="approved_at" class="form-control form-control-sm"
                         value="<?= preg_match('/^\d{4}-\d{2}-\d{2}$/', $quote['approved_at'] ?? '') ? $quote['approved_at'] : '' ?>">
                 </div>
             </div>
 
-            <div class="table-responsive mb-3">
-                <table class="table table-bordered align-middle" id="itemTable">
-                    <thead class="table-light text-center">
+            <hr>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-items" id="itemTable">
+                    <thead class="table-light text-center" style="font-size:0.85rem;">
                         <tr>
                             <th width="5%">#</th>
                             <th>รายละเอียดรายการ</th>
@@ -165,18 +203,17 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                                 <tr>
                                     <td class="text-center fw-bold"><?= $i++ ?></td>
                                     <td>
-                                        <textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical;"
+                                        <textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical;"
                                             required><?= htmlspecialchars($item['item_name']) ?></textarea>
                                     </td>
-                                    <td><input type="number" name="quantity[]" class="form-control text-center qty"
+                                    <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty"
                                             value="<?= $item['quantity'] ?>" min="1"></td>
-                                    <td><input type="number" name="unit_price[]" class="form-control text-end price"
+                                    <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price"
                                             value="<?= number_format($item['unit_price'], 2, '.', '') ?>" step="0.01"></td>
-                                    <td><input type="number" name="total_price[]" class="form-control text-end row-total"
+                                    <td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total"
                                             value="<?= number_format($item['total_price'], 2, '.', '') ?>" readonly></td>
                                     <td class="text-center">
-                                        <i class="bi bi-trash text-danger removeRow"
-                                            style="cursor:pointer; font-size: 1.2rem;"></i>
+                                        <i class="bi bi-trash text-danger removeRow" style="cursor:pointer; font-size: 1.2rem;"></i>
                                     </td>
                                 </tr>
                                 <?php
@@ -191,49 +228,43 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                 <i class="bi bi-plus-circle me-1"></i> เพิ่มแถวรายการ
             </button>
 
-            <div class="row">
-                <div class="col-md-7">
-                    <div class="card border-0 bg-light p-3 h-100">
+            <div class="row mt-4">
+                <div class="col-md-7 col-lg-8">
+                    <div class="card border-0 bg-light-subtle p-3 h-100">
                         <div class="mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม
-                                (Remarks)</label>
-                            <textarea name="remarks" class="form-control" rows="3"
+                            <label class="form-label fw-bold small mb-1"><i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม (Remarks)</label>
+                            <textarea name="remarks" class="form-control form-control-sm" rows="3"
                                 placeholder="ระบุเงื่อนไขเพิ่มเติม..."><?= htmlspecialchars($quote['remarks']) ?></textarea>
                         </div>
                         <div>
-                            <label class="form-label fw-bold text-danger"><i class="bi bi-x-circle me-1"></i>
-                                สาเหตุที่ปิดงานไม่ได้ (Lost Reason)</label>
-                            <textarea name="lost_reason" class="form-control" rows="3"
+                            <label class="form-label fw-bold small mb-1 text-danger"><i class="bi bi-x-circle me-1"></i> สาเหตุที่ปิดงานไม่ได้ (Lost Reason)</label>
+                            <textarea name="lost_reason" class="form-control form-control-sm" rows="3"
                                 placeholder="ระบุสาเหตุที่ลูกค้าไม่ตกลง..."><?= htmlspecialchars($quote['lost_reason'] ?? '') ?></textarea>
-                            <div class="form-text text-muted">
-                                * สำหรับบันทึกภายใน (ไม่แสดงในเอกสาร PDF)
-                            </div>
+                            <div class="form-text text-muted small">* สำหรับบันทึกภายใน (ไม่แสดงในเอกสาร PDF)</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-5 col-lg-4">
                     <div class="card p-3 border shadow-sm bg-white mb-3">
-                        <label class="form-label fw-bold text-dark mb-2">
-                            <i class="bi bi-percent text-primary me-1"></i> การคิดภาษี (VAT 7%)
-                        </label>
+                        <label class="form-label fw-bold small mb-1"><i class="bi bi-percent"></i> การคิดภาษี</label>
                         <?php $v_type = $quote['vat_type'] ?? (($quote['vat'] > 0) ? 'exclude' : 'no'); ?>
-                        <select name="vat_type" id="vatType" class="form-select border shadow-sm">
+                        <select name="vat_type" id="vatType" class="form-select form-select-sm">
                             <option value="exclude" <?= ($v_type == 'exclude') ? 'selected' : '' ?>>แยกนอก (Exclude VAT)</option>
                             <option value="include" <?= ($v_type == 'include') ? 'selected' : '' ?>>รวมใน (Include VAT)</option>
-                            <option value="no" <?= ($v_type == 'no') ? 'selected' : '' ?>>ไม่มี VAT (No VAT)</option>
+                            <option value="no" <?= ($v_type == 'no') ? 'selected' : '' ?>>ไม่มี VAT</option>
                         </select>
                     </div>
 
                     <div class="card p-3 shadow-sm bg-white border">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted fw-bold">รวมเงิน (Subtotal):</span>
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span class="text-muted">รวมเป็นเงิน (Subtotal):</span>
                             <input type="number" id="subtotal" name="subtotal"
                                 class="text-end border-0 bg-transparent fw-bold w-50"
                                 value="<?= number_format($quote['subtotal'] ?? 0, 2, '.', '') ?>" readonly>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-2 text-muted" id="vat-row">
-                            <span>ภาษี (VAT 7%):</span>
+                        <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
+                            <span>VAT (7%):</span>
                             <input type="number" id="vat" name="vat" class="text-end border-0 bg-transparent w-50"
                                 value="<?= number_format($quote['vat'] ?? 0, 2, '.', '') ?>" readonly>
                         </div>
@@ -241,7 +272,7 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
                         <hr class="my-2">
 
                         <div class="d-flex justify-content-between align-items-center fw-bold text-primary">
-                            <span class="fs-6">ยอดสุทธิ (Grand Total):</span>
+                            <span class="fs-6">ยอดรวมสุทธิ:</span>
                             <input type="number" id="grand_total" name="grand_total"
                                 class="text-end border-0 bg-transparent fw-bold text-primary fs-5 w-50"
                                 value="<?= number_format($quote['grand_total'] ?? 0, 2, '.', '') ?>" readonly>
@@ -268,10 +299,10 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
             let rowCount = $('#itemTable tbody tr').length + 1;
             let newRow = `<tr>
                 <td class="text-center fw-bold">${rowCount}</td>
-                <td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical;" required></textarea></td>
-                <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1" min="1"></td>
-                <td><input type="number" name="unit_price[]" class="form-control text-end price" value="0.00" step="0.01"></td>
-                <td><input type="number" name="total_price[]" class="form-control text-end row-total" value="0.00" readonly></td>
+                <td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical;" required></textarea></td>
+                <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="1" min="1"></td>
+                <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="0.00" step="0.01"></td>
+                <td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="0.00" readonly></td>
                 <td class="text-center">
                     <i class="bi bi-trash text-danger removeRow" style="cursor:pointer; font-size: 1.2rem;"></i>
                 </td>
@@ -349,4 +380,16 @@ $company_res = $conn->query("SELECT id, company_name FROM companies ORDER BY com
         }
     });
 </script>
+
+<style>
+    .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; border: 1px solid #ced4da !important; font-size: 0.875rem; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 8px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; }
+    .select2-container .badge { vertical-align: middle; margin-left: 2px; }
+    .select2-results__option .badge { font-size: 0.65rem !important; }
+    .select2-selection__rendered .badge { font-size: 0.6rem !important; }
+    .table-items th, .table-items td { white-space: nowrap; }
+    .table-items textarea { min-width: 180px; }
+</style>
+
 <?php include "footer.php"; ?>

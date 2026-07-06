@@ -32,19 +32,6 @@ if ($function_id) {
     }
 }
 
-// Parse event_date into day, month, year for dropdown
-$ev_parts = explode('-', $event_date ?: date('Y-m-d'));
-$ev_day = (int)$ev_parts[2];
-$ev_month = (int)$ev_parts[1];
-$ev_year_c = (int)$ev_parts[0];
-$ev_year_thai = $ev_year_c + 543;
-
-// Parse expiry_date into day, month, year for dropdown
-$ex_parts = explode('-', $expiry_date ?: date('Y-m-d', strtotime('+30 days')));
-$ex_day = (int)$ex_parts[2];
-$ex_month = (int)$ex_parts[1];
-$ex_year_c = (int)$ex_parts[0];
-$ex_year_thai = $ex_year_c + 543;
 ?>
 
 <div class="container-fluid p-0">
@@ -54,26 +41,38 @@ $ex_year_thai = $ex_year_c + 543;
                 <h4 class="fw-bold mb-0 text-primary">
                     <i class="bi bi-file-earmark-plus"></i> ออกใบเสนอราคาใหม่
                 </h4>
-
-                <div>
-                    <button type="submit" form="mainQuoteForm" class="btn btn-primary px-4 shadow-sm">
-                        <i class="bi bi-save me-1"></i> บันทึกข้อมูล
-                    </button>
-                </div>
+                <button type="submit" form="mainQuoteForm" class="btn btn-primary px-4 shadow-sm">
+                    <i class="bi bi-save me-1"></i> บันทึกข้อมูล
+                </button>
             </div>
 
-            <div class="row g-3 mb-4">
-                <input type="hidden" name="function_id" value="<?= $function_id ?>">
+            <input type="hidden" name="function_id" value="<?= $function_id ?>">
 
+            <!-- Row 1: Company, Quote No, Project -->
+            <div class="row g-3 mb-3">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">เลขที่ใบเสนอราคา</label>
-                    <input type="text" name="quote_no" class="form-control bg-light" value="QT-<?= date('Ymd-Hi') ?>"
-                        readonly>
+                    <label class="form-label fw-bold small mb-1"><i class="bi bi-building me-1"></i> บริษัท/ธุรกิจ</label>
+                    <select name="company_id" class="form-select form-select-sm" required>
+                        <option value="">-- เลือกบริษัท --</option>
+                        <?php
+                        $company_id = $row['company_id'] ?? '';
+                        $company_sql = "SELECT id, company_name FROM companies ORDER BY company_name ASC";
+                        $company_res = $conn->query($company_sql);
+                        while ($comp = $company_res->fetch_assoc()):
+                            ?>
+                            <option value="<?= $comp['id'] ?>" <?= ($company_id == $comp['id']) ? 'selected' : '' ?>>
+                                <?= $comp['company_name'] ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
-
                 <div class="col-md-3">
-                    <label class="form-label fw-bold text-dark">อ้างอิงโครงการ (Project)</label>
-                    <select name="project_id" class="form-select select2">
+                    <label class="form-label fw-bold small mb-1">เลขที่ใบเสนอราคา</label>
+                    <input type="text" name="quote_no" class="form-control form-control-sm bg-light" value="QT-<?= date('Ymd-Hi') ?>" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small mb-1">อ้างอิงโครงการ (Project)</label>
+                    <select name="project_id" class="form-select form-select-sm select2">
                         <option value="">--- ไม่ระบุโครงการ ---</option>
                         <?php
                         if ($projects_res->num_rows > 0) {
@@ -90,10 +89,13 @@ $ex_year_thai = $ex_year_c + 543;
                         ?>
                     </select>
                 </div>
+            </div>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-danger">เลือกลูกค้า *</label>
-                    <select name="customer_id" id="customer_select" class="form-select select2-customer-search" required>
+            <!-- Row 2: Customer (full width) -->
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small mb-1 text-danger">เลือกลูกค้า *</label>
+                    <select name="customer_id" id="customer_select" class="form-select form-select-sm select2-customer-search" required>
                         <?php if ($selected_customer_id): 
                             $c_stmt = $conn->prepare("SELECT cust_name, cust_phone, cust_address FROM customers WHERE id = ?");
                             $c_stmt->bind_param("i", $selected_customer_id);
@@ -111,90 +113,31 @@ $ex_year_thai = $ex_year_c + 543;
                             <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
                         <?php endif; ?>
                     </select>
-
-                    <!-- Customer info display -->
-                    <div id="customer_info" class="mt-2 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: 0.8rem;">
+                    <div id="customer_info" class="mt-1 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: 0.8rem;">
                         <div class="fw-bold text-dark" id="info_name"><?= htmlspecialchars($selected_customer_id ? $c_name : '') ?></div>
                         <div class="text-muted small" id="info_phone"><?= htmlspecialchars($c_phone ?? '') ?></div>
                         <div class="text-muted small" id="info_address"><?= htmlspecialchars($c_address ?? '') ?></div>
                     </div>
                 </div>
-                <div class="col-md-3 mt-3">
-                    <label class="form-label fw-bold text-primary">วัน เดือน ปี</label>
-                    <div class="d-flex gap-1">
-                        <select name="event_date_dd" class="form-select" style="width:30%">
-                            <?php for ($d=1; $d<=31; $d++):
-                                $dv = sprintf('%02d', $d);
-                            ?>
-                                <option value="<?= $dv ?>" <?= $d==$ev_day ? 'selected' : '' ?>><?= $dv ?></option>
-                            <?php endfor; ?>
-                        </select>
-                        <select name="event_date_mm" class="form-select" style="width:40%">
-                            <?php
-                            $thai_months = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                                           'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-                            for ($m=1; $m<=12; $m++):
-                                $mv = sprintf('%02d', $m);
-                            ?>
-                                <option value="<?= $mv ?>" <?= $m==$ev_month ? 'selected' : '' ?>><?= $thai_months[$m] ?></option>
-                            <?php endfor; ?>
-                        </select>
-                        <select name="event_date_yyyy" class="form-select" style="width:30%">
-                            <?php for ($y=$ev_year_thai-1; $y<=$ev_year_thai+3; $y++):
-                                $christ_year = $y - 543;
-                            ?>
-                                <option value="<?= $christ_year ?>" <?= $y==$ev_year_thai ? 'selected' : '' ?>><?= $y ?></option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
+            </div>
+
+            <!-- Row 3: Event name (full width) -->
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold small mb-1">ชื่อโครงการ/งาน</label>
+                    <input type="text" name="event_name" class="form-control form-control-sm" value="<?= $event_name ?>" placeholder="ระบุชื่องาน">
                 </div>
-                <div class="col-md-3 mt-3">
-                    <label class="form-label fw-bold text-danger">วันที่สิ้นสุดงาน</label>
-                    <div class="d-flex gap-1">
-                        <select name="expiry_date_dd" class="form-select" style="width:30%">
-                            <?php for ($d=1; $d<=31; $d++):
-                                $dv = sprintf('%02d', $d);
-                            ?>
-                                <option value="<?= $dv ?>" <?= $d==$ex_day ? 'selected' : '' ?>><?= $dv ?></option>
-                            <?php endfor; ?>
-                        </select>
-                        <select name="expiry_date_mm" class="form-select" style="width:40%">
-                            <?php for ($m=1; $m<=12; $m++):
-                                $mv = sprintf('%02d', $m);
-                            ?>
-                                <option value="<?= $mv ?>" <?= $m==$ex_month ? 'selected' : '' ?>><?= $thai_months[$m] ?></option>
-                            <?php endfor; ?>
-                        </select>
-                        <select name="expiry_date_yyyy" class="form-select" style="width:30%">
-                            <?php for ($y=$ex_year_thai-1; $y<=$ex_year_thai+3; $y++):
-                                $christ_year = $y - 543;
-                            ?>
-                                <option value="<?= $christ_year ?>" <?= $y==$ex_year_thai ? 'selected' : '' ?>><?= $y ?></option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
+            </div>
+
+            <!-- Row 4: Event date, Expiry date -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small mb-1">วันที่จัดงาน</label>
+                    <input type="date" name="event_date" class="form-control form-control-sm" value="<?= $event_date ?>">
                 </div>
-                <div class="col-md-9">
-                    <label class="form-label fw-bold">ชื่อโครงการ/งาน</label>
-                    <input type="text" name="event_name" class="form-control" value="<?= $event_name ?>"
-                        placeholder="ระบุชื่องาน">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold"><i class="bi bi-building me-1"></i> เลือกบริษัท/ธุรกิจ</label>
-                    <select name="company_id" class="form-select" required>
-                        <option value="">-- เลือกบริษัท --</option>
-                        <?php
-                        // ดึงรายชื่อบริษัทมาแสดง
-                        $company_id = $row['company_id'] ?? '';
-                        $company_sql = "SELECT id, company_name FROM companies  ORDER BY company_name ASC";
-                        $company_res = $conn->query($company_sql);
-                        while ($comp = $company_res->fetch_assoc()):
-                            ?>
-                            <option value="<?= $comp['id'] ?>" <?= ($company_id == $comp['id']) ? 'selected' : '' ?>>
-                                <?= $comp['company_name'] ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small mb-1">วันที่สิ้นสุด</label>
+                    <input type="date" name="expiry_date" class="form-control form-control-sm" value="<?= $expiry_date ?>">
                 </div>
             </div>
 
@@ -202,7 +145,7 @@ $ex_year_thai = $ex_year_c + 543;
 
             <div class="table-responsive">
                 <table class="table table-bordered table-items" id="itemTable">
-                    <thead class="table-light text-center">
+                    <thead class="table-light text-center" style="font-size:0.85rem;">
                         <tr>
                             <th width="5%">#</th>
                             <th>รายละเอียดรายการ</th>
@@ -216,16 +159,13 @@ $ex_year_thai = $ex_year_c + 543;
                         <tr>
                             <td class="text-center">1</td>
                             <td>
-                                <textarea name="item_name[]" class="form-control"
+                                <textarea name="item_name[]" class="form-control form-control-sm"
                                     placeholder="ระบุรายการ เช่น ค่าอาหาร..." rows="2"
                                     style="resize: vertical; min-width: 200px;" required></textarea>
                             </td>
-                            <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1"
-                                    min="1"></td>
-                            <td><input type="number" name="unit_price[]" class="form-control text-end price"
-                                    value="0.00" step="0.01"></td>
-                            <td><input type="number" name="total_price[]" class="form-control text-end row-total"
-                                    value="0.00" readonly></td>
+                            <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="1" min="1"></td>
+                            <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="0.00" step="0.01"></td>
+                            <td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="0.00" readonly></td>
                             <td></td>
                         </tr>
                     </tbody>
@@ -235,23 +175,24 @@ $ex_year_thai = $ex_year_c + 543;
             <button type="button" class="btn btn-outline-primary btn-sm mb-4" id="addRow">
                 <i class="bi bi-plus-circle me-1"></i> เพิ่มแถวรายการ
             </button>
+
             <div class="row mt-4">
                 <div class="col-md-7 col-lg-8">
                     <div class="card border-0 bg-light-subtle p-3 h-100">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">
+                            <label class="form-label fw-bold small mb-1">
                                 <i class="bi bi-info-circle me-1"></i> หมายเหตุเพิ่มเติม (Remarks)
                             </label>
-                            <textarea name="remarks" class="form-control" rows="3"
+                            <textarea name="remarks" class="form-control form-control-sm" rows="3"
                                 placeholder="ระบุเงื่อนไขเพิ่มเติมที่ต้องการให้แสดงในใบเสนอราคา..."><?= $remarks ?? '' ?></textarea>
                         </div>
                         <div>
-                            <label class="form-label fw-bold text-danger">
+                            <label class="form-label fw-bold small mb-1 text-danger">
                                 <i class="bi bi-x-circle me-1"></i> สาเหตุที่ปิดงานไม่ได้ (Lost Reason)
                             </label>
-                            <textarea name="lost_reason" class="form-control" rows="3"
+                            <textarea name="lost_reason" class="form-control form-control-sm" rows="3"
                                 placeholder="ระบุสาเหตุที่ลูกค้าไม่ตกลง หรือต้องยกเลิกใบเสนอราคานี้..."></textarea>
-                            <div class="form-text text-muted">
+                            <div class="form-text text-muted small">
                                 * สำหรับบันทึกภายใน (ไม่แสดงในเอกสาร PDF)
                             </div>
                         </div>
@@ -260,30 +201,28 @@ $ex_year_thai = $ex_year_c + 543;
 
                 <div class="col-md-5 col-lg-4">
                     <div class="card p-3 border shadow-sm bg-white mb-3">
-                        <label class="form-label fw-bold text-dark mb-2">
-                            <i class="bi bi-percent text-primary me-1"></i> การคิดภาษี (VAT 7%)
-                        </label>
-                        <select name="vat_type" id="vatType" class="form-select border shadow-sm">
+                        <label class="form-label fw-bold small mb-1"><i class="bi bi-percent"></i> การคิดภาษี</label>
+                        <select name="vat_type" id="vatType" class="form-select form-select-sm">
                             <option value="exclude" selected>แยกนอก (Exclude VAT)</option>
                             <option value="include">รวมใน (Include VAT)</option>
-                            <option value="no">ไม่มี VAT (No VAT)</option>
+                            <option value="no">ไม่มี VAT</option>
                         </select>
                     </div>
 
                     <div class="card p-3 border shadow-sm bg-white">
-                        <div class="d-flex justify-content-between mb-2">
+                        <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">รวมเป็นเงิน (Subtotal):</span>
                             <input type="number" id="subtotal" name="subtotal"
                                 class="text-end border-0 bg-transparent fw-bold w-50" value="0.00" readonly>
                         </div>
 
-                        <div class="d-flex justify-content-between mb-2 text-muted" id="vat-row">
+                        <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
                             <span>VAT (7%):</span>
                             <input type="number" id="vat" name="vat" class="text-end border-0 bg-transparent w-50"
                                 value="0.00" readonly>
                         </div>
 
-                        <hr class="my-3">
+                        <hr class="my-2">
 
                         <div class="d-flex justify-content-between align-items-center fw-bold text-primary">
                             <span class="fs-6">ยอดรวมสุทธิ:</span>
@@ -311,10 +250,10 @@ $ex_year_thai = $ex_year_c + 543;
             let rowCount = $('#itemTable tbody tr').length + 1;
             let newRow = `<tr>
                 <td class="text-center">${rowCount}</td>
-                <td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical; min-width: 200px;" required></textarea></td>
-                <td><input type="number" name="quantity[]" class="form-control text-center qty" value="1" min="1"></td>
-                <td><input type="number" name="unit_price[]" class="form-control text-end price" value="0.00" step="0.01"></td>
-                <td><input type="number" name="total_price[]" class="form-control text-end row-total" value="0.00" readonly></td>
+                <td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required></textarea></td>
+                <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="1" min="1"></td>
+                <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="0.00" step="0.01"></td>
+                <td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="0.00" readonly></td>
                 <td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>
             </tr>`;
             $('#itemTable tbody').append(newRow);
@@ -525,21 +464,11 @@ $ex_year_thai = $ex_year_c + 543;
                     if (q.event_name) $('input[name="event_name"]').val(q.event_name);
 
                     if (q.event_date) {
-                        var parts = q.event_date.split('-');
-                        if (parts.length === 3) {
-                            $('select[name="event_date_dd"]').val(parts[2]);
-                            $('select[name="event_date_mm"]').val(parts[1]);
-                            $('select[name="event_date_yyyy"]').val(parts[0]);
-                        }
+                        $('input[name="event_date"]').val(q.event_date);
                     }
 
                     if (q.expiry_date) {
-                        var parts = q.expiry_date.split('-');
-                        if (parts.length === 3) {
-                            $('select[name="expiry_date_dd"]').val(parts[2]);
-                            $('select[name="expiry_date_mm"]').val(parts[1]);
-                            $('select[name="expiry_date_yyyy"]').val(parts[0]);
-                        }
+                        $('input[name="expiry_date"]').val(q.expiry_date);
                     }
 
                     if (q.company_id) $('select[name="company_id"]').val(q.company_id);
@@ -552,10 +481,10 @@ $ex_year_thai = $ex_year_c + 543;
                             var rowNum = idx + 1;
                             var row = '<tr>'
                                 + '<td class="text-center">' + rowNum + '</td>'
-                                + '<td><textarea name="item_name[]" class="form-control" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(item.item_name || '') + '</textarea></td>'
-                                + '<td><input type="number" name="quantity[]" class="form-control text-center qty" value="' + (item.quantity || 1) + '" min="1"></td>'
-                                + '<td><input type="number" name="unit_price[]" class="form-control text-end price" value="' + (parseFloat(item.unit_price) || 0).toFixed(2) + '" step="0.01"></td>'
-                                + '<td><input type="number" name="total_price[]" class="form-control text-end row-total" value="' + (parseFloat(item.total_price) || 0).toFixed(2) + '" readonly></td>'
+                                    + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(item.item_name || '') + '</textarea></td>'
+                                    + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + (item.quantity || 1) + '" min="1"></td>'
+                                    + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + (parseFloat(item.unit_price) || 0).toFixed(2) + '" step="0.01"></td>'
+                                    + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + (parseFloat(item.total_price) || 0).toFixed(2) + '" readonly></td>'
                                 + '<td></td>'
                                 + '</tr>';
                             $('#itemTable tbody').append(row);
@@ -574,22 +503,29 @@ $ex_year_thai = $ex_year_c + 543;
         $sel.on('select2:clear', function () {
             $('input[name="event_name"]').val('');
             $('textarea[name="remarks"]').val('');
+            $('input[name="quote_no"]').val('<?= "QT-" . date('Ymd-Hi') ?>');
         });
+
+        // Auto-load if project_id already selected via URL
+        var currentVal = $sel.val();
+        if (currentVal) {
+            loadProjectData(currentVal);
+        }
     }
     initProjectSelect();
 </script>
 
 <style>
-    /* Force Select2 dropdown to be visible and correctly styled */
     .select2-container { z-index: 999999 !important; }
-    .select2-selection--single { height: 38px !important; line-height: 38px !important; border: 1px solid #ced4da !important; }
-    .select2-selection__rendered { line-height: 38px !important; }
-    .select2-selection__arrow { height: 36px !important; }
-
-    /* Project source badges inside Select2 */
+    .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; border: 1px solid #ced4da !important; font-size: 0.875rem; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 8px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; }
     .select2-container .badge { vertical-align: middle; margin-left: 2px; }
     .select2-results__option .badge { font-size: 0.65rem !important; }
     .select2-selection__rendered .badge { font-size: 0.6rem !important; }
+
+    .table-items th, .table-items td { white-space: nowrap; }
+    .table-items textarea { min-width: 180px; }
 </style>
 
 <?php include "footer.php"; ?>

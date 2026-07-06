@@ -95,85 +95,7 @@ $status_map = [
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($quotes_by_project as $pid => $project):
-                        $quotes_list = $project['quotes'];
-                        $has_multiple = count($quotes_list) > 1;
-                        $first_q = $quotes_list[0];
-                    ?>
-                        <!-- Project Header Row -->
-                        <tr class="project-header-row has-sub" data-pid="p_<?= $pid ?>">
-                            <td class="text-center" colspan="8">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
-                                    <i class="bi bi-folder-fill text-gold"></i>
-                                    <span class="fw-bold text-dark"><?= htmlspecialchars($project['project_name']) ?></span>
-                                    <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
-                                    <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
-                                </div>
-                            </td>
-                        </tr>
-
-                        <!-- Quotation Rows (hidden by default) -->
-                        <?php foreach ($quotes_list as $q):
-                            $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                        ?>
-                            <tr class="quote-sub-row bg-light" data-parent-pid="p_<?= $pid ?>" style="display:none">
-                                <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
-                                    <div class="d-flex align-items-center justify-content-center gap-1">
-                                        <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
-                                        <?= $q['quote_no'] ?>
-                                    </div>
-                                    <?php if ($q['is_selected']): ?>
-                                        <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
-                                <td style="font-size: 0.85rem;">
-                                    <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
-                                    -
-                                    <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
-                                </td>
-                                <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
-                                <td class="text-center">
-                                    <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($q['is_selected']): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
-                                            <i class="bi bi-x-lg"></i> ยกเลิก
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
-                                            เลือกใช้งาน
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1">
-                                        <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
-                                            <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
-                                            <?php endif; ?>
-                                            <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
-                                        <?php endif; ?>
-                                        <?php if ($q['status'] === 'Approved'): ?>
-                                            <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
-                                        <?php endif; ?>
-                                        <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                                        <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endforeach; ?>
-
-                    <!-- Ungrouped quotes (no project_id) -->
+                    <!-- Ungrouped quotes (no project_id) first -->
                     <?php if (!empty($ungrouped)): ?>
                         <tr class="project-header-row has-sub" data-pid="ungrouped">
                             <td class="text-center" colspan="8">
@@ -243,12 +165,137 @@ $status_map = [
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
+
+                    <?php foreach ($quotes_by_project as $pid => $project):
+                        $quotes_list = $project['quotes'];
+                        $has_multiple = count($quotes_list) > 1;
+                        $first_q = $quotes_list[0];
+                    ?>
+                        <!-- Project Header Row -->
+                        <tr class="project-header-row has-sub" data-pid="p_<?= $pid ?>">
+                            <td class="text-center" colspan="8">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
+                                    <i class="bi bi-folder-fill text-gold"></i>
+                                    <span class="fw-bold text-dark"><?= htmlspecialchars($project['project_name']) ?></span>
+                                    <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                    <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
+                                    <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark ms-auto" title="เพิ่มใบเสนอราคาในโครงการนี้">
+                                        <i class="bi bi-plus-circle"></i> เพิ่ม
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Quotation Rows (hidden by default) -->
+                        <?php foreach ($quotes_list as $q):
+                            $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                        ?>
+                            <tr class="quote-sub-row bg-light" data-parent-pid="p_<?= $pid ?>" style="display:none">
+                                <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
+                                        <?= $q['quote_no'] ?>
+                                    </div>
+                                    <?php if ($q['is_selected']): ?>
+                                        <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
+                                <td style="font-size: 0.85rem;">
+                                    <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
+                                    -
+                                    <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
+                                    <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
+                                </td>
+                                <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
+                                <td class="text-center">
+                                    <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($q['is_selected']): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
+                                            <i class="bi bi-x-lg"></i> ยกเลิก
+                                        </button>
+                                    <?php else: ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
+                                            เลือกใช้งาน
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                            <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                            <?php endif; ?>
+                                            <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
+                                        <?php endif; ?>
+                                        <?php if ($q['status'] === 'Approved'): ?>
+                                            <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
+                                        <?php endif; ?>
+                                        <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                        <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
 
         <!-- Mobile Card View -->
         <div class="d-md-none p-2">
+            <!-- Ungrouped mobile first -->
+            <?php if (!empty($ungrouped)): ?>
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold text-muted"><i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคาที่ไม่มีโครงการ (<?= count($ungrouped) ?>)</div>
+                            <i class="bi bi-chevron-down text-muted toggle-ungrouped-mobile" style="cursor: pointer; font-size: 1.2rem;"></i>
+                        </div>
+                        <div id="mobile-ungrouped" style="display:none">
+                            <?php foreach ($ungrouped as $q):
+                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                            ?>
+                                <div class="card mb-2 border-0 bg-light">
+                                    <div class="card-body p-2 small">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
+                                                <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?></div>
+                                            </div>
+                                            <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
+                                        </div>
+                                        <div class="fw-bold text-dark mb-1"><?= $q['cust_name'] ?></div>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
+                                        </small>
+                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                            <div class="fw-bold text-dark">฿<?= number_format($q['grand_total'], 2) ?></div>
+                                            <div class="d-flex gap-1">
+                                                <?php if ($q['is_selected']): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-x-lg"></i></button>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-lg"></i></button>
+                                                <?php endif; ?>
+                                                <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php foreach ($quotes_by_project as $pid => $project):
                 $quotes_list = $project['quotes'];
                 $first_q = $quotes_list[0];
@@ -262,7 +309,12 @@ $status_map = [
                                 </div>
                                 <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
                             </div>
-                            <i class="bi bi-chevron-down text-gold toggle-mobile-quotes" data-pid="p_<?= $pid ?>" style="cursor: pointer; font-size: 1.2rem;"></i>
+                            <div class="d-flex align-items-center gap-2">
+                                <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark" title="เพิ่มใบเสนอราคาในโครงการนี้">
+                                    <i class="bi bi-plus-circle"></i>
+                                </a>
+                                <i class="bi bi-chevron-down text-gold toggle-mobile-quotes" data-pid="p_<?= $pid ?>" style="cursor: pointer; font-size: 1.2rem;"></i>
+                            </div>
                         </div>
 
                         <div id="mobile-quotes-p_<?= $pid ?>" style="display:none">
@@ -346,50 +398,6 @@ $status_map = [
                     </div>
                 </div>
             <?php endforeach; ?>
-
-            <!-- Ungrouped mobile -->
-            <?php if (!empty($ungrouped)): ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold text-muted"><i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคาที่ไม่มีโครงการ (<?= count($ungrouped) ?>)</div>
-                            <i class="bi bi-chevron-down text-muted toggle-ungrouped-mobile" style="cursor: pointer; font-size: 1.2rem;"></i>
-                        </div>
-                        <div id="mobile-ungrouped" style="display:none">
-                            <?php foreach ($ungrouped as $q):
-                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                            ?>
-                                <div class="card mb-2 border-0 bg-light">
-                                    <div class="card-body p-2 small">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <div>
-                                                <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
-                                                <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?></div>
-                                            </div>
-                                            <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
-                                        </div>
-                                        <div class="fw-bold text-dark mb-1"><?= $q['cust_name'] ?></div>
-                                        <small class="text-muted d-block mb-1">
-                                            <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
-                                        </small>
-                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                            <div class="fw-bold text-dark">฿<?= number_format($q['grand_total'], 2) ?></div>
-                                            <div class="d-flex gap-1">
-                                                <?php if ($q['is_selected']): ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-x-lg"></i></button>
-                                                <?php else: ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-lg"></i></button>
-                                                <?php endif; ?>
-                                                <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
