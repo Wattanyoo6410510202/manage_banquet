@@ -127,8 +127,8 @@ $status_map = [
                                     <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
                                 </td>
                                 <td>
-                                    <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['event_name'] ?: $q['function_name']) ?></div>
+                                    <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
+                                    <div class="text-gold small fw-bold"><?= htmlspecialchars($q['event_name'] ?: $q['function_name']) ?></div>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
@@ -176,8 +176,8 @@ $status_map = [
                             <td class="text-center" colspan="8">
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
-                                    <i class="bi bi-folder-fill text-gold"></i>
-                                    <span class="fw-bold text-dark"><?= htmlspecialchars($project['project_name']) ?></span>
+                                    
+                                    <span class="fw-bold text-dark">ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?></span>
                                     <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
                                     <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
                                     <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark ms-auto" title="เพิ่มใบเสนอราคาในโครงการนี้">
@@ -208,8 +208,8 @@ $status_map = [
                                     <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
                                 </td>
                                 <td>
-                                    <div class="fw-bold text-dark"><?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-gold small fw-bold"><i class="bi bi-folder-fill me-1"></i><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
+                                    <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
+                                    <div class="text-gold small fw-bold"><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
@@ -273,7 +273,7 @@ $status_map = [
                                             </div>
                                             <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
                                         </div>
-                                        <div class="fw-bold text-dark mb-1"><?= $q['cust_name'] ?></div>
+                                        <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= $q['cust_name'] ?></div>
                                         <small class="text-muted d-block mb-1">
                                             <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
                                         </small>
@@ -305,7 +305,7 @@ $status_map = [
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="fw-bold text-dark">
-                                    <i class="bi bi-folder-fill text-gold me-1"></i><?= htmlspecialchars($project['project_name']) ?>
+                                    ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?>
                                 </div>
                                 <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
                             </div>
@@ -338,7 +338,7 @@ $status_map = [
                                         </span>
                                     </div>
                                     
-                                    <div class="fw-bold text-dark mb-1"><?= htmlspecialchars($q['cust_name']) ?></div>
+                                    <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
                                     <small class="text-muted d-block mb-1">
                                         <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
                                     </small>

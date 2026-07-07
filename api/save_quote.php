@@ -44,7 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quote_no .= "-" . date('is'); // ถ้าซ้ำเติม นาที+วินาที
         }
 
-        // 3. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id, lost_reason, vat_type)
+        // 3. ถ้ายังไม่มี project_id ให้สร้าง project ใหม่จาก event_name
+        if (!$project_id && !empty($event_name)) {
+            $sql_new_project = "INSERT INTO event_projects (project_name, customer_id, company_id, status, created_by) VALUES (?, ?, ?, 'Pending', ?)";
+            $stmt_new_project = $conn->prepare($sql_new_project);
+            $stmt_new_project->bind_param("siss", $event_name, $customer_id, $company_id, $created_by);
+            $stmt_new_project->execute();
+            $project_id = $conn->insert_id;
+        }
+
+        // 4. เตรียมคำสั่ง INSERT (เพิ่ม company_id, remarks, created_by, project_id, lost_reason, vat_type)
         $sql_quote = "INSERT INTO quotations (
             company_id, function_id, project_id, customer_id, quote_no, event_name, 
             event_date, expiry_date, subtotal, service_charge, vat, 
@@ -82,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $last_quote_id = $conn->insert_id;
 
-        // 4. บันทึกรายการย่อย (Quotation Items)
+        // 5. บันทึกรายการย่อย (Quotation Items)
         $item_names   = $_POST['item_name'] ?? [];
         $quantities   = $_POST['quantity'] ?? [];
         $unit_prices  = $_POST['unit_price'] ?? [];
