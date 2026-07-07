@@ -166,7 +166,7 @@ if ($function_id) {
                             <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="1" min="1"></td>
                             <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="0.00" step="0.01"></td>
                             <td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="0.00" readonly></td>
-                            <td></td>
+                            <td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>
                         </tr>
                     </tbody>
                 </table>
@@ -261,9 +261,13 @@ if ($function_id) {
 
         // 3. ลบแถวรายการ
         $(document).on('click', '.removeRow', function () {
-            $(this).closest('tr').remove();
-            calculateAll(); // คำนวณใหม่ทันทีหลังลบ
-            updateRowNumbers(); // รันเลขลำดับใหม่
+            if ($('#itemTable tbody tr').length > 1) {
+                $(this).closest('tr').remove();
+                calculateAll();
+                updateRowNumbers();
+            } else {
+                alert("ต้องมีอย่างน้อย 1 รายการครับ");
+            }
         });
 
         // 4. คำนวณยอดเงินรายบรรทัด เมื่อมีการเปลี่ยนจำนวนหรือราคา
@@ -485,7 +489,7 @@ if ($function_id) {
                                     + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + (item.quantity || 1) + '" min="1"></td>'
                                     + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + (parseFloat(item.unit_price) || 0).toFixed(2) + '" step="0.01"></td>'
                                     + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + (parseFloat(item.total_price) || 0).toFixed(2) + '" readonly></td>'
-                                + '<td></td>'
+                                + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
                                 + '</tr>';
                             $('#itemTable tbody').append(row);
                         });
