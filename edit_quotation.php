@@ -80,7 +80,7 @@ $projects_res = $conn->query($projects_sql);
                         value="<?= htmlspecialchars($quote['quote_no']) ?>" readonly>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold small mb-1">อ้างอิงโครงการ (Project)</label>
+                    <label class="form-label fw-bold small mb-1">อ้างอิงโครงการที่มีอยู่เดิม</label>
                     <select name="project_id" class="form-select form-select-sm select2">
                         <option value="">--- ไม่ระบุโครงการ ---</option>
                         <?php

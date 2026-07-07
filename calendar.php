@@ -352,6 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       LEFT JOIN meeting_rooms r ON f.room_id = r.id
                       LEFT JOIN customers c ON f.customer_id = c.id
                       LEFT JOIN users u ON f.created_by_id = u.id
+                      WHERE f.status != 'Cancelled'
                       ORDER BY f.id ASC"; 
             
             $q_f = mysqli_query($conn, $sql_f);
@@ -406,7 +407,8 @@ document.addEventListener('DOMContentLoaded', function () {
                       JOIN functions f ON s.function_id = f.id
                       LEFT JOIN meeting_rooms r ON f.room_id = r.id
                       LEFT JOIN customers c ON f.customer_id = c.id
-                      LEFT JOIN users u ON f.created_by_id = u.id";
+                      LEFT JOIN users u ON f.created_by_id = u.id
+                      WHERE f.status != 'Cancelled'";
             $q_s = mysqli_query($conn, $sql_s);
             if (!$q_s) {
                 $sql_s = "SELECT s.*, f.function_name, f.status, f.created_by 
