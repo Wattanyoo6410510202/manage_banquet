@@ -343,8 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`
             };
         },
-        events: [
-            <?php
+        events: <?php
             // สร้าง events array แล้ว json_encode ทีเดียว — escape ทุกอักขระอัตโนมัติ
             $events = [];
 
@@ -502,8 +501,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             echo json_encode($events, JSON_UNESCAPED_UNICODE);
-            ?>
-        ],
+            ?>,
 
         eventClick: function (info) {
             const props = info.event.extendedProps;
