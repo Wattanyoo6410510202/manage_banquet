@@ -345,8 +345,10 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         events: [
             <?php
+            // สร้าง events array แล้ว json_encode ทีเดียว — escape ทุกอักขระอัตโนมัติ
+            $events = [];
+
             // 1. งานจากตาราง functions (General Mode)
-            // พยายามดึงแบบ Join ก่อน ถ้าล้มเหลว (เช่น ไม่มีคอลัมน์ใหม่) ให้ใช้ Fallback
             $sql_f = "SELECT f.*, r.room_name, c.cust_name, c.cust_phone, u.name as creator_name
                       FROM functions f 
                       LEFT JOIN meeting_rooms r ON f.room_id = r.id
@@ -361,44 +363,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 $q_f = mysqli_query($conn, $sql_f);
             }
 
-            $rows = [];
             if ($q_f) {
                 while ($row = mysqli_fetch_assoc($q_f)) {
-                    $rows[] = $row;
+                    $st = strtolower(trim($row['status'] ?? ''));
+                    if($st === 'pending') $color = '#ffc107';
+                    elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
+                    elseif($st === 'in progress') $color = '#0d6efd';
+                    elseif($st === 'completed') $color = '#198754';
+                    elseif($st === 'cancelled') $color = '#dc3545';
+                    else $color = '#6c757d';
+
+                    $events[] = [
+                        'id' => 'gen_' . $row['id'],
+                        'ref_id' => (string) $row['id'],
+                        'title' => (string) ($row['function_name'] ?? ''),
+                        'start' => (string) ($row['start_time'] ?? ''),
+                        'end' => (string) ($row['end_time'] ?? ''),
+                        'color' => $color,
+                        'mode' => 'general',
+                        'extendedProps' => [
+                            'mainTitle' => (string) ($row['function_name'] ?? ''),
+                            'status' => (string) ($row['status'] ?? 'Pending'),
+                            'room' => (string) ($row['room_name'] ?? $row['room_id'] ?? ''),
+                            'customer' => (string) ($row['cust_name'] ?? ''),
+                            'phone' => (string) ($row['cust_phone'] ?? ''),
+                            'pax' => (string) ($row['pax'] ?? '0'),
+                            'deposit' => number_format($row['deposit'] ?? 0, 2),
+                            'total' => number_format($row['total_amount'] ?? 0, 2),
+                            'remark' => (string) ($row['remark'] ?? ''),
+                            'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
+                        ]
+                    ];
                 }
             }
-            
-            foreach ($rows as $row) {
-                $st = strtolower(trim($row['status'] ?? ''));
-                if($st === 'pending') $color = '#ffc107';
-                elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
-                elseif($st === 'in progress') $color = '#0d6efd';
-                elseif($st === 'completed') $color = '#198754';
-                elseif($st === 'cancelled') $color = '#dc3545';
-                else $color = '#6c757d';
-            ?>
-            {
-                id: 'gen_<?php echo $row['id']; ?>',
-                ref_id: '<?php echo $row['id']; ?>',
-                title: '<?php echo addslashes($row['function_name'] ?? ''); ?>',
-                start: '<?php echo $row['start_time'] ?? ''; ?>',
-                end: '<?php echo $row['end_time'] ?? ''; ?>',
-                color: '<?php echo $color; ?>',
-                mode: 'general',
-                extendedProps: { 
-                    mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
-                    status: '<?php echo addslashes($row['status'] ?? 'Pending'); ?>', 
-                    room: '<?php echo addslashes($row['room_name'] ?? $row['room_id'] ?? ''); ?>',
-                    customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
-                    phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
-                    pax: '<?php echo $row['pax'] ?? 0; ?>',
-                    deposit: '<?php echo number_format($row['deposit'] ?? 0, 2); ?>',
-                    total: '<?php echo number_format($row['total_amount'] ?? 0, 2); ?>',
-                    remark: '<?php echo addslashes($row['remark'] ?? ''); ?>',
-                    created_by_name: '<?php echo addslashes($row['creator_name'] ?? $row['created_by'] ?? ''); ?>'
-                }
-            },
-            <?php } 
             
             // 2. งานจากตาราง schedules (Schedule Mode)
             $sql_s = "SELECT s.*, f.function_name, f.status, r.room_name, c.cust_name, c.cust_phone, f.pax, f.deposit, f.total_amount,
@@ -426,28 +423,29 @@ document.addEventListener('DOMContentLoaded', function () {
                     elseif($st === 'completed') $color = '#198754';
                     elseif($st === 'cancelled') $color = '#dc3545';
                     else $color = '#6c757d';
-                ?>
-                {
-                    id: 'sched_<?php echo $row['id']; ?>',
-                    ref_id: '<?php echo $row['function_id']; ?>',
-                    title: '<?php echo addslashes("[" . ($row['schedule_hour'] ?? '') . "] " . ($row['schedule_function'] ?? '')); ?>',
-                    start: '<?php echo $row['schedule_date'] ?? ''; ?>',
-                    color: '<?php echo $color; ?>',
-                    mode: 'schedule',
-                    extendedProps: { 
-                        mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
-                        status: '<?php echo addslashes($row['status'] ?? 'Pending'); ?>', 
-                        room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
-                        customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
-                        total: '<?php echo number_format($row['total_amount'] ?? 0, 2); ?>',
-                        remark: '<?php echo addslashes($row['schedule_function'] ?? ''); ?>',
-                        created_by_name: '<?php echo addslashes($row['creator_name'] ?? $row['created_by'] ?? ''); ?>'
-                    }
-                },
-                <?php } 
-            } ?>
 
-            <?php
+                    $sched_title = "[" . ($row['schedule_hour'] ?? '') . "] " . ($row['schedule_function'] ?? '');
+
+                    $events[] = [
+                        'id' => 'sched_' . $row['id'],
+                        'ref_id' => (string) $row['function_id'],
+                        'title' => $sched_title,
+                        'start' => (string) ($row['schedule_date'] ?? ''),
+                        'color' => $color,
+                        'mode' => 'schedule',
+                        'extendedProps' => [
+                            'mainTitle' => (string) ($row['function_name'] ?? ''),
+                            'status' => (string) ($row['status'] ?? 'Pending'),
+                            'room' => (string) ($row['room_name'] ?? ''),
+                            'customer' => (string) ($row['cust_name'] ?? ''),
+                            'total' => number_format($row['total_amount'] ?? 0, 2),
+                            'remark' => (string) ($row['schedule_function'] ?? ''),
+                            'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
+                        ]
+                    ];
+                }
+            }
+
             // 3. ใบเสนอราคา (Quotations)
             $sql_q = "SELECT q.*, c.cust_name, c.cust_phone, u.name as creator_name
                       FROM quotations q 
@@ -474,29 +472,37 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     $ev_date = $row['event_date'] ?? '';
                     $ex_date = !empty($row['expiry_date']) ? $row['expiry_date'] : '';
-                    $end_attr = '';
+                    $end_date = '';
                     if ($ex_date && $ex_date !== $ev_date) {
-                        $end_attr = 'end: \'' . date('Y-m-d', strtotime($ex_date . ' +1 day')) . '\',';
+                        $end_date = date('Y-m-d', strtotime($ex_date . ' +1 day'));
                     }
-                ?>
-                {
-                    id: 'qt_<?php echo $row['id']; ?>',
-                    ref_id: '<?php echo $row['id']; ?>',
-                    title: '<?php echo addslashes("[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '')); ?>',
-                    start: '<?php echo $ev_date; ?>',
-                    <?php echo $end_attr; ?>
-                    color: '<?php echo $color; ?>',
-                    mode: 'general',
-                    extendedProps: { 
-                        mainTitle: '<?php echo addslashes($row['event_name'] ?? ''); ?>', 
-                        status: '<?php echo $status_text; ?>', 
-                        customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
-                        total: '<?php echo number_format($row['grand_total'] ?? 0, 2); ?>',
-                        created_by_name: '<?php echo addslashes($row['creator_name'] ?? ''); ?>'
+
+                    $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
+
+                    $ev = [
+                        'id' => 'qt_' . $row['id'],
+                        'ref_id' => (string) $row['id'],
+                        'title' => $qt_title,
+                        'start' => $ev_date,
+                        'color' => $color,
+                        'mode' => 'general',
+                        'extendedProps' => [
+                            'mainTitle' => (string) ($row['event_name'] ?? ''),
+                            'status' => $status_text,
+                            'customer' => (string) ($row['cust_name'] ?? ''),
+                            'total' => number_format($row['grand_total'] ?? 0, 2),
+                            'created_by_name' => (string) ($row['creator_name'] ?? ''),
+                        ]
+                    ];
+                    if ($end_date) {
+                        $ev['end'] = $end_date;
                     }
-                },
-                <?php } 
-            } ?>
+                    $events[] = $ev;
+                }
+            }
+
+            echo json_encode($events, JSON_UNESCAPED_UNICODE);
+            ?>
         ],
 
         eventClick: function (info) {
