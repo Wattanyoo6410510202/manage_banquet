@@ -212,11 +212,6 @@ $(document).ready(function () {
                 actionButtons += `<button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="${id}" data-status="Completed"><i class="bi bi-flag-fill"></i> จบงาน</button>`;
               }
 
-              // 3. ปุ่มยกเลิก
-              if (newStatus !== "Completed" && newStatus !== "Cancelled") {
-                actionButtons += `<button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled"><i class="bi bi-x-lg"></i> ยกเลิก</button>`;
-              }
-
               // 4. ปุ่มพื้นฐาน
               actionButtons += `
                 <div class="vr mx-1"></div>
@@ -231,6 +226,12 @@ $(document).ready(function () {
                   <button type="button" class="btn btn-sm btn-outline-danger btn-delete-row" data-id="${id}" title="ลบ"><i class="bi bi-trash"></i></button>
                 `;
               }
+
+              // 6. ปุ่มยกเลิก (ท้ายสุด)
+              if (newStatus !== "Completed" && newStatus !== "Cancelled") {
+                actionButtons += `<button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="${id}" data-status="Cancelled"><i class="bi bi-x-lg"></i></button>`;
+              }
+
               actionButtons += `</div>`;
 
               // ยัดปุ่มใหม่ลงช่อง Action (td.sticky-col)
@@ -246,7 +247,11 @@ $(document).ready(function () {
           },
           error: function (xhr) {
             console.log(xhr.responseText);
-            Swal.fire("Error", "ไม่สามารถติดต่อ Server ได้", "error");
+            var errMsg = 'Status: ' + xhr.status + '\n';
+            if (xhr.responseText) {
+              errMsg += xhr.responseText.substring(0, 500);
+            }
+            Swal.fire("Error", errMsg, "error");
           },
         });
       }

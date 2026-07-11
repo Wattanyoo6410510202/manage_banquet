@@ -369,14 +369,15 @@ function is_active($pages)
                         <i class="bi bi-egg"></i> การจัดการเบรก
                     </a>
                 </li>
-                <li>
-                    <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
-                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
-                    </a>
-                </li>
+                
                 <li>
                     <a href="food_management.php" class="<?php echo is_active('food_management.php'); ?>">
                         <i class="bi bi-menu-app"></i> การจัดการเมนูอาหาร
+                    </a>
+                </li>
+                <li>
+                    <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
+                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
                     </a>
                 </li>
                 <li>

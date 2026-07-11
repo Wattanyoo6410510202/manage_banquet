@@ -11,6 +11,12 @@ function formatPhoneNumber($phone)
     }
     return $phone;
 }
+
+function thaiDate($date) {
+    $thai_months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    $d = new DateTime($date);
+    return $d->format('d') . ' ' . $thai_months[$d->format('n') - 1] . ' ' . ($d->format('Y') + 543);
+}
 ?>
 <?php
 // 1. ตรวจสอบ Role และ User
@@ -21,12 +27,12 @@ $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement', 'st
 
 // 2. เตรียม WHERE Clause
 $where_clause = "";
-// ปรับปรุง: ให้ Staff เห็นงานได้ทุกงานเหมือน Admin/GM ตามคำขอ
-if (in_array($user_role, ['admin', 'gm', 'staff', 'manager', 'procurement'])) {
+if (in_array($user_role, ['admin', 'gm', 'manager', 'procurement'])) {
     $where_clause = ""; // เห็นทั้งหมด
+} elseif ($user_role === 'staff') {
+    $where_clause = "WHERE f.created_by_id = $current_user_id";
 } else {
-    // สำหรับ Role อื่นๆ (ถ้ามี) ให้เห็นเฉพาะที่เกี่ยวข้องหรือว่างเปล่า
-    $where_clause = ""; 
+    $where_clause = "";
 }
 
 // 3. SQL Query
@@ -49,7 +55,7 @@ if ($q && mysqli_num_rows($q) > 0) {
     while ($row = mysqli_fetch_assoc($q)) {
         // จัดการเรื่องวันที่
         $display_date = !empty($row['event_date']) ? $row['event_date'] : $row['created_at'];
-        $row['formatted_date'] = date('d M Y', strtotime($display_date));
+        $row['formatted_date'] = thaiDate($display_date);
 
         // จัดการสถานะ (Status Mapping)
         $status_map = [
@@ -290,7 +296,7 @@ if ($conflict_q) {
                             $first_q = $project_quotes[0];
                             $master = [
                                 'id' => 'q_' . $first_q['id'],
-                                'formatted_date' => date('d M Y', strtotime($first_q['created_at'])),
+                                'formatted_date' => thaiDate($first_q['created_at']),
                                 'total_amount' => $first_q['grand_total'] ?: 0,
                                 'draft_name' => 'ใบเสนอราคา',
                                 'function_code' => $first_q['quote_no'],
@@ -393,9 +399,6 @@ if ($conflict_q) {
                                         <?php if ($master['status'] == 'In Progress'): ?>
                                             <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $master['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i></button>
                                         <?php endif; ?>
-                                        <?php if (!in_array($master['status'], ['Completed', 'Cancelled'])): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $master['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i></button>
-                                        <?php endif; ?>
                                         <div class="vr mx-1"></div>
                                     <?php endif; ?>
                                     
@@ -406,6 +409,11 @@ if ($conflict_q) {
                                             <i class="bi bi-cash-coin"></i>
                                         </a>
                                         <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>
+                                    <?php endif; ?>
+                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
+                                        <?php if (!in_array($master['status'], ['Completed', 'Cancelled'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $master['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i></button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>

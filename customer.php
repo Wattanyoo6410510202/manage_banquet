@@ -57,9 +57,9 @@ if (isset($_POST['action'])) {
     // --- 2. Logic การลบ (AJAX) ---
     if ($action == 'delete') {
 
-        if ($user_role === 'viewer') {
+        if ($user_role !== 'admin') {
             ob_clean();
-            echo "คุณไม่มีสิทธิ์ลบข้อมูล (Viewer Mode)";
+            echo "คุณไม่มีสิทธิ์ลบข้อมูล";
             exit;
         }
 
@@ -87,7 +87,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
     <div id="alert-container"><?php include "assets/alert.php"; ?></div>
 
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-12">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-dark text-white fw-bold py-3">
                     <i class="bi bi-person-plus-fill me-2"></i>ข้อมูลลูกค้า / บริษัท
@@ -155,7 +155,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
             </div>
         </div>
 
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
                     <h5 class="mb-0 fw-bold text-dark"><i
@@ -211,10 +211,12 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                                     onclick='editCust(<?= json_encode($row) ?>)'>
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
+                                                <?php if ($user_role === 'admin'): ?>
                                                 <button class="btn btn-sm btn-outline-danger border-0" title="ลบ"
                                                     onclick="deleteCust(<?= $row['id'] ?>)">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>

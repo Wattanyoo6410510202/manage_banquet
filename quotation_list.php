@@ -15,7 +15,7 @@ if (!isset($_GET['my'])) {
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
 
-$sql = "SELECT q.*, f.function_name, c.cust_name, p.project_name 
+$sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, p.project_name 
         FROM quotations q
         LEFT JOIN functions f ON q.function_id = f.id
         LEFT JOIN customers c ON q.customer_id = c.id
@@ -87,7 +87,7 @@ $status_map = [
                         <th class="text-center" width="10%">เลขที่ใบเสนอราคา</th>
                         <th width="8%">วันที่ออก</th>
                         <th width="12%">วันที่เริ่ม - วันสิ้นสุด</th>
-                        <th>ชื่อลูกค้า / โครงการ</th>
+                        <th>ผู้ประสานงาน</th>
                         <th class="text-end" width="10%">ยอดสุทธิ</th>
                         <th class="text-center" width="8%">สถานะ</th>
                         <th class="text-center" width="8%">เลือกใช้งาน</th>
@@ -128,7 +128,7 @@ $status_map = [
                                 </td>
                                 <td>
                                     <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-gold small fw-bold"><?= htmlspecialchars($q['event_name'] ?: $q['function_name']) ?></div>
+                                    <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
@@ -151,7 +151,9 @@ $status_map = [
                                             <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
                                             <?php endif; ?>
+                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                             <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <?php if ($q['status'] === 'Approved'): ?>
                                             <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
@@ -209,7 +211,7 @@ $status_map = [
                                 </td>
                                 <td>
                                     <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-gold small fw-bold"><?= htmlspecialchars($q['project_name'] ?: ($q['event_name'] ?: $q['function_name'])) ?></div>
+                                    <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
@@ -232,7 +234,9 @@ $status_map = [
                                             <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
                                             <?php endif; ?>
+                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                             <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <?php if ($q['status'] === 'Approved'): ?>
                                             <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
@@ -380,9 +384,11 @@ $status_map = [
                                             </a>
                                             
                                             <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                                <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                                 <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </a>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                             
                                             <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
