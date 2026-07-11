@@ -39,6 +39,21 @@ $projects_sql = "SELECT ep.id, ep.project_name,
                  FROM event_projects ep
                  ORDER BY ep.project_name ASC";
 $projects_res = $conn->query($projects_sql);
+
+// ดึงเทมเพลตเมนูและเบรก
+$menu_templates = $conn->query("
+    SELECT fmd.id, mt.type_name, fmd.menu_items, fmd.price_per_pax
+    FROM function_menu_details fmd
+    JOIN master_menu_types mt ON fmd.menu_type_id = mt.id
+    ORDER BY mt.type_name, fmd.id
+");
+
+$break_templates = $conn->query("
+    SELECT fb.id, bt.type_name, fb.break_menu, fb.break_price
+    FROM function_breaks fb
+    JOIN master_break_types bt ON fb.break_type_id = bt.id
+    ORDER BY bt.type_name, fb.id
+");
 ?>
 
 <div class="container-fluid p-0">
@@ -182,6 +197,82 @@ $projects_res = $conn->query($projects_sql);
 
             <hr>
 
+            <!-- ====== เพิ่มรายการจากเทมเพลต ====== -->
+            <div class="card border-0 bg-light-subtle mb-4">
+                <div class="card-header bg-transparent border-0 py-2" data-bs-toggle="collapse" data-bs-target="#templatePanel" style="cursor:pointer">
+                    <i class="bi bi-box-seam me-1"></i> เพิ่มรายการจากเทมเพลต
+                    <i class="bi bi-chevron-down small float-end"></i>
+                </div>
+                <div class="collapse" id="templatePanel">
+                    <div class="card-body pt-0">
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small mb-1">🍽️ เมนูอาหาร</label>
+                                <select id="menuTemplate" class="form-select form-select-sm">
+                                    <option value="">-- เลือกเมนู --</option>
+                                    <?php if ($menu_templates && $menu_templates->num_rows):
+                                        $menu_templates->data_seek(0);
+                                        while ($m = $menu_templates->fetch_assoc()): ?>
+                                        <option value="<?= $m['id'] ?>"
+                                            data-name="<?= htmlspecialchars($m['menu_items'], ENT_QUOTES) ?>"
+                                            data-price="<?= $m['price_per_pax'] ?>">
+                                            [<?= htmlspecialchars($m['type_name']) ?>] <?= mb_substr(htmlspecialchars($m['menu_items']), 0, 80) ?>...
+                                            (<?= number_format($m['price_per_pax'], 2) ?> บาท/หน่วย)
+                                        </option>
+                                    <?php endwhile; endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold small mb-1">จำนวน</label>
+                                <input type="number" id="menuQty" class="form-control form-control-sm" value="1" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small mb-1">ราคา/หน่วย</label>
+                                <input type="text" id="menuPrice" class="form-control form-control-sm bg-white" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-success btn-sm w-100" id="addMenuTemplate">
+                                    <i class="bi bi-plus-lg"></i> เพิ่ม
+                                </button>
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small mb-1">☕ เบรก</label>
+                                <select id="breakTemplate" class="form-select form-select-sm">
+                                    <option value="">-- เลือกเบรก --</option>
+                                    <?php if ($break_templates && $break_templates->num_rows):
+                                        $break_templates->data_seek(0);
+                                        while ($b = $break_templates->fetch_assoc()): ?>
+                                        <option value="<?= $b['id'] ?>"
+                                            data-name="<?= htmlspecialchars($b['break_menu'], ENT_QUOTES) ?>"
+                                            data-price="<?= $b['break_price'] ?>">
+                                            [<?= htmlspecialchars($b['type_name']) ?>] <?= htmlspecialchars($b['break_menu']) ?>
+                                            (<?= number_format($b['break_price'], 2) ?> บาท/หน่วย)
+                                        </option>
+                                    <?php endwhile; endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold small mb-1">จำนวน</label>
+                                <input type="number" id="breakQty" class="form-control form-control-sm" value="1" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small mb-1">ราคา/หน่วย</label>
+                                <input type="text" id="breakPrice" class="form-control form-control-sm bg-white" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-success btn-sm w-100" id="addBreakTemplate">
+                                    <i class="bi bi-plus-lg"></i> เพิ่ม
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ====== END เทมเพลต ====== -->
+
             <div class="table-responsive">
                 <table class="table table-bordered table-items" id="itemTable">
                     <thead class="table-light text-center" style="font-size:0.85rem;">
@@ -285,6 +376,12 @@ $projects_res = $conn->query($projects_sql);
 </div>
 
 <script>
+    function escapeHtml(text) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
     $(document).ready(function () {
         // 1. คำนวณยอดเริ่มต้นทันทีเมื่อโหลดหน้า (เพื่อให้สอดคล้องกับสถานะ Toggle จาก DB)
         calculateAll();
@@ -377,6 +474,54 @@ $projects_res = $conn->query($projects_sql);
             $('#itemTable tbody tr').each(function (index) {
                 $(this).find('td:first').text(index + 1);
             });
+        }
+
+        // เมื่อเลือกเทมเพลตเมนู -> แสดงราคา
+        $('#menuTemplate').change(function () {
+            var price = $(this).find(':selected').data('price') || 0;
+            $('#menuPrice').val(parseFloat(price).toFixed(2));
+        });
+
+        // เมื่อเลือกเทมเพลตเบรก -> แสดงราคา
+        $('#breakTemplate').change(function () {
+            var price = $(this).find(':selected').data('price') || 0;
+            $('#breakPrice').val(parseFloat(price).toFixed(2));
+        });
+
+        // เพิ่มรายการจากเทมเพลตเมนู
+        $('#addMenuTemplate').click(function () {
+            var $sel = $('#menuTemplate');
+            var name = $sel.find(':selected').data('name') || '';
+            var price = parseFloat($sel.find(':selected').data('price')) || 0;
+            var qty = parseInt($('#menuQty').val()) || 1;
+            if (!name) { alert('กรุณาเลือกเมนูก่อน'); return; }
+            addTemplateRow(name, qty, price);
+        });
+
+        // เพิ่มรายการจากเทมเพลตเบรก
+        $('#addBreakTemplate').click(function () {
+            var $sel = $('#breakTemplate');
+            var name = $sel.find(':selected').data('name') || '';
+            var price = parseFloat($sel.find(':selected').data('price')) || 0;
+            var qty = parseInt($('#breakQty').val()) || 1;
+            if (!name) { alert('กรุณาเลือกเบรกก่อน'); return; }
+            addTemplateRow(name, qty, price);
+        });
+
+        // ฟังก์ชันเพิ่มแถวจากเทมเพลต
+        function addTemplateRow(name, qty, price) {
+            var total = (qty * price).toFixed(2);
+            var rowCount = $('#itemTable tbody tr').length + 1;
+            var row = '<tr>'
+                + '<td class="text-center fw-bold">' + rowCount + '</td>'
+                + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical;" required>' + escapeHtml(name) + '</textarea></td>'
+                + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1"></td>'
+                + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01"></td>'
+                + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total + '" readonly></td>'
+                + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer; font-size: 1.2rem;"></i></td>'
+                + '</tr>';
+            $('#itemTable tbody').append(row);
+            calculateAll();
         }
     });
 </script>

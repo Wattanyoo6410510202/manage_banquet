@@ -301,7 +301,7 @@ function is_active($pages)
                 <?php if (in_array($role, ['admin', 'gm', 'sale'])): ?>
                 <li>
                     <a href="sales_dept.php" class="<?php echo is_active('sales_dept.php'); ?>">
-                        <i class="bi bi-graph-up-arrow"></i> แผนกขาย
+                        <i class="bi bi-graph-up-arrow"></i> งานขาย
                     </a>
                 </li>
                 <?php endif; ?>

@@ -8,7 +8,7 @@ $id = intval($_GET['id'] ?? 0);
 
 // 1. ดึงข้อมูลหลัก + ข้อมูลลูกค้า + บริษัท + ลายเซ็น + ชื่อพนักงาน
 $sql = "SELECT q.*, 
-                c.cust_name, c.cust_address, c.cust_phone, c.cust_contact_name, c.sales_name,
+                c.cust_name, c.cust_address, c.cust_phone, c.cust_email, c.cust_contact_name, c.sales_name,
                f.function_name, 
                comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path,
                u_create.name as created_by_name,
@@ -86,6 +86,15 @@ $items = $conn->query($sql_items);
             title="ส่งออกเอกสาร">
             <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
             <span style="font-size: 10px;" class="fw-bold">DOC</span>
+        </button>
+
+        <div class="hr-custom w-75 border-top opacity-25"></div>
+
+        <button onclick="sendPDFToCustomer(this)"
+            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+            title="ส่ง PDF ให้ลูกค้า">
+            <i class="bi bi-send-fill text-success fs-5"></i>
+            <span style="font-size: 10px;" class="fw-bold">ส่ง PDF</span>
         </button>
 
     </div>
@@ -350,6 +359,8 @@ $items = $conn->query($sql_items);
     </div>
 </div>
 
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     /* --- ส่วนการแสดงผลบนหน้าจอ --- */
     :root {
@@ -495,5 +506,98 @@ document.addEventListener('DOMContentLoaded', function() {
         ta.style.height = ta.scrollHeight + 'px';
     });
 });
+
+function downloadPDF(btn) {
+    const element = document.getElementById('printableArea');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.disabled = true;
+
+    const opt = {
+        margin: [2, 2, 2, 2],
+        filename: 'Q-<?php echo htmlspecialchars($quote['quote_no'] ?? 'quotation'); ?>.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 3,
+            useCORS: true,
+            logging: false
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    });
+}
+
+function exportToWord() {
+    var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+        "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+        "xmlns='http://www.w3.org/TR/REC-html40'>" +
+        "<head><meta charset='utf-8'><title>Export HTML to Word</title>" +
+        "<style>" +
+        "body { font-family: 'Sarabun', sans-serif; }" +
+        "table { border-collapse: collapse; width: 100%; }" +
+        "th, td { border: 1px solid black; padding: 5px; font-size: 12pt; }" +
+        ".section-title { background-color: #f8f9fa; font-weight: bold; border-left: 5px solid #D4AF37; padding: 5px; margin-top: 10px; }" +
+        ".text-end { text-align: right; }" +
+        ".fw-bold { font-weight: bold; }" +
+        ".row { display: table; width: 100%; }" +
+        ".col-6 { display: table-cell; width: 50%; }" +
+        "</style></head><body>";
+    var footer = "</body></html>";
+    var sourceHTML = header + document.getElementById("printableArea").innerHTML + footer;
+    var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+    var fileDownload = document.createElement("a");
+    document.body.appendChild(fileDownload);
+    fileDownload.href = source;
+    fileDownload.download = 'Q-<?php echo htmlspecialchars($quote['quote_no'] ?? 'quotation'); ?>.doc';
+    fileDownload.click();
+    document.body.removeChild(fileDownload);
+}
+
+function exportToDoc() {
+    exportToWord();
+}
+
+function sendPDFToCustomer(btn) {
+    const element = document.getElementById('printableArea');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.disabled = true;
+
+    const opt = {
+        margin: [2, 2, 2, 2],
+        filename: 'Q-<?php echo htmlspecialchars($quote['quote_no'] ?? 'quotation'); ?>.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 3,
+            useCORS: true,
+            logging: false
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        const customerEmail = '<?php echo htmlspecialchars($quote['cust_email'] ?? ''); ?>';
+        const quoteNo = '<?php echo htmlspecialchars($quote['quote_no'] ?? 'quotation'); ?>';
+
+        if (customerEmail) {
+            if (confirm('ดาวน์โหลด PDF เรียบร้อย\n\nต้องการเปิดอีเมลเพื่อส่งให้ลูกค้า (' + customerEmail + ') หรือไม่?')) {
+                const subject = encodeURIComponent('ใบเสนอราคา ' + quoteNo);
+                const body = encodeURIComponent('เรียน คุณลูกค้า\n\nตามเอกสารแนบเป็นใบเสนอราคาเลขที่ ' + quoteNo + '\n\nขอแสดงความนับถือ');
+                window.open('mailto:' + customerEmail + '?subject=' + subject + '&body=' + body, '_blank');
+            }
+        } else {
+            alert('ดาวน์โหลด PDF เรียบร้อย กรุณาส่งไฟล์ให้ลูกค้าผ่านช่องทางที่สะดวก (LINE, Email, Messenger ฯลฯ)');
+        }
+
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    });
+}
 </script>
 <?php include "footer.php"; ?>
