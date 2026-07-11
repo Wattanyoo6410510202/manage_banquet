@@ -214,7 +214,7 @@
                         "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
                     },
                     "order": [],
-                    "pageLength": 10,
+                    "pageLength": -1,
                     "autoWidth": false,
                     "scrollY": dynamicHeight,
                     "scrollX": true,
