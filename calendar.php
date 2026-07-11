@@ -387,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 mode: 'general',
                 extendedProps: { 
                     mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
-                    status: '<?php echo $row['status'] ?? 'Pending'; ?>', 
+                    status: '<?php echo addslashes($row['status'] ?? 'Pending'); ?>', 
                     room: '<?php echo addslashes($row['room_name'] ?? $row['room_id'] ?? ''); ?>',
                     customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
                     phone: '<?php echo addslashes($row['cust_phone'] ?? ''); ?>',
@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     mode: 'schedule',
                     extendedProps: { 
                         mainTitle: '<?php echo addslashes($row['function_name'] ?? ''); ?>', 
-                        status: '<?php echo $row['status'] ?? 'Pending'; ?>', 
+                        status: '<?php echo addslashes($row['status'] ?? 'Pending'); ?>', 
                         room: '<?php echo addslashes($row['room_name'] ?? ''); ?>',
                         customer: '<?php echo addslashes($row['cust_name'] ?? ''); ?>',
                         total: '<?php echo number_format($row['total_amount'] ?? 0, 2); ?>',
