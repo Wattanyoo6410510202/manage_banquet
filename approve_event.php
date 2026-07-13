@@ -80,7 +80,93 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $stmt->close();
 
+    // LINE แจ้งเตือนหลัง GM อนุมัติงาน
+    $lineSent = 0;
+    $lineFailed = 0;
     if ($status === 'Confirmed') {
+        include_once __DIR__ . "/line_helper.php";
+        $detail = $conn->query("SELECT function_name, booking_name, phone, pax, deposit, total_amount, function_code, start_time, end_time, booking_room, banquet_style, equipment, remark, backdrop_detail, hk_florist_detail FROM functions WHERE id = $id")->fetch_assoc();
+        if ($detail) {
+            $approve_name = $_SESSION['user_name'] ?? 'GM';
+            $baseInfo = "📌 ชื่องาน: {$detail['function_name']}\n"
+                . "👤 ผู้จอง: {$detail['booking_name']}\n"
+                . "📞 โทร: {$detail['phone']}\n"
+                . "💰 ยอดขาย: " . number_format($detail['total_amount'], 2) . " บาท\n"
+                . "🏠 ห้อง: {$detail['booking_room']}\n"
+                . "📅 วันที่เริ่ม: " . date('d/m/Y H:i', strtotime($detail['start_time'])) . "\n"
+                . "📅 วันที่สิ้นสุด: " . date('d/m/Y H:i', strtotime($detail['end_time'])) . "\n"
+                . "👨‍💼 อนุมัติโดย: {$approve_name}\n"
+                . "━━━━━━━━━━━━━━━━\n"
+                . "🆔 รหัสงาน: {$detail['function_code']}\n"
+                . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
+
+            // ดึง checklist ตาม role
+            function getChecklist($conn, $table) {
+                $items = [];
+                $q = $conn->query("SELECT task_detail FROM $table ORDER BY id ASC");
+                while ($row = $q->fetch_assoc()) {
+                    $items[] = $row['task_detail'];
+                }
+                return $items;
+            }
+
+            function buildChecklist($tasks) {
+                $text = "";
+                if (!empty($tasks)) {
+                    foreach ($tasks as $i => $t) {
+                        $text .= ($i + 1) . ". " . $t . "\n";
+                    }
+                }
+                return $text;
+            }
+
+            // Section info สำหรับแต่ละ role
+            $banquetSetup = trim($detail['banquet_style'] ?? '');
+            $techInfo = trim($detail['equipment'] ?? '');
+            $techRemark = trim($detail['remark'] ?? '');
+            $hkBackdrop = trim($detail['backdrop_detail'] ?? '');
+            $hkFlorist = trim($detail['hk_florist_detail'] ?? '');
+
+            // ===== จัดเลี้ยง (banquet_staff) =====
+            $bkChecklist = buildChecklist(getChecklist($conn, 'master_checklist_bk'));
+            $bkSection = "";
+            if ($banquetSetup) $bkSection .= "🎨 รูปแบบการจัดงาน (SET-UP):\n{$banquetSetup}\n\n";
+            if ($bkChecklist) $bkSection .= "✅ สิ่งที่ต้องทำ:\n{$bkChecklist}";
+            $roleMessages['banquet_staff'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
+                . ($bkSection ? "\n\n🍽️ จัดเลี้ยง:\n{$bkSection}" : "");
+
+            // ===== ช่าง (technician) =====
+            $mtChecklist = buildChecklist(getChecklist($conn, 'master_checklist_mt'));
+            $mtSection = "";
+            if ($techInfo) $mtSection .= "🔧 งานช่างและภาพเสียง:\n{$techInfo}\n\n";
+            if ($techRemark) $mtSection .= "📝 หมายเหตุ:\n{$techRemark}\n\n";
+            if ($mtChecklist) $mtSection .= "✅ สิ่งที่ต้องทำ:\n{$mtChecklist}";
+            $roleMessages['technician'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
+                . ($mtSection ? "\n\n⚙️ วิศวกรรม (TECHNICAL):\n{$mtSection}" : "");
+
+            // ===== แม่บ้าน (housekeeping) =====
+            $hkChecklist = buildChecklist(getChecklist($conn, 'master_checklist_hk'));
+            $hkSection = "";
+            if ($hkBackdrop) $hkSection .= "🖼️ ฉากหลังและป้าย:\n{$hkBackdrop}\n\n";
+            if ($hkFlorist) $hkSection .= "💐 พนักงานทำความสะอาด/จัดดอกไม้:\n{$hkFlorist}\n\n";
+            if ($hkChecklist) $hkSection .= "✅ สิ่งที่ต้องทำ:\n{$hkChecklist}";
+            $roleMessages['housekeeping'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
+                . ($hkSection ? "\n\n🧹 การตกแต่งและทำความสะอาด:\n{$hkSection}" : "");
+
+            // ===== admin / procurement =====
+            $roleMessages['admin'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
+            $roleMessages['procurement'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
+
+            $allRoles = ['admin', 'housekeeping', 'technician', 'banquet_staff', 'procurement'];
+            foreach ($allRoles as $role) {
+                $msg = $roleMessages[$role] ?? "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
+                $r = sendLineNotifyToRole($conn, $role, $msg);
+                $lineSent += $r['sent'];
+                $lineFailed += $r['failed'];
+            }
+        }
+
+        // อัปเดต is_approved ของ project
         $stmt_pr = @$conn->prepare("SELECT project_id FROM functions WHERE id = ?");
         if ($stmt_pr) {
             $stmt_pr->bind_param("i", $id);
@@ -116,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['flash_msg'] = "cancelled";
     }
 
-    echo json_encode(['status' => 'success', 'message' => 'อัปเดตสถานะเรียบร้อย']);
+    echo json_encode(['status' => 'success', 'message' => 'อัปเดตสถานะเรียบร้อย', 'line_sent' => $lineSent, 'line_failed' => $lineFailed]);
     exit();
 }
 

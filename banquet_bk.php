@@ -609,7 +609,10 @@ if ($q && mysqli_num_rows($q) > 0) {
                     data: { id: id, status: 'Confirmed' },
                     success: function(response) {
                         if (response.status === 'success') {
-                            Swal.fire('สำเร็จ!', 'อนุมัติ Draft เรียบร้อยแล้ว', 'success').then(() => {
+                            let lineText = '';
+                            if (response.line_sent > 0) lineText += '\n\n LINE แจ้งเตือนสำเร็จ ' + response.line_sent + ' คน';
+                            if (response.line_failed > 0) lineText += '\n LINE แจ้งเตือนไม่สำเร็จ ' + response.line_failed + ' คน';
+                            Swal.fire('สำเร็จ!', 'อนุมัติ Draft เรียบร้อยแล้ว' + lineText, 'success').then(() => {
                                 window.location.reload();
                             });
                         } else {
