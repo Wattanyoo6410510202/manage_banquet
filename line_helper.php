@@ -1,4 +1,7 @@
 <?php
+if (!function_exists('db_fetch_all')) {
+    include_once __DIR__ . "/config.php";
+}
 define('LINE_CHANNEL_ACCESS_TOKEN', 'xdGd0ps46rYZ/NUKHD/tZii6z+pZE+jKXYetbUuBXsNFFVhq62G3//avzMtQJ/KivEXLWpkzbKQ2LvCmR8FJCHw5ofGjWPChlTW/0roBpcafWMt1z3Pxy6XiCfloToyn5NUDgVfsJUdkDvsgDjFuDAdB04t89/1O/w1cDnyilFU=');
 
 function sendLineNotify($userId, $message) {
