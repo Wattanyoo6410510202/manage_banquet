@@ -80,90 +80,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $stmt->close();
 
-    // LINE แจ้งเตือนหลัง GM อนุมัติงาน
+    // LINE แจ้งเตือนหลัง GM อนุมัติงาน (Flex Message)
     $lineSent = 0;
     $lineFailed = 0;
     if ($status === 'Confirmed') {
         include_once __DIR__ . "/line_helper.php";
         $detail = $conn->query("SELECT function_name, booking_name, phone, pax, deposit, total_amount, function_code, start_time, end_time, booking_room, banquet_style, equipment, remark, backdrop_detail, hk_florist_detail FROM functions WHERE id = $id")->fetch_assoc();
         if ($detail) {
-            $approve_name = $_SESSION['user_name'] ?? 'GM';
-            $baseInfo = "📌 ชื่องาน: {$detail['function_name']}\n"
-                . "👤 ผู้จอง: {$detail['booking_name']}\n"
-                . "📞 โทร: {$detail['phone']}\n"
-                . "💰 ยอดขาย: " . number_format($detail['total_amount'], 2) . " บาท\n"
-                . "🏠 ห้อง: {$detail['booking_room']}\n"
-                . "📅 วันที่เริ่ม: " . date('d/m/Y H:i', strtotime($detail['start_time'])) . "\n"
-                . "📅 วันที่สิ้นสุด: " . date('d/m/Y H:i', strtotime($detail['end_time'])) . "\n"
-                . "👨‍💼 อนุมัติโดย: {$approve_name}\n"
-                . "━━━━━━━━━━━━━━━━\n"
-                . "🆔 รหัสงาน: {$detail['function_code']}\n"
-                . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
+            $approveName = $_SESSION['user_name'] ?? 'GM';
+            $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-            // ดึง checklist ตาม role
-            function getChecklist($conn, $table) {
+            function getFlexChecklist($conn, $table) {
                 $items = [];
                 $q = $conn->query("SELECT task_detail FROM $table ORDER BY id ASC");
-                while ($row = $q->fetch_assoc()) {
-                    $items[] = $row['task_detail'];
-                }
+                while ($row = $q->fetch_assoc()) { $items[] = $row['task_detail']; }
                 return $items;
             }
 
-            function buildChecklist($tasks) {
-                $text = "";
-                if (!empty($tasks)) {
-                    foreach ($tasks as $i => $t) {
-                        $text .= ($i + 1) . ". " . $t . "\n";
-                    }
-                }
-                return $text;
-            }
-
-            // Section info สำหรับแต่ละ role
-            $banquetSetup = trim($detail['banquet_style'] ?? '');
-            $techInfo = trim($detail['equipment'] ?? '');
-            $techRemark = trim($detail['remark'] ?? '');
-            $hkBackdrop = trim($detail['backdrop_detail'] ?? '');
-            $hkFlorist = trim($detail['hk_florist_detail'] ?? '');
-
             // ===== จัดเลี้ยง (banquet_staff) =====
-            $bkChecklist = buildChecklist(getChecklist($conn, 'master_checklist_bk'));
-            $bkSection = "";
-            if ($banquetSetup) $bkSection .= "🎨 รูปแบบการจัดงาน (SET-UP):\n{$banquetSetup}\n\n";
-            if ($bkChecklist) $bkSection .= "✅ สิ่งที่ต้องทำ:\n{$bkChecklist}";
-            $roleMessages['banquet_staff'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
-                . ($bkSection ? "\n\n🍽️ จัดเลี้ยง:\n{$bkSection}" : "");
+            $bkSections = [];
+            if (trim($detail['banquet_style'] ?? '')) {
+                $bkSections[] = ['label' => '🎨 รูปแบบการจัดงาน (SET-UP)', 'text' => $detail['banquet_style']];
+            }
+            $bkFlex = buildApprovedFlex($detail, $approveName, $origin, 'banquet_staff', $bkSections, getFlexChecklist($conn, 'master_checklist_bk'));
+            $r = sendLineFlexToRole($conn, 'banquet_staff', $bkFlex, '✅ งานได้รับการอนุมัติ - จัดเลี้ยง');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
             // ===== ช่าง (technician) =====
-            $mtChecklist = buildChecklist(getChecklist($conn, 'master_checklist_mt'));
-            $mtSection = "";
-            if ($techInfo) $mtSection .= "🔧 งานช่างและภาพเสียง:\n{$techInfo}\n\n";
-            if ($techRemark) $mtSection .= "📝 หมายเหตุ:\n{$techRemark}\n\n";
-            if ($mtChecklist) $mtSection .= "✅ สิ่งที่ต้องทำ:\n{$mtChecklist}";
-            $roleMessages['technician'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
-                . ($mtSection ? "\n\n⚙️ วิศวกรรม (TECHNICAL):\n{$mtSection}" : "");
+            $mtSections = [];
+            if (trim($detail['equipment'] ?? '')) {
+                $mtSections[] = ['label' => '🔧 งานช่างและภาพเสียง', 'text' => $detail['equipment']];
+            }
+            if (trim($detail['remark'] ?? '')) {
+                $mtSections[] = ['label' => '📝 หมายเหตุ', 'text' => $detail['remark']];
+            }
+            $mtFlex = buildApprovedFlex($detail, $approveName, $origin, 'technician', $mtSections, getFlexChecklist($conn, 'master_checklist_mt'));
+            $r = sendLineFlexToRole($conn, 'technician', $mtFlex, '✅ งานได้รับการอนุมัติ - วิศวกรรม');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
             // ===== แม่บ้าน (housekeeping) =====
-            $hkChecklist = buildChecklist(getChecklist($conn, 'master_checklist_hk'));
-            $hkSection = "";
-            if ($hkBackdrop) $hkSection .= "🖼️ ฉากหลังและป้าย:\n{$hkBackdrop}\n\n";
-            if ($hkFlorist) $hkSection .= "💐 พนักงานทำความสะอาด/จัดดอกไม้:\n{$hkFlorist}\n\n";
-            if ($hkChecklist) $hkSection .= "✅ สิ่งที่ต้องทำ:\n{$hkChecklist}";
-            $roleMessages['housekeeping'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}"
-                . ($hkSection ? "\n\n🧹 การตกแต่งและทำความสะอาด:\n{$hkSection}" : "");
+            $hkSections = [];
+            if (trim($detail['backdrop_detail'] ?? '')) {
+                $hkSections[] = ['label' => '🖼️ ฉากหลังและป้าย', 'text' => $detail['backdrop_detail']];
+            }
+            if (trim($detail['hk_florist_detail'] ?? '')) {
+                $hkSections[] = ['label' => '💐 พนักงานทำความสะอาด/จัดดอกไม้', 'text' => $detail['hk_florist_detail']];
+            }
+            $hkFlex = buildApprovedFlex($detail, $approveName, $origin, 'housekeeping', $hkSections, getFlexChecklist($conn, 'master_checklist_hk'));
+            $r = sendLineFlexToRole($conn, 'housekeeping', $hkFlex, '✅ งานได้รับการอนุมัติ - ทำความสะอาด');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
             // ===== admin / procurement =====
-            $roleMessages['admin'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
-            $roleMessages['procurement'] = "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
+            $adminFlex = buildApprovedFlex($detail, $approveName, $origin, 'admin');
+            $r = sendLineFlexToRole($conn, 'admin', $adminFlex, '✅ งานได้รับการอนุมัติ');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
-            $allRoles = ['admin', 'housekeeping', 'technician', 'banquet_staff', 'procurement'];
-            foreach ($allRoles as $role) {
-                $msg = $roleMessages[$role] ?? "✅ งานได้รับการอนุมัติ / Approved\n{$baseInfo}";
-                $r = sendLineNotifyToRole($conn, $role, $msg);
-                $lineSent += $r['sent'];
-                $lineFailed += $r['failed'];
-            }
+            $procFlex = buildApprovedFlex($detail, $approveName, $origin, 'procurement');
+            $r = sendLineFlexToRole($conn, 'procurement', $procFlex, '✅ งานได้รับการอนุมัติ');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
         }
 
         // อัปเดต is_approved ของ project

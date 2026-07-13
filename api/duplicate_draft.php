@@ -71,19 +71,14 @@ try {
 
     $conn->commit();
 
-    // LINE แจ้งเตือนมี Draft ใหม่
+    // LINE แจ้งเตือนมี Draft ใหม่ (Flex Message)
     include_once __DIR__ . "/../line_helper.php";
-    $lineMsg = "📝 มี Draft ใหม่ / New Draft Version\n"
-        . "━━━━━━━━━━━━━━━━\n"
-        . "📌 ชื่องาน: {$original['function_name']}\n"
-        . "📋 Draft: {$new_draft_name}\n"
-        . "📅 วันที่: " . date('d/m/Y H:i') . "\n"
-        . "━━━━━━━━━━━━━━━━\n"
-        . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $draftFlex = buildDraftFlex($original['function_name'], $new_draft_name, $origin);
     $lineSent = 0;
     $lineFailed = 0;
     foreach (['admin', 'gm'] as $role) {
-        $result = sendLineNotifyToRole($conn, $role, $lineMsg);
+        $result = sendLineFlexToRole($conn, $role, $draftFlex, '📝 มี Draft ใหม่: ' . $new_draft_name);
         $lineSent += $result['sent'];
         $lineFailed += $result['failed'];
     }

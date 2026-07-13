@@ -70,3 +70,201 @@ function sendLineNotifyToRole($conn, $role, $message) {
     }
     return ['sent' => $sent, 'failed' => $failed];
 }
+
+function sendLineFlex($userId, $flexJson, $altText = 'แจ้งเตือนจากระบบ') {
+    if (empty($userId)) {
+        error_log('[LINE] Flex send failed: empty userId');
+        return false;
+    }
+
+    $ch = curl_init('https://api.line.me/v2/bot/message/push');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . LINE_CHANNEL_ACCESS_TOKEN
+        ],
+        CURLOPT_POSTFIELDS => json_encode([
+            'to' => $userId,
+            'messages' => [[
+                'type' => 'flex',
+                'altText' => $altText,
+                'contents' => $flexJson
+            ]]
+        ]),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($result === false) {
+        error_log('[LINE] Flex cURL error for userId ' . $userId . ': ' . $curlError);
+        return false;
+    }
+    if ($httpCode !== 200) {
+        error_log('[LINE] Flex API error for userId ' . $userId . ': HTTP ' . $httpCode . ' - ' . $result);
+        return false;
+    }
+    return true;
+}
+
+function sendLineFlexToRole($conn, $role, $flexJson, $altText = 'แจ้งเตือนจากระบบ') {
+    $stmt = $conn->prepare("SELECT line_user_id FROM users WHERE LOWER(role) = LOWER(?) AND line_user_id IS NOT NULL AND line_user_id != ''");
+    $stmt->bind_param("s", $role);
+    $stmt->execute();
+    $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $sent = 0;
+    $failed = 0;
+    foreach ($users as $u) {
+        if (sendLineFlex($u['line_user_id'], $flexJson, $altText)) {
+            $sent++;
+        } else {
+            $failed++;
+        }
+    }
+    if ($failed > 0) {
+        error_log('[LINE] Flex Role "' . $role . '": sent ' . $sent . ', failed ' . $failed);
+    }
+    return ['sent' => $sent, 'failed' => $failed];
+}
+
+// ═══════════════════════════════════════════════════════
+// Flex Message Builders
+// ═══════════════════════════════════════════════════════
+
+function flexLabelValue($label, $value, $color = '#555555') {
+    return [
+        'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm',
+        'contents' => [
+            ['type' => 'text', 'text' => $label, 'size' => 'sm', 'color' => '#888888', 'flex' => 0, 'weight' => 'bold'],
+            ['type' => 'text', 'text' => (string)$value, 'size' => 'sm', 'color' => $color, 'wrap' => true, 'align' => 'end', 'flex' => 4],
+        ]
+    ];
+}
+
+function flexSeparator() {
+    return ['type' => 'separator', 'margin' => 'md', 'color' => '#E0E0E0'];
+}
+
+function flexChecklist($tasks) {
+    $items = [];
+    foreach ($tasks as $i => $t) {
+        $items[] = [
+            'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'xs',
+            'contents' => [
+                ['type' => 'text', 'text' => '☐ ' . ($i + 1) . '.', 'size' => 'xs', 'color' => '#1DB446', 'flex' => 0],
+                ['type' => 'text', 'text' => $t, 'size' => 'xs', 'color' => '#333333', 'wrap' => true],
+            ]
+        ];
+    }
+    return $items;
+}
+
+function buildApprovedFlex($detail, $approveName, $originUrl, $roleKey = 'admin', $sections = [], $checklist = []) {
+    $colorMap = [
+        'banquet_staff' => '#FF6B35', 'technician' => '#2196F3',
+        'housekeeping' => '#9C27B0', 'admin' => '#607D8B', 'procurement' => '#795548',
+    ];
+    $nameMap = [
+        'banquet_staff' => '🍽️ จัดเลี้ยง', 'technician' => '⚙️ วิศวกรรม',
+        'housekeeping' => '🧹 ทำความสะอาด', 'admin' => '👤 ผู้ดูแลระบบ', 'procurement' => '📦 จัดซื้อ',
+    ];
+    $pageMap = [
+        'banquet_staff' => 'banquet_bk.php', 'technician' => 'banquet_mt.php', 'housekeeping' => 'banquet_hk.php',
+    ];
+
+    $body = [
+        'type' => 'box', 'layout' => 'vertical', 'spacing' => 'sm', 'paddingAll' => '16px',
+        'contents' => [
+            flexLabelValue('📌', $detail['function_name'], '#111111'),
+            flexLabelValue('👤', $detail['booking_name']),
+            flexLabelValue('📞', $detail['phone']),
+            flexLabelValue('💰', number_format($detail['total_amount'], 2) . ' บาท', '#111111'),
+            flexLabelValue('🏠', $detail['booking_room']),
+            flexLabelValue('📅 เริ่ม', date('d/m/Y H:i', strtotime($detail['start_time']))),
+            flexLabelValue('📅 สิ้นสุด', date('d/m/Y H:i', strtotime($detail['end_time']))),
+            flexSeparator(),
+            flexLabelValue('👨‍💼 อนุมัติ', $approveName, '#1DB446'),
+            flexLabelValue('🆔', $detail['function_code'], '#111111'),
+        ],
+    ];
+
+    // Role-specific section
+    if (!empty($sections) || !empty($checklist)) {
+        $roleContents = [
+            flexSeparator(),
+            ['type' => 'text', 'text' => $nameMap[$roleKey] ?? $roleKey, 'weight' => 'bold', 'size' => 'md', 'color' => $colorMap[$roleKey] ?? '#333', 'margin' => 'md'],
+        ];
+
+        foreach ($sections as $sec) {
+            $lines = [];
+            $lines[] = ['type' => 'text', 'text' => $sec['label'], 'weight' => 'bold', 'size' => 'sm', 'color' => '#555555', 'margin' => 'md'];
+            foreach (explode("\n", $sec['text']) as $line) {
+                if (trim($line) !== '') {
+                    $lines[] = ['type' => 'text', 'text' => $line, 'size' => 'xs', 'color' => '#666666', 'wrap' => true, 'margin' => 'xs'];
+                }
+            }
+            $roleContents[] = ['type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs', 'contents' => $lines];
+        }
+
+        if (!empty($checklist)) {
+            $chk = [['type' => 'text', 'text' => '✅ สิ่งที่ต้องทำ', 'weight' => 'bold', 'size' => 'sm', 'color' => '#1DB446', 'margin' => 'md']];
+            foreach (flexChecklist($checklist) as $ci) { $ci['margin'] = 'xs'; $chk[] = $ci; }
+            $roleContents[] = ['type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs', 'contents' => $chk];
+        }
+
+        $body['contents'][] = ['type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs', 'contents' => $roleContents];
+    }
+
+    $targetPage = $pageMap[$roleKey] ?? 'manage_banquet.php';
+
+    return [
+        'type' => 'bubble', 'size' => 'mega',
+        'header' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs',
+            'contents' => [
+                ['type' => 'text', 'text' => '✅ งานได้รับการอนุมัติ', 'weight' => 'bold', 'size' => 'lg', 'color' => '#FFFFFF'],
+                ['type' => 'text', 'text' => 'Approved Event', 'size' => 'xs', 'color' => '#FFFFFFBB'],
+            ],
+            'backgroundColor' => '#1DB446', 'paddingAll' => '16px',
+        ],
+        'body' => $body,
+        'footer' => [
+            'type' => 'box', 'layout' => 'vertical', 'contents' => [[
+                'type' => 'button', 'style' => 'primary', 'color' => '#1DB446', 'height' => 'sm',
+                'action' => ['type' => 'uri', 'label' => 'เปิดดูงาน', 'uri' => $originUrl . '/manage_banquet/' . $targetPage],
+            ]], 'paddingAll' => '12px',
+        ],
+    ];
+}
+
+function buildDraftFlex($functionName, $draftName, $originUrl) {
+    return [
+        'type' => 'bubble', 'size' => 'mega',
+        'header' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs',
+            'contents' => [
+                ['type' => 'text', 'text' => '📝 มี Draft ใหม่', 'weight' => 'bold', 'size' => 'lg', 'color' => '#FFFFFF'],
+                ['type' => 'text', 'text' => 'New Draft Version', 'size' => 'xs', 'color' => '#FFFFFFBB'],
+            ],
+            'backgroundColor' => '#6C5CE7', 'paddingAll' => '16px',
+        ],
+        'body' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'md', 'paddingAll' => '16px',
+            'contents' => [
+                flexLabelValue('📌 ชื่องาน', $functionName, '#111111'),
+                flexLabelValue('📋 Draft', $draftName, '#6C5CE7'),
+                flexLabelValue('📅 วันที่', date('d/m/Y H:i')),
+            ],
+        ],
+        'footer' => [
+            'type' => 'box', 'layout' => 'vertical', 'contents' => [[
+                'type' => 'button', 'style' => 'primary', 'color' => '#6C5CE7', 'height' => 'sm',
+                'action' => ['type' => 'uri', 'label' => 'เปิดดูงาน', 'uri' => $originUrl . '/manage_banquet/manage_banquet.php'],
+            ]], 'paddingAll' => '12px',
+        ],
+    ];
+}
