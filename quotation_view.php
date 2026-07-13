@@ -122,12 +122,6 @@ $items = $conn->query($sql_items);
                                     <span class="text-muted ms-2">โทร / Tel:</span>
                                     <span class="fw-bold"><?= htmlspecialchars($quote['cust_phone']) ?></span>
                                 </div>
-                                <?php if (!empty($quote['cust_contact_name']) || !empty($quote['sales_name'])): ?>
-                                <div style="font-size: 12px; margin-top: 4px;">
-                                    <span class="text-muted">ผู้ประสานงาน / เซล:</span>
-                                    <span class="fw-bold"><?= htmlspecialchars($quote['cust_contact_name'] ?? '-') ?> / <?= htmlspecialchars($quote['sales_name'] ?? '-') ?></span>
-                                </div>
-                                <?php endif; ?>
                                 <div style="font-size: 12px; margin-top: 4px;">
                                     <span class="text-muted">วันที่จัดงาน / Event Date:</span>
                                     <span class="fw-bold"><?= !empty($quote['event_date']) ? date('d/m/Y', strtotime($quote['event_date'])) : '-' ?> - <?= !empty($quote['expiry_date']) ? date('d/m/Y', strtotime($quote['expiry_date'])) : '-' ?></span>
@@ -216,7 +210,7 @@ $items = $conn->query($sql_items);
 
             <div class="section-group row ">
                 <div class="col-7">
-                    <div class="section-title">หมายเหตุ / Remark</div>
+                    <div class="section-title">หมายเหตุ / Remarks</div>
                     <div class="text-black" style="white-space: pre-line; font-size: 12px;">
                         <?= !empty($quote['remarks']) ? htmlspecialchars($quote['remarks']) : '-' ?>
                     </div>
@@ -261,8 +255,11 @@ $items = $conn->query($sql_items);
 
         <!-- เงื่อนไข -->
         <div class="conditions-section" style="font-size: 10.5px; line-height: 1.6;">
-            <div class="section-title">เงื่อนไขการยืนยันการจัดงานและการชำระเงิน</div>
-            <ol style="padding-left: 18px; margin-bottom: 6px;">
+            <div class="d-flex align-items-center mb-2">
+                <span class="section-title mb-0">เงื่อนไขการยืนยันการจัดงานและการชำระเงิน</span>
+                <small class="text-muted ms-2 no-print" style="font-size: 9px;"><i class="bi bi-pencil"></i> คลิกเพื่อแก้ไข</small>
+            </div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;" contenteditable="true" class="editable-block">
                 <li>ผู้ว่าจ้างตกลงยืนยันการจัดงานเป็นลายลักษณ์อักษร หรือผ่านเอกสารที่สามารถตรวจสอบได้ ไม่น้อยกว่า 15 (สิบห้า) วัน ก่อนวันจัดงาน</li>
                 <li>ผู้ว่าจ้างตกลงชำระค่าบริการทั้งหมด ภายใน 15 (สิบห้า) วัน นับแต่วันที่โรงแรมออกใบแจ้งหนี้ (Tax Invoice) เว้นแต่คู่สัญญาจะตกลงเป็นหนังสือไว้เป็นอย่างอื่น</li>
                 <li>การลงนามในใบเสนอราคา หรือการตอบรับใบเสนอราคาทางอิเล็กทรอนิกส์ ถือเป็นการยอมรับรายละเอียด ราคา ขอบเขตการให้บริการ และเงื่อนไขทั้งหมดที่ระบุไว้ในใบเสนอราคา โดยมีผลผูกพันตามกฎหมาย</li>
@@ -276,29 +273,41 @@ $items = $conn->query($sql_items);
                 <span style="font-size: 10px;">(ภายหลังโอนชำระ กรุณาส่งเอกสารสลิปการโอน มาถึงฝ่ายขาย หลังโอนเสร็จสิ้น)</span>
             </div>
 
-            <div class="section-title">เงื่อนไขการเปลี่ยนแปลงรายละเอียดการจัดงาน</div>
-            <ol style="padding-left: 18px; margin-bottom: 6px;">
+            <div class="d-flex align-items-center mb-2">
+                <span class="section-title mb-0">เงื่อนไขการเปลี่ยนแปลงรายละเอียดการจัดงาน</span>
+                <small class="text-muted ms-2 no-print" style="font-size: 9px;"><i class="bi bi-pencil"></i> คลิกเพื่อแก้ไข</small>
+            </div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;" contenteditable="true" class="editable-block">
                 <li>กรณีผู้ว่าจ้างประสงค์จะเปลี่ยนแปลงจำนวนผู้เข้าร่วมประชุม รายการอาหาร เครื่องดื่ม หรือรายละเอียดอื่นใด ผู้ว่าจ้างต้องแจ้งให้โรงแรมทราบเป็นลายลักษณ์อักษร ไม่น้อยกว่า 3 (สาม) วัน ก่อนวันจัดงาน</li>
                 <li>หากแจ้งเปลี่ยนแปลงภายหลังระยะเวลาที่กำหนด โรงแรมขอสงวนสิทธิ์เรียกเก็บค่าใช้จ่ายเพิ่มเติม หรือคิดค่าบริการตามจำนวนที่ได้เตรียมการไว้แล้ว ทั้งนี้ตามความเสียหายที่เกิดขึ้นจริง</li>
                 <li>โรงแรมจะดำเนินการเปลี่ยนแปลงตามความพร้อมของวัตถุดิบ บุคลากร และการให้บริการ โดยไม่กระทบต่อคุณภาพมาตรฐานของงาน</li>
             </ol>
 
-            <div class="section-title">เงื่อนไขการเพิ่มจำนวนผู้เข้าร่วม</div>
-            <ol style="padding-left: 18px; margin-bottom: 6px;">
+            <div class="d-flex align-items-center mb-2">
+                <span class="section-title mb-0">เงื่อนไขการเพิ่มจำนวนผู้เข้าร่วม</span>
+                <small class="text-muted ms-2 no-print" style="font-size: 9px;"><i class="bi bi-pencil"></i> คลิกเพื่อแก้ไข</small>
+            </div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;" contenteditable="true" class="editable-block">
                 <li>กรณีผู้ว่าจ้างมีความประสงค์เพิ่มจำนวนผู้เข้าร่วมประชุม หรือเพิ่มจำนวนอาหารและเครื่องดื่มภายหลังการยืนยันยอด โรงแรมจะดำเนินการตามศักยภาพในการให้บริการและความพร้อมของวัตถุดิบ</li>
                 <li>โรงแรมขอสงวนสิทธิ์ในการเปลี่ยนแปลงรายการอาหาร เครื่องดื่ม หรือวัสดุอุปกรณ์เป็นรายการที่มีคุณภาพเทียบเท่า โดยไม่ต้องแจ้งให้ทราบล่วงหน้า</li>
                 <li>ผู้ว่าจ้างรับทราบว่า การสั่งเพิ่มอาหารในวันจัดงานอาจใช้ระยะเวลาในการจัดเตรียมเพิ่มเติม และโรงแรมจะดำเนินการโดยเร็วที่สุดตามมาตรฐานการให้บริการ</li>
             </ol>
 
-            <div class="section-title">ความรับผิดชอบต่อความเสียหาย</div>
-            <ol style="padding-left: 18px; margin-bottom: 6px;">
+            <div class="d-flex align-items-center mb-2">
+                <span class="section-title mb-0">ความรับผิดชอบต่อความเสียหาย</span>
+                <small class="text-muted ms-2 no-print" style="font-size: 9px;"><i class="bi bi-pencil"></i> คลิกเพื่อแก้ไข</small>
+            </div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;" contenteditable="true" class="editable-block">
                 <li>ผู้ว่าจ้างตกลงรับผิดชอบต่อความเสียหาย ความสูญหาย หรือการชำรุดของอาคาร ห้องประชุม อุปกรณ์ เครื่องใช้ เครื่องตกแต่ง ทรัพย์สิน หรือสิ่งอำนวยความสะดวกของโรงแรม อันเกิดจากการกระทำของผู้ว่าจ้าง ผู้เข้าร่วมประชุม วิทยากร ผู้รับจ้างช่วง คณะทำงาน หรือบุคคลที่ผู้ว่าจ้างเชิญเข้าร่วมงาน</li>
                 <li>ผู้ว่าจ้างตกลงชำระค่าเสียหายตามมูลค่าความเสียหายที่เกิดขึ้นจริง รวมถึงค่าใช้จ่ายในการซ่อมแซม เปลี่ยนทดแทน หรือฟื้นฟูทรัพย์สินดังกล่าว ตามที่โรงแรมประเมินโดยสุจริตและสมเหตุสมผล</li>
                 <li>โรงแรมมีสิทธิเรียกเก็บค่าเสียหายดังกล่าวเพิ่มเติมจากค่าบริการตามใบเสนอราคาโรงแรมมีสิทธิเรียกเก็บค่าเสียหายดังกล่าวเพิ่มเติมจากค่าบริการตามใบเสนอราคา</li>
             </ol>
 
-            <div class="section-title">ข้อกำหนดทั่วไป</div>
-            <ol style="padding-left: 18px; margin-bottom: 6px;">
+            <div class="d-flex align-items-center mb-2">
+                <span class="section-title mb-0">ข้อกำหนดทั่วไป</span>
+                <small class="text-muted ms-2 no-print" style="font-size: 9px;"><i class="bi bi-pencil"></i> คลิกเพื่อแก้ไข</small>
+            </div>
+            <ol style="padding-left: 18px; margin-bottom: 6px;" contenteditable="true" class="editable-block">
                 <li>ราคาในใบเสนอราคานี้มีอายุ 30 วัน นับจากวันที่ออกเอกสาร เว้นแต่จะระบุไว้เป็นอย่างอื่น</li>
                 <li>การให้บริการเป็นไปตามข้อกำหนดของโรงแรม และกฎหมายที่เกี่ยวข้อง</li>
                 <li>หากมีเหตุสุดวิสัย (Force Majeure) เช่น ภัยธรรมชาติ การระบาดของโรค การจลาจล คำสั่งของหน่วยงานรัฐ หรือเหตุการณ์ที่อยู่นอกเหนือการควบคุมของคู่สัญญา ซึ่งทำให้ไม่สามารถจัดงานได้ คู่สัญญาจะร่วมกันเจรจาเพื่อกำหนดแนวทางที่เหมาะสม โดยไม่มีฝ่ายใดต้องรับผิดในความเสียหายที่เกิดจากเหตุสุดวิสัยดังกล่าว</li>
@@ -497,6 +506,32 @@ $items = $conn->query($sql_items);
             page-break-before: always !important;
             padding-top: 8mm;
         }
+
+        .editable-block {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+    }
+</style>
+
+<style>
+    .editable-block {
+        outline: none;
+        min-height: 20px;
+        border: 1px dashed transparent;
+        border-radius: 4px;
+        padding: 4px 6px;
+        transition: border-color 0.2s;
+    }
+    .editable-block:hover {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+    }
+    .editable-block:focus {
+        border-color: #0d6efd;
+        background-color: #fff;
+        box-shadow: 0 0 0 2px rgba(13,110,253,0.15);
     }
 </style>
 
