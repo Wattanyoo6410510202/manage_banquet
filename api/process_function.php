@@ -317,17 +317,28 @@ if (isset($_POST['save'])) {
         header("Location: manage_banquet.php");
         exit();
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         $conn->rollback();
 
-        // หยุดการทำงานและแสดง Error ทั้งหมดออกมา
-        echo "<h1 style='color:red;'>เกิดข้อผิดพลาดในการบันทึก!</h1>";
-        echo "<p><b>ข้อความจากระบบ:</b> " . $e->getMessage() . "</p>";
-        echo "<hr>";
-        echo "<pre>";
-        print_r($_POST); // ดูว่าหน้าบ้านส่งค่าอะไรมาบ้าง
-        echo "</pre>";
-        exit(); // หยุดการ Redirect เพื่อให้อ่าน Error ทัน
+        error_log("[process_function] ERROR: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+
+        http_response_code(500);
+        echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Process Error</title>";
+        echo "<style>body{font-family:Consolas,monospace;padding:30px;background:#fff3f3;}";
+        echo ".err-box{border:2px solid #dc3545;border-radius:8px;padding:20px;max-width:900px;margin:0 auto;}";
+        echo ".label{color:#666;font-size:12px;margin-bottom:2px;}";
+        echo ".val{background:#fff;border:1px solid #eee;padding:8px 12px;border-radius:4px;white-space:pre-wrap;word-break:break-all;font-size:13px;}";
+        echo ".stack{background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:6px;font-size:12px;overflow-x:auto;max-height:300px;overflow-y:auto;}</style></head><body>";
+        echo "<div class='err-box'>";
+        echo "<h3 style='color:#dc3545;margin-top:0;'>&#9888; เกิดข้อผิดพลาดในการบันทึกงาน</h3>";
+        echo "<div class='label'>Error Message:</div><div class='val'>" . htmlspecialchars($e->getMessage()) . "</div><br>";
+        echo "<div class='label'>File:</div><div class='val'>" . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</div><br>";
+        echo "<div class='label'>POST Data:</div><div class='val'>" . htmlspecialchars(print_r($_POST, true)) . "</div><br>";
+        echo "<div class='label'>Stack Trace:</div><div class='stack'>" . htmlspecialchars($e->getTraceAsString()) . "</div>";
+        echo "<br><button onclick='history.back()' style='padding:8px 20px;cursor:pointer;border-radius:4px;border:1px solid #ccc;background:#fff;'>&#8592; กลับ</button>";
+        echo " <button onclick='navigator.clipboard.writeText(document.querySelector(\".err-box\").innerText)' style='padding:8px 20px;cursor:pointer;border-radius:4px;border:1px solid #0d6efd;background:#0d6efd;color:#fff;'>Copy Error</button>";
+        echo "</div></body></html>";
+        exit();
     }
 }
 ?>
