@@ -303,8 +303,9 @@ $menus = $conn->query($sql_menus);
                     <th width="15%">ประเภท</th>
                     <th>รายการอาหาร</th>
                     <th width="10%">จำนวน</th>
-                    <th width="15%">ราคา/หน่วย</th>
-                    <th width="15%">รวม</th>
+                    <th width="12%">ราคาขาย/หน่วย</th>
+                    <th width="12%">ราคาทุน/หน่วย</th>
+                    <th width="12%">รวม</th>
                 </tr>
             </thead>
             <tbody>
@@ -319,6 +320,7 @@ $menus = $conn->query($sql_menus);
                         <td><?php echo nl2br($row['k_item']); ?></td>
                         <td class="text-center"><?php echo number_format($row['k_qty']); ?></td>
                         <td class="text-end"><?php echo number_format($row['k_price'] ?? 0, 2); ?></td>
+                        <td class="text-end text-danger"><?php echo number_format($row['k_cost'] ?? 0, 2); ?></td>
                         <td class="text-end fw-bold">
                             <?php 
                             $qty = (float)($row['k_qty'] ?? 0);
@@ -358,7 +360,8 @@ $menus = $conn->query($sql_menus);
                     <th width="15%">ประเภทเมนู</th>
                     <th>รายละเอียดเมนู</th>
                     <th width="10%">จำนวน</th>
-                    <th width="12%">ราคา/หน่วย</th>
+                    <th width="12%">ราคาขาย/หน่วย</th>
+                    <th width="12%">ราคาทุน/หน่วย</th>
                     <th width="12%">ยอดรวม</th>
                 </tr>
             </thead>
@@ -377,13 +380,14 @@ $menus = $conn->query($sql_menus);
                         <td><?php echo nl2br($row['menu_detail']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
                         <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>
+                        <td class="text-end text-danger"><?php echo number_format($row['menu_cost'] ?? 0, 2); ?></td>
                         <td class="text-end fw-bold"><?php echo number_format($menu_total, 2); ?></td>
                     </tr>
                 <?php endwhile; ?>
             </tbody>
             <tfoot class="table-light">
                 <tr>
-                    <th colspan="5" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                    <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
                     <th class="text-end fw-bold"><?php echo number_format($menu_grand_total, 2); ?></th>
                 </tr>
             </tfoot>

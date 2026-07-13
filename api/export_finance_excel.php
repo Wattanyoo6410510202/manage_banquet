@@ -30,11 +30,13 @@ while ($f = $res_fin->fetch_assoc()) {
 // ── ต้นทุนจากครัว ──
 function getKitchenCost($conn, $function_id) {
     $total_cost = 0;
-    $sql_m = "SELECT menu_qty, menu_price, menu_detail FROM function_menus WHERE function_id = $function_id";
+    $total_cost_price = 0;
+    $sql_m = "SELECT menu_qty, menu_price, menu_cost, menu_detail FROM function_menus WHERE function_id = $function_id";
     $res_m = $conn->query($sql_m);
     while ($m = $res_m->fetch_assoc()) {
         $qty = (float) $m['menu_qty'];
         $price_direct = (float) $m['menu_price'];
+        $cost_direct = (float) ($m['menu_cost'] ?? 0);
         if ($price_direct > 0) {
             $total_cost += ($price_direct * $qty);
         } else {
@@ -49,12 +51,18 @@ function getKitchenCost($conn, $function_id) {
                 }
             }
         }
+        if ($cost_direct > 0) {
+            $total_cost_price += ($cost_direct * $qty);
+        } elseif ($price_direct > 0) {
+            $total_cost_price += ($price_direct * $qty);
+        }
     }
-    $sql_k = "SELECT k_item, k_qty, k_price FROM function_kitchens WHERE function_id = $function_id";
+    $sql_k = "SELECT k_item, k_qty, k_price, k_cost FROM function_kitchens WHERE function_id = $function_id";
     $res_k = $conn->query($sql_k);
     while ($k = $res_k->fetch_assoc()) {
         $k_qty = (float) $k['k_qty'];
         $k_price = (float) ($k['k_price'] ?? 0);
+        $k_cost = (float) ($k['k_cost'] ?? 0);
         if ($k_price > 0) {
             $total_cost += ($k_price * $k_qty);
         } else {
@@ -72,10 +80,17 @@ function getKitchenCost($conn, $function_id) {
                 $total_cost += ($unit_price * $k_qty);
             }
         }
+        if ($k_cost > 0) {
+            $total_cost_price += ($k_cost * $k_qty);
+        } elseif ($k_price > 0) {
+            $total_cost_price += ($k_price * $k_qty);
+        }
     }
-    return $total_cost;
+    return ['total' => $total_cost, 'total_cost_price' => $total_cost_price];
 }
-$kitchen_total = getKitchenCost($conn, $id);
+$kitchen_result = getKitchenCost($conn, $id);
+$kitchen_total = is_array($kitchen_result) ? $kitchen_result['total'] : $kitchen_result;
+$kitchen_cost_price = is_array($kitchen_result) ? ($kitchen_result['total_cost_price'] ?? $kitchen_result['total']) : $kitchen_result;
 $main_price = (float) ($data['total_amount'] ?? 0);
 $grand_total_income = $main_price + $total_income;
 $total_cost = $extra_cost + $kitchen_total;

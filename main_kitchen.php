@@ -16,6 +16,7 @@ if (isset($_POST['action'])) {
 
     // 🎯 ส่วนที่เพิ่มใหม่: รับราคาและคำนวณยอดรวม
     $break_price = floatval($_POST['break_price'] ?? 0);
+    $break_cost = floatval($_POST['break_cost'] ?? 0);
     $break_total = $break_pax * $break_price;
 
     if ($_POST['action'] == 'save') {
@@ -26,12 +27,13 @@ if (isset($_POST['action'])) {
                     break_menu='$break_menu', 
                     break_pax=$break_pax, 
                     break_price=$break_price,
+                    break_cost=$break_cost,
                     break_total=$break_total,
                     break_remark='$break_remark' 
                     WHERE id=$id";
         } else {
-            $sql = "INSERT INTO function_breaks (break_time, break_type_id, break_menu, break_pax, break_price, break_total, break_remark) 
-                    VALUES ('$break_time', $break_type_id, '$break_menu', $break_pax, $break_price, $break_total, '$break_remark')";
+            $sql = "INSERT INTO function_breaks (break_time, break_type_id, break_menu, break_pax, break_price, break_cost, break_total, break_remark) 
+                    VALUES ('$break_time', $break_type_id, '$break_menu', $break_pax, $break_price, $break_cost, $break_total, '$break_remark')";
         }
 
         if ($conn->query($sql)) {
@@ -49,6 +51,7 @@ if (isset($_POST['action'])) {
                     "break_menu" => $break_menu,
                     "break_pax" => $break_pax,
                     "break_price" => number_format($break_price, 2),
+                    "break_cost" => number_format($break_cost, 2),
                     "break_total" => number_format($break_total, 2),
                     "break_remark" => $break_remark
                 ]
@@ -143,17 +146,24 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                     min="1" value="1">
                             </div>
                             <div class="col-6 mb-2">
-                                <label class="small fw-bold">ราคาต่อหัว (฿)</label>
+                                <label class="small fw-bold">ราคาขายต่อหัว (฿)</label>
                                 <input type="number" name="break_price" id="b_price"
                                     class="form-control form-control-sm" step="0.01" min="0" value="0.00">
                             </div>
                         </div>
 
-                        <div class="mb-2">
-                            <label class="small fw-bold text-primary">ยอดรวมค่าเบรก (฿)</label>
-                            <input type="text" id="b_total_display"
-                                class="form-control form-control-sm bg-light text-primary fw-bold" readonly
-                                value="0.00">
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="small fw-bold">ราคาทุนต่อหัว (฿)</label>
+                                <input type="number" name="break_cost" id="b_cost"
+                                    class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="small fw-bold text-primary">ยอดรวมค่าเบรก (฿)</label>
+                                <input type="text" id="b_total_display"
+                                    class="form-control form-control-sm bg-light text-primary fw-bold" readonly
+                                    value="0.00">
+                            </div>
                         </div>
 
                         <div class="mb-2">
@@ -215,9 +225,10 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                 <tr>
                                     <th>เมนูของว่าง</th>
                                     <th>เวลา / ประเภท</th>
-                                    <th width="10%" class="text-center">จำนวน</th>
-                                    <th width="12%" class="text-end">ราคา/หัว</th>
-                                    <th width="12%" class="text-end">ยอดรวม</th>
+                                    <th width="8%" class="text-center">จำนวน</th>
+                                    <th width="10%" class="text-end">ราคาขาย/หัว</th>
+                                    <th width="10%" class="text-end">ราคาทุน/หัว</th>
+                                    <th width="10%" class="text-end">ยอดรวม</th>
                                     <th width="10%" class="text-center">จัดการ</th>
                                 </tr>
                             </thead>
@@ -246,6 +257,9 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                         <td class="text-end b-price-text">
                                             <?= number_format($row['break_price'], 2) ?>
                                         </td>
+                                        <td class="text-end b-cost-text text-danger">
+                                            <?= number_format($row['break_cost'] ?? 0, 2) ?>
+                                        </td>
                                         <td class="text-end fw-bold text-primary b-total-text">
                                             <?= number_format($row['break_total'], 2) ?>
                                         </td>
@@ -257,7 +271,8 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                                     "break_type_id" => $row['break_type_id'],
                                                     "break_menu" => $row['break_menu'],
                                                     "break_pax" => (int) $row['break_pax'],
-                                                    "break_price" => (float) $row['break_price'], // บังคับเป็นเลขทศนิยมที่นี่
+                                                    "break_price" => (float) $row['break_price'],
+                                                    "break_cost" => (float) ($row['break_cost'] ?? 0),
                                                     "break_remark" => $row['break_remark']
                                                 ]) ?>)'>
                                                     <i class="bi bi-pencil-square"></i>
@@ -306,7 +321,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
             },
             "columnDefs": [{
                 "orderable": false,
-                "targets": 3
+                "targets": [4, 5, 6]
             }],
             // แก้ไขตรงนี้ครับจาร
             "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
@@ -317,7 +332,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                 extend: 'excel',
                 className: 'd-none',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4] // ดึงถึงคอลัมน์ยอดรวม
+                    columns: [0, 1, 2, 3, 4, 5] // ดึงถึงคอลัมน์ยอดรวม
                 },
                 title: 'รายการเบรก'
             },
@@ -325,7 +340,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                 extend: 'print',
                 className: 'd-none',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4]
+                    columns: [0, 1, 2, 3, 4, 5]
                 },
                 title: 'รายการเบรก' // ✅ ใส่คอมม่าหน้า title แล้วครับ
             },
@@ -333,7 +348,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                 extend: 'copy',
                 className: 'd-none',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4]
+                    columns: [0, 1, 2, 3, 4, 5]
                 }
             }
             ],
@@ -378,9 +393,10 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                     const col1 = `<div class="fw-bold text-primary b-time">${d.break_time}</div>
               <div class="badge bg-light text-dark border fw-normal b-type-name">${d.type_name}</div>`;
                     const col2 = `<div class="text-center fw-bold b-pax-text">${Number(d.break_pax).toLocaleString()}</div>`;
-                    const col3 = `<div class="text-end b-price-text">${d.break_price}</div>`; // เพิ่มคอลัมน์ราคา
-                    const col4 = `<div class="text-end fw-bold text-primary b-total-text">${d.break_total}</div>`; // เพิ่มคอลัมน์ยอดรวม
-                    const col5 = `<div class="text-center">
+                    const col3 = `<div class="text-end b-price-text">${d.break_price}</div>`;
+                    const col4 = `<div class="text-end b-cost-text text-danger">${d.break_cost}</div>`;
+                    const col5 = `<div class="text-end fw-bold text-primary b-total-text">${d.break_total}</div>`;
+                    const col6 = `<div class="text-center">
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary border-0" onclick='editBreak(${JSON.stringify(d)})'>
                         <i class="bi bi-pencil-square"></i>
@@ -394,10 +410,10 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                     // เปลี่ยนในส่วน fetch -> then(res => { ... })
                     if (b_id > 0) {
                         // กรณีอัปเดต: ใส่ให้ครบ 6 คอลัมน์ (Index 0-5)
-                        table.row($(`#row-${d.id}`)).data([col0, col1, col2, col3, col4, col5]).draw(false);
+                        table.row($(`#row-${d.id}`)).data([col0, col1, col2, col3, col4, col5, col6]).draw(false);
                     } else {
                         // กรณีเพิ่มใหม่: ต้องใส่ข้อมูลให้ครบทุกคอลัมน์เหมือนกันครับจาร
-                        const newRow = table.row.add([col0, col1, col2, col3, col4, col5]).draw(false).node();
+                        const newRow = table.row.add([col0, col1, col2, col3, col4, col5, col6]).draw(false).node();
                         $(newRow).attr('id', 'row-' + d.id);
                     }
                     resetForm();
@@ -411,7 +427,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
     });
 
     function editBreak(data) {
-        console.log(data); // <--- ลองกดแล้วดูใน Console (F12) ว่ามีคำว่า break_price ไหม
+        console.log(data);
 
         $('#b_id').val(data.id);
         $('#b_time').val(data.break_time);
@@ -422,10 +438,12 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
 
         // ดึงค่ามาพักไว้ก่อน พร้อมเช็คว่าเป็นตัวเลขไหม
         let price = parseFloat(data.break_price) || 0;
+        let cost = parseFloat(data.break_cost) || 0;
         let pax = parseInt(data.break_pax) || 0;
 
         // ใส่ค่าใน Input ราคาต่อหัว
         $('#b_price').val(price.toFixed(2));
+        $('#b_cost').val(cost.toFixed(2));
 
         // คำนวณยอดรวม
         let total = pax * price;

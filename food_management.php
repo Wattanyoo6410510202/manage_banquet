@@ -47,6 +47,7 @@ if (isset($_POST['action'])) {
         $beverage_detail = $conn->real_escape_string($_POST['beverage_detail'] ?? '');
         $guarantee_pax = intval($_POST['guarantee_pax'] ?? 0);
         $price_per_pax = floatval($_POST['price_per_pax'] ?? 0);
+        $cost_per_pax = floatval($_POST['cost_per_pax'] ?? 0);
 
         if ($id > 0) {
             $sql = "UPDATE function_menu_details SET 
@@ -54,11 +55,12 @@ if (isset($_POST['action'])) {
                     menu_items='$menu_items', 
                     beverage_detail='$beverage_detail', 
                     guarantee_pax=$guarantee_pax, 
-                    price_per_pax=$price_per_pax 
+                    price_per_pax=$price_per_pax,
+                    cost_per_pax=$cost_per_pax 
                     WHERE id=$id";
         } else {
-            $sql = "INSERT INTO function_menu_details (menu_type_id, menu_items, beverage_detail, guarantee_pax, price_per_pax) 
-                    VALUES ($menu_type_id, '$menu_items', '$beverage_detail', $guarantee_pax, $price_per_pax)";
+            $sql = "INSERT INTO function_menu_details (menu_type_id, menu_items, beverage_detail, guarantee_pax, price_per_pax, cost_per_pax) 
+                    VALUES ($menu_type_id, '$menu_items', '$beverage_detail', $guarantee_pax, $price_per_pax, $cost_per_pax)";
         }
 
         if ($conn->query($sql)) {
@@ -120,15 +122,20 @@ require_once "header.php";
                         </div>
 
                         <div class="row">
-                            <div class="col-6 mb-3">
+                            <div class="col-4 mb-3">
                                 <label class="small fw-bold mb-1">การันตี (Pax)</label>
                                 <input type="number" name="guarantee_pax" id="m_pax" class="form-control" value="1"
                                     placeholder="100">
                             </div>
-                            <div class="col-6 mb-3">
-                                <label class="small fw-bold mb-1">ราคา/หัว (บาท)</label>
+                            <div class="col-4 mb-3">
+                                <label class="small fw-bold mb-1">ราคาขาย/หัว (บาท)</label>
                                 <input type="number" step="0.01" name="price_per_pax" id="m_price" class="form-control"
                                     placeholder="450.00">
+                            </div>
+                            <div class="col-4 mb-3">
+                                <label class="small fw-bold mb-1">ราคาทุน/หัว (บาท)</label>
+                                <input type="number" step="0.01" name="cost_per_pax" id="m_cost" class="form-control"
+                                    placeholder="0.00">
                             </div>
                         </div>
 
@@ -195,7 +202,8 @@ require_once "header.php";
                                 <tr class="small text-uppercase">
                                     <th>รายการเมนู/เครื่องดื่ม</th>
                                     <th class="text-center">จำนวน</th>
-                                    <th class="text-center">ราคา/หัว</th>
+                                    <th class="text-center">ราคาขาย/หัว</th>
+                                    <th class="text-center">ราคาทุน/หัว</th>
                                     <th>ประเภทอาหาร</th>
                                     <th class="text-">จัดการ</th>
                                 </tr>
@@ -218,6 +226,9 @@ require_once "header.php";
                                         <td class="col-pax text-center"><?= number_format($row['guarantee_pax']) ?></td>
                                         <td class="col-price text-center fw-bold text-primary">
                                             <?= number_format($row['price_per_pax'], 2) ?>
+                                        </td>
+                                        <td class="col-cost text-center fw-bold text-danger">
+                                            <?= number_format($row['cost_per_pax'] ?? 0, 2) ?>
                                         </td>
                                         <td class="col-type ">
                                             <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
@@ -262,15 +273,15 @@ require_once "header.php";
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
             },
             "columnDefs": [
-                { "orderable": false, "targets": [3, 4] }
+                { "orderable": false, "targets": [4, 5] }
             ],
             "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                 "<'d-none'B>",
             "buttons": [
-                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3] } },
-                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3] } }
+                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4] } },
+                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4] } }
             ]
         });
 
@@ -290,6 +301,7 @@ require_once "header.php";
                             r.find('.col-type').text(res.type_name);
                             r.find('.col-pax').text(Number($('#m_pax').val()).toLocaleString());
                             r.find('.col-price').text(Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                            r.find('.col-cost').text(Number($('#m_cost').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }));
                             r.find('.menu-text').html($('#m_items').val().replace(/\n/g, '<br>'));
                             r.find('.bev-text').html($('#m_bev').val().replace(/\n/g, '<br>'));
                         } else {
@@ -305,10 +317,13 @@ require_once "header.php";
                                 // 3. ราคาต่อหัว
                                 Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
 
-                                // 4. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
+                                // 4. ราคาทุนต่อหัว
+                                Number($('#m_cost').val() || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }),
+
+                                // 5. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
                                 res.type_name,
 
-                                // 5. ปุ่มจัดการ (เหมือนเดิม)
+                                // 6. ปุ่มจัดการ (เหมือนเดิม)
                                 `<div class="d-flex justify-content-start align-items-center gap-3">
     <button type="button" class="btn btn-link text-primary p-1 border-0 btn-sm" 
         onclick='editMenu(${JSON.stringify({
@@ -316,6 +331,7 @@ require_once "header.php";
                                     menu_type_id: $('#m_type_id').val(),
                                     guarantee_pax: $('#m_pax').val(),
                                     price_per_pax: $('#m_price').val(),
+                                    cost_per_pax: $('#m_cost').val() || 0,
                                     menu_items: $('#m_items').val(),
                                     beverage_detail: $('#m_bev').val()
                                 })})'>
@@ -332,7 +348,8 @@ require_once "header.php";
                             $(newRow).find('td:eq(0)').addClass('fw-bold text-success col-type');
                             $(newRow).find('td:eq(1)').addClass('text-center col-pax');
                             $(newRow).find('td:eq(2)').addClass('text-center fw-bold text-primary col-price');
-                            $(newRow).find('td:eq(4)').addClass('text-center');
+                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-danger col-cost');
+                            $(newRow).find('td:eq(5)').addClass('text-center');
                         }
 
                         resetMenuForm();
@@ -354,6 +371,7 @@ require_once "header.php";
         $('#m_type_id').val(data.menu_type_id);
         $('#m_pax').val(data.guarantee_pax);
         $('#m_price').val(data.price_per_pax);
+        $('#m_cost').val(data.cost_per_pax || 0);
         $('#m_items').val(data.menu_items);
         $('#m_bev').val(data.beverage_detail);
         window.scrollTo({ top: 0, behavior: 'smooth' });

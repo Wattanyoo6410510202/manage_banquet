@@ -392,7 +392,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                             <th width="18%">ประเภทเบรก</th>
                                             <th>รายการรายละเอียด</th>
                                             <th width="10%">จำนวน (PAX)</th>
-                                            <th width="13%">ราคา/หน่วย</th>
+                                            <th width="13%">ราคาขาย/หน่วย</th>
+                                            <th width="10%">ราคาทุน/หน่วย</th>
                                             <th width="12%">ยอดรวม</th>
                                             <th width="5%"></th>
                                         </tr>
@@ -433,6 +434,11 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                     class="form-control form-control-sm border-0 bg-light text-end kitchen-price"
                                                     placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)">
                                             </td>
+                                            <td>
+                                                <input type="number" name="k_cost[]"
+                                                    class="form-control form-control-sm border-0 bg-light text-end kitchen-cost"
+                                                    placeholder="0.00" step="0.01">
+                                            </td>
                                             <td class="text-end fw-bold kitchen-row-total">0.00</td>
                                             <td>
                                                 <button type="button" class="btn text-danger btn-sm border-0"
@@ -444,7 +450,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                     </tbody>
                                     <tfoot class="table-light">
                                         <tr>
-                                            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                                            <th colspan="7" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
                                             <th class="text-end fw-bold kitchen-grand-total">0.00</th>
                                         </tr>
                                     </tfoot>
@@ -500,7 +506,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                     <th width="14%">ประเภทเมนู</th>
                                     <th>รายละเอียด</th>
                                     <th width="10%">จำนวน</th>
-                                    <th width="12%">ราคา/หน่วย</th>
+                                    <th width="12%">ราคาขาย/หน่วย</th>
+                                    <th width="10%">ราคาทุน/หน่วย</th>
                                     <th width="12%">ยอดรวม</th>
                                     <th width="5%"></th>
                                 </tr>
@@ -543,6 +550,9 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                     class="form-control form-control-sm border-0 menu-price"
                                                     value="<?= number_format($item['unit_price'], 2, '.', '') ?>"
                                                     oninput="updateMenuRowTotal(this)"></td>
+                                            <td><input type="number" name="menu_cost[]"
+                                                    class="form-control form-control-sm border-0 menu-cost"
+                                                    placeholder="0.00" step="0.01"></td>
                                             <td class="text-end fw-bold menu-row-total"><?php echo number_format($menu_total, 2); ?></td>
                                             <td class="text-center"><button type="button"
                                                     class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
@@ -578,6 +588,9 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         <td><input type="text" name="menu_price[]"
                                                 class="form-control form-control-sm border-0 menu-price"
                                                 placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+                                        <td><input type="number" name="menu_cost[]"
+                                                class="form-control form-control-sm border-0 menu-cost"
+                                                placeholder="0.00" step="0.01"></td>
                                         <td class="text-end fw-bold menu-row-total">0.00</td>
                                         <td class="text-center"><button type="button"
                                                 class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i
@@ -587,7 +600,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                             </tbody>
                             <tfoot class="table-light bg-light">
                                 <tr>
-                                    <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+                                    <th colspan="7" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
                                     <th class="text-end fw-bold menu-grand-total">0.00</th>
                                 </tr>
                             </tfoot>
@@ -767,6 +780,8 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 </td>
                                 <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price"
                                         placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+                                <td><input type="number" name="menu_cost[]" class="form-control form-control-sm border-0 menu-cost"
+                                        placeholder="0.00" step="0.01"></td>
                                 <td class="text-end fw-bold menu-row-total">0.00</td>
                                 <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
                                         onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
@@ -792,6 +807,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
         <td><textarea name="k_item[]" class="form-control form-control-sm border-0 bg-light break-menu-input" rows="3" onfocus="initFirstLine(this)"></textarea></td>
         <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center kitchen-qty" placeholder="0" oninput="updateKitchenRowTotal(this)"></td>
         <td><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-price" placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)"></td>
+        <td><input type="number" name="k_cost[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-cost" placeholder="0.00" step="0.01"></td>
         <td class="text-end fw-bold kitchen-row-total">0.00</td>
         <td> <button type="button" class="btn text-danger btn-sm border-0"
                                                 onclick="removeRow(this)">

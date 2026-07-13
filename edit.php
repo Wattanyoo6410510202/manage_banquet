@@ -520,10 +520,19 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 </div>
 
                 <div class="row mb-5">
-                    <div class="col-md-7 border-end pe-lg-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ</h5>
+                    <div class="col-12 mb-4">
+                        <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)</h5>
                         <div class="table-responsive mb-4">
                             <table class="table table-sm table-hover align-middle" id="scheduleTable">
+                                <thead class="small text-center text-secondary">
+                                    <tr>
+                                        <th style="width: 20%;">วันที่</th>
+                                        <th style="width: 20%;">เวลา</th>
+                                        <th>รายละเอียด</th>
+                                        <th style="width: 15%;">จำนวน</th>
+                                        <th style="width: 5%;"></th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                     <?php if ($schedules->num_rows > 0):
                                         while ($s = $schedules->fetch_assoc()): ?>
@@ -547,12 +556,12 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     <?php endwhile; endif; ?>
                                 </tbody>
                             </table>
-                            <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addScheduleRow()"><i
+                            <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addScheduleRow()"><i
                                     class="bi bi-plus-lg"></i> เพิ่มกำหนดการ</button>
                         </div>
 
                         <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก</h5>
-                        <div class="table-responsive">
+                        <div class="table-responsive mb-4">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
     <thead>
         <tr>
@@ -560,7 +569,8 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <th style="width: 140px; font-size: 11px;" class="text-center text-secondary">ประเภทเบรก</th>
             <th style="font-size: 11px;" class="text-center text-secondary">รายการรายละเอียด</th>
             <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
             <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
@@ -619,6 +629,13 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     oninput="updateKitchenRowTotal(this)">
             </td>
 
+            <td style="width: 90px;">
+                <input type="number" name="k_cost[]"
+                    class="form-control form-control-sm border-0 bg-light text-end kitchen-cost"
+                    placeholder="0.00" step="0.01"
+                    value="<?php echo number_format($k['k_cost'] ?? 0, 2, '.', ''); ?>">
+            </td>
+
             <td style="width: 100px;" class="text-end fw-bold kitchen-row-total"><?php echo number_format($k_total, 2); ?></td>
 
             <td style="width: 45px;" class="text-center">
@@ -637,35 +654,43 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         endwhile;
         ?>
         <tr>
-            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+            <th colspan="7" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
             <th class="text-end fw-bold kitchen-grand-total"><?php echo number_format($kitchen_grand, 2); ?></th>
         </tr>
     </tfoot>
 </table>
-                            <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addKitchenRow()"><i
+                            <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addKitchenRow()"><i
                                     class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
                         </div>
                         <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2"
                             rows="3"><?php echo htmlspecialchars($data['main_kitchen_remark'] ?? ''); ?></textarea>
                     </div>
+                </div>
 
-                    <div class="col-md-5 bg-sidebar p-4 rounded-4">
-                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 4. ด้านเทคนิคและงานช่าง
-                        </h5>
-                        <div class="mb-4">
-                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                            <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
+                <div class="row mb-5">
+                    <div class="col-md-6 mb-4 mb-md-0">
+                        <div class="bg-sidebar p-4 rounded-4 h-100">
+                            <h5 class="section-title mb-4"><i class="bi bi-building"></i> 4. รูปแบบการจัดงาน (SET-UP)</h5>
+                            <div class="mb-0">
+                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                    rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
+                            </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                            <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
-                        </div>
-                        <div class="mb-0">
-                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                            <textarea name="remark" class="form-control form-control-sm bg-white"
-                                rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-sidebar p-4 rounded-4 h-100">
+                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 5. ระบบวิศวกรรม (TECHNICAL)</h5>
+                            <div class="mb-4">
+                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                                <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                    rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                                <textarea name="remark" class="form-control form-control-sm bg-white"
+                                    rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -680,7 +705,8 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <th style="width: 150px; font-size: 11px;" class="text-center text-secondary">ประเภทเมนู</th>
             <th style="font-size: 11px;" class="text-center text-secondary">รายละเอียด</th>
             <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคา/หน่วย</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
+            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
             <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
@@ -735,6 +761,12 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     oninput="updateMenuRowTotal(this)">
             </td>
 
+            <td style="width: 90px;">
+                <input type="number" step="0.01" name="menu_cost[]" class="form-control form-control-sm border-0 bg-light text-end menu-cost"
+                    placeholder="ทุน"
+                    value="<?php echo number_format($m['menu_cost'] ?? 0, 2, '.', ''); ?>">
+            </td>
+
             <td style="width: 100px;" class="text-end fw-bold menu-row-total"><?php echo number_format($menu_total, 2); ?></td>
 
             <td style="width: 45px;" class="text-center">
@@ -754,7 +786,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         endwhile;
         ?>
         <tr>
-            <th colspan="6" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
+            <th colspan="7" class="text-end fw-bold">รวมทั้งหมด (Grand Total)</th>
             <th class="text-end fw-bold menu-grand-total"><?php echo number_format($menu_grand, 2); ?></th>
         </tr>
     </tfoot>
@@ -851,6 +883,7 @@ function addKitchenRow() {
         </td>
         <td width="10%"><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center kitchen-qty" placeholder="0" oninput="updateKitchenRowTotal(this)"></td>
         <td width="12%"><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-price" placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)"></td>
+        <td width="12%"><input type="number" name="k_cost[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-cost" placeholder="0.00" step="0.01"></td>
         <td class="text-end fw-bold kitchen-row-total">0.00</td>
         <td width="5%"><button type="button" class="btn text-danger btn-sm border-0"
                                 onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
@@ -883,6 +916,7 @@ function addMenuRow() {
         </td>
         <td width="10%"><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" placeholder="0" oninput="updateMenuRowTotal(this)"></td>
         <td width="12%"><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price" placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+        <td width="12%"><input type="number" name="menu_cost[]" class="form-control form-control-sm border-0 menu-cost" placeholder="0.00" step="0.01"></td>
         <td class="text-end fw-bold menu-row-total">0.00</td>
         <td width="5%" class="text-center">
            <button type="button" class="btn text-danger btn-sm border-0"

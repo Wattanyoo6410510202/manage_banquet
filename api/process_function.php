@@ -221,7 +221,7 @@ if (isset($_POST['save'])) {
 
         // Kitchen
         if (!empty($_POST['k_item'])) {
-            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_cost, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             foreach ($_POST['k_item'] as $k => $item) {
                 if (trim($item) != "") {
                     $k_date = !empty($_POST['k_date'][$k]) ? $_POST['k_date'][$k] : date('Y-m-d');
@@ -246,7 +246,8 @@ if (isset($_POST['save'])) {
                         if ($total_unit > 0) $k_price = $total_unit;
                     }
                     $k_rem = $_POST['k_remark'][$k] ?? '';
-                    $stmt_k->bind_param("isisids", $last_id, $k_date, $k_type, $item, $k_qty, $k_price, $k_rem);
+                    $k_cost = floatval($_POST['k_cost'][$k] ?? 0);
+                    $stmt_k->bind_param("isisidds", $last_id, $k_date, $k_type, $item, $k_qty, $k_price, $k_cost, $k_rem);
                     $stmt_k->execute();
                 }
             }
@@ -255,7 +256,7 @@ if (isset($_POST['save'])) {
         // --- 5. บันทึกตารางเมนูอาหารและเครื่องดื่ม (ตารางที่ 5) ---
         if (!empty($_POST['menu_detail'])) {
             // แก้ไขชื่อตารางและฟิลด์ให้ตรงกับ Database ของคุณ
-            $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, 	menu_time, menu_set_id, menu_detail, menu_qty, menu_price) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
             foreach ($_POST['menu_detail'] as $k => $detail) {
                 if (trim($detail) != "") {
@@ -277,7 +278,9 @@ if (isset($_POST['save'])) {
                         if ($total_unit > 0) $m_price = $total_unit;
                     }
 
-                    $stmt_m->bind_param("isissd", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price);
+                    $m_cost = floatval($_POST['menu_cost'][$k] ?? 0);
+
+                    $stmt_m->bind_param("isissdd", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price, $m_cost);
                     $stmt_m->execute();
                 }
             }

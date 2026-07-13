@@ -161,20 +161,22 @@ if (isset($_GET['ajax'])) {
 function getKitchenCost($conn, $function_id)
 {
     $total_cost = 0;
+    $total_cost_price = 0;
 
     // --- ส่วนที่ 1: คำนวณจากเมนูหลัก (function_menus) ---
-    $sql_m = "SELECT menu_qty, menu_price, menu_detail FROM function_menus WHERE function_id = $function_id";
+    $sql_m = "SELECT menu_qty, menu_price, menu_cost, menu_detail FROM function_menus WHERE function_id = $function_id";
     $res_m = $conn->query($sql_m);
 
     while ($m = $res_m->fetch_assoc()) {
         $qty = (float) $m['menu_qty'];
         $price_direct = (float) $m['menu_price'];
+        $cost_direct = (float) ($m['menu_cost'] ?? 0);
 
-        if ($price_direct > 0) {
-            // ถ้าระบุราคาเหมา/ราคาต่อเซตไว้แล้ว ใช้เจ้านี้คูณเลย
+        if ($cost_direct > 0) {
+            $total_cost += ($cost_direct * $qty);
+        } elseif ($price_direct > 0) {
             $total_cost += ($price_direct * $qty);
         } else {
-            // ถ้าราคาเป็น 0 ให้แตกชื่อเมนูไปส่องหาในตาราง Details
             $lines = explode("\n", str_replace("\r", "", $m['menu_detail']));
             foreach ($lines as $line) {
                 $name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
@@ -188,21 +190,29 @@ function getKitchenCost($conn, $function_id)
                 }
             }
         }
+
+        if ($cost_direct > 0) {
+            $total_cost_price += ($cost_direct * $qty);
+        } elseif ($price_direct > 0) {
+            $total_cost_price += ($price_direct * $qty);
+        }
     }
 
     // --- ส่วนที่ 2: คำนวณจากครัว/เบรก (function_kitchens) ---
-    $sql_k = "SELECT k_item, k_qty, k_price FROM function_kitchens WHERE function_id = $function_id";
+    $sql_k = "SELECT k_item, k_qty, k_price, k_cost FROM function_kitchens WHERE function_id = $function_id";
     $res_k = $conn->query($sql_k);
 
     while ($k = $res_k->fetch_assoc()) {
         $k_qty = (float) $k['k_qty'];
         $k_price = (float) ($k['k_price'] ?? 0);
+        $k_cost = (float) ($k['k_cost'] ?? 0);
 
-        if ($k_price > 0) {
+        if ($k_cost > 0) {
+            $total_cost += ($k_cost * $k_qty);
+        } elseif ($k_price > 0) {
             $total_cost += ($k_price * $k_qty);
         } else {
             $k_lines = explode("\n", str_replace("\r", "", $k['k_item']));
-
             foreach ($k_lines as $line) {
                 $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
                 if (empty($k_name))
@@ -210,14 +220,10 @@ function getKitchenCost($conn, $function_id)
 
                 $k_name_esc = $conn->real_escape_string($k_name);
                 $unit_price = 0;
-
-                // 🔍 หาในตารางเบรกก่อน
                 $q_b = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_name_esc%' LIMIT 1");
                 if ($b = $q_b->fetch_assoc()) {
                     $unit_price = (float) $b['break_price'];
-                }
-                // 🔍 ถ้าไม่เจอ หาในตาราง Details เผื่อเป็นกับข้าวสั่งเพิ่ม
-                else {
+                } else {
                     $q_d = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_name_esc%' LIMIT 1");
                     if ($d = $q_d->fetch_assoc()) {
                         $unit_price = (float) $d['price_per_pax'];
@@ -226,9 +232,15 @@ function getKitchenCost($conn, $function_id)
                 $total_cost += ($unit_price * $k_qty);
             }
         }
+
+        if ($k_cost > 0) {
+            $total_cost_price += ($k_cost * $k_qty);
+        } elseif ($k_price > 0) {
+            $total_cost_price += ($k_price * $k_qty);
+        }
     }
 
-    return ['total' => $total_cost];
+    return ['total' => $total_cost, 'total_cost_price' => $total_cost_price];
 }
 
 

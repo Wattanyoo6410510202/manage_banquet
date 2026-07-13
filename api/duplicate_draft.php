@@ -63,13 +63,26 @@ try {
     $conn->query("INSERT INTO function_schedules (function_id, schedule_date, schedule_hour, schedule_function, schedule_guarantee)
                   SELECT $new_id, schedule_date, schedule_hour, schedule_function, schedule_guarantee FROM function_schedules WHERE function_id = $function_id");
                   
-    $conn->query("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark)
-                  SELECT $new_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark FROM function_kitchens WHERE function_id = $function_id");
+    $conn->query("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_cost, k_remark)
+                  SELECT $new_id, k_date, k_type_id, k_item, k_qty, k_price, k_cost, k_remark FROM function_kitchens WHERE function_id = $function_id");
                   
-    $conn->query("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price)
-                  SELECT $new_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price FROM function_menus WHERE function_id = $function_id");
+    $conn->query("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost)
+                  SELECT $new_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost FROM function_menus WHERE function_id = $function_id");
 
     $conn->commit();
+
+    // LINE แจ้งเตือนมี Draft ใหม่
+    include_once __DIR__ . "/../line_helper.php";
+    $lineMsg = "📝 มี Draft ใหม่ / New Draft Version\n"
+        . "━━━━━━━━━━━━━━━━\n"
+        . "📌 ชื่องาน: {$original['function_name']}\n"
+        . "📋 Draft: {$new_draft_name}\n"
+        . "📅 วันที่: " . date('d/m/Y H:i') . "\n"
+        . "━━━━━━━━━━━━━━━━\n"
+        . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
+    sendLineNotifyToRole($conn, 'admin', $lineMsg);
+    sendLineNotifyToRole($conn, 'gm', $lineMsg);
+
     echo json_encode(['status' => 'success', 'new_id' => $new_id]);
 
 } catch (Exception $e) {

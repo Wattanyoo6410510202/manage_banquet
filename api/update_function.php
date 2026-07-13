@@ -203,12 +203,13 @@ if (isset($_POST['update'])) {
 
         // --- 5. Re-Insert Kitchen ---
         if (!empty($_POST['k_item'])) {
-            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt_k = $conn->prepare("INSERT INTO function_kitchens (function_id, k_date, k_type_id, k_item, k_qty, k_price, k_cost, k_remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt_k) throw new Exception("Prepare kitchen failed: " . $conn->error);
 
             $k_dates = $_POST['k_date'] ?? [];
             $k_qtys = $_POST['k_qty'] ?? [];
             $k_prices = $_POST['k_price'] ?? [];
+            $k_costs = $_POST['k_cost'] ?? [];
             $k_remarks = $_POST['k_remark'] ?? [];
             $k_type_ids = $_POST['k_type_id'] ?? [];
             foreach ($_POST['k_item'] as $key => $item) {
@@ -217,6 +218,7 @@ if (isset($_POST['update'])) {
                     $k_type_id_val = intval($k_type_ids[$key] ?? 0);
                     $k_qty_val = $k_qtys[$key] ?? 0;
                     $k_price_val = floatval($k_prices[$key] ?? 0);
+                    $k_cost_val = floatval($k_costs[$key] ?? 0);
                     if ($k_price_val == 0 && trim($item) != "") {
                         $total_unit = 0;
                         $k_lines = preg_split('/\r\n|\r|\n/', $item);
@@ -235,7 +237,7 @@ if (isset($_POST['update'])) {
                         if ($total_unit > 0) $k_price_val = $total_unit;
                     }
                     $k_remark_val = $k_remarks[$key] ?? '';
-                    $stmt_k->bind_param("isisids", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_price_val, $k_remark_val);
+                    $stmt_k->bind_param("isisidds", $function_id, $k_date_val, $k_type_id_val, $item, $k_qty_val, $k_price_val, $k_cost_val, $k_remark_val);
                     if (!$stmt_k->execute()) throw new Exception("Insert kitchen failed: " . $stmt_k->error);
                 }
             }
@@ -243,12 +245,13 @@ if (isset($_POST['update'])) {
 
         // --- 6. Re-Insert Menu ---
         if (!empty($_POST['menu_detail'])) {
-            $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt_m = $conn->prepare("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost) VALUES (?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt_m) throw new Exception("Prepare menu failed: " . $conn->error);
 
             $menu_times = $_POST['menu_time'] ?? [];
             $menu_qtys = $_POST['menu_qty'] ?? [];
             $menu_prices = $_POST['menu_price'] ?? [];
+            $menu_costs = $_POST['menu_cost'] ?? [];
             $menu_set_ids = $_POST['menu_set_id'] ?? [];
             foreach ($_POST['menu_detail'] as $key => $detail) {
                 if (trim($detail) != "") {
@@ -256,6 +259,7 @@ if (isset($_POST['update'])) {
                     $menu_set_id_val = intval($menu_set_ids[$key] ?? 0);
                     $menu_qty_val = $menu_qtys[$key] ?? 0;
                     $menu_price_val = $menu_prices[$key] ?? 0;
+                    $menu_cost_val = floatval($menu_costs[$key] ?? 0);
                     if ($menu_price_val == 0 && trim($detail) != "") {
                         $total_unit = 0;
                         $m_lines = preg_split('/\r\n|\r|\n/', $detail);
@@ -268,7 +272,7 @@ if (isset($_POST['update'])) {
                         }
                         if ($total_unit > 0) $menu_price_val = $total_unit;
                     }
-                    $stmt_m->bind_param("isisds", $function_id, $menu_time_val, $menu_set_id_val, $detail, $menu_qty_val, $menu_price_val);
+                    $stmt_m->bind_param("isisdsd", $function_id, $menu_time_val, $menu_set_id_val, $detail, $menu_qty_val, $menu_price_val, $menu_cost_val);
                     if (!$stmt_m->execute()) throw new Exception("Insert menu failed: " . $stmt_m->error);
                 }
             }

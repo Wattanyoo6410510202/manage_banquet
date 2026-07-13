@@ -42,14 +42,14 @@ $projects_res = $conn->query($projects_sql);
 
 // ดึงเทมเพลตเมนูและเบรก
 $menu_templates = $conn->query("
-    SELECT fmd.id, mt.type_name, fmd.menu_items, fmd.price_per_pax
+    SELECT fmd.id, mt.type_name, fmd.menu_items, fmd.price_per_pax, fmd.cost_per_pax
     FROM function_menu_details fmd
     JOIN master_menu_types mt ON fmd.menu_type_id = mt.id
     ORDER BY mt.type_name, fmd.id
 ");
 
 $break_templates = $conn->query("
-    SELECT fb.id, bt.type_name, fb.break_menu, fb.break_price
+    SELECT fb.id, bt.type_name, fb.break_menu, fb.break_price, fb.break_cost
     FROM function_breaks fb
     JOIN master_break_types bt ON fb.break_type_id = bt.id
     ORDER BY bt.type_name, fb.id
@@ -215,7 +215,8 @@ $break_templates = $conn->query("
                                         while ($m = $menu_templates->fetch_assoc()): ?>
                                         <option value="<?= $m['id'] ?>"
                                             data-name="<?= htmlspecialchars($m['menu_items'], ENT_QUOTES) ?>"
-                                            data-price="<?= $m['price_per_pax'] ?>">
+                                            data-price="<?= $m['price_per_pax'] ?>"
+                                            data-cost="<?= $m['cost_per_pax'] ?? 0 ?>">
                                             [<?= htmlspecialchars($m['type_name']) ?>] <?= mb_substr(htmlspecialchars($m['menu_items']), 0, 80) ?>...
                                             (<?= number_format($m['price_per_pax'], 2) ?> บาท/หน่วย)
                                         </option>
@@ -247,7 +248,8 @@ $break_templates = $conn->query("
                                         while ($b = $break_templates->fetch_assoc()): ?>
                                         <option value="<?= $b['id'] ?>"
                                             data-name="<?= htmlspecialchars($b['break_menu'], ENT_QUOTES) ?>"
-                                            data-price="<?= $b['break_price'] ?>">
+                                            data-price="<?= $b['break_price'] ?>"
+                                            data-cost="<?= $b['break_cost'] ?? 0 ?>">
                                             [<?= htmlspecialchars($b['type_name']) ?>] <?= htmlspecialchars($b['break_menu']) ?>
                                             (<?= number_format($b['break_price'], 2) ?> บาท/หน่วย)
                                         </option>
