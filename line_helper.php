@@ -1,7 +1,4 @@
 <?php
-if (!function_exists('db_fetch_all')) {
-    include_once __DIR__ . "/config.php";
-}
 define('LINE_CHANNEL_ACCESS_TOKEN', 'xdGd0ps46rYZ/NUKHD/tZii6z+pZE+jKXYetbUuBXsNFFVhq62G3//avzMtQJ/KivEXLWpkzbKQ2LvCmR8FJCHw5ofGjWPChlTW/0roBpcafWMt1z3Pxy6XiCfloToyn5NUDgVfsJUdkDvsgDjFuDAdB04t89/1O/w1cDnyilFU=');
 
 function sendLineNotify($userId, $message) {
@@ -43,7 +40,10 @@ function sendLineNotify($userId, $message) {
 }
 
 function sendLineNotifyToUser($conn, $username, $message) {
-    $user = db_fetch_one($conn, "SELECT line_user_id FROM users WHERE username = ?", "s", $username);
+    $stmt = $conn->prepare("SELECT line_user_id FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
     if (!$user || empty($user['line_user_id'])) {
         error_log('[LINE] No LINE User ID found for username: ' . $username);
         return false;
@@ -52,7 +52,10 @@ function sendLineNotifyToUser($conn, $username, $message) {
 }
 
 function sendLineNotifyToRole($conn, $role, $message) {
-    $users = db_fetch_all($conn, "SELECT line_user_id FROM users WHERE LOWER(role) = LOWER(?) AND line_user_id IS NOT NULL AND line_user_id != ''", "s", $role);
+    $stmt = $conn->prepare("SELECT line_user_id FROM users WHERE LOWER(role) = LOWER(?) AND line_user_id IS NOT NULL AND line_user_id != ''");
+    $stmt->bind_param("s", $role);
+    $stmt->execute();
+    $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $sent = 0;
     $failed = 0;
     foreach ($users as $u) {
