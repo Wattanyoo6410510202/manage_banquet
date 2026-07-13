@@ -113,12 +113,13 @@ $items = $conn->query($sql_items);
                         <div class="customer-info-section">
                             <div class="section-title mb-2">ข้อมูลลูกค้า / Customer Info</div>
                             <div class="ps-3">
-                                <h5 class="fw-bold mb-1" style="font-size: 15px;"><?= htmlspecialchars($quote['cust_name']) ?></h5>
                                 <div class="text-muted mb-2" style="font-size: 12px; line-height: 1.5;">
                                     <?= nl2br(htmlspecialchars($quote['cust_address'])) ?>
                                 </div>
                                 <div style="font-size: 12px;">
-                                    <span class="text-muted">โทร / Tel:</span>
+                                    <span class="text-muted">ชื่อ / Name:</span>
+                                    <span class="fw-bold"><?= htmlspecialchars($quote['cust_name']) ?></span>
+                                    <span class="text-muted ms-2">โทร / Tel:</span>
                                     <span class="fw-bold"><?= htmlspecialchars($quote['cust_phone']) ?></span>
                                 </div>
                                 <?php if (!empty($quote['cust_contact_name']) || !empty($quote['sales_name'])): ?>
