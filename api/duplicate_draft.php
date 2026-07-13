@@ -80,10 +80,15 @@ try {
         . "📅 วันที่: " . date('d/m/Y H:i') . "\n"
         . "━━━━━━━━━━━━━━━━\n"
         . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
-    sendLineNotifyToRole($conn, 'admin', $lineMsg);
-    sendLineNotifyToRole($conn, 'gm', $lineMsg);
+    $lineSent = 0;
+    $lineFailed = 0;
+    foreach (['admin', 'gm'] as $role) {
+        $result = sendLineNotifyToRole($conn, $role, $lineMsg);
+        $lineSent += $result['sent'];
+        $lineFailed += $result['failed'];
+    }
 
-    echo json_encode(['status' => 'success', 'new_id' => $new_id]);
+    echo json_encode(['status' => 'success', 'new_id' => $new_id, 'line_sent' => $lineSent, 'line_failed' => $lineFailed]);
 
 } catch (Exception $e) {
     $conn->rollback();

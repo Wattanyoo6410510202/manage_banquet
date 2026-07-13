@@ -1062,11 +1062,18 @@ function duplicateDraft(id) {
     })
     .then(data => {
         if(data.status === 'success') {
+            let lineText = '';
+            if (data.line_sent > 0) {
+                lineText = '\n\n LINE แจ้งเตือนสำเร็จ ' + data.line_sent + ' คน';
+            }
+            if (data.line_failed > 0) {
+                lineText += '\n LINE แจ้งเตือนไม่สำเร็จ ' + data.line_failed + ' คน';
+            }
             Swal.fire({
                 icon: 'success',
                 title: 'คัดลอกสำเร็จ!',
-                text: 'กำลังพาคุณไปยัง Draft ใหม่...',
-                timer: 1500,
+                text: 'กำลังพาคุณไปยัง Draft ใหม่...' + lineText,
+                timer: 2000,
                 showConfirmButton: false
             }).then(() => {
                 window.location.href = 'edit.php?id=' + data.new_id;

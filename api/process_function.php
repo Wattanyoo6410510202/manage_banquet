@@ -304,12 +304,15 @@ if (isset($_POST['save'])) {
             . "━━━━━━━━━━━━━━━━\n"
             . "🆔 รหัสงาน: {$final_code}\n"
             . "🔗 " . $_SERVER['HTTP_ORIGIN'] . "/manage_banquet/manage_banquet.php";
-        sendLineNotifyToRole($conn, 'admin', $lineMsg);
-        sendLineNotifyToRole($conn, 'gm', $lineMsg);
-        sendLineNotifyToRole($conn, 'housekeeping', $lineMsg);
-        sendLineNotifyToRole($conn, 'technician', $lineMsg);
-        sendLineNotifyToRole($conn, 'banquet_staff', $lineMsg);
-        sendLineNotifyToRole($conn, 'procurement', $lineMsg);
+        $lineRoles = ['admin', 'gm', 'housekeeping', 'technician', 'banquet_staff', 'procurement'];
+        $lineSent = 0;
+        $lineFailed = 0;
+        foreach ($lineRoles as $role) {
+            $result = sendLineNotifyToRole($conn, $role, $lineMsg);
+            $lineSent += $result['sent'];
+            $lineFailed += $result['failed'];
+        }
+        $_SESSION['line_result'] = ['sent' => $lineSent, 'failed' => $lineFailed];
 
         header("Location: manage_banquet.php");
         exit();

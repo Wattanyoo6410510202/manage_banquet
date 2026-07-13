@@ -62,5 +62,5 @@ function sendLineNotifyToRole($conn, $role, $message) {
     if ($failed > 0) {
         error_log('[LINE] Role "' . $role . '": sent ' . $sent . ', failed ' . $failed);
     }
-    return $sent;
+    return ['sent' => $sent, 'failed' => $failed];
 }

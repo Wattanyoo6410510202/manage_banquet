@@ -1,7 +1,6 @@
 <div id="alert-container"
     style="position: fixed; top: 20px; right: 20px; z-index: 9999; width: 100%; max-width: 350px;">
     <style>
-        /* สร้าง Animation สำหรับสไลด์มาจากขวา */
         @keyframes slideInRight {
             from {
                 transform: translateX(100%);
@@ -14,7 +13,6 @@
             }
         }
 
-        /* สร้าง Animation สำหรับสไลด์กลับไปทางขวา (ตอนปิด) */
         .slide-out-right {
             transform: translateX(100%) !important;
             opacity: 0 !important;
@@ -68,15 +66,11 @@
                 $alert_class = "alert-info text-info";
                 $alert_icon = "bi-play-circle-fill";
                 break;
-
-            // กรณีจบงาน (Completed)
             case 'completed':
                 $alert_msg = "ปิดงาน/บันทึกรายการเรียบร้อยแล้ว";
                 $alert_class = "alert-primary text-primary";
                 $alert_icon = "bi-flag-fill";
                 break;
-
-            // กรณียกเลิกงาน (Cancelled)
             case 'cancelled':
                 $alert_msg = "ยกเลิกรายการเรียบร้อยแล้ว";
                 $alert_class = "alert-danger text-danger";
@@ -87,14 +81,12 @@
                 $alert_class = "alert-warning text-warning";
                 $alert_icon = "bi-shield-exclamation";
                 break;
-
             case 'error':
             case 'delete_error':
                 $alert_msg = "เกิดข้อผิดพลาด!";
                 $alert_class = "alert-warning text-warning";
                 $alert_icon = "bi-exclamation-triangle-fill";
                 break;
-
             case 'update_success':
                 $alert_msg = "อัปเดตข้อมูลสำเร็จ";
                 $alert_class = "alert-success text-success";
@@ -120,18 +112,56 @@
         unset($_SESSION['flash_msg']);
     }
     ?>
-
-    <script>
-        (function () {
-            setTimeout(function () {
-                let alertElement = document.querySelector('#alert-container .alert');
-                if (alertElement) {
-                    // ใส่ Class สำหรับสไลด์ออก
-                    alertElement.classList.add('slide-out-right');
-                    // ลบ Element ทิ้งหลังจากสไลด์ออกเสร็จ
-                    setTimeout(() => alertElement.remove(), 500);
-                }
-            }, 3000); // แสดงค้างไว้ 3 วินาที
-        })();
-    </script>
 </div>
+
+<script>
+    (function () {
+        setTimeout(function () {
+            let alertElement = document.querySelector('#alert-container .alert');
+            if (alertElement) {
+                alertElement.classList.add('slide-out-right');
+                setTimeout(() => alertElement.remove(), 500);
+            }
+        }, 3000);
+    })();
+</script>
+
+<?php
+// LINE Notify result toast
+$lineResult = $_SESSION['line_result'] ?? null;
+unset($_SESSION['line_result']);
+?>
+<?php if ($lineResult && ($lineResult['sent'] > 0 || $lineResult['failed'] > 0)): ?>
+<div id="line-alert-container"
+    style="position: fixed; top: <?= ($msg_type ? '90px' : '20px') ?>; right: 20px; z-index: 9998; width: 100%; max-width: 350px;">
+    <?php if ($lineResult['failed'] > 0): ?>
+        <div class="alert alert-warning text-warning custom-alert alert-dismissible fade show bg-white mb-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-line me-3 fs-4"></i>
+                <div class="fw-bold">LINE สำเร็จ <?= $lineResult['sent'] ?> / ล้มเหลว <?= $lineResult['failed'] ?> คน</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php else: ?>
+        <div class="alert alert-success text-success custom-alert alert-dismissible fade show bg-white mb-3" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-line me-3 fs-4"></i>
+                <div class="fw-bold">LINE แจ้งเตือนสำเร็จ <?= $lineResult['sent'] ?> คน</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+</div>
+
+<script>
+    (function () {
+        setTimeout(function () {
+            let el = document.querySelector('#line-alert-container .alert');
+            if (el) {
+                el.classList.add('slide-out-right');
+                setTimeout(() => el.remove(), 500);
+            }
+        }, 4000);
+    })();
+</script>
+<?php endif; ?>
