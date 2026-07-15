@@ -12,18 +12,19 @@ if (!$data) { die("Not found"); }
 
 // ── ดึงข้อมูลการเงิน ──
 $finances = [];
-$total_income = 0; $extra_cost = 0;
+$total_income = 0; $total_deposit = 0; $extra_cost = 0;
 $post_income = 0; $post_cost = 0;
 
 $sql_fin = "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
 $res_fin = $conn->query($sql_fin);
 while ($f = $res_fin->fetch_assoc()) {
     if ($f['is_post_approval']) {
-        if ($f['type'] == 'income') $post_income += $f['amount'];
+        if ($f['type'] == 'income' || $f['type'] == 'deposit') $post_income += $f['amount'];
         else $post_cost += $f['amount'];
     }
-    if ($f['type'] == 'income') $total_income += $f['amount'];
-    else $extra_cost += $f['amount'];
+    if ($f['type'] == 'income' || $f['type'] == 'deposit') $total_income += $f['amount'];
+    if ($f['type'] == 'deposit') $total_deposit += $f['amount'];
+    if ($f['type'] == 'cost') $extra_cost += $f['amount'];
     $finances[] = $f;
 }
 
@@ -145,111 +146,113 @@ $fmtDate = function($val) {
 
 <table>
     <!-- Header -->
-    <tr><td colspan="6" class="hdr-title">รายงานสรุปบัญชี (ROI)</td></tr>
-    <tr><td colspan="6" class="hdr-sub">งาน: <?= htmlspecialchars($data['function_name']) ?></td></tr>
-    <tr><td colspan="6" class="hdr-sub">วันที่: <?= $fmtDate($data['start_time']) ?></td></tr>
-    <tr><td colspan="6" style="border:none; height: 8px;"></td></tr>
+    <tr><td colspan="7" class="hdr-title">รายงานสรุปบัญชี (ROI)</td></tr>
+    <tr><td colspan="7" class="hdr-sub">งาน: <?= htmlspecialchars($data['function_name']) ?></td></tr>
+    <tr><td colspan="7" class="hdr-sub">วันที่: <?= $fmtDate($data['start_time']) ?></td></tr>
+    <tr><td colspan="7" style="border:none; height: 8px;"></td></tr>
 
     <!-- สรุปยอด -->
     <tr>
         <th colspan="2">รายการ</th>
         <th class="amount">จำนวนเงิน</th>
-        <th colspan="3">หมายเหตุ</th>
+        <th colspan="4">หมายเหตุ</th>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">ราคาขายงาน</td>
         <td class="amount text-blue"><?= number_format($main_price, 2) ?></td>
-        <td colspan="3"><?= htmlspecialchars($data['function_code'] ?? '-') ?></td>
+        <td colspan="4"><?= htmlspecialchars($data['function_code'] ?? '-') ?></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">รายรับเพิ่มเติม</td>
         <td class="amount text-green"><?= number_format($total_income, 2) ?></td>
-        <td colspan="3"><?= $post_income > 0 ? '(หลังอนุมัติ ' . number_format($post_income, 2) . ')' : '' ?></td>
+        <td colspan="4"><?= $post_income > 0 ? '(หลังอนุมัติ ' . number_format($post_income, 2) . ')' : '' ?></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">รวมรายรับทั้งหมด</td>
         <td class="amount fw-bold"><?= number_format($grand_total_income, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
-    <tr><td colspan="6" style="height: 4px;"></td></tr>
+    <tr><td colspan="7" style="height: 4px;"></td></tr>
     <tr>
         <td colspan="2" class="label-cell">ต้นทุนอาหารหลัก</td>
         <td class="amount text-red"><?= number_format($kitchen_total, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">ค่าใช้จ่ายอื่นๆ</td>
         <td class="amount text-red"><?= number_format($extra_cost, 2) ?></td>
-        <td colspan="3"><?= $post_cost > 0 ? '(หลังอนุมัติ ' . number_format($post_cost, 2) . ')' : '' ?></td>
+        <td colspan="4"><?= $post_cost > 0 ? '(หลังอนุมัติ ' . number_format($post_cost, 2) . ')' : '' ?></td>
     </tr>
     <tr class="bg-yellow">
         <td colspan="2" class="label-cell">ต้นทุนรวมทั้งสิ้น</td>
         <td class="amount fw-bold text-red"><?= number_format($total_cost, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
-    <tr><td colspan="6" style="height: 4px;"></td></tr>
+    <tr><td colspan="7" style="height: 4px;"></td></tr>
     <tr>
         <td colspan="2" class="label-cell">ค่าบริหาร 3%</td>
         <td class="amount text-red"><?= number_format($management_fee, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
-    <tr><td colspan="6" style="height: 4px;"></td></tr>
+    <tr><td colspan="7" style="height: 4px;"></td></tr>
     <tr>
         <td colspan="2" class="label-cell" style="background: #DAEEF3;">กำไรสุทธิ</td>
         <td class="amount fw-bold" style="background: #DAEEF3; color: <?= $profit >= 0 ? '#006100' : '#c00000' ?>;"><?= number_format($profit, 2) ?></td>
-        <td colspan="3" style="background: #DAEEF3;"></td>
+        <td colspan="4" style="background: #DAEEF3;"></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">ROI (%)</td>
         <td class="amount fw-bold"><?= number_format($roi, 2) ?>%</td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
 
     <!-- Post-approval summary -->
     <?php if ($post_income > 0 || $post_cost > 0): ?>
-    <tr><td colspan="6" style="height: 8px;"></td></tr>
+    <tr><td colspan="7" style="height: 8px;"></td></tr>
     <tr>
         <th colspan="2">รายการหลังอนุมัติ</th>
         <th class="amount">จำนวนเงิน</th>
-        <th colspan="3"></th>
+        <th colspan="4"></th>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">รายรับหลังอนุมัติ</td>
         <td class="amount text-green"><?= number_format($post_income, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">รายจ่ายหลังอนุมัติ</td>
         <td class="amount text-red"><?= number_format($post_cost, 2) ?></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
     <?php $post_profit = $post_income - $post_cost; ?>
     <tr>
         <td colspan="3" class="label-cell">ผลต่างหลังอนุมัติ</td>
         <td class="amount fw-bold" style="color: <?= $post_profit >= 0 ? '#006100' : '#c00000' ?>;"><?= number_format($post_profit, 2) ?></td>
-        <td colspan="2"></td>
+        <td colspan="3"></td>
     </tr>
     <?php endif; ?>
 
     <!-- รายการเดินบัญชี -->
-    <tr><td colspan="6" style="height: 8px;"></td></tr>
-    <tr><td colspan="6" class="hdr-sub" style="text-align: left; font-weight: bold;">รายการเดินบัญชี:</td></tr>
+    <tr><td colspan="7" style="height: 8px;"></td></tr>
+    <tr><td colspan="7" class="hdr-sub" style="text-align: left; font-weight: bold;">รายการเดินบัญชี:</td></tr>
     <tr>
         <th>วันที่</th>
         <th>รายการ</th>
         <th class="amount">รายรับ</th>
+        <th class="amount">เงินมัดจำ</th>
         <th class="amount">รายจ่าย</th>
         <th>ช่องทาง</th>
         <th>บันทึกโดย</th>
     </tr>
     <?php if (empty($finances)): ?>
-    <tr><td colspan="6" style="text-align:center;">ไม่มีรายการ</td></tr>
+    <tr><td colspan="7" style="text-align:center;">ไม่มีรายการ</td></tr>
     <?php else: ?>
         <?php foreach ($finances as $f): ?>
         <tr>
             <td><?= $fmtDate($f['transaction_date']) ?></td>
             <td><?= htmlspecialchars($f['detail']) ?></td>
             <td class="amount"><?= $f['type'] == 'income' ? number_format($f['amount'], 2) : '-' ?></td>
+            <td class="amount"><?= $f['type'] == 'deposit' ? number_format($f['amount'], 2) : '-' ?></td>
             <td class="amount"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?></td>
             <td><?= htmlspecialchars($f['payment_method'] ?? '-') ?></td>
             <td><?= htmlspecialchars($f['created_by_name'] ?? '-') ?><?= $f['is_post_approval'] ? ' (หลังอนุมัติ)' : '' ?></td>

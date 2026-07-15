@@ -16,6 +16,7 @@ $sql_fin = "SELECT * FROM function_finance WHERE function_id = $id ORDER BY tran
 $res_fin = $conn->query($sql_fin);
 $finances = [];
 $total_income = 0;
+$total_deposit = 0;
 $extra_cost = 0;
 
 // แยกยอดก่อน/หลังอนุมัติ
@@ -24,15 +25,19 @@ $post_cost = 0;
 
 while ($f = $res_fin->fetch_assoc()) {
     if ($f['is_post_approval']) {
-        if ($f['type'] == 'income') {
+        if ($f['type'] == 'income' || $f['type'] == 'deposit') {
             $post_income += $f['amount'];
         } else {
             $post_cost += $f['amount'];
         }
     }
-    if ($f['type'] == 'income') {
+    if ($f['type'] == 'income' || $f['type'] == 'deposit') {
         $total_income += $f['amount'];
-    } else {
+    }
+    if ($f['type'] == 'deposit') {
+        $total_deposit += $f['amount'];
+    }
+    if ($f['type'] == 'cost') {
         $extra_cost += $f['amount'];
     }
     $finances[] = $f;
@@ -64,13 +69,19 @@ $roi = ($total_cost > 0) ? ($profit / $total_cost) * 100 : 0;
 if (isset($_GET['ajax'])) {
     ?>
     <div class="row g-3 mb-4" id="summaryCards">
-        <div class="col-md-3">
+        <div class="col">
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">ราคาขายงาน</small>
                 <h4 class="text-primary mb-0"><?= number_format($data['total_amount'], 2) ?></h4>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <small class="text-muted">เงินมัดจำรวม</small>
+                <h4 class="text-info mb-0"><?= number_format($total_deposit, 2) ?></h4>
+            </div>
+        </div>
+        <div class="col">
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">ต้นทุนรวม</small>
                 <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
@@ -79,13 +90,13 @@ if (isset($_GET['ajax'])) {
                 <?php endif; ?>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col">
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">กำไรสุทธิ</small>
                 <h4 class="<?= $profit >= 0 ? 'text-success' : 'text-danger' ?> mb-0"><?= number_format($profit, 2) ?></h4>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col">
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">ROI (%)</small>
                 <h4 class="mb-0"><?= number_format($roi, 2) ?>%</h4>
@@ -114,6 +125,7 @@ if (isset($_GET['ajax'])) {
                         <th>วันที่</th>
                         <th>รายการ</th>
                         <th class="text-end">รายรับ</th>
+                        <th class="text-end">เงินมัดจำ</th>
                         <th class="text-end">รายจ่าย</th>
                         <th>ผู้บันทึก</th>
                         <th>สิทธิ์</th>
@@ -123,7 +135,7 @@ if (isset($_GET['ajax'])) {
                 <tbody>
                     <?php if (empty($finances)): ?>
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
+                            <td colspan="8" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($finances as $f): ?>
@@ -132,6 +144,9 @@ if (isset($_GET['ajax'])) {
                                 <td><?= htmlspecialchars($f['detail']) ?></td>
                                 <td class="text-end text-success">
                                     <?= $f['type'] == 'income' ? number_format($f['amount'], 2) : '-' ?>
+                                </td>
+                                <td class="text-end text-info">
+                                    <?= $f['type'] == 'deposit' ? number_format($f['amount'], 2) : '-' ?>
                                 </td>
                                 <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                 </td>
@@ -143,6 +158,20 @@ if (isset($_GET['ajax'])) {
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
+                                    <?php if ($f['type'] == 'deposit'): ?>
+                                        <button type="button" class="btn btn-link text-info p-0 me-1 btn-print-deposit"
+                                            data-id="<?= $f['id'] ?>"
+                                            data-date="<?= date('d/m/Y', strtotime($f['transaction_date'])) ?>"
+                                            data-detail="<?= htmlspecialchars($f['detail']) ?>"
+                                            data-amount="<?= number_format($f['amount'], 2) ?>"
+                                            data-amount-raw="<?= $f['amount'] ?>"
+                                            data-payment="<?= htmlspecialchars($f['payment_method'] ?? '-') ?>"
+                                            data-createdby="<?= htmlspecialchars($f['created_by_name'] ?? '-') ?>"
+                                            data-funcname="<?= htmlspecialchars($data['function_name']) ?>"
+                                            title="พิมพ์ใบเงินมัดจำ">
+                                            <i class="bi bi-printer"></i>
+                                        </button>
+                                    <?php endif; ?>
                                     <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
                                         data-id="<?= $f['id'] ?>">
                                         <i class="bi bi-trash"></i>
@@ -319,13 +348,19 @@ include "header.php";
 
     <div id="summaryWrapper">
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
+            <div class="col">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">ราคาขายงาน</small>
                     <h4 class="text-primary mb-0"><?= number_format($data['total_amount'], 2) ?></h4>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-muted">เงินมัดจำรวม</small>
+                    <h4 class="text-info mb-0"><?= number_format($total_deposit, 2) ?></h4>
+                </div>
+            </div>
+            <div class="col">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">ต้นทุนรวม</small>
                     <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
@@ -334,7 +369,7 @@ include "header.php";
                     <?php endif; ?>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">กำไรสุทธิ</small>
                     <h4 class="<?= $profit >= 0 ? 'text-success' : 'text-danger' ?> mb-0">
@@ -342,7 +377,7 @@ include "header.php";
                     </h4>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col">
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">ROI (%)</small>
                     <h4 class="mb-0"><?= number_format($roi, 2) ?>%</h4>
@@ -383,7 +418,8 @@ include "header.php";
                         <div class="mb-3">
                             <label class="form-label small fw-bold">ประเภท</label>
                             <select name="type" class="form-select" required>
-                                <option value="income">รายรับ (เงินมัดจำ/ยอดรับจริง)</option>
+                                <option value="income">รายรับ (ยอดรับจริง)</option>
+                                <option value="deposit">เงินมัดจำ (Deposit)</option>
                                 <option value="cost">รายจ่าย (ต้นทุนงาน)</option>
                             </select>
                         </div>
@@ -448,6 +484,7 @@ include "header.php";
                                 <th>วันที่</th>
                                 <th>รายการ</th>
                                 <th class="text-end">รายรับ</th>
+                                <th class="text-end">เงินมัดจำ</th>
                                 <th class="text-end">รายจ่าย</th>
                                 <th>ช่องทาง</th>
                                 <th>สิทธิ์</th>
@@ -457,7 +494,7 @@ include "header.php";
                         <tbody>
                             <?php if (empty($finances)): ?>
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
+                                    <td colspan="8" class="text-center py-4 text-muted">ยังไม่มีรายการบันทึก</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($finances as $f): ?>
@@ -466,6 +503,9 @@ include "header.php";
                                         <td><?= htmlspecialchars($f['detail']) ?></td>
                                         <td class="text-end text-success">
                                             <?= $f['type'] == 'income' ? number_format($f['amount'], 2) : '-' ?>
+                                        </td>
+                                        <td class="text-end text-info">
+                                            <?= $f['type'] == 'deposit' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
                                         <td class="text-end text-danger"><?= $f['type'] == 'cost' ? number_format($f['amount'], 2) : '-' ?>
                                         </td>
@@ -478,6 +518,20 @@ include "header.php";
                                         </td>
                                         <td class="text-center d-print-none">
                                             <?php if (strtolower($_SESSION['role'] ?? 'viewer') !== 'viewer'): ?>
+                                                <?php if ($f['type'] == 'deposit'): ?>
+                                                    <button type="button" class="btn btn-link text-info p-0 me-1 btn-print-deposit"
+                                                        data-id="<?= $f['id'] ?>"
+                                                        data-date="<?= date('d/m/Y', strtotime($f['transaction_date'])) ?>"
+                                                        data-detail="<?= htmlspecialchars($f['detail']) ?>"
+                                                        data-amount="<?= number_format($f['amount'], 2) ?>"
+                                                        data-amount-raw="<?= $f['amount'] ?>"
+                                                        data-payment="<?= htmlspecialchars($f['payment_method'] ?? '-') ?>"
+                                                        data-createdby="<?= htmlspecialchars($f['created_by_name'] ?? '-') ?>"
+                                                        data-funcname="<?= htmlspecialchars($data['function_name']) ?>"
+                                                        title="พิมพ์ใบเงินมัดจำ">
+                                                        <i class="bi bi-printer"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                                 <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
                                                     data-id="<?= $f['id'] ?>">
                                                     <i class="bi bi-trash"></i>
@@ -505,6 +559,10 @@ include "header.php";
                         <span class="text-muted small">รวมรายรับทั้งหมด:</span>
                         <span class="fw-bold text-primary"><?= number_format($main_price + $total_income, 2) ?>
                             บาท</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-1">
+                        <span class="text-muted small">เงินมัดจำรวม:</span>
+                        <span class="fw-bold text-info"><?= number_format($total_deposit, 2) ?> บาท</span>
                     </div>
                     <div class="d-flex justify-content-between border-bottom pb-1">
                         <span class="text-muted small">ต้นทุนรวมทั้งงาน:</span>
@@ -650,6 +708,66 @@ include "header.php";
                             });
                     }
                 });
+            }
+
+            // พิมพ์ใบเงินมัดจำ
+            if (e.target.closest('.btn-print-deposit')) {
+                const btn = e.target.closest('.btn-print-deposit');
+                const d = btn.dataset;
+                const printWin = window.open('', '_blank', 'width=700,height=500');
+                printWin.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>ใบเงินมัดจำ</title>
+                        <style>
+                            body { font-family: 'Sarabun', 'Tahoma', sans-serif; padding: 30px; color: #000; }
+                            .header { text-align: center; margin-bottom: 30px; }
+                            .header h2 { margin: 0; font-size: 22px; text-decoration: underline; }
+                            .header p { margin: 5px 0 0; font-size: 13px; color: #555; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                            td, th { border: 1px solid #000; padding: 8px 12px; font-size: 14px; }
+                            th { background: #f0f0f0; text-align: left; width: 35%; }
+                            .amount-big { font-size: 20px; font-weight: bold; color: #1a73e8; }
+                            .footer { margin-top: 40px; display: flex; justify-content: space-between; }
+                            .sign-box { text-align: center; width: 45%; }
+                            .sign-box .line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; font-size: 13px; }
+                            @media print {
+                                body { padding: 10px; }
+                                .no-print { display: none !important; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="no-print" style="text-align:right; margin-bottom:10px;">
+                            <button onclick="window.print();" style="padding:6px 16px; font-size:14px; cursor:pointer;">🖨️ พิมพ์</button>
+                            <button onclick="window.close();" style="padding:6px 16px; font-size:14px; cursor:pointer; margin-left:5px;">ปิด</button>
+                        </div>
+                        <div class="header">
+                            <h2>ใบเงินมัดจำ</h2>
+                            <p>Deposit Receipt</p>
+                        </div>
+                        <table>
+                            <tr><th>ชื่องาน / Event</th><td>${d.funcname}</td></tr>
+                            <tr><th>วันที่ทำรายการ</th><td>${d.date}</td></tr>
+                            <tr><th>รายละเอียด</th><td>${d.detail}</td></tr>
+                            <tr><th>จำนวนเงิน</th><td class="amount-big">${d.amount} บาท</td></tr>
+                            <tr><th>ช่องทางการชำระ</th><td>${d.payment}</td></tr>
+                            <tr><th>ผู้บันทึก</th><td>${d.createdby}</td></tr>
+                        </table>
+                        <div class="footer">
+                            <div class="sign-box">
+                                <div class="line">ผู้รับเงิน</div>
+                            </div>
+                            <div class="sign-box">
+                                <div class="line">ผู้จ่ายเงิน</div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                printWin.document.close();
             }
         });
     </script>
