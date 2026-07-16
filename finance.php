@@ -2,13 +2,37 @@
 include "config.php";
 $id = intval($_GET['id'] ?? 0);
 
-// 1. ดึงข้อมูลงานหลัก
-$sql = "SELECT * FROM functions WHERE id = $id";
+// 1. ดึงข้อมูลงานหลัก + ข้อมูลลูกค้า/บริษัท
+$sql = "SELECT f.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
+               ft.type_name as function_type_name, r.room_name
+        FROM functions f 
+        LEFT JOIN companies c ON f.company_id = c.id
+        LEFT JOIN customers cust ON f.customer_id = cust.id
+        LEFT JOIN function_types ft ON f.function_type_id = ft.id
+        LEFT JOIN meeting_rooms r ON f.room_id = r.id
+        WHERE f.id = $id";
 $res = $conn->query($sql);
 $data = $res->fetch_assoc();
 
 if (!$data) {
     die("ไม่พบข้อมูลงานนี้");
+}
+
+// 1.1 ดึงลายเซ็นผู้สร้างงาน
+$creator_id = intval($data['created_by_id'] ?? 0);
+$creator_sig = '';
+$creator_name = $data['created_by'] ?? '';
+if ($creator_id > 0) {
+    $stmt_sig = $conn->prepare("SELECT path FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1");
+    $stmt_sig->bind_param("i", $creator_id);
+    $stmt_sig->execute();
+    $res_sig = $stmt_sig->get_result();
+    if ($row_sig = $res_sig->fetch_assoc()) {
+        $creator_sig = $row_sig['path'];
+        if (strpos($creator_sig, 'uploads/') === false) {
+            $creator_sig = 'uploads/signatures/' . $creator_sig;
+        }
+    }
 }
 
 // 2. ดึงรายการบัญชี
@@ -56,14 +80,64 @@ $grand_total_income = $main_price + $total_income;
 // 🎯 ต้นทุนรวม (จากครัวอัตโนมัติ + รายจ่ายที่คีย์เพิ่มเอง)
 $total_cost = $extra_cost + $kitchen_total;
 
+function thaiNumber($number) {
+    $number = round($number, 2);
+    $int_part = intval($number);
+    $dec_part = round(($number - $int_part) * 100);
+    $thai = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+    $unit = ['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+    $result = '';
+    $num_str = (string)$int_part;
+    $len = strlen($num_str);
+    for ($i = 0; $i < $len; $i++) {
+        $digit = intval($num_str[$i]);
+        $pos = $len - $i - 1;
+        if ($digit == 0) continue;
+        if ($pos == 1 && $digit == 1) { $result .= 'สิบ'; }
+        elseif ($pos == 1 && $digit == 2) { $result .= 'ยี่สิบ'; }
+        else { $result .= $thai[$digit] . $unit[$pos]; }
+    }
+    if (empty($result)) $result = 'ศูนย์';
+    $result .= 'บาท';
+    if ($dec_part > 0) {
+        $dec_str = (string)$dec_part;
+        if (strlen($dec_str) == 1) $dec_str = '0' . $dec_str;
+        for ($i = 0; $i < strlen($dec_str); $i++) {
+            $d = intval($dec_str[$i]);
+            if ($d == 0) continue;
+            $p = strlen($dec_str) - $i - 1;
+            if ($p == 1 && $d == 1) $result .= 'สิบ';
+            elseif ($p == 1 && $d == 2) $result .= 'ยี่สิบ';
+            else $result .= $thai[$d] . ($p > 0 ? $unit[$p] : '');
+        }
+        $result .= 'สตางค์';
+    } else {
+        $result .= 'ถ้วน';
+    }
+    return $result;
+}
+
 // 🎯 ค่าบริหาร 3% ของรายรับทั้งหมด
 $management_fee = $grand_total_income * 0.03;
 
 // 🎯 กำไรสุทธิ (รายรับทั้งหมด - ต้นทุนทั้งหมด - ค่าบริหาร)
 $profit = $grand_total_income - $total_cost - $management_fee;
 
-// ROI (%)
+// ROI (%) หลังอนุมัติ (รวมทุกรายการ)
 $roi = ($total_cost > 0) ? ($profit / $total_cost) * 100 : 0;
+
+// 🎯 คำนวณก่อนอนุมัติ (แยกยอดหลังอนุมัติออก)
+$pre_cost = $extra_cost - $post_cost;
+$pre_income = $total_income - $post_income;
+$pre_grand_income = $main_price + $pre_income;
+$pre_management_fee = $pre_grand_income * 0.03;
+$pre_profit = $pre_grand_income - ($pre_cost + $kitchen_total) - $pre_management_fee;
+$pre_total_cost = $pre_cost + $kitchen_total;
+$pre_roi = ($pre_total_cost > 0) ? ($pre_profit / $pre_total_cost) * 100 : 0;
+
+// 🎯 คำนวณหลังอนุมัติ (增量 from post-approval)
+$post_profit = $post_income - $post_cost;
+$post_roi = ($post_cost > 0) ? ($post_profit / $post_cost) * 100 : 0;
 
 // 3. ส่วนสำหรับ AJAX Refresh (จะแสดงผลเฉพาะส่วนนี้เมื่อเรียกผ่าน fetch)
 if (isset($_GET['ajax'])) {
@@ -98,23 +172,16 @@ if (isset($_GET['ajax'])) {
         </div>
         <div class="col">
             <div class="card border-0 shadow-sm text-center p-3">
-                <small class="text-muted">ROI (%)</small>
-                <h4 class="mb-0"><?= number_format($roi, 2) ?>%</h4>
+                <small class="text-muted">ROI ก่อนอนุมัติ</small>
+                <h4 class="text-primary mb-0"><?= number_format($pre_roi, 2) ?>%</h4>
             </div>
         </div>
-        <?php if ($post_income > 0 || $post_cost > 0): ?>
-        <div class="col-12">
-            <div class="card border-0 shadow-sm p-3 bg-light">
-                <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i> รายการหลังอนุมัติ</small>
-                <div class="d-flex gap-4 mt-1">
-                    <span>รายรับหลังอนุมัติ: <strong class="text-success"><?= number_format($post_income, 2) ?></strong></span>
-                    <span>รายจ่ายหลังอนุมัติ: <strong class="text-danger"><?= number_format($post_cost, 2) ?></strong></span>
-                    <?php $post_profit = $post_income - $post_cost; ?>
-                    <span>ผลต่างหลังอนุมัติ: <strong class="<?= $post_profit >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($post_profit, 2) ?></strong></span>
-                </div>
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <small class="text-muted">ROI หลังอนุมัติ</small>
+                <h4 class="<?= $roi >= 0 ? 'text-success' : 'text-danger' ?> mb-0"><?= number_format($roi, 2) ?>%</h4>
             </div>
         </div>
-        <?php endif; ?>
     </div>
 
     <div class="card border-0 shadow-sm" id="financeTableContent">
@@ -164,10 +231,22 @@ if (isset($_GET['ajax'])) {
                                             data-date="<?= date('d/m/Y', strtotime($f['transaction_date'])) ?>"
                                             data-detail="<?= htmlspecialchars($f['detail']) ?>"
                                             data-amount="<?= number_format($f['amount'], 2) ?>"
-                                            data-amount-raw="<?= $f['amount'] ?>"
+                                            data-amount-thai="<?= thaiNumber($f['amount']) ?>"
                                             data-payment="<?= htmlspecialchars($f['payment_method'] ?? '-') ?>"
-                                            data-createdby="<?= htmlspecialchars($f['created_by_name'] ?? '-') ?>"
                                             data-funcname="<?= htmlspecialchars($data['function_name']) ?>"
+                                            data-func-code="<?= htmlspecialchars(($data['type_prefix'] ?? '') . ($data['function_code'] ?? '')) ?>"
+                                            data-booking-name="<?= htmlspecialchars($data['booking_name'] ?? '') ?>"
+                                            data-company="<?= htmlspecialchars($data['company_name'] ?? '') ?>"
+                                            data-tax-id="<?= htmlspecialchars($data['cust_tax_id'] ?? '') ?>"
+                                            data-phone="<?= htmlspecialchars($data['phone'] ?? $data['cust_phone'] ?? '') ?>"
+                                            data-email="<?= htmlspecialchars($data['cust_email'] ?? '') ?>"
+                                            data-func-type="<?= htmlspecialchars($data['function_type_name'] ?? '') ?>"
+                                            data-event-date="<?= !empty($data['start_time']) ? date('d/m/Y', strtotime($data['start_time'])) : '' ?>"
+                                            data-event-time="<?= !empty($data['start_time']) ? date('H:i', strtotime($data['start_time'])) : '' ?>"
+                                            data-room="<?= htmlspecialchars($data['room_name'] ?? '') ?>"
+                                            data-pax="<?= $data['pax'] ?? 0 ?>"
+                                            data-createdby="<?= htmlspecialchars($creator_name) ?>"
+                                            data-sig-path="<?= htmlspecialchars($creator_sig) ?>"
                                             title="พิมพ์ใบเงินมัดจำ">
                                             <i class="bi bi-printer"></i>
                                         </button>
@@ -340,7 +419,7 @@ include "header.php";
             <button type="button" onclick="exportExcel()" class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </button>
-            <button type="button" onclick="window.print();" class="btn btn-dark btn-sm">
+            <button type="button" onclick="window.open('print_finance_report.php?id=<?= $id ?>', '_blank', 'width=1100,height=900');" class="btn btn-dark btn-sm">
                 <i class="bi bi-printer"></i> พิมพ์รายงาน
             </button>
         </div>
@@ -379,26 +458,17 @@ include "header.php";
             </div>
             <div class="col">
                 <div class="card border-0 shadow-sm text-center p-3">
-                    <small class="text-muted">ROI (%)</small>
-                    <h4 class="mb-0"><?= number_format($roi, 2) ?>%</h4>
+                    <small class="text-muted">ROI ก่อนอนุมัติ</small>
+                    <h4 class="text-primary mb-0"><?= number_format($pre_roi, 2) ?>%</h4>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <small class="text-muted">ROI หลังอนุมัติ</small>
+                    <h4 class="<?= $roi >= 0 ? 'text-success' : 'text-danger' ?> mb-0"><?= number_format($roi, 2) ?>%</h4>
                 </div>
             </div>
         </div>
-        <?php if ($post_income > 0 || $post_cost > 0): ?>
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm p-3 bg-light">
-                    <small class="text-muted fw-bold"><i class="bi bi-clock-history me-1"></i> รายการหลังอนุมัติ</small>
-                    <div class="d-flex gap-4 mt-1">
-                        <span>รายรับหลังอนุมัติ: <strong class="text-success"><?= number_format($post_income, 2) ?></strong></span>
-                        <span>รายจ่ายหลังอนุมัติ: <strong class="text-danger"><?= number_format($post_cost, 2) ?></strong></span>
-                        <?php $post_profit = $post_income - $post_cost; ?>
-                        <span>ผลต่างหลังอนุมัติ: <strong class="<?= $post_profit >= 0 ? 'text-success' : 'text-danger' ?>"><?= number_format($post_profit, 2) ?></strong></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
 
     <div class="row">
@@ -524,10 +594,22 @@ include "header.php";
                                                         data-date="<?= date('d/m/Y', strtotime($f['transaction_date'])) ?>"
                                                         data-detail="<?= htmlspecialchars($f['detail']) ?>"
                                                         data-amount="<?= number_format($f['amount'], 2) ?>"
-                                                        data-amount-raw="<?= $f['amount'] ?>"
+                                                        data-amount-thai="<?= thaiNumber($f['amount']) ?>"
                                                         data-payment="<?= htmlspecialchars($f['payment_method'] ?? '-') ?>"
-                                                        data-createdby="<?= htmlspecialchars($f['created_by_name'] ?? '-') ?>"
                                                         data-funcname="<?= htmlspecialchars($data['function_name']) ?>"
+                                                        data-func-code="<?= htmlspecialchars(($data['type_prefix'] ?? '') . ($data['function_code'] ?? '')) ?>"
+                                                        data-booking-name="<?= htmlspecialchars($data['booking_name'] ?? '') ?>"
+                                                        data-company="<?= htmlspecialchars($data['company_name'] ?? '') ?>"
+                                                        data-tax-id="<?= htmlspecialchars($data['cust_tax_id'] ?? '') ?>"
+                                                        data-phone="<?= htmlspecialchars($data['phone'] ?? $data['cust_phone'] ?? '') ?>"
+                                                        data-email="<?= htmlspecialchars($data['cust_email'] ?? '') ?>"
+                                                        data-func-type="<?= htmlspecialchars($data['function_type_name'] ?? '') ?>"
+                                                        data-event-date="<?= !empty($data['start_time']) ? date('d/m/Y', strtotime($data['start_time'])) : '' ?>"
+                                                        data-event-time="<?= !empty($data['start_time']) ? date('H:i', strtotime($data['start_time'])) : '' ?>"
+                                                        data-room="<?= htmlspecialchars($data['room_name'] ?? '') ?>"
+                                                        data-pax="<?= $data['pax'] ?? 0 ?>"
+                                                        data-createdby="<?= htmlspecialchars($creator_name) ?>"
+                                                        data-sig-path="<?= htmlspecialchars($creator_sig) ?>"
                                                         title="พิมพ์ใบเงินมัดจำ">
                                                         <i class="bi bi-printer"></i>
                                                     </button>
@@ -548,35 +630,24 @@ include "header.php";
                 </div>
             </div>
             <div class="row g-2 mt-2" id="summaryPrintZone">
-
-
-                <div class="d-none d-print-block d-flex flex-column gap-2">
-                    <div class="d-flex justify-content-between">
-                        <span class="text-muted small">ผลตอบแทน (ROI):</span>
-                        <span class="fw-bold text-dark"><?= number_format($roi, 2) ?>%</span>
+                <div class="d-none d-print-block">
+                    <table class="table table-bordered mb-0" style="font-size:11px;">
+                        <tr><td class="label-cell" colspan="2" style="background:#e8e8e8;font-weight:bold;">สรุปผลการเงิน</td></tr>
+                        <tr><td class="label-cell" style="width:50%">ราคาขายงาน</td><td class="amount text-primary"><?= number_format($main_price, 2) ?></td></tr>
+                        <tr><td class="label-cell">เงินมัดจำรวม</td><td class="amount text-info"><?= number_format($total_deposit, 2) ?></td></tr>
+                        <tr><td class="label-cell">รายรับเพิ่มเติม</td><td class="amount text-success"><?= number_format($total_income, 2) ?></td></tr>
+                        <tr><td class="label-cell" style="background:#DAEEF3;"><strong>รวมรายรับทั้งหมด</strong></td><td class="amount" style="background:#DAEEF3;"><strong><?= number_format($grand_total_income, 2) ?></strong></td></tr>
+                        <tr><td class="label-cell">ต้นทุนอาหารหลัก (ครัว)</td><td class="amount text-danger"><?= number_format($kitchen_total, 2) ?></td></tr>
+                        <tr><td class="label-cell">ค่าใช้จ่ายอื่นๆ</td><td class="amount text-danger"><?= number_format($extra_cost, 2) ?></td></tr>
+                        <tr><td class="label-cell" style="background:#DAEEF3;"><strong>ต้นทุนรวมทั้งสิ้น</strong></td><td class="amount text-danger" style="background:#DAEEF3;"><strong><?= number_format($total_cost, 2) ?></strong></td></tr>
+                        <tr><td class="label-cell">ค่าบริหาร 3%</td><td class="amount text-danger"><?= number_format($management_fee, 2) ?></td></tr>
+                        <tr><td class="label-cell" style="background:#d4edda;font-size:13px;"><strong>กำไรสุทธิ</strong></td><td class="amount" style="background:#d4edda;font-size:13px;color:<?= $profit >= 0 ? '#006100' : '#c00000' ?>;"><strong><?= number_format($profit, 2) ?></strong></td></tr>
+                        <tr><td class="label-cell">ROI ก่อนอนุมัติ</td><td class="amount"><strong><?= number_format($pre_roi, 2) ?>%</strong></td></tr>
+                        <tr><td class="label-cell">ROI หลังอนุมัติ</td><td class="amount"><strong><?= number_format($roi, 2) ?>%</strong></td></tr>
+                    </table>
+                    <div style="margin-top:15px;font-size:10px;color:#888;text-align:center;border-top:1px solid #ddd;padding-top:5px;">
+                        รายงานนี้สร้างจากระบบจัดการงานเลี้ยง | <?= date('d/m/Y H:i:s') ?>
                     </div>
-                    <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span class="text-muted small">รวมรายรับทั้งหมด:</span>
-                        <span class="fw-bold text-primary"><?= number_format($main_price + $total_income, 2) ?>
-                            บาท</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span class="text-muted small">เงินมัดจำรวม:</span>
-                        <span class="fw-bold text-info"><?= number_format($total_deposit, 2) ?> บาท</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span class="text-muted small">ต้นทุนรวมทั้งงาน:</span>
-                        <span class="fw-bold text-danger"><?= number_format($total_cost, 2) ?> บาท</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span class="text-muted small">ค่าบริหาร 3%:</span>
-                        <span class="fw-bold text-dark"><?= number_format($management_fee, 2) ?> บาท</span>
-                    </div>
-                    <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span class="text-muted small">กำไรสุทธิ:</span>
-                        <span class="fw-bold text-success"><?= number_format($profit, 2) ?> บาท</span>
-                    </div>
-
                 </div>
             </div>
         </div>
@@ -714,54 +785,171 @@ include "header.php";
             if (e.target.closest('.btn-print-deposit')) {
                 const btn = e.target.closest('.btn-print-deposit');
                 const d = btn.dataset;
-                const printWin = window.open('', '_blank', 'width=700,height=500');
+                const payCash = d.payment === 'Cash' ? '☑' : '☐';
+                const payTransfer = d.payment === 'Bank Transfer' ? '☑' : '☐';
+                const payCredit = d.payment === 'Credit Card' ? '☑' : '☐';
+                const payCheck = d.payment === 'Check' ? '☑' : '☐';
+
+                const printWin = window.open('', '_blank', 'width=900,height=800');
                 printWin.document.write(`
                     <!DOCTYPE html>
                     <html>
                     <head>
                         <meta charset="utf-8">
-                        <title>ใบเงินมัดจำ</title>
+                        <title>ใบเงินมัดจำ - ${d.funcCode || ''}</title>
+                        <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
                         <style>
-                            body { font-family: 'Sarabun', 'Tahoma', sans-serif; padding: 30px; color: #000; }
-                            .header { text-align: center; margin-bottom: 30px; }
-                            .header h2 { margin: 0; font-size: 22px; text-decoration: underline; }
-                            .header p { margin: 5px 0 0; font-size: 13px; color: #555; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                            td, th { border: 1px solid #000; padding: 8px 12px; font-size: 14px; }
-                            th { background: #f0f0f0; text-align: left; width: 35%; }
-                            .amount-big { font-size: 20px; font-weight: bold; color: #1a73e8; }
-                            .footer { margin-top: 40px; display: flex; justify-content: space-between; }
-                            .sign-box { text-align: center; width: 45%; }
-                            .sign-box .line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; font-size: 13px; }
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body { font-family: 'Sarabun', 'Tahoma', sans-serif; padding: 20px 30px; color: #000; font-size: 13px; }
+                            .no-print { text-align: right; margin-bottom: 10px; }
+                            .no-print button { padding: 6px 18px; font-size: 14px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; margin-left: 5px; }
+                            .no-print button.btn-print { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+
+                            .header { text-align: center !important; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 8px; width: 100%; }
+                            .header h2 { font-size: 20px; letter-spacing: 1px; text-align: center !important; }
+                            .header p { font-size: 11px; color: #555; text-align: center !important; }
+
+                            .doc-info { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; }
+                            .doc-info span { display: inline-block; }
+                            .underline { border-bottom: 1px solid #000; min-width: 200px; display: inline-block; padding-bottom: 1px; }
+
+                            .section-title { font-weight: 700; font-size: 12px; background: #f0f0f0; padding: 4px 8px; margin: 10px 0 6px; border-left: 3px solid #333; }
+
+                            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; font-size: 12px; margin-bottom: 10px; }
+                            .info-grid .field { display: flex; gap: 5px; }
+                            .info-grid .field-label { font-weight: 600; white-space: nowrap; }
+                            .info-grid .field-value { border-bottom: 1px dotted #999; flex: 1; min-height: 16px; }
+
+                            .event-type { display: flex; gap: 15px; flex-wrap: wrap; font-size: 12px; margin: 6px 0; }
+                            .event-type label { display: flex; align-items: center; gap: 3px; }
+
+                            .event-detail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 12px; margin: 6px 0; }
+
+                            .deposit-section { margin: 10px 0; }
+                            .deposit-row { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; font-size: 12px; }
+                            .deposit-row .field { margin-bottom: 6px; }
+                            .amount-line { font-size: 14px; font-weight: 700; }
+                            .amount-thai { font-size: 11px; color: #333; margin-top: 2px; }
+
+                            .conditions { font-size: 11px; line-height: 1.7; margin: 10px 0; }
+                            .conditions ol { padding-left: 18px; }
+                            .conditions li { margin-bottom: 1px; }
+
+                            .note { font-size: 11px; font-style: italic; border: 1px dashed #999; padding: 6px 10px; margin: 8px 0; background: #fafafa; }
+
+                            .signature-section { display: flex; justify-content: space-between; margin-top: 30px; }
+                            .sign-box { width: 45%; text-align: center; }
+                            .sign-box .sig-area { height: 55px; display: flex; align-items: flex-end; justify-content: center; }
+                            .sign-box .sig-area img { max-height: 50px; }
+                            .sign-box .line { border-top: 1px solid #000; padding-top: 4px; font-size: 11px; }
+                            .sign-box .name { font-weight: 600; font-size: 12px; }
+
+                            .pay-option { display: flex; gap: 12px; font-size: 12px; margin: 4px 0; }
+                            .pay-option label { display: flex; align-items: center; gap: 3px; }
+
                             @media print {
-                                body { padding: 10px; }
+                                body { padding: 10px 15px; font-size: 12px; }
                                 .no-print { display: none !important; }
+                                @page { size: A4; margin: 5mm; }
                             }
                         </style>
                     </head>
                     <body>
-                        <div class="no-print" style="text-align:right; margin-bottom:10px;">
-                            <button onclick="window.print();" style="padding:6px 16px; font-size:14px; cursor:pointer;">🖨️ พิมพ์</button>
-                            <button onclick="window.close();" style="padding:6px 16px; font-size:14px; cursor:pointer; margin-left:5px;">ปิด</button>
+                        <div class="no-print">
+                            <button onclick="window.print();" class="btn-print">🖨️ พิมพ์</button>
+                            <button onclick="window.close();">ปิด</button>
                         </div>
+
                         <div class="header">
-                            <h2>ใบเงินมัดจำ</h2>
-                            <p>Deposit Receipt</p>
+                            <h2>ใบเงินมัดจำการจอง</h2>
+                            <p>DEPOSIT RECEIPT</p>
                         </div>
-                        <table>
-                            <tr><th>ชื่องาน / Event</th><td>${d.funcname}</td></tr>
-                            <tr><th>วันที่ทำรายการ</th><td>${d.date}</td></tr>
-                            <tr><th>รายละเอียด</th><td>${d.detail}</td></tr>
-                            <tr><th>จำนวนเงิน</th><td class="amount-big">${d.amount} บาท</td></tr>
-                            <tr><th>ช่องทางการชำระ</th><td>${d.payment}</td></tr>
-                            <tr><th>ผู้บันทึก</th><td>${d.createdby}</td></tr>
-                        </table>
-                        <div class="footer">
+
+                        <div class="doc-info">
+                            <div><span>เลขที่ : </span><span class="underline">${d.funcCode || '_____________________'}</span></div>
+                            <div><span>วันที่ : </span><span class="underline">${d.date || '_____________________'}</span></div>
+                        </div>
+
+                        <div class="section-title">ข้อมูลลูกค้า</div>
+                        <div class="info-grid">
+                            <div class="field"><span class="field-label">ชื่อผู้จอง</span><span class="field-value">${d.bookingName || ''}</span></div>
+                            <div class="field"><span class="field-label">บริษัท</span><span class="field-value">${d.company || ''}</span></div>
+                            <div class="field"><span class="field-label">เลขประจำตัวผู้เสียภาษี</span><span class="field-value">${d.taxId || ''}</span></div>
+                            <div class="field"><span class="field-label">โทรศัพท์</span><span class="field-value">${d.phone || ''}</span></div>
+                            <div class="field"><span class="field-label">E-mail</span><span class="field-value">${d.email || ''}</span></div>
+                        </div>
+
+                        <div class="section-title">รายละเอียดการจองประเภทงาน</div>
+                        <div class="event-type">
+                            <label>☐ ประชุม</label>
+                            <label>☐ สัมมนา</label>
+                            <label>☐ งานแต่งงาน</label>
+                            <label>☐ งานเลี้ยง</label>
+                            <label>☐ อื่น ๆ <span class="underline" style="min-width:100px;">${d.funcType || ''}</span></label>
+                        </div>
+                        <div class="event-detail">
+                            <div class="field"><span class="field-label">วันที่จัดงาน</span> <span class="underline" style="min-width:100px;">${d.eventDate || ''}</span></div>
+                            <div class="field"><span class="field-label">เวลา</span> <span class="underline" style="min-width:60px;">${d.eventTime || ''}</span></div>
+                            <div class="field"><span class="field-label">ห้องประชุม</span> <span class="underline" style="min-width:80px;">${d.room || ''}</span></div>
+                            <div class="field"><span class="field-label">จำนวนแขก</span> <span class="underline" style="min-width:40px;">${d.pax || ''}</span> คน</div>
+                        </div>
+
+                        <div class="section-title">รายละเอียดเงินมัดจำการจอง</div>
+                        <div class="deposit-section">
+                            <div class="deposit-row">
+                                <div>
+                                    <div class="amount-line">จำนวนเงิน <span class="underline" style="min-width:150px; display:inline-block;">${d.amount || '0.00'}</span> บาท</div>
+                                    <div class="amount-thai">( ${d.amountThai || ''} )</div>
+                                </div>
+                                <div>
+                                    <div style="font-weight:600; margin-bottom:4px;">ชำระโดย</div>
+                                    <div class="pay-option">
+                                        <label>${payCash} เงินสด</label>
+                                        <label>${payTransfer} โอนเงิน</label>
+                                        <label>${payCredit} บัตรเครดิต</label>
+                                        <label>${payCheck} เช็ค</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; font-size:12px;">
+                                <div class="field"><span class="field-label">เลขอ้างอิง</span> <span class="underline" style="min-width:120px;">${d.detail || ''}</span></div>
+                                <div class="field"><span class="field-label">วันที่รับเงิน</span> <span class="underline" style="min-width:120px;">${d.date || ''}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="conditions">
+                            <strong>เงื่อนไขการรับเงินมัดจำโดยลูกค้าได้รับทราบและยอมรับว่า</strong>
+                            <ol>
+                                <li>เงินจำนวนนี้เป็น เงินมัดจำเพื่อยืนยันการจอง</li>
+                                <li>โรงแรมยังไม่รับรู้เป็นรายได้ เนื่องจากยังอยู่ภายใต้เงื่อนไขของสัญญา</li>
+                                <li>โรงแรมจะออกใบกำกับภาษี/ใบเสร็จรับเงินเมื่อมีการให้บริการจริง</li>
+                                <li>การคืนเงินมัดจำเป็นไปตามเงื่อนไขที่ระบุในใบเสนอราคา/สัญญาจัดงาน</li>
+                                <li>หากมีการยกเลิกหลังพ้นกำหนด โรงแรมมีสิทธิริบเงินมัดจำทั้งหมดหรือบางส่วนตามสัญญา</li>
+                                <li>หากงานมีการเลื่อนวันจัด โรงแรมสามารถนำเงินมัดจำไปใช้กับวันใหม่ได้ตามที่ตกลงร่วมกัน</li>
+                            </ol>
+                        </div>
+
+                        <div class="note">
+                            <strong>หมายเหตุ</strong><br>
+                            เงินมัดจำฉบับนี้ ไม่ใช่ใบกำกับภาษี และ ไม่ถือเป็นการรับรู้รายได้ของโรงแรม
+                        </div>
+
+                        <div class="signature-section">
                             <div class="sign-box">
-                                <div class="line">ผู้รับเงิน</div>
+                                <div class="sig-area">
+                                    ${d.sigPath ? '<img src="' + d.sigPath + '">' : ''}
+                                </div>
+                                <div class="line">
+                                    <div class="name">ผู้รับเงิน ${d.createdby || '..................................'}</div>
+                                    <div>วันที่ .................................</div>
+                                </div>
                             </div>
                             <div class="sign-box">
-                                <div class="line">ผู้จ่ายเงิน</div>
+                                <div class="sig-area"></div>
+                                <div class="line">
+                                    <div class="name">ลงชื่อ ..................................ผู้วางมัดจำ</div>
+                                    <div>วันที่ ..................................</div>
+                                </div>
                             </div>
                         </div>
                     </body>
