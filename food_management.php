@@ -64,14 +64,14 @@ if (isset($_POST['action'])) {
         }
 
         if ($conn->query($sql)) {
-            // ดึงชื่อประเภทอาหารกลับมาด้วยเพื่อไปโชว์ในตารางทันที
-            $t_res = $conn->query("SELECT type_name FROM master_menu_types WHERE id=$menu_type_id");
+            $t_res = $conn->query("SELECT t.type_name, c.category_name FROM master_menu_types t LEFT JOIN master_menu_categories c ON t.category_id = c.id WHERE t.id=$menu_type_id");
             $t_row = $t_res->fetch_assoc();
 
             echo json_encode([
                 'status' => 'success',
                 'id' => ($id > 0 ? $id : $conn->insert_id),
                 'type_name' => $t_row['type_name'] ?? 'ไม่ระบุ',
+                'category_name' => $t_row['category_name'] ?? '-',
                 'is_update' => ($id > 0)
             ]);
         } else {
@@ -82,16 +82,30 @@ if (isset($_POST['action'])) {
 }
 
 // --- 2. ดึงข้อมูล ---
+$categories = $conn->query("SELECT * FROM master_menu_categories ORDER BY sort_order ASC");
+$cat_list = [];
+while ($c = $categories->fetch_assoc()) { $cat_list[] = $c; }
+
 $types_query = $conn->query("SELECT * FROM master_menu_types ORDER BY id ASC");
 $types_list = [];
 while ($t = $types_query->fetch_assoc()) {
     $types_list[] = $t;
 }
 
-$menus = $conn->query("SELECT m.*, t.type_name 
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+    FROM master_menu_types mmt 
+    LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
+    ORDER BY mmc.sort_order ASC, mmt.id ASC");
+$menu_types_array = [];
+while ($mt = $menu_types_with_cat->fetch_assoc()) {
+    $menu_types_array[] = $mt;
+}
+
+$menus = $conn->query("SELECT m.*, t.type_name, mc.category_name 
                        FROM function_menu_details m 
                        LEFT JOIN master_menu_types t ON m.menu_type_id = t.id 
-                       ORDER BY m.id DESC");
+                       LEFT JOIN master_menu_categories mc ON t.category_id = mc.id
+                       ORDER BY mc.sort_order ASC, t.id ASC, m.id DESC");
 
 require_once "header.php";
 ?>
@@ -113,12 +127,11 @@ require_once "header.php";
 
                         <div class="mb-3">
                             <label class="small fw-bold mb-1">ประเภทอาหาร / ชื่อแพ็กเกจ</label>
-                            <select name="menu_type_id" id="m_type_id" class="form-select" required>
-                                <option value="">-- เลือกประเภทอาหาร --</option>
-                                <?php foreach ($types_list as $t): ?>
-                                    <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['type_name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <input type="hidden" name="menu_type_id" id="m_type_id" class="menu-type-id" value="">
+                            <button type="button" class="btn-menu-type-picker" onclick="openMenuTypeModal(document.getElementById('m_type_id'))">
+                                <i class="bi bi-grid-3x3-gap me-1"></i>เลือกประเภทเมนู
+                            </button>
+                            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
                         </div>
 
                         <div class="row">
@@ -196,6 +209,14 @@ require_once "header.php";
 
                 </div>
                 <div class="card-body p-3">
+                    <div class="mb-2">
+                        <select id="categoryFilter" class="form-select form-select-sm" onchange="filterByCategory(this.value)">
+                            <option value="">-- ทุกกลุ่มอาหาร --</option>
+                            <?php foreach ($cat_list as $c): ?>
+                                <option value="<?= htmlspecialchars($c['category_name']) ?>"><?= htmlspecialchars($c['category_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="table-responsive">
                         <table id="menuTable" class="table table-hover align-middle w-100">
                             <thead class="table-dark">
@@ -204,6 +225,7 @@ require_once "header.php";
                                     <th class="text-center">จำนวน</th>
                                     <th class="text-center">ราคาขาย/หัว</th>
                                     <th class="text-center">ราคาทุน/หัว</th>
+                                    <th>กลุ่มอาหาร</th>
                                     <th>ประเภทอาหาร</th>
                                     <th class="text-">จัดการ</th>
                                 </tr>
@@ -230,6 +252,7 @@ require_once "header.php";
                                         <td class="col-cost text-center fw-bold text-danger">
                                             <?= number_format($row['cost_per_pax'] ?? 0, 2) ?>
                                         </td>
+                                        <td class="col-cat"><small class="text-muted"><?= htmlspecialchars($row['category_name'] ?? '-') ?></small></td>
                                         <td class="col-type ">
                                             <?= htmlspecialchars($row['type_name'] ?? 'ไม่ระบุ') ?>
                                         </td>
@@ -267,21 +290,21 @@ require_once "header.php";
     $(document).ready(function () {
         // ตั้งค่า DataTable
         menuTable = $('#menuTable').DataTable({
-            "order": [[0, "desc"]],
+            "order": [[0, "asc"]],
             "pageLength": 10,
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
             },
             "columnDefs": [
-                { "orderable": false, "targets": [4, 5] }
+                { "orderable": false, "targets": [5, 6] }
             ],
             "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                 "<'d-none'B>",
             "buttons": [
-                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4] } },
-                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4] } }
+                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } },
+                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } }
             ]
         });
 
@@ -298,6 +321,7 @@ require_once "header.php";
                         if (isUpdate) {
                             // --- กรณีแก้ไข: อัปเดตข้อมูลในแถวเดิม ---
                             let r = $('#row-' + res.id);
+                            r.find('.col-cat').html(`<small class="text-muted">${res.category_name || '-'}</small>`);
                             r.find('.col-type').text(res.type_name);
                             r.find('.col-pax').text(Number($('#m_pax').val()).toLocaleString());
                             r.find('.col-price').text(Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }));
@@ -307,7 +331,10 @@ require_once "header.php";
                         } else {
                             // --- กรณีเพิ่มใหม่: สร้างแถวใหม่เข้า DataTables ทันที ---
                             let newRow = menuTable.row.add([
-                                // 1. รายละเอียดเมนู (ย้ายมาไว้ตัวแรก)
+                                // 0. กลุ่มอาหาร (ใหม่)
+                                `<small class="text-muted">${res.category_name || '-'}</small>`,
+
+                                // 1. รายละเอียดเมนู
                                 `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
      <div><span class="badge bg-info text-dark">Beverage</span> <small class="text-muted bev-text">${$('#m_bev').val().replace(/\n/g, '<br>')}</small></div>`,
 
@@ -320,10 +347,10 @@ require_once "header.php";
                                 // 4. ราคาทุนต่อหัว
                                 Number($('#m_cost').val() || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }),
 
-                                // 5. ชื่อประเภท (ย้ายมาไว้ตรงนี้)
+                                // 5. ชื่อประเภท
                                 res.type_name,
 
-                                // 6. ปุ่มจัดการ (เหมือนเดิม)
+                                // 6. ปุ่มจัดการ
                                 `<div class="d-flex justify-content-start align-items-center gap-3">
     <button type="button" class="btn btn-link text-primary p-1 border-0 btn-sm" 
         onclick='editMenu(${JSON.stringify({
@@ -344,12 +371,13 @@ require_once "header.php";
 </div>`
                             ]).draw(false).node();
 
-                            $(newRow).attr('id', 'row-' + res.id); // ใส่ ID ให้ <tr> ใหม่
-                            $(newRow).find('td:eq(0)').addClass('fw-bold text-success col-type');
-                            $(newRow).find('td:eq(1)').addClass('text-center col-pax');
-                            $(newRow).find('td:eq(2)').addClass('text-center fw-bold text-primary col-price');
-                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-danger col-cost');
-                            $(newRow).find('td:eq(5)').addClass('text-center');
+                            $(newRow).attr('id', 'row-' + res.id);
+                            $(newRow).find('td:eq(0)').addClass('col-cat');
+                            $(newRow).find('td:eq(1)').addClass('menu-items');
+                            $(newRow).find('td:eq(2)').addClass('text-center col-pax');
+                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-primary col-price');
+                            $(newRow).find('td:eq(4)').addClass('text-center fw-bold text-danger col-cost');
+                            $(newRow).find('td:eq(6)').addClass('text-center');
                         }
 
                         resetMenuForm();
@@ -369,6 +397,14 @@ require_once "header.php";
     function editMenu(data) {
         $('#m_id').val(data.id);
         $('#m_type_id').val(data.menu_type_id);
+        // Update modal label
+        const typeName = <?= json_encode($menu_types_array, JSON_UNESCAPED_UNICODE) ?>;
+        const found = typeName.find(t => t.id == data.menu_type_id);
+        if (found) {
+            $('.menu-type-label').text(found.type_name).removeClass('text-muted').addClass('fw-semibold text-dark');
+        } else {
+            $('.menu-type-label').text('ยังไม่ได้เลือก').removeClass('fw-semibold text-dark').addClass('text-muted');
+        }
         $('#m_pax').val(data.guarantee_pax);
         $('#m_price').val(data.price_per_pax);
         $('#m_cost').val(data.cost_per_pax || 0);
@@ -380,6 +416,8 @@ require_once "header.php";
     function resetMenuForm() {
         $('#menuForm')[0].reset();
         $('#m_id').val(0);
+        $('#m_type_id').val('');
+        $('.menu-type-label').text('ยังไม่ได้เลือก').removeClass('fw-semibold text-dark').addClass('text-muted');
         $('#btnSubmit').text('บันทึกข้อมูล').removeClass('btn-primary').addClass('btn-success');
     }
 
@@ -410,6 +448,11 @@ require_once "header.php";
                 });
         }
     }
+
+    function filterByCategory(val) {
+        menuTable.column(0).search(val).draw();
+    }
 </script>
 
+<?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

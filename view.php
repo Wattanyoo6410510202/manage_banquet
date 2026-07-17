@@ -120,9 +120,10 @@ $sql_kitchens = "SELECT fk.*, mbt.type_name as k_type_name
 
 $kitchens = $conn->query($sql_kitchens);
 
-$sql_menus = "SELECT fm.*, mms.type_name as set_name 
+$sql_menus = "SELECT fm.*, mms.type_name as set_name, mmc.category_name
               FROM function_menus fm
               LEFT JOIN master_menu_types mms ON fm.menu_set_id = mms.id 
+              LEFT JOIN master_menu_categories mmc ON mms.category_id = mmc.id
               WHERE fm.function_id = $id";
 
 $menus = $conn->query($sql_menus);
@@ -376,7 +377,7 @@ $menus = $conn->query($sql_menus);
                 ?>
                     <tr>
                         <td class="text-center"><?php echo $row['menu_time']; ?></td>
-                        <td class="text-center"><?php echo $row['set_name'] ?? 'ไม่ได้เลือกเซต'; ?></td>
+                        <td class="text-center"><small class="text-muted"><?= htmlspecialchars($row['category_name'] ?? '') ?></small> &rsaquo; <?= htmlspecialchars($row['set_name'] ?? 'ไม่ได้เลือกเซต') ?></td>
                         <td><?php echo nl2br($row['menu_detail']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
                         <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>

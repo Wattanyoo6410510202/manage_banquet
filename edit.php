@@ -80,6 +80,18 @@ $res_breaks = $conn->query($query_breaks);
 $query_menu_types = "SELECT id, type_name FROM master_menu_types ORDER BY id ASC";
 $res_menu_sets = $conn->query($query_menu_types);
 
+$query_categories = "SELECT id, category_name FROM master_menu_categories ORDER BY sort_order ASC, id ASC";
+$res_categories = $conn->query($query_categories);
+
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+    FROM master_menu_types mmt 
+    LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
+    ORDER BY mmc.sort_order ASC, mmt.id ASC");
+$menu_types_array = [];
+while ($mt = $menu_types_with_cat->fetch_assoc()) {
+    $menu_types_array[] = $mt;
+}
+
 // 1. ดึง ID บริษัทของงานนี้ออกมาก่อน (จารย์มีตัวแปร $data อยู่แล้ว)
 $current_company_id = $data['company_id']; 
 
@@ -667,35 +679,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     </div>
                 </div>
 
-                <div class="row mb-5">
-                    <div class="col-md-6 mb-4 mb-md-0">
-                        <div class="bg-sidebar p-4 rounded-4 h-100">
-                            <h5 class="section-title mb-4"><i class="bi bi-building"></i> 4. รูปแบบการจัดงาน (SET-UP)</h5>
-                            <div class="mb-0">
-                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                    rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="bg-sidebar p-4 rounded-4 h-100">
-                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 5. ระบบวิศวกรรม (TECHNICAL)</h5>
-                            <div class="mb-4">
-                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                                <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                    rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
-                            </div>
-                            <div class="mb-0">
-                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                                <textarea name="remark" class="form-control form-control-sm bg-white"
-                                    rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5. รายละเอียดเมนูอาหารและเครื่องดื่ม
+                <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4. รายละเอียดเมนูอาหารและเครื่องดื่ม
                 </h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle" id="menuTable" style="table-layout: fixed; width: 100%;">
@@ -725,18 +709,14 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             </td>
 
             <td style="width: 150px;">
-                <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light">
-                    <option value="">-- เลือกเซตเมนู --</option>
-                    <?php if ($res_menu_sets && $res_menu_sets->num_rows > 0):
-                        $res_menu_sets->data_seek(0);
-                        while ($ms = $res_menu_sets->fetch_assoc()):
-                            $selected = (isset($m['menu_set_id']) && $m['menu_set_id'] == $ms['id']) ? 'selected' : '';
-                    ?>
-                    <option value="<?= $ms['id'] ?>" <?= $selected ?>>
-                        <?= htmlspecialchars($ms['type_name']) ?>
-                    </option>
-                    <?php endwhile; endif; ?>
-                </select>
+                <?php
+                $current_menu_val = $m['menu_set_id'] ?? '';
+                $current_menu_name = '';
+                foreach ($menu_types_array as $mt) { if ($mt['id'] == $current_menu_val) { $current_menu_name = $mt['type_name']; break; } }
+                ?>
+                <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="<?= $current_menu_val ?>">
+                <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
+                <span class="menu-type-label <?= $current_menu_val ? 'fw-semibold text-dark' : 'text-muted' ?>"><?= htmlspecialchars($current_menu_name ?: 'ยังไม่ได้เลือก') ?></span>
             </td>
 
             <td>
@@ -795,7 +775,35 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             class="bi bi-plus-lg"></i> เพิ่มรายการอาหาร</button>
                 </div>
 
-                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด</h5>
+                <div class="row mb-5">
+                    <div class="col-md-6 mb-4 mb-md-0">
+                        <div class="bg-sidebar p-4 rounded-4 h-100">
+                            <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
+                            <div class="mb-0">
+                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                    rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-sidebar p-4 rounded-4 h-100">
+                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
+                            <div class="mb-4">
+                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                                <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                    rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                                <textarea name="remark" class="form-control form-control-sm bg-white"
+                                    rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 7. การตกแต่งและการดูแลทำความสะอาด</h5>
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="p-4 border rounded-4 bg-white h-100">
@@ -890,38 +898,25 @@ function addKitchenRow() {
     `;
 }
 
+const menuTypeOptions = <?= json_encode($menu_types_array) ?>;
+
 function addMenuRow() {
     const table = document.querySelector("#menuTable tbody");
     const row = table.insertRow();
     row.className = "align-top";
     row.innerHTML = `
-        <td width="12%"><input type="date" name="menu_time[]" class="form-control form-control-sm border-0 "></td>
-        <td width="18%">
-            <select name="menu_set_id[]" class="form-select form-select-sm border-0 "
-                    onchange="fetchMenuDetail(this)"> <option value="">-- เลือกเซตเมนู --</option>
-                <?php
-                if ($res_menu_sets) {
-                    $res_menu_sets->data_seek(0);
-                    while ($ms = $res_menu_sets->fetch_assoc()) {
-                        echo '<option value="' . $ms['id'] . '">' . htmlspecialchars($ms['type_name']) . '</option>';
-                    }
-                }
-                ?>
-            </select>
+        <td style="width: 130px;"><input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"></td>
+        <td style="width: 150px;">
+            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
+            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
+            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
         </td>
-        <td>
-            <textarea name="menu_detail[]" 
-                      class="form-control form-control-sm border-0 bg-white  w-100 menu-detail-input" /* 🛠️ เพิ่มคลาสนี้ */
-                      rows="3" placeholder="ระบุรายละเอียดอาหาร..." style="min-width: 100%; resize: vertical;"></textarea>
-        </td>
-        <td width="10%"><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" placeholder="0" oninput="updateMenuRowTotal(this)"></td>
-        <td width="12%"><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price" placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
-        <td width="12%"><input type="number" name="menu_cost[]" class="form-control form-control-sm border-0 menu-cost" placeholder="0.00" step="0.01"></td>
-        <td class="text-end fw-bold menu-row-total">0.00</td>
-        <td width="5%" class="text-center">
-           <button type="button" class="btn text-danger btn-sm border-0"
-                                onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button>
-        </td>
+        <td><textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100" rows="1" style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"></textarea></td>
+        <td style="width: 70px;"><input type="number" name="menu_qty[]" class="form-control form-control-sm border-0 bg-light text-center menu-qty" placeholder="จำนวน" oninput="updateMenuRowTotal(this)"></td>
+        <td style="width: 90px;"><input type="number" step="0.01" name="menu_price[]" class="form-control form-control-sm border-0 bg-light text-end menu-price" placeholder="ราคา" oninput="updateMenuRowTotal(this)"></td>
+        <td style="width: 90px;"><input type="number" step="0.01" name="menu_cost[]" class="form-control form-control-sm border-0 bg-light text-end menu-cost" placeholder="ทุน"></td>
+        <td style="width: 100px;" class="text-end fw-bold menu-row-total">0.00</td>
+        <td style="width: 45px;" class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle fs-5"></i></button></td>
     `;
 }
 
@@ -1369,5 +1364,41 @@ $(document).on('click', '#rollbackStatusBtn', function() {
 });
 </script>
 
+<script>
+    let _mtmActiveRow = null;
 
+    function openTemplateModalForRow(btn, mode, cb) {
+        _mtmActiveRow = btn.closest('tr');
+        openTemplateModal(mode, cb);
+    }
+
+    function onMenuTypeSelect(result) {
+        if (!_mtmActiveRow) return;
+        const row = _mtmActiveRow;
+        const hidden = row.querySelector('.menu-type-id');
+        const label = row.querySelector('.menu-type-label');
+        const detail = row.querySelector('.menu-detail-input');
+        const price = row.querySelector('.menu-price');
+        const cost = row.querySelector('.menu-cost');
+
+        if (hidden) hidden.value = result.type_id || result.id;
+        if (label) {
+            label.textContent = result.type_name || result.name;
+            label.classList.remove('text-muted');
+            label.classList.add('fw-semibold', 'text-dark');
+        }
+        if (detail && result.description) {
+            detail.value = result.description;
+            detail.style.height = 'auto';
+            detail.style.height = detail.scrollHeight + 'px';
+        }
+        if (price && result.price !== undefined) price.value = parseFloat(result.price).toFixed(2);
+        if (cost && result.cost !== undefined) cost.value = parseFloat(result.cost).toFixed(2);
+
+        _mtmActiveRow = null;
+    }
+</script>
+
+
+<?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

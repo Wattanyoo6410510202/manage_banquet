@@ -41,19 +41,20 @@ $projects_sql = "SELECT ep.id, ep.project_name,
 $projects_res = $conn->query($projects_sql);
 
 // ดึงเทมเพลตเมนูและเบรก
-$menu_templates = $conn->query("
-    SELECT fmd.id, mt.type_name, fmd.menu_items, fmd.price_per_pax, fmd.cost_per_pax
-    FROM function_menu_details fmd
-    JOIN master_menu_types mt ON fmd.menu_type_id = mt.id
-    ORDER BY mt.type_name, fmd.id
-");
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+    FROM master_menu_types mmt 
+    LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
+    ORDER BY mmc.sort_order ASC, mmt.id ASC");
+$menu_types_array = [];
+while ($mt = $menu_types_with_cat->fetch_assoc()) {
+    $menu_types_array[] = $mt;
+}
 
-$break_templates = $conn->query("
-    SELECT fb.id, bt.type_name, fb.break_menu, fb.break_price, fb.break_cost
-    FROM function_breaks fb
-    JOIN master_break_types bt ON fb.break_type_id = bt.id
-    ORDER BY bt.type_name, fb.id
-");
+$break_types_with_cat = $conn->query("SELECT id, type_name FROM master_break_types ORDER BY id ASC");
+$break_types_array = [];
+while ($bt = $break_types_with_cat->fetch_assoc()) {
+    $break_types_array[] = $bt;
+}
 ?>
 
 <div class="container-fluid p-0">
@@ -198,80 +199,13 @@ $break_templates = $conn->query("
             <hr>
 
             <!-- ====== เพิ่มรายการจากเทมเพลต ====== -->
-            <div class="card border-0 bg-light-subtle mb-4">
-                <div class="card-header bg-transparent border-0 py-2" data-bs-toggle="collapse" data-bs-target="#templatePanel" style="cursor:pointer">
-                    <i class="bi bi-box-seam me-1"></i> เพิ่มรายการจากเทมเพลต
-                    <i class="bi bi-chevron-down small float-end"></i>
-                </div>
-                <div class="collapse" id="templatePanel">
-                    <div class="card-body pt-0">
-                        <div class="row g-2 align-items-end mb-2">
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold small mb-1">🍽️ เมนูอาหาร</label>
-                                <select id="menuTemplate" class="form-select form-select-sm">
-                                    <option value="">-- เลือกเมนู --</option>
-                                    <?php if ($menu_templates && $menu_templates->num_rows):
-                                        $menu_templates->data_seek(0);
-                                        while ($m = $menu_templates->fetch_assoc()): ?>
-                                        <option value="<?= $m['id'] ?>"
-                                            data-name="<?= htmlspecialchars($m['menu_items'], ENT_QUOTES) ?>"
-                                            data-price="<?= $m['price_per_pax'] ?>"
-                                            data-cost="<?= $m['cost_per_pax'] ?? 0 ?>">
-                                            [<?= htmlspecialchars($m['type_name']) ?>] <?= mb_substr(htmlspecialchars($m['menu_items']), 0, 80) ?>...
-                                            (<?= number_format($m['price_per_pax'], 2) ?> บาท/หน่วย)
-                                        </option>
-                                    <?php endwhile; endif; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label fw-bold small mb-1">จำนวน</label>
-                                <input type="number" id="menuQty" class="form-control form-control-sm" value="1" min="1">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold small mb-1">ราคา/หน่วย</label>
-                                <input type="text" id="menuPrice" class="form-control form-control-sm bg-white" readonly>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-success btn-sm w-100" id="addMenuTemplate">
-                                    <i class="bi bi-plus-lg"></i> เพิ่ม
-                                </button>
-                            </div>
-                        </div>
-                        <hr class="my-2">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold small mb-1">☕ เบรก</label>
-                                <select id="breakTemplate" class="form-select form-select-sm">
-                                    <option value="">-- เลือกเบรก --</option>
-                                    <?php if ($break_templates && $break_templates->num_rows):
-                                        $break_templates->data_seek(0);
-                                        while ($b = $break_templates->fetch_assoc()): ?>
-                                        <option value="<?= $b['id'] ?>"
-                                            data-name="<?= htmlspecialchars($b['break_menu'], ENT_QUOTES) ?>"
-                                            data-price="<?= $b['break_price'] ?>"
-                                            data-cost="<?= $b['break_cost'] ?? 0 ?>">
-                                            [<?= htmlspecialchars($b['type_name']) ?>] <?= htmlspecialchars($b['break_menu']) ?>
-                                            (<?= number_format($b['break_price'], 2) ?> บาท/หน่วย)
-                                        </option>
-                                    <?php endwhile; endif; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label fw-bold small mb-1">จำนวน</label>
-                                <input type="number" id="breakQty" class="form-control form-control-sm" value="1" min="1">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold small mb-1">ราคา/หน่วย</label>
-                                <input type="text" id="breakPrice" class="form-control form-control-sm bg-white" readonly>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" class="btn btn-success btn-sm w-100" id="addBreakTemplate">
-                                    <i class="bi bi-plus-lg"></i> เพิ่ม
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="d-flex gap-2 mb-4">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openTemplateModal('template-menu','onMenuTemplateSelect')">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเมนูอาหาร
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openTemplateModal('template-break','onBreakTemplateSelect')">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเบรก
+                </button>
             </div>
             <!-- ====== END เทมเพลต ====== -->
 
@@ -478,37 +412,23 @@ $break_templates = $conn->query("
             });
         }
 
-        // เมื่อเลือกเทมเพลตเมนู -> แสดงราคา
-        $('#menuTemplate').change(function () {
-            var price = $(this).find(':selected').data('price') || 0;
-            $('#menuPrice').val(parseFloat(price).toFixed(2));
-        });
+        // Modal callback: เลือกเมนูเสร็จ → เพิ่มแถวทันที (items = single, set = array)
+        window.onMenuTemplateSelect = function(data) {
+            if (Array.isArray(data)) {
+                data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
+            } else {
+                addTemplateRow(data.name, data.qty || 1, data.price);
+            }
+        };
 
-        // เมื่อเลือกเทมเพลตเบรก -> แสดงราคา
-        $('#breakTemplate').change(function () {
-            var price = $(this).find(':selected').data('price') || 0;
-            $('#breakPrice').val(parseFloat(price).toFixed(2));
-        });
-
-        // เพิ่มรายการจากเทมเพลตเมนู
-        $('#addMenuTemplate').click(function () {
-            var $sel = $('#menuTemplate');
-            var name = $sel.find(':selected').data('name') || '';
-            var price = parseFloat($sel.find(':selected').data('price')) || 0;
-            var qty = parseInt($('#menuQty').val()) || 1;
-            if (!name) { alert('กรุณาเลือกเมนูก่อน'); return; }
-            addTemplateRow(name, qty, price);
-        });
-
-        // เพิ่มรายการจากเทมเพลตเบรก
-        $('#addBreakTemplate').click(function () {
-            var $sel = $('#breakTemplate');
-            var name = $sel.find(':selected').data('name') || '';
-            var price = parseFloat($sel.find(':selected').data('price')) || 0;
-            var qty = parseInt($('#breakQty').val()) || 1;
-            if (!name) { alert('กรุณาเลือกเบรกก่อน'); return; }
-            addTemplateRow(name, qty, price);
-        });
+        // Modal callback: เลือกเบรกเสร็จ → เพิ่มแถวทันที
+        window.onBreakTemplateSelect = function(data) {
+            if (Array.isArray(data)) {
+                data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
+            } else {
+                addTemplateRow(data.name, data.qty || 1, data.price);
+            }
+        };
 
         // ฟังก์ชันเพิ่มแถวจากเทมเพลต
         function addTemplateRow(name, qty, price) {
@@ -539,4 +459,5 @@ $break_templates = $conn->query("
     .table-items textarea { min-width: 180px; }
 </style>
 
+<?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

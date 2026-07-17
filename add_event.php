@@ -25,6 +25,20 @@ $res_rooms = $conn->query($sql_rooms);
 $query_menu_types = "SELECT id, type_name FROM master_menu_types ORDER BY id ASC";
 $res_menu_sets = $conn->query($query_menu_types);
 
+// ดึงข้อมูลประเภทใหญ่ (Menu Categories)
+$query_categories = "SELECT id, category_name FROM master_menu_categories ORDER BY sort_order ASC, id ASC";
+$res_categories = $conn->query($query_categories);
+
+// ดึงข้อมูลประเภทเมนูพร้อม category
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+    FROM master_menu_types mmt 
+    LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
+    ORDER BY mmc.sort_order ASC, mmt.id ASC");
+$menu_types_array = [];
+while ($mt = $menu_types_with_cat->fetch_assoc()) {
+    $menu_types_array[] = $mt;
+}
+
 // 5. ดึงข้อมูลลูกค้า
 $query_customers = "SELECT id, cust_name, cust_phone, cust_address FROM customers ORDER BY cust_name ASC";
 $res_customers = $conn->query($query_customers);
@@ -85,6 +99,32 @@ while ($row = $all_rooms_res->fetch_assoc()) {
     $rooms_data[] = $row;
 }
 ?>
+
+<?php
+function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
+    $html = '<option value="" disabled selected>-- เลือกเซตเมนู --</option>';
+    $current_cat_id = null;
+    $hasoptgroup = false;
+    foreach ($menu_types_array as $m) {
+        $cat_id = $m['category_id'] ?? 0;
+        $cat_name = $m['category_name'] ?? '';
+        if ($cat_id != $current_cat_id) {
+            if ($hasoptgroup) $html .= '</optgroup>';
+            if ($cat_id > 0 && $cat_name) {
+                $html .= '<optgroup label="' . htmlspecialchars($cat_name) . '">';
+                $hasoptgroup = true;
+            } else {
+                $hasoptgroup = false;
+            }
+            $current_cat_id = $cat_id;
+        }
+        $sel = ($selected_id && $m['id'] == $selected_id) ? 'selected' : '';
+        $html .= '<option value="' . $m['id'] . '" ' . $sel . '>' . htmlspecialchars($m['type_name']) . '</option>';
+    }
+    if ($hasoptgroup) $html .= '</optgroup>';
+    return $html;
+}
+?>
 <style>
     .room-card.selected {
         border: 2px solid #198754 !important;
@@ -103,6 +143,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
 <script>
     // ส่งข้อมูลจาก PHP ไปเป็นตัวแปร JavaScript JSON
     const allRooms = <?= json_encode($rooms_data); ?>;
+    const menuTypeOptions = <?= json_encode($menu_types_array) ?>;
 </script>
 
 <div class="container-fluid p-0">
@@ -466,36 +507,7 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                         </div>
                     </div>
 
-                    <div class="row mb-5">
-                        <div class="col-md-6 mb-4 mb-md-0">
-                            <div class="bg-sidebar p-4 rounded-4 h-100">
-                                <h5 class="section-title mb-4"><i class="bi bi-building"></i> 4. รูปแบบการจัดงาน (SET-UP)</h5>
-                                <div class="mb-0">
-                                    <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                                    <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                        rows="6"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="bg-sidebar p-4 rounded-4 h-100">
-                                <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 5. ระบบวิศวกรรม (TECHNICAL)</h5>
-                                <div class="mb-4">
-                                    <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                                    <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                        rows="5"></textarea>
-                                </div>
-                                <div class="mb-0">
-                                    <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                                    <textarea name="remark" class="form-control form-control-sm bg-white"
-                                        rows="2"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 5.
+                    <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4.
                         รายละเอียดเมนูอาหารและเครื่องดื่ม
                     </h5>
                     <div class="table-responsive mb-5">
@@ -524,17 +536,9 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                                     class="form-control form-control-sm border-0" 
                                                     value="<?= $quote_data['event_date'] ?>"></td>
                                             <td>
-                                                <select name="menu_set_id[]" class="form-select form-select-sm border-0"
-                                                    onchange="fetchMenuDetail(this)">
-                                                    <option value="" selected>-- รายการจากใบเสนอราคา --</option>
-                                                    <?php
-                                                    if ($res_menu_sets):
-                                                        $res_menu_sets->data_seek(0);
-                                                        while ($m = $res_menu_sets->fetch_assoc()): ?>
-                                                            <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
-                                                            </option>
-                                                        <?php endwhile; endif; ?>
-                                                </select>
+                                                <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="<?= $item['menu_set_id'] ?? '' ?>">
+                                                <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
+                                                <span class="menu-type-label <?= ($item['menu_set_id'] ?? '') ? 'fw-semibold text-dark' : 'text-muted' ?>"><?= htmlspecialchars($item['menu_set_id'] ? ($menu_types_array[array_search($item['menu_set_id'], array_column($menu_types_array, 'id'))]['type_name'] ?? '') : 'ยังไม่ได้เลือก') ?></span>
                                             </td>
                                             <td>
                                                 <textarea name="menu_detail[]"
@@ -564,17 +568,9 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                         <td><input type="date" name="menu_time[]"
                                                 class="form-control form-control-sm border-0" placeholder="10:30"></td>
                                         <td>
-                                            <select name="menu_set_id[]" class="form-select form-select-sm border-0"
-                                                onchange="fetchMenuDetail(this)">
-                                                <option value="" disabled selected>-- เลือกเซตเมนู --</option>
-                                                <?php
-                                                if ($res_menu_sets):
-                                                    $res_menu_sets->data_seek(0);
-                                                    while ($m = $res_menu_sets->fetch_assoc()): ?>
-                                                        <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['type_name']) ?>
-                                                        </option>
-                                                    <?php endwhile; endif; ?>
-                                            </select>
+                                            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
+                                            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
+                                            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
                                         </td>
                                         <td>
                                             <textarea name="menu_detail[]"
@@ -609,7 +605,36 @@ while ($row = $all_rooms_res->fetch_assoc()) {
                                 class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
                     </div>
 
-                    <h5 class="section-title"><i class="bi bi-palette-fill"></i> 6. การตกแต่งและการดูแลทำความสะอาด
+                    <div class="row mb-5">
+                        <div class="col-md-6 mb-4 mb-md-0">
+                            <div class="bg-sidebar p-4 rounded-4 h-100">
+                                <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
+                                <div class="mb-0">
+                                    <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                                    <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                        rows="6"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="bg-sidebar p-4 rounded-4 h-100">
+                                <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
+                                <div class="mb-4">
+                                    <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                                    <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                        rows="5"></textarea>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                                    <textarea name="remark" class="form-control form-control-sm bg-white"
+                                        rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="section-title"><i class="bi bi-palette-fill"></i> 7. การตกแต่งและการดูแลทำความสะอาด
                     </h5>
                     <div class="row g-3">
                         <div class="col-lg-6">
@@ -756,35 +781,27 @@ while ($row = $all_rooms_res->fetch_assoc()) {
         const table = document.querySelector("#menuTable tbody");
         const row = table.insertRow();
         row.className = "align-top";
+
         row.innerHTML = `
         <td width="150"><input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td width="200">
-            <select name="menu_set_id[]" class="form-select form-select-sm border-0" onchange="fetchMenuDetail(this)">
-                <option value="" disabled selected>-- เลือกเซตเมนู --</option>
-                <?php
-                if ($res_menu_sets) {
-                    $res_menu_sets->data_seek(0);
-                    while ($m = $res_menu_sets->fetch_assoc()) {
-                        echo '<option value="' . $m['id'] . '">' . addslashes(htmlspecialchars($m['type_name'])) . '</option>';
-                    }
-                }
-                ?>
-            </select>
+            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
+            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
+            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
         </td>
         <td>
             <textarea name="menu_detail[]"
-                                        class="form-control form-control-sm border-0 menu-detail-input"
-                                        rows="1"></textarea>
+                class="form-control form-control-sm border-0 menu-detail-input"
+                rows="1"></textarea>
         </td>
-        <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" oninput="updateMenuRowTotal(this)">
-                                </td>
-                                <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price"
-                                        placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
-                                <td><input type="number" name="menu_cost[]" class="form-control form-control-sm border-0 menu-cost"
-                                        placeholder="0.00" step="0.01"></td>
-                                <td class="text-end fw-bold menu-row-total">0.00</td>
-                                <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
-                                        onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
+        <td><input type="text" name="menu_qty[]" class="form-control form-control-sm border-0 menu-qty" oninput="updateMenuRowTotal(this)"></td>
+        <td><input type="text" name="menu_price[]" class="form-control form-control-sm border-0 menu-price"
+                placeholder="0.00" oninput="updateMenuRowTotal(this)"></td>
+        <td><input type="number" name="menu_cost[]" class="form-control form-control-sm border-0 menu-cost"
+                placeholder="0.00" step="0.01"></td>
+        <td class="text-end fw-bold menu-row-total">0.00</td>
+        <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
+                onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
     `;
     }
 
@@ -994,6 +1011,40 @@ while ($row = $all_rooms_res->fetch_assoc()) {
             document.getElementById('customer_address').value = '';
         });
     }
+    let _mtmActiveRow = null;
+
+    function openTemplateModalForRow(btn, mode, cb) {
+        _mtmActiveRow = btn.closest('tr');
+        openTemplateModal(mode, cb);
+    }
+
+    function onMenuTypeSelect(result) {
+        if (!_mtmActiveRow) return;
+        const row = _mtmActiveRow;
+        const hidden = row.querySelector('.menu-type-id');
+        const label = row.querySelector('.menu-type-label');
+        const detail = row.querySelector('.menu-detail-input');
+        const price = row.querySelector('.menu-price');
+        const cost = row.querySelector('.menu-cost');
+
+        if (hidden) hidden.value = result.type_id || result.id;
+        if (label) {
+            label.textContent = result.type_name || result.name;
+            label.classList.remove('text-muted');
+            label.classList.add('fw-semibold', 'text-dark');
+        }
+        if (detail && result.description) {
+            detail.value = result.description;
+            detail.style.height = 'auto';
+            detail.style.height = detail.scrollHeight + 'px';
+        }
+        if (price && result.price !== undefined) price.value = parseFloat(result.price).toFixed(2);
+        if (cost && result.cost !== undefined) cost.value = parseFloat(result.cost).toFixed(2);
+
+        _mtmActiveRow = null;
+    }
+
     initCustomerSelect();
 </script>
+<?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>
