@@ -163,33 +163,39 @@ function flexChecklist($tasks) {
     return $items;
 }
 
-function buildApprovedFlex($detail, $approveName, $originUrl, $roleKey = 'admin', $sections = [], $checklist = []) {
+function buildApprovedFlex($detail, $approveName, $originUrl, $roleKey = 'admin', $sections = [], $checklist = [], $calendarUrl = '') {
     $colorMap = [
         'banquet_staff' => '#FF6B35', 'technician' => '#2196F3',
-        'housekeeping' => '#9C27B0', 'admin' => '#607D8B', 'procurement' => '#795548',
+        'housekeeping' => '#9C27B0', 'admin' => '#607D8B', 'procurement' => '#795548', 'staff' => '#E67E22',
     ];
     $nameMap = [
         'banquet_staff' => '🍽️ จัดเลี้ยง', 'technician' => '⚙️ วิศวกรรม',
-        'housekeeping' => '🧹 ทำความสะอาด', 'admin' => '👤 ผู้ดูแลระบบ', 'procurement' => '📦 จัดซื้อ',
+        'housekeeping' => '🧹 ทำความสะอาด', 'admin' => '👤 ผู้ดูแลระบบ', 'procurement' => '📦 จัดซื้อ', 'staff' => '👥 พนักงาน',
     ];
     $pageMap = [
         'banquet_staff' => 'banquet_bk.php', 'technician' => 'banquet_mt.php', 'housekeeping' => 'banquet_hk.php',
     ];
 
+    $bodyContents = [
+        flexLabelValue('📌', $detail['function_name'], '#111111'),
+        flexLabelValue('👤', $detail['booking_name']),
+        flexLabelValue('📞', $detail['phone']),
+    ];
+    if (!in_array($roleKey, ['banquet_staff', 'technician', 'housekeeping'])) {
+        $bodyContents[] = flexLabelValue('💰', number_format($detail['total_amount'], 2) . ' บาท', '#111111');
+    }
+    $bodyContents = array_merge($bodyContents, [
+        flexLabelValue('🏠', $detail['booking_room']),
+        flexLabelValue('📅 เริ่ม', date('d/m/Y H:i', strtotime($detail['start_time']))),
+        flexLabelValue('📅 สิ้นสุด', date('d/m/Y H:i', strtotime($detail['end_time']))),
+        flexSeparator(),
+        flexLabelValue('👨‍💼 อนุมัติ', $approveName, '#1DB446'),
+        flexLabelValue('🆔', $detail['function_code'], '#111111'),
+    ]);
+
     $body = [
         'type' => 'box', 'layout' => 'vertical', 'spacing' => 'sm', 'paddingAll' => '16px',
-        'contents' => [
-            flexLabelValue('📌', $detail['function_name'], '#111111'),
-            flexLabelValue('👤', $detail['booking_name']),
-            flexLabelValue('📞', $detail['phone']),
-            flexLabelValue('💰', number_format($detail['total_amount'], 2) . ' บาท', '#111111'),
-            flexLabelValue('🏠', $detail['booking_room']),
-            flexLabelValue('📅 เริ่ม', date('d/m/Y H:i', strtotime($detail['start_time']))),
-            flexLabelValue('📅 สิ้นสุด', date('d/m/Y H:i', strtotime($detail['end_time']))),
-            flexSeparator(),
-            flexLabelValue('👨‍💼 อนุมัติ', $approveName, '#1DB446'),
-            flexLabelValue('🆔', $detail['function_code'], '#111111'),
-        ],
+        'contents' => $bodyContents,
     ];
 
     // Role-specific section
@@ -233,10 +239,16 @@ function buildApprovedFlex($detail, $approveName, $originUrl, $roleKey = 'admin'
         ],
         'body' => $body,
         'footer' => [
-            'type' => 'box', 'layout' => 'vertical', 'contents' => [[
-                'type' => 'button', 'style' => 'primary', 'color' => '#1DB446', 'height' => 'sm',
-                'action' => ['type' => 'uri', 'label' => 'เปิดดูงาน', 'uri' => $originUrl . '/manage_banquet/' . $targetPage],
-            ]], 'paddingAll' => '12px',
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs', 'contents' => array_merge(
+                [[
+                    'type' => 'button', 'style' => 'primary', 'color' => '#1DB446', 'height' => 'sm',
+                    'action' => ['type' => 'uri', 'label' => 'เปิดดูงาน', 'uri' => $originUrl . '/manage_banquet/' . $targetPage],
+                ]],
+                $calendarUrl ? [[
+                    'type' => 'button', 'style' => 'link', 'color' => '#1DB446', 'height' => 'sm',
+                    'action' => ['type' => 'uri', 'label' => '📅 ดูปฏิทิน', 'uri' => $calendarUrl],
+                ]] : []
+            ), 'paddingAll' => '12px',
         ],
     ];
 }

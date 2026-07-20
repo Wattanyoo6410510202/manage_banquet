@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($detail) {
             $approveName = $_SESSION['user_name'] ?? 'GM';
             $origin = $_SERVER['HTTP_ORIGIN'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $calendarUrl = 'https://nas909ssf.myqnapcloud.com:8081/manage_banquet/public_calendar.php';
 
             function getFlexChecklist($conn, $table) {
                 $items = [];
@@ -102,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (trim($detail['banquet_style'] ?? '')) {
                 $bkSections[] = ['label' => '🎨 รูปแบบการจัดงาน (SET-UP)', 'text' => $detail['banquet_style']];
             }
-            $bkFlex = buildApprovedFlex($detail, $approveName, $origin, 'banquet_staff', $bkSections, getFlexChecklist($conn, 'master_checklist_bk'));
+            $bkFlex = buildApprovedFlex($detail, $approveName, $origin, 'banquet_staff', $bkSections, getFlexChecklist($conn, 'master_checklist_bk'), $calendarUrl);
             $r = sendLineFlexToRole($conn, 'banquet_staff', $bkFlex, '✅ งานได้รับการอนุมัติ - จัดเลี้ยง');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
@@ -114,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (trim($detail['remark'] ?? '')) {
                 $mtSections[] = ['label' => '📝 หมายเหตุ', 'text' => $detail['remark']];
             }
-            $mtFlex = buildApprovedFlex($detail, $approveName, $origin, 'technician', $mtSections, getFlexChecklist($conn, 'master_checklist_mt'));
+            $mtFlex = buildApprovedFlex($detail, $approveName, $origin, 'technician', $mtSections, getFlexChecklist($conn, 'master_checklist_mt'), $calendarUrl);
             $r = sendLineFlexToRole($conn, 'technician', $mtFlex, '✅ งานได้รับการอนุมัติ - วิศวกรรม');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
@@ -126,17 +127,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (trim($detail['hk_florist_detail'] ?? '')) {
                 $hkSections[] = ['label' => '💐 พนักงานทำความสะอาด/จัดดอกไม้', 'text' => $detail['hk_florist_detail']];
             }
-            $hkFlex = buildApprovedFlex($detail, $approveName, $origin, 'housekeeping', $hkSections, getFlexChecklist($conn, 'master_checklist_hk'));
+            $hkFlex = buildApprovedFlex($detail, $approveName, $origin, 'housekeeping', $hkSections, getFlexChecklist($conn, 'master_checklist_hk'), $calendarUrl);
             $r = sendLineFlexToRole($conn, 'housekeeping', $hkFlex, '✅ งานได้รับการอนุมัติ - ทำความสะอาด');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
             // ===== admin / procurement =====
-            $adminFlex = buildApprovedFlex($detail, $approveName, $origin, 'admin');
+            $adminFlex = buildApprovedFlex($detail, $approveName, $origin, 'admin', [], [], $calendarUrl);
             $r = sendLineFlexToRole($conn, 'admin', $adminFlex, '✅ งานได้รับการอนุมัติ');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
 
-            $procFlex = buildApprovedFlex($detail, $approveName, $origin, 'procurement');
+            $procFlex = buildApprovedFlex($detail, $approveName, $origin, 'procurement', [], [], $calendarUrl);
             $r = sendLineFlexToRole($conn, 'procurement', $procFlex, '✅ งานได้รับการอนุมัติ');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
+
+            $staffFlex = buildApprovedFlex($detail, $approveName, $origin, 'staff', [], [], $calendarUrl);
+            $r = sendLineFlexToRole($conn, 'staff', $staffFlex, '✅ งานได้รับการอนุมัติ');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
         }
 

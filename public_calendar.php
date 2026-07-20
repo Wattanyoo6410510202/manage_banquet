@@ -1,12 +1,10 @@
 <?php
-$conn = mysqli_connect("localhost", "root", "", "managebanquet_simple");
-if (!$conn) { die("Database Connection Error"); }
-mysqli_set_charset($conn, "utf8mb4");
+require_once __DIR__ . "/config.php";
 
 $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 $rooms = $conn->query("SELECT id, room_name, company_id FROM meeting_rooms WHERE status = 'active' ORDER BY room_name ASC");
 $rooms_json = [];
-while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
+if ($rooms) while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
 
 // AJAX endpoint for full EO detail
 if (isset($_GET['ajax_detail']) && isset($_GET['id'])) {
