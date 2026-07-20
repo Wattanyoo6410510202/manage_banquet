@@ -140,7 +140,7 @@ function flexLabelValue($label, $value, $color = '#555555') {
         'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm',
         'contents' => [
             ['type' => 'text', 'text' => $label, 'size' => 'sm', 'color' => '#888888', 'flex' => 0, 'weight' => 'bold'],
-            ['type' => 'text', 'text' => (string)$value, 'size' => 'sm', 'color' => $color, 'wrap' => true, 'align' => 'end', 'flex' => 4],
+            ['type' => 'text', 'text' => ($value === null || $value === '' || $value === false) ? '-' : (string)$value, 'size' => 'sm', 'color' => $color, 'wrap' => true, 'align' => 'end', 'flex' => 4],
         ]
     ];
 }
