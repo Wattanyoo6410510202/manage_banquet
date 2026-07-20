@@ -24,7 +24,7 @@ if (isset($_POST['action'])) {
             if ($id > 0) {
                 $sql = "UPDATE $table SET type_name='$name', $category_sql WHERE id=$id";
             } else {
-                $sql = "INSERT INTO $table (type_name, $category_sql) VALUES ('$name', " . ($category_id > 0 ? $category_id : 'NULL') . ")";
+                $sql = "INSERT INTO $table (type_name, category_id) VALUES ('$name', " . ($category_id > 0 ? $category_id : 'NULL') . ")";
             }
         } else {
             $sort_order = intval($_POST['sort_order'] ?? 0);
