@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $detail = $conn->query("SELECT function_name, booking_name, phone, pax, deposit, total_amount, function_code, start_time, end_time, booking_room, banquet_style, equipment, remark, backdrop_detail, hk_florist_detail FROM functions WHERE id = $id")->fetch_assoc();
         if ($detail) {
             $approveName = $_SESSION['user_name'] ?? 'GM';
-            $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+            $origin = $_SERVER['HTTP_ORIGIN'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
             function getFlexChecklist($conn, $table) {
                 $items = [];

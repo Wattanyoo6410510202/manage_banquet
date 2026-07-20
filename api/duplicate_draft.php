@@ -73,7 +73,7 @@ try {
 
     // LINE แจ้งเตือนมี Draft ใหม่ (Flex Message)
     include_once __DIR__ . "/../line_helper.php";
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     $draftFlex = buildDraftFlex($original['function_name'], $new_draft_name, $origin);
     $lineSent = 0;
     $lineFailed = 0;
