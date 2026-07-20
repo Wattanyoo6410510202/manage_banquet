@@ -7,6 +7,8 @@ $user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 if (isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
+    error_reporting(E_ALL);
+    ini_set('display_errors', 0);
     $action = $_POST['action'];
     $allowed_tables = ['master_menu_types', 'master_break_types', 'master_menu_categories'];
     $table = $_POST['table_name'] ?? '';
@@ -30,12 +32,18 @@ if (isset($_POST['action'])) {
             } else {
                 $sql = "INSERT INTO $table (type_name, category_id) VALUES ('$name', " . ($category_id > 0 ? $category_id : 'NULL') . ")";
             }
-        } else {
+        } elseif ($table === 'master_menu_categories') {
             $sort_order = intval($_POST['sort_order'] ?? 0);
             if ($id > 0) {
-                $sql = "UPDATE $table SET type_name='$name', sort_order=$sort_order WHERE id=$id";
+                $sql = "UPDATE $table SET category_name='$name', sort_order=$sort_order WHERE id=$id";
             } else {
-                $sql = "INSERT INTO $table (type_name, sort_order) VALUES ('$name', $sort_order)";
+                $sql = "INSERT INTO $table (category_name, sort_order) VALUES ('$name', $sort_order)";
+            }
+        } else {
+            if ($id > 0) {
+                $sql = "UPDATE $table SET type_name='$name' WHERE id=$id";
+            } else {
+                $sql = "INSERT INTO $table (type_name) VALUES ('$name')";
             }
         }
 
