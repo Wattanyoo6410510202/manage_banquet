@@ -579,7 +579,8 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 </script>
 
 <style>
-    .select2-container { z-index: 1050 !important; }
+    .select2-container { z-index: 1030 !important; }
+    .select2-dropdown { z-index: 1045 !important; }
     .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; border: 1px solid #ced4da !important; font-size: 0.875rem; }
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 8px; }
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; }
