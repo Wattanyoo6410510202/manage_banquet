@@ -334,11 +334,12 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
             </button>
         </div>
         <div class="menu-type-modal-tabs" id="menuTypeTabs">
-            <button type="button" class="tab-btn active" data-submode="items" onclick="_mtmSwitchSubMode('items')">
-                <i class="bi bi-list-ul me-1"></i>เลือกรายการ
-            </button>
-            <button type="button" class="tab-btn" data-submode="set" onclick="_mtmSwitchSubMode('set')">
+           
+            <button type="button" class="tab-btn active" data-submode="set" onclick="_mtmSwitchSubMode('set')">
                 <i class="bi bi-grid-3x3-gap me-1"></i>เลือกแบบเซต
+            </button>
+             <button type="button" class="tab-btn " data-submode="items" onclick="_mtmSwitchSubMode('items')">
+                <i class="bi bi-list-ul me-1"></i>เลือกรายการ
             </button>
         </div>
         <div class="menu-type-modal-breadcrumb" id="menuTypeBreadcrumb" style="display:none;"></div>
@@ -366,11 +367,13 @@ const _breakTypesData = <?= $break_modal_json ?>;
 let _mtmTarget = null;
 let _mtmCallback = null;
 let _mtmMode = 'type';
-let _mtmSubMode = 'items';
+let _mtmSubMode = 'set';
 let _mtmLevel = 0;
 let _mtmSelectedCategory = null;
 let _mtmSelectedType = null;
 let _mtmSelectedTypeId = null;
+let _mtmSelectedTypeIds = [];
+let _mtmSelectedTemplateIds = {};
 let _mtmSelectedTemplate = null;
 let _mtmTypeCache = {};
 let _mtmSetPrice = 3000;
@@ -394,6 +397,8 @@ function _mtmReset() {
     _mtmSelectedTemplate = null;
     _mtmSetPrice = 3000;
     _mtmSetItems = [];
+    _mtmSelectedTypeIds = [];
+    _mtmSelectedTemplateIds = {};
 }
 
 function _mtmRenderBreadcrumb() {
@@ -447,6 +452,7 @@ function _mtmGoLevel(level) {
     _mtmSelectedTemplate = null;
     _mtmUpdateFooter();
     _mtmRenderBreadcrumb();
+    document.getElementById('menuTypeSearchInput').value = '';
 
     if (_mtmMode === 'template-menu') {
         if (level === 0) renderMenuTypeModalCards('');
@@ -473,12 +479,12 @@ function renderMenuTypeModalCards(filter) {
     let html = '';
     let hasResults = false;
 
+    if (_mtmMode === 'type') {
     Object.keys(groups).sort().forEach(catName => {
         const items = groups[catName];
         if (items.length === 0) return;
         hasResults = true;
 
-        if (_mtmMode === 'type') {
             html += `<div class="cat-section"><div class="cat-title">${_mtmEscapeHtml(catName)}</div><div class="card-grid">`;
             items.forEach(mt => {
                 const currentVal = _mtmTarget ? _mtmTarget.value : '';
@@ -486,15 +492,19 @@ function renderMenuTypeModalCards(filter) {
                 html += `<div class="menu-card${sel}" data-id="${mt.id}" onclick="selectMenuTypeFromModal(${mt.id},'${_mtmEscapeAttr(mt.type_name)}')">${_mtmEscapeHtml(mt.type_name)}</div>`;
             });
             html += `</div></div>`;
-        } else {
-            html += `<div class="cat-section"><div class="cat-title">${_mtmEscapeHtml(catName)}</div><div class="card-grid">`;
-            items.forEach(mt => {
-                const sel = (_mtmSelectedCategory === catName) ? ' selected' : '';
-                html += `<div class="menu-card${sel}" onclick="_mtmSelectCategory('${_mtmEscapeAttr(catName)}')">${_mtmEscapeHtml(catName)} <small class="text-muted d-block">${items.length} ประเภท</small></div>`;
-            });
-            html += `</div></div>`;
-        }
     });
+    } else {
+        html += '<div class="card-grid">';
+        Object.keys(groups).sort().forEach(catName => {
+            const items = groups[catName];
+            if (items.length === 0) return;
+            hasResults = true;
+            const hasSelected = items.some(mt => _mtmSelectedTypeIds.includes(Number(mt.id)));
+            const catSel = _mtmSelectedCategory === catName || hasSelected ? ' selected' : '';
+            html += `<div class="menu-card${catSel}" onclick="_mtmSelectCategory('${_mtmEscapeAttr(catName)}')">${_mtmEscapeHtml(catName)} <small class="text-muted d-block">${items.length} ประเภท</small></div>`;
+        });
+        html += '</div>';
+    }
 
     if (!hasResults) {
         html = '<div class="no-results"><i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:8px;"></i>ไม่พบเมนูที่ค้นหา</div>';
@@ -509,6 +519,7 @@ function _mtmSelectCategory(catName) {
     _mtmSelectedTemplate = null;
     _mtmUpdateFooter();
     _mtmRenderBreadcrumb();
+    document.getElementById('menuTypeSearchInput').value = '';
 
     _mtmRenderTypesForCategory(catName, '');
 }
@@ -530,8 +541,9 @@ function _mtmRenderTypesForCategory(catName, filter) {
     } else {
         html += '<div class="card-grid">';
         types.forEach(mt => {
-            const sel = (_mtmSelectedType === mt.type_name) ? ' selected' : '';
-            html += `<div class="menu-card${sel}" onclick="_mtmSelectType('${_mtmEscapeAttr(mt.type_name)}',${mt.id})">${_mtmEscapeHtml(mt.type_name)}</div>`;
+            const sel = (_mtmSelectedTypeIds.includes(Number(mt.id))) ? ' selected' : '';
+            const cnt = (_mtmSelectedTemplateIds[mt.id] || []).length;
+            html += `<div class="menu-card${sel}" onclick="_mtmSelectType('${_mtmEscapeAttr(mt.type_name)}',${mt.id})">${_mtmEscapeHtml(mt.type_name)}${cnt ? `<small class="text-muted d-block">${cnt} รายการ</small>` : ''}</div>`;
         });
         html += '</div>';
     }
@@ -621,6 +633,11 @@ function _mtmAddToSetList() {
         description: _mtmSelectedTemplate.menu_items || ''
     });
 
+    if (!_mtmSelectedTypeIds.includes(Number(_mtmSelectedTypeId))) _mtmSelectedTypeIds.push(Number(_mtmSelectedTypeId));
+    if (!_mtmSelectedTemplateIds[_mtmSelectedTypeId]) _mtmSelectedTemplateIds[_mtmSelectedTypeId] = [];
+    if (!_mtmSelectedTemplateIds[_mtmSelectedTypeId].includes(Number(_mtmSelectedTemplate.id)))
+        _mtmSelectedTemplateIds[_mtmSelectedTypeId].push(Number(_mtmSelectedTemplate.id));
+
     _mtmSelectedTemplate = null;
     _mtmSetPrice = 3000;
     _mtmLevel = 2;
@@ -648,29 +665,38 @@ function _mtmLoadTemplates(typeId) {
         .then(r => r.json())
         .then(items => {
             _mtmTypeCache[typeId] = items;
-            _mtmRenderTemplates(items);
+            document.getElementById('menuTypeSearchInput').value = '';
+            _mtmRenderTemplates();
         })
         .catch(() => {
             body.innerHTML = '<div class="no-results">ไม่สามารถโหลดข้อมูลได้</div>';
         });
 }
 
-function _mtmRenderTemplates(items) {
+function _mtmRenderTemplates(filter) {
     const body = document.getElementById('menuTypeModalBody');
     let html = '';
+    filter = (filter || '').toLowerCase();
 
-    if (items.length === 0) {
-        html = '<div class="no-results"><i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>ยังไม่มีเทมเพลตเมนูในประเภทนี้</div>';
+    const items = _mtmTypeCache[_mtmSelectedTypeId] || [];
+    const filtered = filter
+        ? items.filter(item => (item.menu_items || item.name || '').toLowerCase().includes(filter))
+        : items;
+
+    if (filtered.length === 0) {
+        html = '<div class="no-results"><i class="bi bi-search" style="font-size:2rem;display:block;margin-bottom:8px;"></i>ไม่พบเมนูที่ค้นหา</div>';
     } else {
-        items.forEach(item => {
-            const sel = (_mtmSelectedTemplate && _mtmSelectedTemplate.id === item.id) ? ' selected' : '';
-            const shortDesc = item.menu_items.length > 100 ? item.menu_items.substring(0, 100) + '...' : item.menu_items;
+        filtered.forEach(item => {
+            const prevSel = _mtmSelectedTemplateIds[_mtmSelectedTypeId] && _mtmSelectedTemplateIds[_mtmSelectedTypeId].includes(Number(item.id));
+            const curSel = _mtmSelectedTemplate && _mtmSelectedTemplate.id === item.id;
+            const sel = (prevSel || curSel) ? ' selected' : '';
+            const shortDesc = (item.menu_items || '').length > 100 ? item.menu_items.substring(0, 100) + '...' : item.menu_items;
             const onclick = (_mtmSubMode === 'set')
                 ? `_mtmPickTemplateForSet(${item.id})`
                 : `_mtmSelectTemplate(${item.id})`;
             html += `<div class="template-card${sel}" onclick="${onclick}">
-                <div class="tpl-name">${_mtmEscapeHtml('[ ' + (_mtmSelectedType || '') + ' ]')}</div>
-                <div class="tpl-detail">${_mtmEscapeHtml(shortDesc)}</div>
+                <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
+                <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc || item.menu_items || item.name)}</div>
                 <div class="tpl-price">${parseFloat(item.price_per_pax).toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
             </div>`;
         });
@@ -807,7 +833,7 @@ function openTemplateModal(mode, callbackName, subMode) {
     _mtmTarget = null;
     _mtmCallback = callbackName || null;
     _mtmMode = mode;
-    _mtmSubMode = subMode || 'items';
+    _mtmSubMode = subMode || 'set';
     _mtmReset();
     _mtmTypeCache = {};
 
@@ -957,6 +983,7 @@ function filterMenuTypeModal(val) {
     } else if (_mtmMode === 'template-menu') {
         if (_mtmLevel === 0) renderMenuTypeModalCards(val);
         else if (_mtmLevel === 1) _mtmRenderTypesForCategory(_mtmSelectedCategory, val);
+        else if (_mtmLevel === 2) _mtmRenderTemplates(val);
     } else if (_mtmMode === 'template-break') {
         if (_mtmLevel === 0) _mtmRenderBreakTypes(val);
     }

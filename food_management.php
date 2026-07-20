@@ -221,7 +221,7 @@ require_once "header.php";
                         <table id="menuTable" class="table table-hover align-middle w-100">
                             <thead class="table-dark">
                                 <tr class="small text-uppercase">
-                                    <th>รายการเมนู/เครื่องดื่ม</th>
+                                    <th>รายการเมนู</th>
                                     <th class="text-center">จำนวน</th>
                                     <th class="text-center">ราคาขาย/หัว</th>
                                     <th class="text-center">ราคาทุน/หัว</th>
@@ -234,15 +234,9 @@ require_once "header.php";
                                 <?php while ($row = $menus->fetch_assoc()): ?>
                                     <tr id="row-<?= $row['id'] ?>">
                                         <td>
-                                            <div class="mb-1">
-                                                <span class="badge bg-secondary">Food</span>
+                                            <div>
                                                 <small
                                                     class=" menu-text"><?= nl2br(htmlspecialchars($row['menu_items'])) ?></small>
-                                            </div>
-                                            <div>
-                                                <span class="badge bg-info text-dark">Beverage</span>
-                                                <small
-                                                    class=" bev-text"><?= nl2br(htmlspecialchars($row['beverage_detail'])) ?></small>
                                             </div>
                                         </td>
                                         <td class="col-pax text-center"><?= number_format($row['guarantee_pax']) ?></td>
@@ -296,15 +290,25 @@ require_once "header.php";
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
             },
             "columnDefs": [
-                { "orderable": false, "targets": [5, 6] }
+                { "orderable": false, "targets": [6] },
+                { "className": "text-center", "targets": [1, 2, 3] },
+                {
+                    "targets": 0,
+                    "render": function (data, type) {
+                        if (type === 'export' || type === 'print') {
+                            return $(data).text().trim();
+                        }
+                        return data;
+                    }
+                }
             ],
             "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                 "<'d-none'B>",
             "buttons": [
-                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } },
-                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5] } }
+                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5], modifier: { search: 'applied' } } },
+                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5], modifier: { search: 'applied' } } }
             ]
         });
 
@@ -327,27 +331,25 @@ require_once "header.php";
                             r.find('.col-price').text(Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }));
                             r.find('.col-cost').text(Number($('#m_cost').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }));
                             r.find('.menu-text').html($('#m_items').val().replace(/\n/g, '<br>'));
-                            r.find('.bev-text').html($('#m_bev').val().replace(/\n/g, '<br>'));
                         } else {
                             // --- กรณีเพิ่มใหม่: สร้างแถวใหม่เข้า DataTables ทันที ---
                             let newRow = menuTable.row.add([
-                                // 0. กลุ่มอาหาร (ใหม่)
-                                `<small class="text-muted">${res.category_name || '-'}</small>`,
+                                // 0. รายการเมนู
+                                `<small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small>`,
 
-                                // 1. รายละเอียดเมนู
-                                `<div class="mb-1"><span class="badge bg-secondary">Food</span> <small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small></div>
-     <div><span class="badge bg-info text-dark">Beverage</span> <small class="text-muted bev-text">${$('#m_bev').val().replace(/\n/g, '<br>')}</small></div>`,
-
-                                // 2. จำนวน Pax
+                                // 1. จำนวน Pax
                                 Number($('#m_pax').val()).toLocaleString(),
 
-                                // 3. ราคาต่อหัว
+                                // 2. ราคาขาย/หัว
                                 Number($('#m_price').val()).toLocaleString(undefined, { minimumFractionDigits: 2 }),
 
-                                // 4. ราคาทุนต่อหัว
+                                // 3. ราคาทุน/หัว
                                 Number($('#m_cost').val() || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }),
 
-                                // 5. ชื่อประเภท
+                                // 4. กลุ่มอาหาร
+                                `<small class="text-muted">${res.category_name || '-'}</small>`,
+
+                                // 5. ประเภทอาหาร
                                 res.type_name,
 
                                 // 6. ปุ่มจัดการ
@@ -372,11 +374,11 @@ require_once "header.php";
                             ]).draw(false).node();
 
                             $(newRow).attr('id', 'row-' + res.id);
-                            $(newRow).find('td:eq(0)').addClass('col-cat');
-                            $(newRow).find('td:eq(1)').addClass('menu-items');
-                            $(newRow).find('td:eq(2)').addClass('text-center col-pax');
-                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-primary col-price');
-                            $(newRow).find('td:eq(4)').addClass('text-center fw-bold text-danger col-cost');
+                            $(newRow).find('td:eq(0)').addClass('menu-items');
+                            $(newRow).find('td:eq(1)').addClass('text-center col-pax');
+                            $(newRow).find('td:eq(2)').addClass('text-center fw-bold text-primary col-price');
+                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-danger col-cost');
+                            $(newRow).find('td:eq(4)').addClass('col-cat');
                             $(newRow).find('td:eq(6)').addClass('text-center');
                         }
 
@@ -450,7 +452,7 @@ require_once "header.php";
     }
 
     function filterByCategory(val) {
-        menuTable.column(0).search(val).draw();
+        menuTable.column(4).search(val).draw();
     }
 </script>
 
