@@ -6,11 +6,13 @@ $user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
 
 // --- 1. ส่วนจัดการข้อมูล (API Logic) ---
 if (isset($_POST['action'])) {
+    header('Content-Type: application/json; charset=utf-8');
     $action = $_POST['action'];
     $allowed_tables = ['master_menu_types', 'master_break_types', 'master_menu_categories'];
-    $table = $_POST['table_name'];
+    $table = $_POST['table_name'] ?? '';
 
     if (!in_array($table, $allowed_tables)) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid table']);
         exit;
     }
 
@@ -18,11 +20,13 @@ if (isset($_POST['action'])) {
     $name = $conn->real_escape_string($_POST['type_name'] ?? '');
 
     if ($action == 'save') {
+        $category_id = 0;
+        $sort_order = 0;
+
         if ($table === 'master_menu_types') {
             $category_id = intval($_POST['category_id'] ?? 0);
-            $category_sql = $category_id > 0 ? "category_id=$category_id" : "category_id=NULL";
             if ($id > 0) {
-                $sql = "UPDATE $table SET type_name='$name', $category_sql WHERE id=$id";
+                $sql = "UPDATE $table SET type_name='$name', category_id=" . ($category_id > 0 ? $category_id : 'NULL') . " WHERE id=$id";
             } else {
                 $sql = "INSERT INTO $table (type_name, category_id) VALUES ('$name', " . ($category_id > 0 ? $category_id : 'NULL') . ")";
             }
@@ -35,7 +39,11 @@ if (isset($_POST['action'])) {
             }
         }
 
-        $conn->query($sql);
+        if (!$conn->query($sql)) {
+            echo json_encode(['status' => 'error', 'message' => $conn->error, 'sql' => $sql]);
+            exit;
+        }
+
         if ($id > 0) {
             $cat_name = '';
             if ($table === 'master_menu_types' && $category_id > 0) {
@@ -59,6 +67,8 @@ if (isset($_POST['action'])) {
         if (ob_get_length()) ob_clean();
         if ($conn->query("DELETE FROM $table WHERE id=$id")) {
             echo "success";
+        } else {
+            echo json_encode(['status' => 'error', 'message' => $conn->error]);
         }
         exit;
     }
@@ -302,6 +312,10 @@ function saveData(event, type) {
             }
         }
         resetSettingForm(type);
+    })
+    .catch(err => {
+        console.error('Save error:', err);
+        alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
     });
 }
 
