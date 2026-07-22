@@ -44,7 +44,7 @@ $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_
         LEFT JOIN customers cust ON f.customer_id = cust.id
         LEFT JOIN event_projects p ON f.project_id = p.id
         $where_clause
-        ORDER BY f.modify DESC, f.id DESC";
+        ORDER BY FIELD(f.status, 'Cancelled') ASC, f.modify DESC, f.id DESC";
 
 $q = mysqli_query($conn, $sql);
 $projects_data = [];
@@ -95,6 +95,20 @@ if ($q && mysqli_num_rows($q) > 0) {
         $projects_data[$pid]['drafts'][] = $row;
     }
 }
+
+// เรียงรายการที่สถานะยกเลิกลงล่างสุด
+uasort($projects_data, function($a, $b) {
+    $aMaster = null;
+    $bMaster = null;
+    foreach ($a['drafts'] as $d) { if ($d['is_approved'] == 1) { $aMaster = $d; break; } }
+    if (!$aMaster) $aMaster = $a['drafts'][0];
+    foreach ($b['drafts'] as $d) { if ($d['is_approved'] == 1) { $bMaster = $d; break; } }
+    if (!$bMaster) $bMaster = $b['drafts'][0];
+    $aCancelled = ($aMaster['status'] ?? '') === 'Cancelled' ? 1 : 0;
+    $bCancelled = ($bMaster['status'] ?? '') === 'Cancelled' ? 1 : 0;
+    if ($aCancelled !== $bCancelled) return $aCancelled - $bCancelled;
+    return strtotime($bMaster['modify'] ?? 'now') - strtotime($aMaster['modify'] ?? 'now');
+});
 
 // 5. ดึงข้อมูลใบเสนอราคาทั้งหมด จัดกลุ่มตาม project_id หรือ function_id (กรณีไม่มี project)
 $quotations_by_project = [];

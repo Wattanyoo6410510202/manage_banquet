@@ -15,13 +15,30 @@ if (!isset($_GET['my'])) {
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
 
-$sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, p.project_name 
+$sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, c.sales_name, p.project_name 
         FROM quotations q
         LEFT JOIN functions f ON q.function_id = f.id
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN event_projects p ON q.project_id = p.id
         $filter_clause
         ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
+
+// สถานะ Workflow (Pipeline/Follow-up)
+$workflow_statuses = [
+    'Draft'                        => ['class' => 'bg-secondary-subtle text-secondary',  'icon' => 'bi-pencil-square'],
+    'ส่งใบเสนอราคาแล้ว'            => ['class' => 'bg-info-subtle text-info',            'icon' => 'bi-send'],
+    'Follow Up ครั้งที่ 1'         => ['class' => 'bg-primary-subtle text-primary',      'icon' => 'bi-telephone'],
+    'Follow Up ครั้งที่ 2'         => ['class' => 'bg-primary-subtle text-primary',      'icon' => 'bi-telephone'],
+    'Follow Up ครั้งที่ 3'         => ['class' => 'bg-primary-subtle text-primary',      'icon' => 'bi-telephone'],
+    'ลูกค้าต่อรองราคา'             => ['class' => 'bg-warning-subtle text-warning',      'icon' => 'bi-cash-coin'],
+    'รออนุมัติส่วนลด'              => ['class' => 'bg-warning-subtle text-warning',      'icon' => 'bi-hourglass-split'],
+    'ส่งใบเสนอราคาใหม่ (Revision)' => ['class' => 'bg-info-subtle text-info',            'icon' => 'bi-arrow-repeat'],
+    'ลูกค้าเซ็นยืนยัน'             => ['class' => 'bg-success-subtle text-success',      'icon' => 'bi-check-circle'],
+    'รับเงินมัดจำแล้ว'             => ['class' => 'bg-success-subtle text-success',      'icon' => 'bi-wallet2'],
+    'เปิด Function (BEO)'          => ['class' => 'bg-primary-subtle text-primary',      'icon' => 'bi-calendar-check'],
+    'Lost Sale'                    => ['class' => 'bg-danger-subtle text-danger',        'icon' => 'bi-x-circle'],
+    'Cancelled'                    => ['class' => 'bg-danger-subtle text-danger',        'icon' => 'bi-trash'],
+];
 
 $result = $conn->query($sql);
 $quotes = [];
@@ -87,9 +104,10 @@ $status_map = [
                         <th class="text-center" width="10%">เลขที่ใบเสนอราคา</th>
                         <th width="8%">วันที่ออก</th>
                         <th width="12%">วันที่เริ่ม - วันสิ้นสุด</th>
-                        <th>ผู้ประสานงาน</th>
+                        <th>เซลล์ที่ดูแล</th>
                         <th class="text-end" width="10%">ยอดสุทธิ</th>
                         <th class="text-center" width="8%">สถานะ</th>
+                        <th class="text-center" width="15%">สถานะใบเสนอราคา</th>
                         <th class="text-center" width="8%">เลือกใช้งาน</th>
                         <th class="text-center" width="15%">จัดการ</th>
                     </tr>
@@ -98,7 +116,7 @@ $status_map = [
                     <!-- Ungrouped quotes (no project_id) first -->
                     <?php if (!empty($ungrouped)): ?>
                         <tr class="project-header-row has-sub" data-pid="ungrouped">
-                            <td class="text-center" colspan="8">
+                            <td class="text-center" colspan="9">
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bi bi-plus-square text-muted toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
                                     <i class="bi bi-file-earmark-text text-muted"></i>
@@ -109,6 +127,7 @@ $status_map = [
                         </tr>
                         <?php foreach ($ungrouped as $q):
                             $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                            $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
                         ?>
                             <tr class="quote-sub-row bg-light" data-parent-pid="ungrouped" style="display:none">
                                 <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
@@ -129,10 +148,26 @@ $status_map = [
                                 <td>
                                     <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
                                     <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
+                                    <?php if (!empty($q['sales_name'])): ?>
+                                        <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
                                     <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                    <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
+                                            style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                            data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                        <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                            <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?php else: ?>
+                                        <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($q['is_selected']): ?>
@@ -175,13 +210,16 @@ $status_map = [
                     ?>
                         <!-- Project Header Row -->
                         <tr class="project-header-row has-sub" data-pid="p_<?= $pid ?>">
-                            <td class="text-center" colspan="8">
+                            <td class="text-center" colspan="9">
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
                                     
                                     <span class="fw-bold text-dark">ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?></span>
                                     <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
                                     <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
+                                    <?php if (!empty($first_q['cust_contact_name'])): ?>
+                                        <span class="text-muted small ms-2"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></span>
+                                    <?php endif; ?>
                                     <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark ms-auto" title="เพิ่มใบเสนอราคาในโครงการนี้">
                                         <i class="bi bi-plus-circle"></i> เพิ่ม
                                     </a>
@@ -192,6 +230,7 @@ $status_map = [
                         <!-- Quotation Rows (hidden by default) -->
                         <?php foreach ($quotes_list as $q):
                             $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                            $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
                         ?>
                             <tr class="quote-sub-row bg-light" data-parent-pid="p_<?= $pid ?>" style="display:none">
                                 <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
@@ -211,11 +250,26 @@ $status_map = [
                                 </td>
                                 <td>
                                     <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
+                                    <?php if (!empty($q['sales_name'])): ?>
+                                        <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
                                 <td class="text-center">
                                     <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                    <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
+                                            style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                            data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                        <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                            <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <?php else: ?>
+                                        <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($q['is_selected']): ?>
@@ -267,6 +321,7 @@ $status_map = [
                         <div id="mobile-ungrouped" style="display:none">
                             <?php foreach ($ungrouped as $q):
                                 $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
                             ?>
                                 <div class="card mb-2 border-0 bg-light">
                                     <div class="card-body p-2 small">
@@ -277,7 +332,23 @@ $status_map = [
                                             </div>
                                             <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
                                         </div>
+                                        <div class="mb-2">
+                                            <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                            <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
+                                                    style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                    data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                                <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                                    <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <?php else: ?>
+                                                <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= $q['cust_name'] ?></div>
+                                        <?php if (!empty($q['sales_name'])): ?>
+                                            <div class="small mb-1" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                        <?php endif; ?>
                                         <small class="text-muted d-block mb-1">
                                             <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
                                         </small>
@@ -312,6 +383,9 @@ $status_map = [
                                     ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?>
                                 </div>
                                 <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                <?php if (!empty($first_q['cust_contact_name'])): ?>
+                                    <div class="text-muted small mt-1"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></div>
+                                <?php endif; ?>
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark" title="เพิ่มใบเสนอราคาในโครงการนี้">
@@ -324,6 +398,7 @@ $status_map = [
                         <div id="mobile-quotes-p_<?= $pid ?>" style="display:none">
                             <?php foreach ($quotes_list as $q):
                                 $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
                             ?>
                                 <div class="quote-mobile-item">
                                     <?php if ($q !== $quotes_list[0]): ?>
@@ -340,6 +415,19 @@ $status_map = [
                                         <span class="badge border <?= $st['class'] ?> px-2 py-1">
                                             <?= $st['text'] ?>
                                         </span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                        <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
+                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                            <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <?php else: ?>
+                                            <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                        <?php endif; ?>
                                     </div>
                                     
                                     <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
@@ -566,6 +654,67 @@ $status_map = [
                 }
             });
         });
+
     });
+
+    const wfColors = {
+        'Draft':                        { bg: '#6c757d', text: '#fff' },
+        'ส่งใบเสนอราคาแล้ว':            { bg: '#0dcaf0', text: '#055160' },
+        'Follow Up ครั้งที่ 1':         { bg: '#0d6efd', text: '#fff' },
+        'Follow Up ครั้งที่ 2':         { bg: '#0d6efd', text: '#fff' },
+        'Follow Up ครั้งที่ 3':         { bg: '#0d6efd', text: '#fff' },
+        'ลูกค้าต่อรองราคา':             { bg: '#ffc107', text: '#664d03' },
+        'รออนุมัติส่วนลด':              { bg: '#ffc107', text: '#664d03' },
+        'ส่งใบเสนอราคาใหม่ (Revision)': { bg: '#0dcaf0', text: '#055160' },
+        'ลูกค้าเซ็นยืนยัน':             { bg: '#198754', text: '#fff' },
+        'รับเงินมัดจำแล้ว':             { bg: '#198754', text: '#fff' },
+        'เปิด Function (BEO)':          { bg: '#0d6efd', text: '#fff' },
+        'Lost Sale':                    { bg: '#dc3545', text: '#fff' },
+        'Cancelled':                    { bg: '#dc3545', text: '#fff' },
+    };
+
+    function styleWfSelect(el) {
+        const val = el.value;
+        const c = wfColors[val] || wfColors['Draft'];
+        el.style.backgroundColor = c.bg;
+        el.style.color = c.text;
+        el.style.fontWeight = '600';
+    }
+
+    document.querySelectorAll('.wf-status-select').forEach(el => styleWfSelect(el));
+
+    function updateWorkflowStatus(el) {
+        const id = el.dataset.id;
+        const status = el.value;
+        styleWfSelect(el);
+
+        $.ajax({
+            url: 'api/update_quote_status.php',
+            type: 'POST',
+            data: { id: id, workflow_status: status },
+            dataType: 'json',
+            success: function (res) {
+                if (res.status === 'success') {
+                    showToast('อัปเดตสถานะเป็น: ' + status);
+                } else {
+                    Swal.fire('ผิดพลาด!', res.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire('ผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์', 'error');
+            }
+        });
+    }
+
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 p-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `<div class="toast show align-items-center text-bg-success border-0" role="alert">
+            <div class="d-flex"><div class="toast-body"><i class="bi bi-check-circle me-2"></i>${msg}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button></div></div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
 </script>
 <?php include "footer.php"; ?>

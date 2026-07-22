@@ -7,12 +7,15 @@ if (isset($_GET['delete_id'])) {
     $id = $_GET['delete_id'];
     
     // ดึงชื่อไฟล์รูปมาลบทิ้งจาก Server ด้วย (เพื่อไม่ให้ขยะเต็ม)
-    $stmt_img = $conn->prepare("SELECT logo_path FROM companies WHERE id = ?");
+    $stmt_img = $conn->prepare("SELECT logo_path, stamp_path FROM companies WHERE id = ?");
     $stmt_img->bind_param("i", $id);
     $stmt_img->execute();
     $res_img = $stmt_img->get_result()->fetch_assoc();
     if($res_img && $res_img['logo_path'] != 'img/default-logo.png') {
         @unlink("../" . $res_img['logo_path']);
+    }
+    if($res_img && !empty($res_img['stamp_path'])) {
+        @unlink("../" . $res_img['stamp_path']);
     }
 
     $stmt = $conn->prepare("DELETE FROM companies WHERE id = ?");
@@ -57,17 +60,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // จัดการเรื่อง Path รูปตราประทับ
+    $stamp_path = $_POST['old_stamp'] ?? null;
+    
+    if (isset($_FILES['stamp']) && $_FILES['stamp']['error'] == 0) {
+        $target_dir = "../img/";
+        if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
+        
+        $new_filename = "stamp_" . time() . "_" . basename($_FILES["stamp"]["name"]);
+        $target_file = $target_dir . $new_filename;
+        
+        if (move_uploaded_file($_FILES["stamp"]["tmp_name"], $target_file)) {
+            // ลบรูปเก่าทิ้ง (ถ้ามี)
+            if (!empty($_POST['old_stamp'])) {
+                @unlink("../" . $_POST['old_stamp']);
+            }
+            $stamp_path = "img/" . $new_filename;
+        }
+    }
+
     if ($id) {
         // อัปเดตข้อมูล (UPDATE)
-        $sql = "UPDATE companies SET company_name=?, contact_name=?, phone=?, email=?, address=?, logo_path=? WHERE id=?";
+        $sql = "UPDATE companies SET company_name=?, contact_name=?, phone=?, email=?, address=?, logo_path=?, stamp_path=? WHERE id=?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssssi", $company_name, $contact_name, $phone, $email, $address, $logo_path, $id);
+        $stmt->bind_param("sssssssi", $company_name, $contact_name, $phone, $email, $address, $logo_path, $stamp_path, $id);
         $msg_text = "อัปเดตข้อมูลบริษัทเรียบร้อย";
     } else {
         // เพิ่มข้อมูลใหม่ (INSERT)
-        $sql = "INSERT INTO companies (company_name, contact_name, phone, email, address, logo_path) VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO companies (company_name, contact_name, phone, email, address, logo_path, stamp_path) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssss", $company_name, $contact_name, $phone, $email, $address, $logo_path);
+        $stmt->bind_param("sssssss", $company_name, $contact_name, $phone, $email, $address, $logo_path, $stamp_path);
         $msg_text = "ลงทะเบียนบริษัทใหม่สำเร็จ";
     }
 

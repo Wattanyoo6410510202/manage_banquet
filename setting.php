@@ -199,6 +199,7 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                         value="<?php echo $edit_data['id']; ?>"> <?php endif; ?>
 
                                     <div class="text-center mb-3">
+                                        <label class="small fw-bold mb-2 d-block">โลโก้บริษัท</label>
                                         <div class="preview-zone mx-auto d-flex align-items-center justify-content-center"
                                             onclick="document.getElementById('logoInput').click();">
                                             <button type="button" class="btn-remove-preview" id="remove_img"
@@ -217,6 +218,28 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                             onchange="previewImg(this)">
                                         <input type="hidden" name="old_logo"
                                             value="<?php echo $edit_data['logo_path'] ?? ''; ?>">
+                                    </div>
+
+                                    <div class="text-center mb-3">
+                                        <label class="small fw-bold mb-2 d-block">ตราประทับ</label>
+                                        <div class="preview-zone mx-auto d-flex align-items-center justify-content-center"
+                                            onclick="document.getElementById('stampInput').click();">
+                                            <button type="button" class="btn-remove-preview" id="remove_stamp"
+                                                onclick="resetStampPreview(event)"><i class="bi bi-x"></i></button>
+                                            <?php if (!empty($edit_data['stamp_path']) && file_exists($edit_data['stamp_path'])): ?>
+                                            <img src="<?php echo $edit_data['stamp_path']; ?>" id="stamp_preview"
+                                                style="width:100%; height:100%; object-fit:cover;">
+                                            <?php else: ?>
+                                            <div id="stamp_placeholder" class="text-muted small text-center"><i
+                                                    class="bi bi-stamp fs-2"></i><br>อัปโหลดตราประทับ</div>
+                                            <img src="" id="stamp_preview" class="d-none"
+                                                style="width:100%; height:100%; object-fit:cover;">
+                                            <?php endif; ?>
+                                        </div>
+                                        <input type="file" name="stamp" id="stampInput" class="d-none" accept="image/*"
+                                            onchange="previewStamp(this)">
+                                        <input type="hidden" name="old_stamp"
+                                            value="<?php echo $edit_data['stamp_path'] ?? ''; ?>">
                                     </div>
 
                                     <div class="mb-3">
@@ -258,6 +281,7 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                 <thead class="table-light">
                                     <tr>
                                         <th>โลโก้</th>
+                                        <th>ตราประทับ</th>
                                         <th>ชื่อบริษัท</th>
                                         <th>ติดต่อ</th>
                                         <th class="text-end">จัดการ</th>
@@ -272,6 +296,15 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                         <td><img src="<?php echo $row['logo_path'] ?: 'img/default-logo.png'; ?>"
                                                 class="img-table-preview shadow-sm"
                                                 onclick="showFullImg(this.src, '<?php echo $row['company_name']; ?>')">
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($row['stamp_path']) && file_exists($row['stamp_path'])): ?>
+                                            <img src="<?php echo $row['stamp_path']; ?>"
+                                                class="img-table-preview shadow-sm"
+                                                onclick="showFullImg(this.src, 'ตราประทับ <?php echo $row['company_name']; ?>')">
+                                            <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div class="fw-bold"><?php echo $row['company_name']; ?></div>
@@ -557,6 +590,43 @@ function togglePass() {
 function confirmDelete(url, msg) {
     if (confirm(msg)) {
         window.location.href = url;
+    }
+}
+
+// --- ฟังก์ชันรูปตราประทับ ---
+function previewStamp(input) {
+    const preview = document.getElementById('stamp_preview');
+    const placeholder = document.getElementById('stamp_placeholder');
+    const removeBtn = document.getElementById('remove_stamp');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+            if (placeholder) placeholder.classList.add('d-none');
+            removeBtn.style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function resetStampPreview(event) {
+    event.stopPropagation();
+    const input = document.getElementById('stampInput');
+    const preview = document.getElementById('stamp_preview');
+    const placeholder = document.getElementById('stamp_placeholder');
+    const removeBtn = document.getElementById('remove_stamp');
+    const oldStamp = document.getElementsByName('old_stamp')[0].value;
+
+    input.value = "";
+    if (oldStamp && oldStamp !== "") {
+        preview.src = oldStamp;
+        removeBtn.style.display = 'none';
+    } else {
+        preview.src = "";
+        preview.classList.add('d-none');
+        if (placeholder) placeholder.classList.remove('d-none');
+        removeBtn.style.display = 'none';
     }
 }
 </script>

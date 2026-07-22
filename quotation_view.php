@@ -10,7 +10,7 @@ $id = intval($_GET['id'] ?? 0);
 $sql = "SELECT q.*, 
                 c.cust_name, c.cust_address, c.cust_phone, c.cust_email, c.cust_contact_name, c.sales_name,
                f.function_name, 
-               comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path,
+               comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path, comp.stamp_path,
                u_create.name as created_by_name,
                u_appr.name as approved_by_name,
                s_create.path as creator_sig_path, -- ลายเซ็นคนทำ
@@ -322,9 +322,13 @@ $items = $conn->query($sql_items);
 
             <div class="signature-wrapper text-center mt-5">
                 <div class="row">
-                    <div class="col-4">
+                    <div class="col-4" style="position: relative;">
+                        <?php if (!empty($quote['stamp_path']) && file_exists($quote['stamp_path'])): ?>
+                            <img src="<?= htmlspecialchars($quote['stamp_path']) ?>" 
+                                style="position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 100px; height: 100px; object-fit: contain; opacity: 0.7; z-index: 1; pointer-events: none; mix-blend-mode: multiply;">
+                        <?php endif; ?>
                         <div
-                            style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
+                            style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
                             <?php if (!empty($quote['creator_sig_path'])): ?>
                                 <img src="<?= $quote['creator_sig_path'] ?>" style="max-height: 50px; width: auto;">
                             <?php endif; ?>
