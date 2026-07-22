@@ -360,7 +360,7 @@ function is_active($pages)
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
+                <?php if (in_array($role, ['admin', 'gm', 'sale', 'procurement'])): ?>
                 <li class="mt-4 sidebar-header px-3">
                     <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
                 </li>

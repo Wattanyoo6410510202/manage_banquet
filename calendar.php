@@ -14,65 +14,6 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
 
 <div class="container-fluid p-0">
 
-    <!-- Stats Summary Row -->
-    <div class="row g-2 mb-3">
-        <div class="col-4 col-md">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <i class="bi bi-calendar-check text-primary fs-4"></i>
-                    <div>
-                        <div class="small text-muted">วันนี้</div>
-                        <div class="fw-bold" id="statToday">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-4 col-md">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <i class="bi bi-building text-info fs-4"></i>
-                    <div>
-                        <div class="small text-muted">ทั้งเดือน</div>
-                        <div class="fw-bold" id="statMonth">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-4 col-md">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <i class="bi bi-people text-warning fs-4"></i>
-                    <div>
-                        <div class="small text-muted">PAX รวม</div>
-                        <div class="fw-bold" id="statPax">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <i class="bi bi-wallet2 text-success fs-4"></i>
-                    <div>
-                        <div class="small text-muted">ยอดรวมเดือน</div>
-                        <div class="fw-bold" id="statRevenue">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <i class="bi bi-clock-history text-secondary fs-4"></i>
-                    <div>
-                        <div class="small text-muted">วันที่เลือก</div>
-                        <div class="fw-bold" id="statDayEvents">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Room Conflict Card -->
     <?php
     $conflict_sql = "SELECT 
@@ -170,9 +111,9 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
         </div>
     </div>
 
-    <!-- Top row: Calendar + Detail Panel -->
+    <!-- Top row: Calendar -->
     <div class="row g-3">
-        <div class="col-lg-9">
+        <div class="col-lg-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white border-0 pt-3 pb-0">
                     <div class="row g-2 align-items-center mb-2">
@@ -213,20 +154,6 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                         <span class="badge" style="background:#198754;">จบงานแล้ว</span>
                         <span class="badge" style="background:#dc3545;">ยกเลิก</span>
                         <span class="badge" style="background:#6c757d;">อื่น ๆ</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3">
-            <div class="card shadow-sm border-0 h-100 sticky-top" style="top:20px;z-index:100;">
-                <div class="card-header bg-dark text-gold py-3">
-                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i> รายละเอียดกิจกรรม</h5>
-                </div>
-                <div id="detailPanel" class="card-body">
-                    <div class="text-center text-muted py-5">
-                        <i class="bi bi-calendar2-week d-block mb-3" style="font-size:3rem;"></i>
-                        <p>คลิกเลือกงานจากปฏิทิน<br>เพื่อดูรายละเอียดที่นี่ครับ</p>
                     </div>
                 </div>
             </div>
@@ -277,6 +204,24 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
     </div>
 </div>
 
+<!-- Event Detail Modal -->
+<div class="modal fade" id="eventDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-gold py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-info-circle me-2"></i> รายละเอียดกิจกรรม</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="modalDetailBody">
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-calendar2-week d-block mb-3" style="font-size:3rem;"></i>
+                    <p>กำลังโหลดข้อมูล...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let calendar;
 let lastTimetableDate = null;
@@ -285,7 +230,7 @@ const currentUserRole = '<?php echo addslashes($user_role); ?>';
 
 document.addEventListener('DOMContentLoaded', function () {
     var calendarEl = document.getElementById('calendar');
-    var detailPanel = document.getElementById('detailPanel');
+    var eventDetailModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
 
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -524,7 +469,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const editUrl = isQt ? 'edit_quotation.php?id=' : 'edit.php?id=';
             const viewUrl = isQt ? 'quotation_view.php?id=' : 'view.php?id=';
 
-            detailPanel.innerHTML = `
+            document.getElementById('modalDetailBody').innerHTML = `
             <div class="animate__animated animate__fadeIn">
                 <div class="text-center mb-3 pb-2 border-bottom">
                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -632,15 +577,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <hr>
                 <div class="d-grid gap-2">
-                    <a href="${editUrl}${eventId}" class="btn btn-dark fw-bold text-gold">
-                        <i class="bi bi-pencil-square me-2"></i> แก้ไขข้อมูล${isQt ? 'ใบเสนอราคา' : 'งาน'}
-                    </a>
                     <a href="${viewUrl}${eventId}" target="_blank" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-printer me-2"></i> พิมพ์เอกสาร (PDF)
                     </a>
                 </div>
             </div>
             `;
+            eventDetailModal.show();
         }
     });
     calendar.render();
@@ -658,9 +601,13 @@ function updateStats() {
     const todayEvents = allEvents.filter(ev => ev.startStr.startsWith(todayStr));
     const monthEvents = allEvents.filter(ev => ev.startStr.startsWith(monthStr));
 
-    document.getElementById('statToday').textContent = todayEvents.length + ' งาน';
-    document.getElementById('statMonth').textContent = monthEvents.length + ' งาน';
-    document.getElementById('statPax').textContent = monthEvents.reduce((sum, ev) => {
+    const elToday = document.getElementById('statToday');
+    const elMonth = document.getElementById('statMonth');
+    const elPax = document.getElementById('statPax');
+    const elRevenue = document.getElementById('statRevenue');
+    if (elToday) elToday.textContent = todayEvents.length + ' งาน';
+    if (elMonth) elMonth.textContent = monthEvents.length + ' งาน';
+    if (elPax) elPax.textContent = monthEvents.reduce((sum, ev) => {
         const p = parseInt(ev.extendedProps.pax) || 0;
         return sum + p;
     }, 0) + ' คน';
@@ -668,7 +615,7 @@ function updateStats() {
         const t = parseFloat((ev.extendedProps.total || '0').replace(/,/g, '')) || 0;
         return sum + t;
     }, 0);
-    document.getElementById('statRevenue').textContent = '฿' + totalRev.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    if (elRevenue) elRevenue.textContent = '฿' + totalRev.toLocaleString('en-US', { minimumFractionDigits: 2 });
 }
 
 function belongsToUser(ev) {
@@ -701,13 +648,13 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         if (events.length === 0) {
             timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในวันที่เลือก</td></tr>';
             eventCountBadge.classList.add('d-none');
-            document.getElementById('statDayEvents').textContent = '0 งาน';
+            (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
             return;
         }
 
         eventCountBadge.classList.remove('d-none');
         eventCountBadge.textContent = events.length + ' งาน';
-        document.getElementById('statDayEvents').textContent = events.length + ' งาน';
+        (document.getElementById('statDayEvents') || {}).textContent = events.length + ' งาน';
         renderTimetableRows(events);
         return;
     }
@@ -722,7 +669,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     if (clampedStart >= clampedEnd) {
         timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
         eventCountBadge.classList.add('d-none');
-        document.getElementById('statDayEvents').textContent = '0 งาน';
+        (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
         return;
     }
     const allEvents = calendar.getEvents().filter(ev => {
@@ -740,13 +687,13 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     if (totalCount === 0) {
         timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
         eventCountBadge.classList.add('d-none');
-        document.getElementById('statDayEvents').textContent = '0 งาน';
+        (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
         return;
     }
 
     eventCountBadge.classList.remove('d-none');
     eventCountBadge.textContent = totalCount + ' งาน';
-    document.getElementById('statDayEvents').innerHTML = totalCount + ' งาน <small class="text-muted fw-normal">(' + startLabel + ' - ' + endLabel + ')</small>';
+    { const el = document.getElementById('statDayEvents'); if (el) el.innerHTML = totalCount + ' งาน <small class="text-muted fw-normal">(' + startLabel + ' - ' + endLabel + ')</small>'; }
 
     // จัดกลุ่มตามวันที่ แล้วตามห้อง
     const groupedByDate = {};

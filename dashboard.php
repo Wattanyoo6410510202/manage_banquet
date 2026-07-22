@@ -13,6 +13,9 @@ $selected_company = isset($_GET['company_id']) ? intval($_GET['company_id']) : 0
 $selected_month = isset($_GET['month']) ? intval($_GET['month']) : intval(date('m'));
 $selected_year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
 $selected_staff = isset($_GET['staff_id']) ? intval($_GET['staff_id']) : 0;
+if ($role === 'staff' && $selected_staff === 0) {
+    $selected_staff = intval($_SESSION['user_id'] ?? 0);
+}
 $view_mode = isset($_GET['view']) ? $_GET['view'] : 'monthly';
 
 if ($view_mode === 'yearly') $selected_month = 0;
@@ -237,7 +240,7 @@ $conversion_pct = $total_decided > 0 ? round(($won / $total_decided) * 100, 1) :
                 <?php endfor; ?>
             </select>
             <label class="small text-muted fw-bold">พนักงาน</label>
-            <select name="staff_id" class="form-select form-select-sm" style="width:130px">
+            <select name="staff_id" class="form-select form-select-sm" style="width:130px" <?= $role === 'staff' ? 'disabled' : '' ?>>
                 <option value="0">ทั้งหมด</option>
                 <?php
                 $staff_list->data_seek(0);
@@ -245,6 +248,7 @@ $conversion_pct = $total_decided > 0 ? round(($won / $total_decided) * 100, 1) :
                 <option value="<?= $s['id'] ?>" <?= $selected_staff == $s['id'] ? 'selected' : '' ?>><?= $s['name'] ?></option>
                 <?php endwhile; ?>
             </select>
+            <?php if ($role === 'staff'): ?><input type="hidden" name="staff_id" value="<?= $selected_staff ?>"><?php endif; ?>
             <label class="small text-muted fw-bold">โรงแรม</label>
             <select name="company_id" class="form-select form-select-sm" style="width:180px">
                 <option value="0">ทั้งหมด</option>
