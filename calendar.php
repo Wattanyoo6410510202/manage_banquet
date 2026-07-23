@@ -7,6 +7,10 @@ $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY compa
 $rooms = $conn->query("SELECT id, room_name, company_id FROM meeting_rooms WHERE status = 'active' ORDER BY room_name ASC");
 $rooms_json = [];
 while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
+$function_types = $conn->query("SELECT id, type_name, prefix FROM function_types ORDER BY id ASC");
+$ft_list = [];
+while ($ft = $function_types->fetch_assoc()) $ft_list[] = $ft;
+$can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
 ?>
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
 <script src='https://code.jquery.com/jquery-3.7.0.js'></script>
@@ -135,6 +139,7 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                                 <option value="all" selected>ทั้งหมด (All)</option>
                                 <option value="eo">Function Order (EO)</option>
                                 <option value="quotation">ใบเสนอราคา (Quotation)</option>
+                                <option value="room">จองห้องประชุม (Room)</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -143,6 +148,13 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                                 <option value="schedule">กำหนดการ</option>
                             </select>
                         </div>
+                        <?php if ($can_manage): ?>
+                        <div class="col-md-2">
+                            <button class="btn btn-dark btn-sm w-100" onclick="openRoomBookingModal()">
+                                <i class="bi bi-door-open me-1"></i> จองห้องประชุม
+                            </button>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="card-body p-2">
@@ -154,6 +166,7 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
                         <span class="badge" style="background:#198754;">จบงานแล้ว</span>
                         <span class="badge" style="background:#dc3545;">ยกเลิก</span>
                         <span class="badge" style="background:#6c757d;">อื่น ๆ</span>
+                        <span class="badge" style="background:#6f42c1;">จองห้องประชุม</span>
                     </div>
                 </div>
             </div>
@@ -222,6 +235,93 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
     </div>
 </div>
 
+<!-- Room Booking Modal -->
+<div class="modal fade" id="roomBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header bg-dark text-white py-3">
+                <h6 class="modal-title fw-bold"><i class="bi bi-door-open me-2"></i>จองห้องประชุม</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="roomBookingForm">
+                    <input type="hidden" name="action" value="save">
+                    <input type="hidden" name="id" value="0">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">โรงแรม <span class="text-danger">*</span></label>
+                            <select name="company_id" id="rb_company" class="form-select form-select-sm" required>
+                                <option value="">-- เลือก --</option>
+                                <?php
+                                $companies->data_seek(0);
+                                while ($c = $companies->fetch_assoc()): ?>
+                                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['company_name']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ห้องประชุม <span class="text-danger">*</span></label>
+                            <select name="room_id" id="rb_room" class="form-select form-select-sm" required>
+                                <option value="">-- เลือกโรงแรมก่อน --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ประเภทงาน <span class="text-danger">*</span></label>
+                            <select name="function_type_id" class="form-select form-select-sm" required>
+                                <?php foreach ($ft_list as $ft): ?>
+                                    <option value="<?= $ft['id'] ?>"><?= htmlspecialchars($ft['type_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">จำนวนคน (PAX)</label>
+                            <input type="number" name="pax" class="form-control form-control-sm" value="0" min="0">
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-secondary mb-1">ชื่องาน <span class="text-danger">*</span></label>
+                            <input type="text" name="event_name" class="form-control form-control-sm" required placeholder="เช่น ประชุมบอร์ด">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ชื่อผู้จอง</label>
+                            <input type="text" name="booking_name" class="form-control form-control-sm" placeholder="ชื่อ-นามสกุล">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">เบอร์โทร</label>
+                            <input type="text" name="phone" class="form-control form-control-sm" placeholder="0xx-xxx-xxxx">
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-secondary mb-1">หน่วยงาน / องค์กร</label>
+                            <input type="text" name="organization" class="form-control form-control-sm" placeholder="ชื่อบริษัท">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">เริ่ม <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="start_time" id="rb_start" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">สิ้นสุด <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="end_time" id="rb_end" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-secondary mb-1">หมายเหตุ</label>
+                            <input type="text" name="remark" class="form-control form-control-sm" placeholder="หมายเหตุ...">
+                        </div>
+                    </div>
+                    <div id="rbConflictAlert" class="alert alert-danger mt-3 mb-0 d-none" style="font-size:0.8rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <span id="rbConflictMsg"></span>
+                    </div>
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">ยกเลิก</button>
+                        <button type="submit" id="btnSubmitRb" class="btn btn-dark btn-sm px-4">
+                            <i class="bi bi-check-lg me-1"></i> บันทึกการจอง
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let calendar;
 let lastTimetableDate = null;
@@ -279,6 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if(st === 'cancelled' || st === 'ยกเลิก') dotColor = '#dc3545';
             else if(rawStatus === 'QT (อนุมัติ)') dotColor = '#fd7e14';
             else if(rawStatus === 'QT (Draft)') dotColor = '#6c757d';
+            else if(rawStatus === 'จองห้อง') dotColor = '#6f42c1';
 
             return {
                 html: `<div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;line-height:1.3;">
@@ -395,11 +496,11 @@ document.addEventListener('DOMContentLoaded', function () {
                       FROM quotations q 
                       LEFT JOIN customers c ON q.customer_id = c.id
                       LEFT JOIN users u ON q.created_by = u.id
-                      WHERE q.status NOT IN ('Cancelled')
+                      WHERE q.status NOT IN ('Cancelled', 'Draft', 'Pending')
                       ORDER BY q.id DESC";
             $q_q = mysqli_query($conn, $sql_q);
             if (!$q_q) {
-                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled') ORDER BY id DESC";
+                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled', 'Draft', 'Pending') ORDER BY id DESC";
                 $q_q = mysqli_query($conn, $sql_q);
             }
 
@@ -445,6 +546,49 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            // 4. จองห้องประชุม (Room Bookings)
+            $sql_rb = "SELECT rb.*, mr.room_name, c.company_name, ft.type_name
+                FROM room_bookings rb
+                LEFT JOIN meeting_rooms mr ON rb.room_id = mr.id
+                LEFT JOIN companies c ON rb.company_id = c.id
+                LEFT JOIN function_types ft ON rb.function_type_id = ft.id
+                WHERE rb.status = 'active'
+                ORDER BY rb.id ASC";
+            $q_rb = @mysqli_query($conn, $sql_rb);
+
+            if ($q_rb) {
+                while ($row = mysqli_fetch_assoc($q_rb)) {
+                    $ev_start = $row['start_time'] ?? '';
+                    $ev_end = $row['end_time'] ?? '';
+                    $booking_name = $row['booking_name'] ?: ($row['created_by'] ?? '');
+                    $room_label = $row['room_name'] ?? '';
+                    $created_by = $row['created_by'] ?? '';
+                    $rb_title = "📌 " . $created_by . " จอง " . ($row['event_name'] ?? '') . " — " . $room_label;
+
+                    $events[] = [
+                        'id' => 'rb_' . $row['id'],
+                        'ref_id' => (string) $row['id'],
+                        'title' => $rb_title,
+                        'start' => $ev_start,
+                        'end' => $ev_end,
+                        'color' => '#6f42c1',
+                        'mode' => 'general',
+                        'extendedProps' => [
+                            'mainTitle' => (string) ($row['event_name'] ?? ''),
+                            'status' => 'จองห้อง',
+                            'room' => (string) $room_label,
+                            'customer' => (string) $booking_name,
+                            'phone' => (string) ($row['phone'] ?? ''),
+                            'pax' => (string) ($row['pax'] ?? '0'),
+                            'remark' => (string) ($row['remark'] ?? ''),
+                            'created_by_name' => (string) ($row['created_by'] ?? ''),
+                            'booking_code' => (string) ($row['booking_code'] ?? ''),
+                            'organization' => (string) ($row['organization'] ?? ''),
+                        ]
+                    ];
+                }
+            }
+
             echo json_encode($events, JSON_UNESCAPED_UNICODE);
             ?>,
 
@@ -452,10 +596,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const props = info.event.extendedProps;
             const eventId = info.event.extendedProps.ref_id;
             const isQt = info.event.id.startsWith('qt_');
-            const st = props.status.toLowerCase();
+            const isRb = info.event.id.startsWith('rb_');
+            const st = (props.status || '').toLowerCase();
 
             let badgeClass = 'bg-secondary';
-            if(isQt) {
+            if(isRb) {
+                badgeClass = 'bg-purple text-white';
+            } else if(isQt) {
                 if(st.includes('draft')) badgeClass = 'bg-secondary';
                 else badgeClass = 'bg-dark text-light';
             } else {
@@ -464,6 +611,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 else if(st === 'in progress') badgeClass = 'bg-primary';
                 else if(st === 'completed') badgeClass = 'bg-success';
                 else if(st === 'cancelled') badgeClass = 'bg-danger';
+            }
+
+            if(isRb) {
+                const evStart = info.event.start ? new Date(info.event.start).toLocaleString('th-TH', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+                const evEnd = info.event.end ? new Date(info.event.end).toLocaleString('th-TH', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+                document.getElementById('modalDetailBody').innerHTML = `
+                <div class="animate__animated animate__fadeIn">
+                    <div class="text-center mb-3 pb-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted">RB #${props.booking_code || eventId}</small>
+                            <span class="badge bg-purple">${props.status}</span>
+                        </div>
+                        <h5 class="fw-bold mt-2 mb-0" style="color:#1a1a1a;">${props.mainTitle}</h5>
+                    </div>
+                    <div class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-person me-1"></i>ผู้จอง</small><span class="fw-bold small">${props.customer || '-'}</span></div></div>
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-telephone me-1"></i>เบอร์โทร</small><span class="fw-bold small">${props.phone || '-'}</span></div></div>
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-building me-1"></i>หน่วยงาน</small><span class="fw-bold small">${props.organization || '-'}</span></div></div>
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-geo-alt me-1"></i>ห้อง</small><span class="fw-bold small">${props.room || '-'}</span></div></div>
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-people me-1"></i>จำนวนคน</small><span class="fw-bold small">${props.pax || '0'} คน</span></div></div>
+                            <div class="col-6"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-clock me-1"></i>เวลา</small><span class="fw-bold small">${evStart}<br>${evEnd}</span></div></div>
+                            ${props.remark ? `<div class="col-12"><div class="p-2 rounded bg-light"><small class="text-muted d-block"><i class="bi bi-sticky me-1"></i>หมายเหตุ</small><span class="small">${props.remark}</span></div></div>` : ''}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <a href="room_calendar.php" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-door-open me-2"></i> ดูหน้าจองห้องประชุม</a>
+                        <?php if (in_array($user_role, ['admin', 'gm'])): ?>
+                        <button class="btn btn-outline-danger btn-sm" onclick="cancelRoomBooking(${eventId})"><i class="bi bi-x-circle me-2"></i>ยกเลิกการจอง</button>
+                        <?php endif; ?>
+                    </div>
+                </div>`;
+                eventDetailModal.show();
+                return;
             }
 
             const editUrl = isQt ? 'edit_quotation.php?id=' : 'edit.php?id=';
@@ -815,7 +997,7 @@ function updateCalendarEvents() {
 
     calendar.getEvents().forEach(event => {
         const isQt = event.id.startsWith('qt_');
-        let matchesSource = (source === 'all' || (source === 'eo' && !isQt) || (source === 'quotation' && isQt));
+        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !event.id.startsWith('rb_')) || (source === 'quotation' && isQt) || (source === 'room' && event.id.startsWith('rb_')));
         let matchesMode = (event.extendedProps.mode === mode);
         let matchesRoom = (roomId === 'all' || event.extendedProps.room_id == roomId);
 
@@ -946,6 +1128,126 @@ function saveInline($td, eid, field, value) {
 }
 </script>
 
+<script>
+const rbRooms = <?= json_encode($rooms_json) ?>;
+
+function openRoomBookingModal() {
+    document.getElementById('roomBookingForm').reset();
+    document.getElementById('rbConflictAlert').classList.add('d-none');
+    document.getElementById('btnSubmitRb').disabled = false;
+    document.getElementById('btnSubmitRb').innerHTML = '<i class="bi bi-check-lg me-1"></i> บันทึกการจอง';
+    document.getElementById('rb_room').innerHTML = '<option value="">-- เลือกโรงแรมก่อน --</option>';
+    new bootstrap.Modal(document.getElementById('roomBookingModal')).show();
+}
+
+document.getElementById('rb_company').addEventListener('change', function() {
+    const cid = this.value;
+    const sel = document.getElementById('rb_room');
+    sel.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+    if (!cid) { sel.innerHTML = '<option value="">-- เลือกโรงแรมก่อน --</option>'; return; }
+    rbRooms.filter(r => r.company_id == cid).forEach(r => {
+        sel.innerHTML += `<option value="${r.id}">${r.room_name}</option>`;
+    });
+});
+
+document.getElementById('rb_room').addEventListener('change', checkRbConflict);
+['rb_start', 'rb_end'].forEach(id => {
+    document.getElementById(id).addEventListener('change', checkRbConflict);
+});
+
+function checkRbConflict() {
+    const roomId = document.getElementById('rb_room').value;
+    const start = document.getElementById('rb_start').value;
+    const end = document.getElementById('rb_end').value;
+    if (!roomId || !start || !end) return;
+
+    fetch('api/quick_book_room.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=check_conflict&room_id=${roomId}&start_time=${start.replace('T', ' ')}:00&end_time=${end.replace('T', ' ')}:00`
+    })
+    .then(res => res.json())
+    .then(data => {
+        const alertDiv = document.getElementById('rbConflictAlert');
+        const msgSpan = document.getElementById('rbConflictMsg');
+        if (data.status === 'conflict') {
+            const names = data.events.map(e => `${e.event_name} (${e.booking_name || 'ไม่ระบุ'}) ${e.start_time} - ${e.end_time}`).join('<br>');
+            msgSpan.innerHTML = 'ห้องนี้มีการจองแล้ว:<br>' + names;
+            alertDiv.classList.remove('d-none');
+            document.getElementById('btnSubmitRb').disabled = true;
+        } else {
+            alertDiv.classList.add('d-none');
+            document.getElementById('btnSubmitRb').disabled = false;
+        }
+    });
+}
+
+document.getElementById('roomBookingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitRb');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> กำลังบันทึก...';
+
+    const fd = new FormData(this);
+    fd.set('start_time', document.getElementById('rb_start').value.replace('T', ' ') + ':00');
+    fd.set('end_time', document.getElementById('rb_end').value.replace('T', ' ') + ':00');
+
+    fetch('room_calendar.php', { method: 'POST', body: fd })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'inserted') {
+                bootstrap.Modal.getInstance(document.getElementById('roomBookingModal')).hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'จองสำเร็จ!',
+                    html: `เลขที่: <b>${data.booking_code}</b><br>กำลังโหลดข้อมูลใหม่...`,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('เกิดข้อผิดพลาด', data.message || 'ไม่สามารถบันทึกได้', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> บันทึกการจอง';
+            }
+        })
+        .catch(err => {
+            Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> บันทึกการจอง';
+        });
+});
+
+function cancelRoomBooking(bookingId) {
+    Swal.fire({
+        title: 'ยืนยันยกเลิกการจอง?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'ยกเลิกการจอง',
+        cancelButtonText: 'กลับ'
+    }).then(result => {
+        if (result.isConfirmed) {
+            const fd = new FormData();
+            fd.append('action', 'delete');
+            fd.append('id', bookingId);
+            fetch('room_calendar.php', { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        bootstrap.Modal.getInstance(document.getElementById('eventDetailModal')).hide();
+                        const ev = calendar.getEventById('rb_' + bookingId);
+                        if (ev) ev.remove();
+                        Swal.fire('สำเร็จ', 'ยกเลิกการจองแล้ว', 'success');
+                    } else {
+                        Swal.fire('ผิดพลาด', data.message || 'ไม่สามารถยกเลิกได้', 'error');
+                    }
+                });
+        }
+    });
+}
+</script>
+
 <style>
     #calendar { font-size: 0.85rem; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold; color: #333; }
@@ -957,6 +1259,7 @@ function saveInline($td, eid, field, value) {
     .fc .fc-col-header-cell-cushion { font-weight: 600; padding: 6px 4px; }
     .fc .fc-more-link { font-size: 0.7rem; }
     .text-gold { color: #d4af37; }
+    .bg-purple { background-color: #6f42c1 !important; }
     .bg-dark { background-color: #1a1a1a !important; }
     .list-group-item { border-bottom: 1px dashed #eee; padding-top: 12px; padding-bottom: 12px; }
     .badge { font-weight: 500; padding: 0.5em 0.8em; }
