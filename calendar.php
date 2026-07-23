@@ -138,8 +138,15 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
                             <select id="dataSource" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="all" selected>ทั้งหมด (All)</option>
                                 <option value="eo">Function Order (EO)</option>
-                                <option value="quotation">ใบเสนอราคา (Quotation)</option>
+                                <option value="quotation">ใบเสนอราคาทั้งหมด</option>
+                                <option value="qt_approved">ใบเสนอราคาที่อนุมัติแล้ว</option>
                                 <option value="room">จองห้องประชุม (Room)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select id="approveFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
+                                <option value="approved" selected>เฉพาะที่อนุมัติแล้ว</option>
+                                <option value="all">ทั้งหมด (รวมรออนุมัติ)</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -437,6 +444,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             'total' => number_format($row['total_amount'] ?? 0, 2),
                             'remark' => (string) ($row['remark'] ?? ''),
                             'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
+                            'approved' => intval($row['approve'] ?? 0),
                         ]
                     ];
                 }
@@ -496,11 +504,11 @@ document.addEventListener('DOMContentLoaded', function () {
                       FROM quotations q 
                       LEFT JOIN customers c ON q.customer_id = c.id
                       LEFT JOIN users u ON q.created_by = u.id
-                      WHERE q.status NOT IN ('Cancelled', 'Draft', 'Pending')
+                      WHERE q.status NOT IN ('Cancelled')
                       ORDER BY q.id DESC";
             $q_q = mysqli_query($conn, $sql_q);
             if (!$q_q) {
-                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled', 'Draft', 'Pending') ORDER BY id DESC";
+                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled') ORDER BY id DESC";
                 $q_q = mysqli_query($conn, $sql_q);
             }
 
@@ -994,14 +1002,23 @@ function updateCalendarEvents() {
     const roomId = document.getElementById('roomFilter').value;
     const source = document.getElementById('dataSource').value;
     const mode = document.getElementById('timeMode').value;
+    const approveFilter = document.getElementById('approveFilter').value;
 
     calendar.getEvents().forEach(event => {
         const isQt = event.id.startsWith('qt_');
-        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !event.id.startsWith('rb_')) || (source === 'quotation' && isQt) || (source === 'room' && event.id.startsWith('rb_')));
+        const isRb = event.id.startsWith('rb_');
+        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !isRb) || (source === 'quotation' && isQt) || (source === 'qt_approved' && isQt && !event.extendedProps.status.toLowerCase().includes('draft')) || (source === 'room' && isRb));
         let matchesMode = (event.extendedProps.mode === mode);
         let matchesRoom = (roomId === 'all' || event.extendedProps.room_id == roomId);
 
-        if (matchesSource && matchesMode && matchesRoom) {
+        let matchesApprove = true;
+        if (approveFilter === 'approved') {
+            if (isRb) matchesApprove = true;
+            else if (isQt) matchesApprove = !event.extendedProps.status.toLowerCase().includes('draft');
+            else matchesApprove = event.extendedProps.approved == 1;
+        }
+
+        if (matchesSource && matchesMode && matchesRoom && matchesApprove) {
             event.setProp('display', 'auto');
         } else {
             event.setProp('display', 'none');
