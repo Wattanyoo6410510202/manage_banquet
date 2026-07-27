@@ -46,24 +46,37 @@ while ($row = $result->fetch_assoc()) {
     $quotes[] = $row;
 }
 
-// Group by project_id
-$quotes_by_project = [];
-$ungrouped = [];
-foreach ($quotes as $q) {
-    if ($q['project_id']) {
-        $pid = $q['project_id'];
-        if (!isset($quotes_by_project[$pid])) {
-            $quotes_by_project[$pid] = [
-                'project_name' => $q['project_name'] ?: 'ไม่ระบุโครงการ',
-                'project_id' => $pid,
-                'quotes' => []
-            ];
+function groupByProject($list) {
+    $by_project = [];
+    $ungrouped = [];
+    foreach ($list as $q) {
+        if ($q['project_id']) {
+            $pid = $q['project_id'];
+            if (!isset($by_project[$pid])) {
+                $by_project[$pid] = [
+                    'project_name' => $q['project_name'] ?: 'ไม่ระบุโครงการ',
+                    'project_id' => $pid,
+                    'quotes' => []
+                ];
+            }
+            $by_project[$pid]['quotes'][] = $q;
+        } else {
+            $ungrouped[] = $q;
         }
-        $quotes_by_project[$pid]['quotes'][] = $q;
-    } else {
-        $ungrouped[] = $q;
     }
+    return ['by_project' => $by_project, 'ungrouped' => $ungrouped];
 }
+
+$pending_quotes = array_values(array_filter($quotes, fn($q) => $q['status'] !== 'Approved'));
+$approved_quotes = array_values(array_filter($quotes, fn($q) => $q['status'] === 'Approved'));
+
+$pending_grouped = groupByProject($pending_quotes);
+$approved_grouped = groupByProject($approved_quotes);
+
+$sections = [
+    ['key' => 'pending', 'title' => 'รออนุมัติ', 'icon' => 'bi-hourglass-split', 'header_class' => 'bg-warning-subtle', 'badge_class' => 'bg-warning text-dark', 'data' => $pending_grouped, 'count' => count($pending_quotes)],
+    ['key' => 'approved', 'title' => 'อนุมัติแล้ว', 'icon' => 'bi-check-circle-fill', 'header_class' => 'bg-success-subtle', 'badge_class' => 'bg-success', 'data' => $approved_grouped, 'count' => count($approved_quotes)],
+];
 
 $status_map = [
     'Draft' => ['class' => 'bg-secondary-subtle text-secondary', 'text' => 'ฉบับร่าง'],
@@ -113,195 +126,208 @@ $status_map = [
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Ungrouped quotes (no project_id) first -->
-                    <?php if (!empty($ungrouped)): ?>
-                        <tr class="project-header-row has-sub" data-pid="ungrouped">
-                            <td class="text-center" colspan="9">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-plus-square text-muted toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
-                                    <i class="bi bi-file-earmark-text text-muted"></i>
-                                    <span class="fw-bold text-muted">ใบเสนอราคาที่ไม่มีโครงการ</span>
-                                    <span class="badge bg-secondary text-white rounded-pill" style="font-size: 0.65rem;"><?= count($ungrouped) ?> ใบ</span>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php foreach ($ungrouped as $q):
-                            $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                            $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
-                        ?>
-                            <tr class="quote-sub-row bg-light" data-parent-pid="ungrouped" style="display:none">
-                                <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
-                                    <div class="d-flex align-items-center justify-content-center gap-1">
-                                        <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
-                                        <?= $q['quote_no'] ?>
-                                    </div>
-                                    <?php if ($q['is_selected']): ?>
-                                        <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
-                                <td style="font-size: 0.85rem;">
-                                    <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
-                                    -
-                                    <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
-                                    <?php if (!empty($q['sales_name'])): ?>
-                                        <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
-                                <td class="text-center">
-                                    <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
-                                    <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
-                                            style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
-                                            data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
-                                        <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                            <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <?php else: ?>
-                                        <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($q['is_selected']): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
-                                            <i class="bi bi-x-lg"></i> ยกเลิก
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
-                                            เลือกใช้งาน
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1">
-                                        <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
-                                            <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
-                                            <?php endif; ?>
-                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                            <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                        <?php if ($q['status'] === 'Approved'): ?>
-                                            <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
-                                        <?php endif; ?>
-                                        <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                                        <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-
-                    <?php foreach ($quotes_by_project as $pid => $project):
-                        $quotes_list = $project['quotes'];
-                        $has_multiple = count($quotes_list) > 1;
-                        $first_q = $quotes_list[0];
+                    <?php foreach ($sections as $sec):
+                        $sec_ungrouped = $sec['data']['ungrouped'];
+                        $sec_projected = $sec['data']['by_project'];
                     ?>
-                        <!-- Project Header Row -->
-                        <tr class="project-header-row has-sub" data-pid="p_<?= $pid ?>">
-                            <td class="text-center" colspan="9">
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
-                                    
-                                    <span class="fw-bold text-dark">ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?></span>
-                                    <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
-                                    <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
-                                    <?php if (!empty($first_q['cust_contact_name'])): ?>
-                                        <span class="text-muted small ms-2"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></span>
-                                    <?php endif; ?>
-                                    <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark ms-auto" title="เพิ่มใบเสนอราคาในโครงการนี้">
-                                        <i class="bi bi-plus-circle"></i> เพิ่ม
-                                    </a>
+                        <!-- Section Header -->
+                        <tr>
+                            <td colspan="9" class="p-0">
+                                <div class="d-flex align-items-center gap-2 px-3 py-2 <?= $sec['header_class'] ?>" style="font-weight: 700; font-size: 0.95rem; border-bottom: 2px solid rgba(0,0,0,0.08);">
+                                    <i class="bi <?= $sec['icon'] ?>"></i>
+                                    <span><?= $sec['title'] ?></span>
+                                    <span class="badge <?= $sec['badge_class'] ?> rounded-pill" style="font-size: 0.7rem;"><?= $sec['count'] ?> ใบ</span>
                                 </div>
                             </td>
                         </tr>
 
-                        <!-- Quotation Rows (hidden by default) -->
-                        <?php foreach ($quotes_list as $q):
-                            $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                            $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
-                        ?>
-                            <tr class="quote-sub-row bg-light" data-parent-pid="p_<?= $pid ?>" style="display:none">
-                                <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
-                                    <div class="d-flex align-items-center justify-content-center gap-1">
-                                        <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
-                                        <?= $q['quote_no'] ?>
-                                    </div>
-                                    <?php if ($q['is_selected']): ?>
-                                        <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
-                                <td style="font-size: 0.85rem;">
-                                    <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
-                                    -
-                                    <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <?php if (!empty($q['sales_name'])): ?>
-                                        <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
-                                <td class="text-center">
-                                    <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
-                                    <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
-                                            style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
-                                            data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
-                                        <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                            <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <?php else: ?>
-                                        <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($q['is_selected']): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
-                                            <i class="bi bi-x-lg"></i> ยกเลิก
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
-                                            เลือกใช้งาน
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1">
-                                        <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
-                                            <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
-                                            <?php endif; ?>
-                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                            <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                        <?php if ($q['status'] === 'Approved'): ?>
-                                            <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
-                                        <?php endif; ?>
-                                        <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
-                                        <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
-                                        <?php endif; ?>
+                        <!-- Ungrouped quotes (no project_id) -->
+                        <?php if (!empty($sec_ungrouped)): ?>
+                            <tr class="project-header-row has-sub" data-pid="<?= $sec['key'] ?>_ungrouped">
+                                <td class="text-center" colspan="9">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-plus-square text-muted toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
+                                        <i class="bi bi-file-earmark-text text-muted"></i>
+                                        <span class="fw-bold text-muted">ใบเสนอราคาที่ไม่มีโครงการ</span>
+                                        <span class="badge bg-secondary text-white rounded-pill" style="font-size: 0.65rem;"><?= count($sec_ungrouped) ?> ใบ</span>
                                     </div>
                                 </td>
                             </tr>
+                            <?php foreach ($sec_ungrouped as $q):
+                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
+                            ?>
+                                <tr class="quote-sub-row bg-light" data-parent-pid="<?= $sec['key'] ?>_ungrouped" style="display:none">
+                                    <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
+                                            <?= $q['quote_no'] ?>
+                                        </div>
+                                        <?php if ($q['is_selected']): ?>
+                                            <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
+                                    <td style="font-size: 0.85rem;">
+                                        <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
+                                        -
+                                        <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
+                                        <div class="text-muted small"><i class="bi bi-person me-1"></i><?= htmlspecialchars($q['cust_contact_name'] ?: '-') ?></div>
+                                        <?php if (!empty($q['sales_name'])): ?>
+                                            <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
+                                    <td class="text-center">
+                                        <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                        <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
+                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                            <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <?php else: ?>
+                                            <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($q['is_selected']): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
+                                                <i class="bi bi-x-lg"></i> ยกเลิก
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
+                                                เลือกใช้งาน
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                                <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                                <?php endif; ?>
+                                                <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                                <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php if ($q['status'] === 'Approved'): ?>
+                                                <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
+                                            <?php endif; ?>
+                                            <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php foreach ($sec_projected as $pid => $project):
+                            $quotes_list = $project['quotes'];
+                            $first_q = $quotes_list[0];
+                        ?>
+                            <!-- Project Header Row -->
+                            <tr class="project-header-row has-sub" data-pid="<?= $sec['key'] ?>_p_<?= $pid ?>">
+                                <td class="text-center" colspan="9">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-plus-square text-gold toggle-quotes" style="cursor: pointer; font-size: 1.1rem;"></i>
+                                        <span class="fw-bold text-dark">ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?></span>
+                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                        <span class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
+                                        <?php if (!empty($first_q['cust_contact_name'])): ?>
+                                            <span class="text-muted small ms-2"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></span>
+                                        <?php endif; ?>
+                                        <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark ms-auto" title="เพิ่มใบเสนอราคาในโครงการนี้">
+                                            <i class="bi bi-plus-circle"></i> เพิ่ม
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <?php foreach ($quotes_list as $q):
+                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
+                            ?>
+                                <tr class="quote-sub-row bg-light" data-parent-pid="<?= $sec['key'] ?>_p_<?= $pid ?>" style="display:none">
+                                    <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
+                                            <?= $q['quote_no'] ?>
+                                        </div>
+                                        <?php if ($q['is_selected']): ?>
+                                            <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
+                                    <td style="font-size: 0.85rem;">
+                                        <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
+                                        -
+                                        <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
+                                        <?php if (!empty($q['sales_name'])): ?>
+                                            <div class="small" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end fw-bold text-dark"><?= number_format($q['grand_total'], 2) ?></td>
+                                    <td class="text-center">
+                                        <span class="badge border <?= $st['class'] ?> px-3 py-2"><?= $st['text'] ?></span>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                        <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>" 
+                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                            <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <?php else: ?>
+                                            <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($q['is_selected']): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 btn-deselect-quote" data-id="<?= $q['id'] ?>">
+                                                <i class="bi bi-x-lg"></i> ยกเลิก
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-select-quote" data-id="<?= $q['id'] ?>">
+                                                เลือกใช้งาน
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                                <?php if ($can_approve && $q['status'] !== 'Approved'): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-circle"></i></button>
+                                                <?php endif; ?>
+                                                <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                                <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                            <?php if ($q['status'] === 'Approved'): ?>
+                                                <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
+                                            <?php endif; ?>
+                                            <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
@@ -310,27 +336,126 @@ $status_map = [
 
         <!-- Mobile Card View -->
         <div class="d-md-none p-2">
-            <!-- Ungrouped mobile first -->
-            <?php if (!empty($ungrouped)): ?>
+            <?php foreach ($sections as $sec):
+                $sec_ungrouped = $sec['data']['ungrouped'];
+                $sec_projected = $sec['data']['by_project'];
+            ?>
+                <!-- Section Header Mobile -->
                 <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold text-muted"><i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคาที่ไม่มีโครงการ (<?= count($ungrouped) ?>)</div>
-                            <i class="bi bi-chevron-down text-muted toggle-ungrouped-mobile" style="cursor: pointer; font-size: 1.2rem;"></i>
+                    <div class="card-body p-3 <?= $sec['header_class'] ?>">
+                        <div class="d-flex align-items-center gap-2 fw-bold" style="font-size: 0.95rem;">
+                            <i class="bi <?= $sec['icon'] ?>"></i>
+                            <span><?= $sec['title'] ?></span>
+                            <span class="badge <?= $sec['badge_class'] ?> rounded-pill" style="font-size: 0.7rem;"><?= $sec['count'] ?> ใบ</span>
                         </div>
-                        <div id="mobile-ungrouped" style="display:none">
-                            <?php foreach ($ungrouped as $q):
-                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
-                            ?>
-                                <div class="card mb-2 border-0 bg-light">
-                                    <div class="card-body p-2 small">
+                    </div>
+                </div>
+
+                <!-- Ungrouped mobile -->
+                <?php if (!empty($sec_ungrouped)): ?>
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="fw-bold text-muted"><i class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคาที่ไม่มีโครงการ (<?= count($sec_ungrouped) ?>)</div>
+                                <i class="bi bi-chevron-down text-muted toggle-ungrouped-mobile-<?= $sec['key'] ?>" style="cursor: pointer; font-size: 1.2rem;"></i>
+                            </div>
+                            <div id="mobile-ungrouped-<?= $sec['key'] ?>" style="display:none">
+                                <?php foreach ($sec_ungrouped as $q):
+                                    $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                    $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
+                                ?>
+                                    <div class="card mb-2 border-0 bg-light">
+                                        <div class="card-body p-2 small">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
+                                                    <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?></div>
+                                                </div>
+                                                <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
+                                                <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
+                                                        style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                        data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
+                                                    <?php foreach (array_keys($workflow_statuses) as $ws): ?>
+                                                        <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <?php else: ?>
+                                                    <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= $q['cust_name'] ?></div>
+                                            <?php if (!empty($q['sales_name'])): ?>
+                                                <div class="small mb-1" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
+                                            <?php endif; ?>
+                                            <small class="text-muted d-block mb-1">
+                                                <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
+                                            </small>
+                                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                                <div class="fw-bold text-dark">฿<?= number_format($q['grand_total'], 2) ?></div>
+                                                <div class="d-flex gap-1">
+                                                    <?php if ($q['is_selected']): ?>
+                                                        <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-x-lg"></i></button>
+                                                    <?php else: ?>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-lg"></i></button>
+                                                    <?php endif; ?>
+                                                    <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php foreach ($sec_projected as $pid => $project):
+                    $quotes_list = $project['quotes'];
+                    $first_q = $quotes_list[0];
+                ?>
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-bold text-dark">
+                                        ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?>
+                                    </div>
+                                    <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                    <?php if (!empty($first_q['cust_contact_name'])): ?>
+                                        <div class="text-muted small mt-1"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark" title="เพิ่มใบเสนอราคาในโครงการนี้">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </a>
+                                    <i class="bi bi-chevron-down text-gold toggle-mobile-quotes" data-pid="<?= $sec['key'] ?>_p_<?= $pid ?>" style="cursor: pointer; font-size: 1.2rem;"></i>
+                                </div>
+                            </div>
+
+                            <div id="mobile-quotes-<?= $sec['key'] ?>_p_<?= $pid ?>" style="display:none">
+                                <?php foreach ($quotes_list as $q):
+                                    $st = $status_map[$q['status']] ?? $status_map['Draft'];
+                                    $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
+                                ?>
+                                    <div class="quote-mobile-item">
+                                        <?php if ($q !== $quotes_list[0]): ?>
+                                            <hr class="my-2">
+                                        <?php endif; ?>
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <div>
                                                 <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
+                                                <?php if ($q['is_selected']): ?>
+                                                    <span class="badge bg-primary" style="font-size: 0.6rem;">SELECTED</span>
+                                                <?php endif; ?>
                                                 <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?></div>
                                             </div>
-                                            <span class="badge border <?= $st['class'] ?> px-2 py-1"><?= $st['text'] ?></span>
+                                            <span class="badge border <?= $st['class'] ?> px-2 py-1">
+                                                <?= $st['text'] ?>
+                                            </span>
                                         </div>
                                         <div class="mb-2">
                                             <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
@@ -345,152 +470,69 @@ $status_map = [
                                                 <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
                                             <?php endif; ?>
                                         </div>
-                                        <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= $q['cust_name'] ?></div>
-                                        <?php if (!empty($q['sales_name'])): ?>
-                                            <div class="small mb-1" style="color: #b89441;"><i class="bi bi-person-badge me-1"></i><?= htmlspecialchars($q['sales_name']) ?></div>
-                                        <?php endif; ?>
+                                        
+                                        <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
                                         <small class="text-muted d-block mb-1">
                                             <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
                                         </small>
+                                        <small class="text-muted d-block mb-3">
+                                            <i class="bi bi-calendar-range me-1"></i>
+                                            <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '?' ?>
+                                            -
+                                            <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '?' ?>
+                                        </small>
+
                                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                            <div class="fw-bold text-dark">฿<?= number_format($q['grand_total'], 2) ?></div>
+                                            <div class="fw-bold text-dark">
+                                                ฿<?= number_format($q['grand_total'], 2) ?>
+                                            </div>
                                             <div class="d-flex gap-1">
                                                 <?php if ($q['is_selected']): ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-x-lg"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
                                                 <?php else: ?>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-lg"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
                                                 <?php endif; ?>
-                                                <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                                <?php if ($q['status'] !== 'Approved' && $can_approve): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                                
+                                                <?php if ($q['status'] === 'Approved'): ?>
+                                                    <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info">
+                                                        <i class="bi bi-calendar-plus"></i>
+                                                    </a>
+                                                <?php endif; ?>
+
+                                                <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-printer"></i>
+                                                </a>
+                                                
+                                                <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
+                                                    <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                                    <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </a>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                                
+                                                <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <?php foreach ($quotes_by_project as $pid => $project):
-                $quotes_list = $project['quotes'];
-                $first_q = $quotes_list[0];
-            ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <div class="fw-bold text-dark">
-                                    ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?>
-                                </div>
-                                <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
-                                <?php if (!empty($first_q['cust_contact_name'])): ?>
-                                    <div class="text-muted small mt-1"><i class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <a href="add_quote.php?project_id=<?= $pid ?>" class="btn btn-sm btn-outline-dark" title="เพิ่มใบเสนอราคาในโครงการนี้">
-                                    <i class="bi bi-plus-circle"></i>
-                                </a>
-                                <i class="bi bi-chevron-down text-gold toggle-mobile-quotes" data-pid="p_<?= $pid ?>" style="cursor: pointer; font-size: 1.2rem;"></i>
+                                <?php endforeach; ?>
                             </div>
                         </div>
-
-                        <div id="mobile-quotes-p_<?= $pid ?>" style="display:none">
-                            <?php foreach ($quotes_list as $q):
-                                $st = $status_map[$q['status']] ?? $status_map['Draft'];
-                                $wf = $workflow_statuses[$q['workflow_status']] ?? $workflow_statuses['Draft'];
-                            ?>
-                                <div class="quote-mobile-item">
-                                    <?php if ($q !== $quotes_list[0]): ?>
-                                        <hr class="my-2">
-                                    <?php endif; ?>
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
-                                            <?php if ($q['is_selected']): ?>
-                                                <span class="badge bg-primary" style="font-size: 0.6rem;">SELECTED</span>
-                                            <?php endif; ?>
-                                            <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?></div>
-                                        </div>
-                                        <span class="badge border <?= $st['class'] ?> px-2 py-1">
-                                            <?= $st['text'] ?>
-                                        </span>
-                                    </div>
-                                    <div class="mb-2">
-                                        <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
-                                        <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
-                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
-                                                data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
-                                            <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <?php else: ?>
-                                            <span class="badge <?= $wf['class'] ?> px-2 py-1" style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= htmlspecialchars($q['cust_name']) ?></div>
-                                    <small class="text-muted d-block mb-1">
-                                        <i class="bi bi-calendar-event me-1"></i><?= $q['event_name'] ?? $q['function_name'] ?>
-                                    </small>
-                                    <small class="text-muted d-block mb-3">
-                                        <i class="bi bi-calendar-range me-1"></i>
-                                        <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '?' ?>
-                                        -
-                                        <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '?' ?>
-                                    </small>
-
-                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                        <div class="fw-bold text-dark">
-                                            ฿<?= number_format($q['grand_total'], 2) ?>
-                                        </div>
-                                        <div class="d-flex gap-1">
-                                            <?php if ($q['is_selected']): ?>
-                                                <button type="button" class="btn btn-sm btn-outline-warning btn-deselect-quote" data-id="<?= $q['id'] ?>">
-                                                    <i class="bi bi-x-lg"></i>
-                                                </button>
-                                            <?php else: ?>
-                                                <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>">
-                                                    <i class="bi bi-check-lg"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if ($q['status'] !== 'Approved' && $can_approve): ?>
-                                                <button type="button" class="btn btn-sm btn-outline-success btn-approve-quote" data-id="<?= $q['id'] ?>">
-                                                    <i class="bi bi-check-circle"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            
-                                            <?php if ($q['status'] === 'Approved'): ?>
-                                                <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info">
-                                                    <i class="bi bi-calendar-plus"></i>
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-printer"></i>
-                                            </a>
-                                            
-                                            <?php if ($q['status'] !== 'Approved' || $role === 'admin'): ?>
-                                                <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                                <a href="edit_quotation.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning">
-                                                    <i class="bi bi-pencil-square"></i>
-                                                </a>
-                                                <?php endif; ?>
-                                            <?php endif; ?>
-                                            
-                                            <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
                     </div>
-                </div>
+                <?php endforeach; ?>
             <?php endforeach; ?>
         </div>
     </div>
@@ -529,9 +571,11 @@ $status_map = [
             }
         });
 
-        // Toggle ungrouped mobile
-        $(document).on('click', '.toggle-ungrouped-mobile', function () {
-            const container = $('#mobile-ungrouped');
+        // Toggle ungrouped mobile (dynamic per section)
+        $(document).on('click', '[class*="toggle-ungrouped-mobile-"]', function () {
+            const key = this.className.match(/toggle-ungrouped-mobile-(\w+)/)?.[1];
+            if (!key) return;
+            const container = $(`#mobile-ungrouped-${key}`);
             const icon = $(this);
             if (container.is(':visible')) {
                 container.slideUp(200);

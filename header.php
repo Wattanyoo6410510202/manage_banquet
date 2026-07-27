@@ -205,7 +205,7 @@ function is_active($pages)
                     <i class="bi bi-list fs-4"></i>
                 </button>
 
-                <a class="navbar-brand fw-bold d-flex align-items-center" href="dashboard.php">
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="executive_dashboard.php">
                     <i class="bi bi-building me-2 text-gold"></i>
                     <div class="d-flex flex-column flex-sm-row">
                         <span class="text-white">Banquet</span>
@@ -257,8 +257,8 @@ function is_active($pages)
                 <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
                 <li>
-                    <a href="dashboard.php" class="<?php echo is_active('dashboard.php'); ?>">
-                        <i class="bi bi-speedometer2"></i> แดชบอร์ด
+                    <a href="executive_dashboard.php" class="<?php echo is_active('executive_dashboard.php'); ?>">
+                        <i class="bi bi-clipboard-data"></i> Executive Dashboard
                     </a>
                 </li>
                 <li>

@@ -104,32 +104,32 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         </div>
                         <div class="mb-2">
                             <label class="small fw-bold">เลขผู้เสียภาษี</label>
-                            <input type="text" name="cust_tax_id" id="cust_tax_id" class="form-control form-control-sm">
+                            <input type="text" name="cust_tax_id" id="cust_tax_id" class="form-control form-control-sm" required>
                         </div>
                         <div class="mb-2">
                             <label class="small fw-bold">ที่อยู่</label>
                             <textarea name="cust_address" id="cust_address" class="form-control form-control-sm"
-                                rows="2"></textarea>
+                                rows="2" required></textarea>
                         </div>
                         <div class="row">
                             <div class="col-6 mb-2">
                                 <label class="small fw-bold">ผู้ประสานงาน</label>
                                 <input type="text" name="cust_contact_name" id="cust_contact_name"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm" required>
                             </div>
                             <div class="col-6 mb-2">
                                 <label class="small fw-bold">เบอร์โทร</label>
                                 <input type="text" name="cust_phone" id="cust_phone"
-                                    class="form-control form-control-sm">
+                                    class="form-control form-control-sm" required>
                             </div>
                         </div>
                         <div class="mb-2">
                             <label class="small fw-bold">อีเมล</label>
-                            <input type="email" name="cust_email" id="cust_email" class="form-control form-control-sm">
+                            <input type="email" name="cust_email" id="cust_email" class="form-control form-control-sm" required>
                         </div>
                         <div class="mb-3">
                             <label class="small fw-bold">เซลที่ดูแล</label>
-                            <input type="text" name="sales_name" id="sales_name" class="form-control form-control-sm" placeholder="ระบุชื่อเซล">
+                            <input type="text" name="sales_name" id="sales_name" class="form-control form-control-sm" placeholder="ระบุชื่อเซล" required>
                         </div>
 
                         <div class="d-grid gap-2">

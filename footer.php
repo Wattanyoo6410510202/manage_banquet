@@ -51,41 +51,14 @@
             });
 
             // Page specific steps
-            if (currentPage === 'dashboard.php' || currentPage === '') {
+            if (currentPage === 'executive_dashboard.php' || currentPage === '') {
                 steps.push(
                     {
-                        element: '#companyFilter',
+                        element: '.section-title:first-child',
                         popover: {
-                            title: 'ตัวกรองโรงแรม',
-                            description: 'เลือกโรงแรมที่ต้องการดูข้อมูลภาพรวม',
+                            title: 'Executive Dashboard',
+                            description: 'ภาพรวมธุรกิจแบบละเอียด ทั้งยอดขาย รายได้ และ KPI',
                             side: "bottom",
-                            align: 'start'
-                        }
-                    },
-                    {
-                        element: '.dashboard-stat-card:first-child',
-                        popover: {
-                            title: 'สถิติภาพรวม',
-                            description: 'แสดงจำนวนงานทั้งหมด, งานที่รออนุมัติ และยอดเงินมัดจำรวม',
-                            side: "bottom",
-                            align: 'start'
-                        }
-                    },
-                    {
-                        element: '#revenueChart',
-                        popover: {
-                            title: 'กราฟรายได้',
-                            description: 'แสดงแนวโน้มรายได้ย้อนหลัง 6 เดือน',
-                            side: "top",
-                            align: 'start'
-                        }
-                    },
-                    {
-                        element: '.card:has(#roomDisplayBody)', // Room status table
-                        popover: {
-                            title: 'สถานะห้องประชุม',
-                            description: 'ตรวจสอบว่าห้องไหนว่างหรือมีงานจัดเลี้ยงอยู่ในขณะนี้',
-                            side: "top",
                             align: 'start'
                         }
                     }
