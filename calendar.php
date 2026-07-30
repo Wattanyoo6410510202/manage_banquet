@@ -11,6 +11,9 @@ $function_types = $conn->query("SELECT id, type_name, prefix FROM function_types
 $ft_list = [];
 while ($ft = $function_types->fetch_assoc()) $ft_list[] = $ft;
 $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
+$users = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff','Admin','Sale','Manager','GM') ORDER BY name ASC");
+$user_list = [];
+while ($u = $users->fetch_assoc()) $user_list[] = $u;
 ?>
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
 <script src='https://code.jquery.com/jquery-3.7.0.js'></script>
@@ -145,8 +148,8 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
                         </div>
                         <div class="col-md-2">
                             <select id="approveFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
-                                <option value="approved" selected>เฉพาะที่อนุมัติแล้ว</option>
-                                <option value="all">ทั้งหมด (รวมรออนุมัติ)</option>
+                                <option value="approved">เฉพาะที่อนุมัติแล้ว</option>
+                                <option value="all" selected>ทั้งหมด (รวมรออนุมัติ)</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -189,9 +192,22 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
                         <i class="bi bi-clock-history me-2 text-primary"></i>
                         ตารางเวลา: <span id="selectedDateText" class="text-primary"><?php $m=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; echo date('j').' '.$m[(int)date('n')].' '.(date('Y')+543); ?></span>
                     </h5>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <select id="timetableType" class="form-select form-select-sm" style="width:auto;" onchange="refreshTimetable()">
+                            <option value="eo">เฉพาะ EO</option>
+                            <option value="qt" selected>เฉพาะใบเสนอราคา</option>
+                            <option value="all">ทั้งหมด</option>
+                        </select>
+                        <select id="timetableSalesperson" class="form-select form-select-sm" style="width:auto;" onchange="refreshTimetable()">
+                            <option value="all">เซลล์ทั้งหมด</option>
+                            <?php foreach ($user_list as $u): ?>
+                                <option value="<?= htmlspecialchars($u['name']) ?>"><?= htmlspecialchars($u['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="month" id="timetableMonthPicker" class="form-control form-control-sm" style="width:auto;" onchange="onTimetableMonthChange()">
                         <input type="date" id="timetableDatePicker" class="form-control form-control-sm" style="width:auto;">
                         <span id="eventCountBadge" class="badge bg-primary d-none">0 งาน</span>
+                        <button class="btn btn-success btn-sm" onclick="exportExcel()"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -199,19 +215,20 @@ $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
                         <table class="table table-hover align-middle mb-0" id="dayTimetable">
                             <thead class="table-light">
                                 <tr class="small text-muted">
-                                    <th width="9%">วันที่จัดงาน</th>
+                                    <th width="7%">วันที่จัดงาน</th>
+                                    <th width="7%">เลขที่</th>
                                     <th>กิจกรรม</th>
-                                    <th width="10%">ลูกค้า</th>
-                                    <th width="9%">เบอร์โทร</th>
-                                    <th width="7%">ที่มา Lead</th>
-                                    <th width="7%">ผู้รับผิดชอบ</th>
-                                    <th width="8%">งบประมาณ</th>
-                                    <th width="7%">ผลงาน</th>
-                                    <th width="8%">สถานะ</th>
-                                    <th width="7%">วันที่เสนอราคา</th>
-                                    <th width="7%">วันที่ Inspection</th>
-                                    <th width="7%">วันที่ Follow Up</th>
-                                    <th width="7%">วันที่ Confirmed</th>
+                                    <th width="9%">ลูกค้า</th>
+                                    <th width="8%">เบอร์โทร</th>
+                                    <th width="6%">ที่มา Lead</th>
+                                    <th width="6%">ผู้รับผิดชอบ</th>
+                                    <th width="7%">งบประมาณ</th>
+                                    <th width="6%">ผลงาน</th>
+                                    <th width="7%">สถานะ</th>
+                                    <th width="6%">วันที่เสนอราคา</th>
+                                    <th width="6%">วันที่ Inspection</th>
+                                    <th width="6%">วันที่ Follow Up</th>
+                                    <th width="6%">วันที่ Confirmed</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -361,10 +378,12 @@ document.addEventListener('DOMContentLoaded', function () {
         navLinks: true,
         navLinkDayClick: function(date) {
             lastTimetableDate = date;
+            document.getElementById('timetableMonthPicker').value = '';
             updateDayTimetable(date);
         },
         dateClick: function(info) {
             lastTimetableDate = info.date;
+            document.getElementById('timetableMonthPicker').value = '';
             updateDayTimetable(info.date);
         },
         datesSet: function(info) {
@@ -386,6 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if(st === 'cancelled' || st === 'ยกเลิก') dotColor = '#dc3545';
             else if(rawStatus === 'QT (อนุมัติ)') dotColor = '#fd7e14';
             else if(rawStatus === 'QT (Draft)') dotColor = '#6c757d';
+            else if(rawStatus === 'กรุณาเปลี่ยนวันหรือกด Freeze') dotColor = '#dc3545';
             else if(rawStatus === 'จองห้อง') dotColor = '#6f42c1';
 
             return {
@@ -445,6 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             'remark' => (string) ($row['remark'] ?? ''),
                             'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
                             'approved' => intval($row['approve'] ?? 0),
+                            'doc_no' => (string) ($row['function_code'] ?? $row['id'] ?? ''),
                         ]
                     ];
                 }
@@ -494,16 +515,27 @@ document.addEventListener('DOMContentLoaded', function () {
                             'total' => number_format($row['total_amount'] ?? 0, 2),
                             'remark' => (string) ($row['schedule_function'] ?? ''),
                             'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
+                            'doc_no' => (string) ($row['id'] ?? ''),
                         ]
                     ];
                 }
             }
 
             // 3. ใบเสนอราคา (Quotations)
-            $sql_q = "SELECT q.*, c.cust_name, c.cust_phone, u.name as creator_name
+            $sql_q = "SELECT q.*, c.cust_name, c.cust_phone, u.name as creator_name,
+                             ft.type_name as func_type_name, mr.room_name as func_room_name,
+                             f.pax as func_pax, f.deposit as func_deposit, f.total_amount as func_total_amount,
+                             (SELECT COUNT(*) FROM functions WHERE quotation_id = q.id AND status != 'Cancelled') as beo_count
                       FROM quotations q 
                       LEFT JOIN customers c ON q.customer_id = c.id
                       LEFT JOIN users u ON q.created_by = u.id
+                      LEFT JOIN functions f ON f.id = (
+                          SELECT f2.id FROM functions f2 
+                          WHERE f2.quotation_id = q.id AND f2.status != 'Cancelled' 
+                          ORDER BY f2.id DESC LIMIT 1
+                      )
+                      LEFT JOIN function_types ft ON f.function_type_id = ft.id
+                      LEFT JOIN meeting_rooms mr ON f.room_id = mr.id
                       WHERE q.status NOT IN ('Cancelled')
                       ORDER BY q.id DESC";
             $q_q = mysqli_query($conn, $sql_q);
@@ -512,46 +544,107 @@ document.addEventListener('DOMContentLoaded', function () {
                 $q_q = mysqli_query($conn, $sql_q);
             }
 
+            $qt_rows = [];
             if ($q_q) {
                 while ($row = mysqli_fetch_assoc($q_q)) {
-                    $st = strtolower(trim($row['status'] ?? ''));
-                    if($st === 'draft' || $st === 'pending') {
-                        $color = '#6c757d';
-                        $status_text = 'QT (Draft)';
-                    } else {
-                        $color = '#fd7e14';
-                        $status_text = 'QT (อนุมัติ)';
-                    }
-                    
-                    $ev_date = $row['event_date'] ?? '';
-                    $ex_date = !empty($row['expiry_date']) ? $row['expiry_date'] : '';
-                    $end_date = '';
-                    if ($ex_date && $ex_date !== $ev_date) {
-                        $end_date = date('Y-m-d', strtotime($ex_date . ' +1 day'));
-                    }
-
-                    $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
-
-                    $ev = [
-                        'id' => 'qt_' . $row['id'],
-                        'ref_id' => (string) $row['id'],
-                        'title' => $qt_title,
-                        'start' => $ev_date,
-                        'color' => $color,
-                        'mode' => 'general',
-                        'extendedProps' => [
-                            'mainTitle' => (string) ($row['event_name'] ?? ''),
-                            'status' => $status_text,
-                            'customer' => (string) ($row['cust_name'] ?? ''),
-                            'total' => number_format($row['grand_total'] ?? 0, 2),
-                            'created_by_name' => (string) ($row['creator_name'] ?? ''),
-                        ]
-                    ];
-                    if ($end_date) {
-                        $ev['end'] = $end_date;
-                    }
-                    $events[] = $ev;
+                    $qt_rows[] = $row;
                 }
+            }
+
+            // ตรวจจับ: มี QT อนุมัติแล้ว + ไม่อนุมัติในวันเดียวกัน → auto freeze ใบที่ไม่อนุมัติ
+            $date_approved_map = [];
+            foreach ($qt_rows as $row) {
+                $d = $row['event_date'] ?? '';
+                if (!$d) continue;
+                $is_approved = strtolower(trim($row['status'] ?? '')) === 'approved';
+                if ($is_approved) {
+                    $date_approved_map[$d] = true;
+                }
+            }
+            foreach ($qt_rows as &$row) {
+                $d = $row['event_date'] ?? '';
+                if (!$d) continue;
+                $is_approved = strtolower(trim($row['status'] ?? '')) === 'approved';
+                if (!$is_approved && isset($date_approved_map[$d])) {
+                    // อัปเดต workflow_status เป็น Freeze ใน DB
+                    $update_sql = "UPDATE quotations SET workflow_status = 'Freeze' WHERE id = " . intval($row['id']) . " AND (workflow_status IS NULL OR workflow_status = '' OR workflow_status = 'Draft')";
+                    @mysqli_query($conn, $update_sql);
+                    $row['workflow_status'] = 'Freeze';
+                }
+            }
+            unset($row);
+
+            foreach ($qt_rows as $row) {
+                $st = strtolower(trim($row['status'] ?? ''));
+                if($st === 'draft' || $st === 'pending') {
+                    $color = '#6c757d';
+                    $status_text = 'QT (Draft)';
+                } else {
+                    $color = '#fd7e14';
+                    $status_text = 'QT (อนุมัติ)';
+                }
+                
+                $is_freeze = ($row['workflow_status'] ?? '') === 'Freeze';
+                if ($is_freeze) {
+                    $color = '#dc3545';
+                    $status_text = 'กรุณาเปลี่ยนวันหรือกด Freeze';
+                }
+
+                $ev_date = $row['event_date'] ?? '';
+                $ex_date = !empty($row['expiry_date']) ? $row['expiry_date'] : '';
+                $end_date = '';
+                if ($ex_date && $ex_date !== $ev_date) {
+                    $end_date = date('Y-m-d', strtotime($ex_date . ' +1 day'));
+                }
+
+                $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
+                if ($is_freeze) {
+                    $qt_title = "❌ " . $qt_title;
+                }
+
+                $wf_status = $row['workflow_status'] ?? '';
+                $ev = [
+                    'id' => 'qt_' . $row['id'],
+                    'ref_id' => (string) $row['id'],
+                    'title' => $qt_title,
+                    'start' => $ev_date,
+                    'color' => $color,
+                    'mode' => 'general',
+                    'extendedProps' => [
+                        'mainTitle' => (string) ($row['event_name'] ?? ''),
+                        'status' => $status_text,
+                        'customer' => (string) ($row['cust_name'] ?? ''),
+                        'phone' => (string) ($row['cust_phone'] ?? ''),
+                        'total' => number_format($row['grand_total'] ?? 0, 2),
+                        'created_by_name' => (string) ($row['creator_name'] ?? ''),
+                        'lead_source' => (string) ($row['lead_source'] ?? ''),
+                        'result' => (string) ($row['result'] ?? ''),
+                        'created_at' => (string) ($row['created_at'] ?? ''),
+                        'raw_status' => (string) ($row['status'] ?? ''),
+                        'inspection_date' => (string) ($row['inspection_date'] ?? ''),
+                        'follow_up_date' => (string) ($row['follow_up_date'] ?? ''),
+                        'confirmed_date' => (string) ($row['approved_at'] ?? ''),
+                        'doc_no' => (string) ($row['quote_no'] ?? ''),
+                        'approved' => 0,
+                        'is_qt' => true,
+                        'quote_no' => (string) ($row['quote_no'] ?? ''),
+                        'event_date' => (string) ($row['event_date'] ?? ''),
+                        'func_type_name' => (string) ($row['func_type_name'] ?? ''),
+                        'room' => (string) ($row['func_room_name'] ?? ''),
+                        'pax' => (string) ($row['func_pax'] ?? $row['pax'] ?? '0'),
+                        'func_room_name' => (string) ($row['func_room_name'] ?? ''),
+                        'func_pax' => (string) ($row['func_pax'] ?? $row['pax'] ?? '0'),
+                        'func_deposit' => number_format($row['func_deposit'] ?? 0, 2),
+                        'func_total_amount' => number_format($row['func_total_amount'] ?? 0, 2),
+                        'workflow_status' => (string) $wf_status,
+                        'customer_signed' => (string) ($row['customer_signature'] ?? ''),
+                        'has_beo' => intval($row['beo_count'] ?? 0) > 0 ? '✓' : '-',
+                    ]
+                ];
+                if ($end_date) {
+                    $ev['end'] = $end_date;
+                }
+                $events[] = $ev;
             }
 
             // 4. จองห้องประชุม (Room Bookings)
@@ -592,6 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             'created_by_name' => (string) ($row['created_by'] ?? ''),
                             'booking_code' => (string) ($row['booking_code'] ?? ''),
                             'organization' => (string) ($row['organization'] ?? ''),
+                            'doc_no' => (string) ($row['booking_code'] ?? ''),
                         ]
                     ];
                 }
@@ -612,6 +706,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 badgeClass = 'bg-purple text-white';
             } else if(isQt) {
                 if(st.includes('draft')) badgeClass = 'bg-secondary';
+                else if(st.includes('freeze')) badgeClass = 'bg-danger';
                 else badgeClass = 'bg-dark text-light';
             } else {
                 if(st === 'pending') badgeClass = 'bg-warning text-dark';
@@ -689,6 +784,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <span class="fw-bold small">${props.room || '-'}</span>
                             </div>
                         </div>
+                        ${props.func_type_name ? `
+                        <div class="col-6">
+                            <div class="p-2 rounded bg-light">
+                                <small class="text-muted d-block"><i class="bi bi-tag me-1"></i>ประเภทงาน</small>
+                                <span class="fw-bold small">${props.func_type_name}</span>
+                            </div>
+                        </div>` : ''}
                         <div class="col-6">
                             <div class="p-2 rounded bg-light">
                                 <small class="text-muted d-block"><i class="bi bi-people me-1"></i>จำนวนคน</small>
@@ -776,6 +878,12 @@ document.addEventListener('DOMContentLoaded', function () {
             eventDetailModal.show();
         }
     });
+    // กำหนดค่าเริ่มต้น month picker เป็นเดือนปัจจุบัน
+    const now = new Date();
+    const defaultMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const monthPicker = document.getElementById('timetableMonthPicker');
+    if (monthPicker) monthPicker.value = defaultMonth;
+
     calendar.render();
     updateCalendarEvents();
     updateStats();
@@ -814,14 +922,85 @@ function belongsToUser(ev) {
     return creator === currentUserName;
 }
 
+function refreshTimetable() {
+    if (lastTimetableDate) {
+        updateDayTimetable(lastTimetableDate);
+    } else if (calendar && calendar.view) {
+        const vs = calendar.view.currentStart;
+        const ve = calendar.view.currentEnd;
+        updateDayTimetable(null, vs, ve);
+    }
+}
+
+function onTimetableMonthChange() {
+    const monthPicker = document.getElementById('timetableMonthPicker');
+    const datePicker = document.getElementById('timetableDatePicker');
+    if (monthPicker && monthPicker.value) {
+        datePicker.value = '';
+        lastTimetableDate = null;
+    }
+    refreshTimetable();
+}
+
 function updateDayTimetable(date, viewStart, viewEnd) {
     const dateText = document.getElementById('selectedDateText');
     const timetableBody = document.querySelector('#dayTimetable tbody');
     const eventCountBadge = document.getElementById('eventCountBadge');
     const datePicker = document.getElementById('timetableDatePicker');
+    const typeFilter = document.getElementById('timetableType')?.value || 'eo';
+    const salesFilter = document.getElementById('timetableSalesperson')?.value || 'all';
+    const isQtView = typeFilter === 'qt';
+    const tblColspan = isQtView ? 18 : 14;
+    setTimetableHeader(typeFilter);
     timetableBody.innerHTML = '';
 
+    // ถ้ามี month picker → ใช้เดือนนั้นแทน calendar view
+    const monthPicker = document.getElementById('timetableMonthPicker');
+    if (!date && monthPicker && monthPicker.value) {
+        const parts = monthPicker.value.split('-');
+        const y = parseInt(parts[0]);
+        const m = parseInt(parts[1]) - 1;
+        viewStart = new Date(y, m, 1);
+        viewEnd = new Date(y, m + 1, 1);
+    }
+
+    const passesTimetableFilters = (ev) => {
+        if (typeFilter === 'eo' && ev.id.startsWith('qt_')) return false;
+        if (typeFilter === 'qt' && !ev.id.startsWith('qt_')) return false;
+        if (salesFilter !== 'all') {
+            const creator = ev.extendedProps.created_by_name || '';
+            if (creator !== salesFilter) return false;
+        }
+        return true;
+    };
+
     if (date !== null && date !== undefined) {
+        if (typeof date === 'string' && date.includes('-')) {
+            const d = new Date(date + 'T00:00:00');
+            const dateStr = date;
+            dateText.innerText = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            if (datePicker) datePicker.value = dateStr;
+
+            const events = calendar.getEvents().filter(ev => {
+                const evStart = ev.startStr.split('T')[0];
+                const isVisible = ev.display !== 'none';
+                return evStart === dateStr && isVisible && belongsToUser(ev) && passesTimetableFilters(ev);
+            });
+
+            if (events.length === 0) {
+                timetableBody.innerHTML = `<tr><td colspan="${tblColspan}" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในวันที่เลือก</td></tr>`;
+                eventCountBadge.classList.add('d-none');
+                (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
+                return;
+            }
+
+            eventCountBadge.classList.remove('d-none');
+            eventCountBadge.textContent = events.length + ' งาน';
+            (document.getElementById('statDayEvents') || {}).textContent = events.length + ' งาน';
+            renderTimetableRows(events, tblColspan, isQtView);
+            return;
+        }
+
         // แสดงเฉพาะวันเดียว
         const d = new Date(date);
         const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -831,12 +1010,11 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         const events = calendar.getEvents().filter(ev => {
             const evStart = ev.startStr.split('T')[0];
             const isVisible = ev.display !== 'none';
-            const isQt = ev.id.startsWith('qt_');
-            return evStart === dateStr && isVisible && !isQt && belongsToUser(ev);
+            return evStart === dateStr && isVisible && belongsToUser(ev) && passesTimetableFilters(ev);
         });
 
         if (events.length === 0) {
-            timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในวันที่เลือก</td></tr>';
+            timetableBody.innerHTML = `<tr><td colspan="${tblColspan}" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในวันที่เลือก</td></tr>`;
             eventCountBadge.classList.add('d-none');
             (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
             return;
@@ -845,7 +1023,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         eventCountBadge.classList.remove('d-none');
         eventCountBadge.textContent = events.length + ' งาน';
         (document.getElementById('statDayEvents') || {}).textContent = events.length + ' งาน';
-        renderTimetableRows(events);
+        renderTimetableRows(events, tblColspan, isQtView);
         return;
     }
 
@@ -857,7 +1035,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     const clampedStart = startStr;
     const clampedEnd = endStr;
     if (clampedStart >= clampedEnd) {
-        timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
+        timetableBody.innerHTML = `<tr><td colspan="${tblColspan}" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>`;
         eventCountBadge.classList.add('d-none');
         (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
         return;
@@ -865,8 +1043,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     const allEvents = calendar.getEvents().filter(ev => {
         const evStart = ev.startStr.split('T')[0];
         const isVisible = ev.display !== 'none';
-        const isQt = ev.id.startsWith('qt_');
-        return evStart >= clampedStart && evStart < clampedEnd && isVisible && !isQt && belongsToUser(ev);
+        return evStart >= clampedStart && evStart < clampedEnd && isVisible && belongsToUser(ev) && passesTimetableFilters(ev);
     }).sort((a, b) => (a.startStr + a.id).localeCompare(b.startStr + b.id));
 
     const totalCount = allEvents.length;
@@ -875,7 +1052,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
     dateText.innerText = startLabel + ' — ' + endLabel;
 
     if (totalCount === 0) {
-        timetableBody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>';
+        timetableBody.innerHTML = `<tr><td colspan="${tblColspan}" class="text-center py-5 text-muted"><i class="bi bi-calendar-x d-block mb-2 fs-1"></i>ไม่มีกิจกรรมในช่วงนี้</td></tr>`;
         eventCountBadge.classList.add('d-none');
         (document.getElementById('statDayEvents') || {}).textContent = '0 งาน';
         return;
@@ -898,16 +1075,50 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         const d = new Date(dateKey + 'T00:00:00');
         const dateLabel = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
-        timetableBody.innerHTML += `
-            <tr class="table-info" style="cursor:default;">
-                <td colspan="13" class="py-1">
-                    <span class="fw-bold small"><i class="bi bi-calendar me-1"></i>${dateLabel}</span>
-                    <span class="badge bg-info text-dark ms-2">${dateEvents.length} งาน</span>
-                </td>
-            </tr>`;
-
-        dateEvents.forEach(ev => renderRow(ev));
+        dateEvents.forEach(ev => isQtView ? renderQtRow(ev) : renderRow(ev));
     });
+
+    if (isQtView) {
+        let totalAmt = 0, confirmedAmt = 0, pendingAmt = 0, totalDep = 0;
+        allEvents.forEach(ev => {
+            const p = ev.extendedProps;
+            const t = parseFloat((p.total || '0').replace(/,/g, '')) || 0;
+            const d = parseFloat((p.func_deposit || '0').replace(/,/g, '')) || 0;
+            totalAmt += t;
+            totalDep += d;
+            const st = (p.raw_status || '').toLowerCase();
+            if (st === 'approved') {
+                confirmedAmt += t;
+            } else {
+                pendingAmt += t;
+            }
+        });
+        const pctConfirmed = totalAmt > 0 ? ((confirmedAmt / totalAmt) * 100).toFixed(1) : 0;
+        const pctPending = totalAmt > 0 ? ((pendingAmt / totalAmt) * 100).toFixed(1) : 0;
+        const outstanding = Math.max(0, confirmedAmt - totalDep);
+        const fmt = (n) => n.toLocaleString('en-US', {minimumFractionDigits: 2});
+        timetableBody.innerHTML += `
+            <tr class="table-light fw-bold" style="border-top:2px solid #dee2e6;">
+                <td colspan="17" class="text-end py-2 small">ยอดรวม</td>
+                <td class="py-2 small">฿${fmt(totalAmt)}</td>
+            </tr>
+            <tr class="table-success">
+                <td colspan="17" class="text-end py-2 small">ยอดยืนยันชำระ</td>
+                <td class="py-2 small">฿${fmt(confirmedAmt)} (${pctConfirmed}%)</td>
+            </tr>
+            <tr class="table-warning">
+                <td colspan="17" class="text-end py-2 small">ยอดรอยืนยัน</td>
+                <td class="py-2 small">฿${fmt(pendingAmt)} (${pctPending}%)</td>
+            </tr>
+            <tr>
+                <td colspan="17" class="text-end py-2 small">ยอดมัดจำ</td>
+                <td class="py-2 small">฿${fmt(totalDep)}</td>
+            </tr>
+            <tr class="table-danger">
+                <td colspan="17" class="text-end py-2 small">ยอดคงค้าง</td>
+                <td class="py-2 small fw-bold">฿${fmt(outstanding)}</td>
+            </tr>`;
+    }
 }
 
 const fmtDate = (val) => {
@@ -939,6 +1150,7 @@ function renderRow(ev) {
     timetableBody.innerHTML += `
         <tr data-event-id="${eid}">
             <td class="small">${dateLabel}</td>
+            <td class="small fw-bold text-primary">${props.doc_no || '-'}</td>
             <td><div class="fw-bold small" onclick='calendar.trigger("eventClick", {event: calendar.getEventById("${eid}")})' style="cursor:pointer;">${props.mainTitle || '-'}</div></td>
             <td class="small">${props.customer || '-'}</td>
             <td class="small">${props.phone || '-'}</td>
@@ -955,27 +1167,101 @@ function renderRow(ev) {
     `;
 }
 
-function renderTimetableRows(events) {
+function setTimetableHeader(type) {
+    const thead = document.querySelector('#dayTimetable thead tr');
+    if (type === 'qt') {
+        thead.innerHTML = `
+            <th width="9%">เลขที่ Quotation</th>
+            <th width="9%">วันที่เสนอราคา</th>
+            <th width="7%">Sales</th>
+            <th>ชื่อลูกค้า/บริษัท</th>
+            <th width="8%">ประเภทงาน</th>
+            <th width="8%">วันที่จัดงาน</th>
+            <th width="8%">ห้องจัดเลี้ยง</th>
+            <th width="6%">จำนวนแขก</th>
+            <th width="8%">มูลค่าเสนอ (บาท)</th>
+            <th width="9%">สถานะใบเสนอราคา</th>
+            <th width="7%">วันที่ Follow Up</th>
+            <th width="7%">ผลการติดตาม</th>
+            <th width="5%">เซ็นรับ</th>
+            <th width="7%">วันที่รับใบเซ็น</th>
+            <th width="6%">มัดจำ</th>
+            <th width="5%">BEO</th>
+            <th width="7%">สถานะ</th>
+            <th width="7%">ยอดคงเหลือ</th>
+        `;
+    } else {
+        thead.innerHTML = `
+            <th width="7%">วันที่จัดงาน</th>
+            <th width="7%">เลขที่</th>
+            <th>กิจกรรม</th>
+            <th width="9%">ลูกค้า</th>
+            <th width="8%">เบอร์โทร</th>
+            <th width="6%">ที่มา Lead</th>
+            <th width="6%">ผู้รับผิดชอบ</th>
+            <th width="7%">งบประมาณ</th>
+            <th width="6%">ผลงาน</th>
+            <th width="7%">สถานะ</th>
+            <th width="6%">วันที่เสนอราคา</th>
+            <th width="6%">วันที่ Inspection</th>
+            <th width="6%">วันที่ Follow Up</th>
+            <th width="6%">วันที่ Confirmed</th>
+        `;
+    }
+}
+
+function renderQtRow(ev) {
+    const timetableBody = document.querySelector('#dayTimetable tbody');
+    const props = ev.extendedProps;
+    const eid = ev.id;
+    const wf = props.workflow_status || '';
+    const hasSigned = props.customer_signed ? '✓' : '-';
+    const deposit = parseFloat((props.func_deposit || '0').replace(/,/g, '')) || 0;
+    const total = parseFloat((props.total || '0').replace(/,/g, '')) || 0;
+    const balance = Math.max(0, total - deposit);
+
+    const st = props.status.toLowerCase();
+    let badgeClass = 'bg-secondary';
+    if (st === 'pending') badgeClass = 'bg-warning text-dark';
+    else if (st === 'confirmed' || st === 'approved') badgeClass = 'bg-info text-dark';
+    else if (st === 'in progress') badgeClass = 'bg-primary';
+    else if (st === 'completed') badgeClass = 'bg-success';
+    else if (st === 'cancelled') badgeClass = 'bg-danger';
+
+    timetableBody.innerHTML += `
+        <tr data-event-id="${eid}">
+            <td class="small fw-bold text-primary">${props.quote_no || '-'}</td>
+            <td class="small">${fmtDateTime(props.created_at)}</td>
+            <td class="small">${props.created_by_name || '-'}</td>
+            <td class="small">${props.customer || '-'}</td>
+            <td class="small">${props.func_type_name || '-'}</td>
+            <td class="small">${props.event_date || '-'}</td>
+            <td class="small">${props.func_room_name || '-'}</td>
+            <td class="small">${props.func_pax || '0'}</td>
+            <td class="fw-bold small">฿${props.total}</td>
+            <td class="small">${wf || 'Draft'}</td>
+            <td class="small">${fmtDate(props.follow_up_date)}</td>
+            <td class="small">${props.result || '-'}</td>
+            <td class="small text-center">${hasSigned}</td>
+            <td class="small">${fmtDate(props.confirmed_date)}</td>
+            <td class="small">฿${props.func_deposit}</td>
+            <td class="small text-center">${props.has_beo || '-'}</td>
+            <td><span class="badge ${badgeClass}" style="font-size:0.7rem;">${props.status}</span></td>
+            <td class="fw-bold small">฿${balance.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+        </tr>
+    `;
+}
+
+function renderTimetableRows(events, tblColspan, isQtView) {
     events.sort((a, b) => (a.startStr + a.id).localeCompare(b.startStr + b.id));
 
-    const groupedByRoom = {};
-    events.forEach(ev => {
-        const room = ev.extendedProps.room || 'ไม่ได้ระบุห้อง';
-        if (!groupedByRoom[room]) groupedByRoom[room] = [];
-        groupedByRoom[room].push(ev);
-    });
-
-    Object.keys(groupedByRoom).sort().forEach(room => {
+    if (isQtView) {
         const tblBody = document.querySelector('#dayTimetable tbody');
-        tblBody.innerHTML += `
-            <tr class="table-secondary" style="cursor:default;">
-                <td colspan="13" class="py-1">
-                    <span class="fw-bold small"><i class="bi bi-building me-1"></i>${room}</span>
-                    <span class="badge bg-secondary ms-2">${groupedByRoom[room].length} งาน</span>
-                </td>
-            </tr>`;
-        groupedByRoom[room].forEach(ev => renderRow(ev));
-    });
+        events.forEach(ev => renderQtRow(ev));
+        return;
+    }
+
+    events.forEach(ev => renderRow(ev));
 }
 
 const allRooms = <?php echo json_encode($rooms_json); ?>;
@@ -1007,7 +1293,7 @@ function updateCalendarEvents() {
     calendar.getEvents().forEach(event => {
         const isQt = event.id.startsWith('qt_');
         const isRb = event.id.startsWith('rb_');
-        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !isRb) || (source === 'quotation' && isQt) || (source === 'qt_approved' && isQt && !event.extendedProps.status.toLowerCase().includes('draft')) || (source === 'room' && isRb));
+        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !isRb) || (source === 'quotation' && isQt) || (source === 'qt_approved' && isQt && !event.extendedProps.status.toLowerCase().includes('draft') && !event.extendedProps.status.toLowerCase().includes('freeze')) || (source === 'room' && isRb));
         let matchesMode = (event.extendedProps.mode === mode);
         let matchesRoom = (roomId === 'all' || event.extendedProps.room_id == roomId);
 
@@ -1038,7 +1324,11 @@ function updateCalendarEvents() {
 document.getElementById('timetableDatePicker').addEventListener('change', function() {
     if (this.value) {
         lastTimetableDate = this.value;
+        document.getElementById('timetableMonthPicker').value = '';
         updateDayTimetable(this.value);
+    } else {
+        lastTimetableDate = null;
+        refreshTimetable();
     }
 });
 
@@ -1263,6 +1553,42 @@ function cancelRoomBooking(bookingId) {
         }
     });
 }
+function exportExcel() {
+    const tbl = document.getElementById('dayTimetable');
+    if (!tbl) return;
+    const typeFilter = document.getElementById('timetableType')?.value || 'eo';
+    const label = typeFilter === 'qt' ? 'Quotation' : (typeFilter === 'eo' ? 'EO' : 'All');
+    const dateText = document.getElementById('selectedDateText')?.innerText || '';
+    let html = '<html><head><meta charset="utf-8"><title>Export</title></head><body>';
+    html += '<h3>ตารางเวลา: ' + dateText + ' (' + label + ')</h3>';
+    html += '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr style="background:#212529;color:#fff;">';
+    const headerTr = tbl.querySelector('thead tr');
+    if (headerTr) {
+        headerTr.querySelectorAll('th').forEach(th => {
+            const label = th.querySelector('div')?.textContent?.trim() || th.innerText.replace(/กรอง/g,'').trim() || '';
+            html += '<th style="background:#212529;color:#fff;padding:6px 8px;">' + label + '</th>';
+        });
+    }
+    html += '</tr></thead>';
+    html += '</thead><tbody>';
+    const rows = tbl.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.classList.contains('table-info') || row.classList.contains('table-secondary')) return;
+        html += '<tr>' + row.innerHTML + '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '</body></html>';
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'timetable_' + new Date().toISOString().slice(0, 10) + '.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 </script>
 
 <style>
@@ -1284,6 +1610,7 @@ function cancelRoomBooking(bookingId) {
     #dayTimetable tbody tr.table-secondary { background: rgba(0,0,0,0.03) !important; }
     #dayTimetable tbody tr.table-secondary:hover { background: rgba(0,0,0,0.06) !important; }
     .card { border-radius: 10px; }
+
     @media (max-width: 768px) {
         #statsRow .card-body { padding: 0.5rem; }
         #statsRow .card-body i { font-size: 1rem !important; }

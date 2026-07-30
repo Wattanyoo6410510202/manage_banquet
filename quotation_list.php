@@ -38,6 +38,7 @@ $workflow_statuses = [
     'เปิด Function (BEO)'          => ['class' => 'bg-primary-subtle text-primary',      'icon' => 'bi-calendar-check'],
     'Lost Sale'                    => ['class' => 'bg-danger-subtle text-danger',        'icon' => 'bi-x-circle'],
     'Cancelled'                    => ['class' => 'bg-danger-subtle text-danger',        'icon' => 'bi-trash'],
+    'Freeze'                       => ['class' => 'bg-secondary-subtle text-secondary',  'icon' => 'bi-snow2'],
 ];
 
 $result = $conn->query($sql);
@@ -190,7 +191,7 @@ $status_map = [
                                                 style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                 data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                             <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                         <?php else: ?>
@@ -289,7 +290,7 @@ $status_map = [
                                                 style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                 data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                             <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                         <?php else: ?>
@@ -379,7 +380,7 @@ $status_map = [
                                                         style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                         data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                     <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                                        <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                        <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?></option>
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <?php else: ?>
@@ -463,7 +464,7 @@ $status_map = [
                                                     style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                     data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                 <?php foreach (array_keys($workflow_statuses) as $ws): ?>
-                                                    <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?>><?= $ws ?></option>
+                                                    <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                             <?php else: ?>
@@ -715,6 +716,7 @@ $status_map = [
         'เปิด Function (BEO)':          { bg: '#0d6efd', text: '#fff' },
         'Lost Sale':                    { bg: '#dc3545', text: '#fff' },
         'Cancelled':                    { bg: '#dc3545', text: '#fff' },
+        'Freeze':                       { bg: '#6c757d', text: '#fff' },
     };
 
     function styleWfSelect(el) {

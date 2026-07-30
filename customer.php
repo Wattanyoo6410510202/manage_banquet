@@ -90,7 +90,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
         <div class="col-12">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-dark text-white fw-bold py-3">
-                    <i class="bi bi-person-plus-fill me-2"></i>ข้อมูลลูกค้า / บริษัท
+                    <i class="bi bi-person-plus-fill me-2"></i>ข้อมูลลูกค้า / บริษัท (กรุณากรอกให้ครบถ้วน)
                 </div>
                 <div class="card-body">
                     <form id="custForm" onsubmit="saveCust(event)">
