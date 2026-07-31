@@ -322,11 +322,7 @@ $items = $conn->query($sql_items);
 
             <div class="signature-wrapper text-center mt-5">
                 <div class="row">
-                    <div class="col-4" style="position: relative;">
-                        <?php if (!empty($quote['stamp_path']) && file_exists($quote['stamp_path'])): ?>
-                            <img src="<?= htmlspecialchars($quote['stamp_path']) ?>" 
-                                style="position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 100px; height: 100px; object-fit: contain; opacity: 0.7; z-index: 1; pointer-events: none; mix-blend-mode: multiply;">
-                        <?php endif; ?>
+                    <div class="col-4">
                         <div
                             style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
                             <?php if (!empty($quote['creator_sig_path'])): ?>
@@ -339,7 +335,11 @@ $items = $conn->query($sql_items);
                         </p>
                         <p class="text-muted" style="font-size: 12px;">วันที่: <?= date('d/m/Y', strtotime($quote['created_at'])) ?></p>
                     </div>
-                    <div class="col-4">
+                    <div class="col-4" style="position: relative;">
+                        <?php if (!empty($quote['stamp_path']) && file_exists($quote['stamp_path'])): ?>
+                            <img src="<?= htmlspecialchars($quote['stamp_path']) ?>" 
+                                style="position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 100px; height: 100px; object-fit: contain; opacity: 0.7; z-index: 1; pointer-events: none; mix-blend-mode: multiply;">
+                        <?php endif; ?>
                         <div
                             style="border-bottom: 1px solid #000; margin: 0 10px 10px 10px; height: 55px; display: flex; align-items: center; justify-content: center;">
                             <?php if (!empty($quote['approver_sig_path'])): ?>
