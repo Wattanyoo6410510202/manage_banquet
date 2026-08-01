@@ -163,6 +163,15 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     background: #d1e7dd;
     color: #0f5132;
 }
+.menu-type-modal-body .menu-card.disabled-card {
+    cursor: not-allowed;
+    opacity: 0.55;
+    pointer-events: none;
+}
+.menu-type-modal-body .menu-card.disabled-card:hover {
+    transform: none;
+    box-shadow: none;
+}
 
 .menu-type-modal-body .template-card {
     border: 1px solid #e0e0e0;
@@ -181,6 +190,19 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 .menu-type-modal-body .template-card.selected {
     border-color: #198754;
     background: #d1e7dd;
+}
+.menu-type-modal-body .template-card .tpl-img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #f1f3f5;
+    flex-shrink: 0;
+}
+.menu-type-modal-body .template-card .tpl-thumb-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
 }
 .menu-type-modal-body .template-card .tpl-name {
     font-size: 0.85rem;
@@ -351,7 +373,6 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
                     <label class="me-1" style="font-size:0.8rem;font-weight:600;color:#555;">จำนวน</label>
                     <input type="number" id="mtmFooterQty" value="1" min="1" style="width:60px;border:1px solid #ccc;border-radius:6px;padding:4px 6px;font-size:0.85rem;text-align:center;font-weight:600;" onfocus="this.select()">
                 </span>
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeMenuTypeModal()">ยกเลิก</button>
                 <button type="button" class="btn btn-sm btn-primary fw-bold" id="menuTypeConfirmBtn" onclick="confirmTemplateSelection()" disabled>
                     <i class="bi bi-check-lg me-1"></i><span id="menuTypeConfirmLabel">เลือก</span>
                 </button>
@@ -363,6 +384,50 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 <script>
 const _menuTypesData = <?= $modal_json ?>;
 const _breakTypesData = <?= $break_modal_json ?>;
+const _mtmImgCache = {};
+const _mtmFallbackFoodUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Indian_school_lunch_rice_meal_with_chicken_curry%2C_dal_fry%2C_paneer_butter_masala%2C_salad_and_papad.jpg/400px-Indian_school_lunch_rice_meal_with_chicken_curry%2C_dal_fry%2C_paneer_butter_masala%2C_salad_and_papad.jpg';
+
+function _mtmImageUrl(keyword) {
+    return 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=' + encodeURIComponent(keyword) + '&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|mime&iiurlwidth=400';
+}
+
+function _mtmSearchImage(keyword) {
+    return fetch(_mtmImageUrl(keyword))
+        .then(r => r.json())
+        .then(data => {
+            const pages = (data && data.query && data.query.pages) || {};
+            const ids = Object.keys(pages).sort((a, b) => (pages[a].index || 0) - (pages[b].index || 0));
+            for (const k of ids) {
+                const p = pages[k];
+                const ii = p.imageinfo && p.imageinfo[0];
+                if (!ii) continue;
+                const mime = ii.mime || ii.thumbmime || '';
+                if (mime && mime.indexOf('image/') !== 0) continue;
+                if (ii.thumburl) return ii.thumburl;
+            }
+            return null;
+        });
+}
+
+function _mtmLoadMenuImage(imgEl, keyword) {
+    const kw = (keyword || '').trim();
+    const cacheKey = kw || 'food';
+    if (_mtmImgCache[cacheKey] !== undefined) {
+        if (_mtmImgCache[cacheKey]) imgEl.src = _mtmImgCache[cacheKey];
+        else imgEl.style.display = 'none';
+        return;
+    }
+    _mtmSearchImage(kw || 'food').then(url => {
+        if (!url) return _mtmSearchImage('food');
+        return url;
+    }).then(url => {
+        _mtmImgCache[cacheKey] = url || _mtmFallbackFoodUrl;
+        imgEl.src = url || _mtmFallbackFoodUrl;
+    }).catch(() => {
+        _mtmImgCache[cacheKey] = _mtmFallbackFoodUrl;
+        imgEl.src = _mtmFallbackFoodUrl;
+    });
+}
 
 let _mtmTarget = null;
 let _mtmCallback = null;
@@ -378,6 +443,8 @@ let _mtmSelectedTemplate = null;
 let _mtmTypeCache = {};
 let _mtmSetPrice = 3000;
 let _mtmSetItems = [];
+let _mtmBreakItems = [];
+let _mtmBreakPending = null;
 
 function _mtmEscapeHtml(text) {
     const d = document.createElement('div');
@@ -389,6 +456,18 @@ function _mtmEscapeAttr(text) {
     return text.replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function _mtmGetCategorySetPrice() {
+    const mt = _menuTypesData.find(t => Number(t.id) === Number(_mtmSelectedTypeId));
+    const sp = mt ? mt.set_price : null;
+    return (sp !== null && sp !== undefined && sp !== '') ? parseFloat(sp) : null;
+}
+
+function _mtmGetBreakTypePrice() {
+    const bt = _breakTypesData.find(t => Number(t.id) === Number(_mtmSelectedTypeId));
+    const p = bt ? bt.break_price : null;
+    return (p !== null && p !== undefined && p !== '') ? parseFloat(p) : null;
+}
+
 function _mtmReset() {
     _mtmLevel = 0;
     _mtmSelectedCategory = null;
@@ -397,6 +476,8 @@ function _mtmReset() {
     _mtmSelectedTemplate = null;
     _mtmSetPrice = 3000;
     _mtmSetItems = [];
+    _mtmBreakItems = [];
+    _mtmBreakPending = null;
     _mtmSelectedTypeIds = [];
     _mtmSelectedTemplateIds = {};
 }
@@ -444,7 +525,8 @@ function _mtmSwitchSubMode(subMode) {
 
     _mtmRenderBreadcrumb();
     _mtmUpdateFooter();
-    renderMenuTypeModalCards('');
+    if (_mtmMode === 'template-break') _mtmRenderBreakTypes('');
+    else renderMenuTypeModalCards('');
 }
 
 function _mtmGoLevel(level) {
@@ -460,6 +542,7 @@ function _mtmGoLevel(level) {
         else if (level === 2) _mtmLoadTemplates(_mtmSelectedTypeId);
     } else if (_mtmMode === 'template-break') {
         if (level === 0) _mtmRenderBreakTypes('');
+        else if (level === 1) _mtmLoadBreakTemplates(_mtmSelectedTypeId);
     }
 }
 
@@ -541,9 +624,11 @@ function _mtmRenderTypesForCategory(catName, filter) {
     } else {
         html += '<div class="card-grid">';
         types.forEach(mt => {
+            const isSetMode = _mtmMode === 'template-menu' && _mtmSubMode === 'set';
             const sel = (_mtmSelectedTypeIds.includes(Number(mt.id))) ? ' selected' : '';
             const cnt = (_mtmSelectedTemplateIds[mt.id] || []).length;
-            html += `<div class="menu-card${sel}" onclick="_mtmSelectType('${_mtmEscapeAttr(mt.type_name)}',${mt.id})">${_mtmEscapeHtml(mt.type_name)}${cnt ? `<small class="text-muted d-block">${cnt} รายการ</small>` : ''}</div>`;
+            const disabled = isSetMode && _mtmSetItems.length > 0 && _mtmSelectedTypeIds.includes(Number(mt.id));
+            html += `<div class="menu-card${sel}${disabled ? ' disabled-card' : ''}"${disabled ? '' : ` onclick="_mtmSelectType('${_mtmEscapeAttr(mt.type_name)}',${mt.id})"`}>${_mtmEscapeHtml(mt.type_name)}${cnt ? `<small class="text-muted d-block">${cnt} รายการ</small>` : ''}</div>`;
         });
         html += '</div>';
     }
@@ -573,15 +658,35 @@ function _mtmRenderSetPricePanel() {
     const menuName = _mtmSelectedTemplate ? (_mtmSelectedTemplate.menu_items || '') : '';
     const shortMenu = menuName.length > 80 ? menuName.substring(0, 80) + '...' : menuName;
 
+    const setPrice = _mtmGetCategorySetPrice();
+    _mtmSetPrice = setPrice !== null ? setPrice : 0;
+
+    let priceHtml = '';
+    if (setPrice !== null && setPrice > 0) {
+        priceHtml = '<div style="font-size:1.3rem;font-weight:700;color:#198754;margin-bottom:14px;">'
+            + 'ราคาเซต ' + setPrice.toLocaleString('th-TH', {minimumFractionDigits: 0}) + ' บาท</div>';
+        priceHtml += '<div class="set-hint">ใช้ราคาเซตของกลุ่มนี้ (จำนวนจะใส่ตอนยืนยันด้านล่าง)</div>';
+    } else {
+        priceHtml = '<div style="font-size:0.95rem;font-weight:600;color:#b8860b;margin-bottom:8px;">ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้</div>';
+        priceHtml += '<div style="max-width:300px;margin:0 auto 14px;text-align:left;">'
+            + '<label style="font-size:0.8rem;font-weight:600;color:#555;">ราคาเซต (กรอกได้)</label>'
+            + '<input type="number" id="mtmSetPriceInput" placeholder="เช่น 3000" min="0" step="0.01" '
+            + 'style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">'
+            + '</div>';
+    }
+
     let listHtml = '';
     if (_mtmSetItems.length > 0) {
         listHtml = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
         listHtml += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>รายการที่เลือกแล้ว (' + _mtmSetItems.length + ')</div>';
         _mtmSetItems.forEach((item, idx) => {
             listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
-            listHtml += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(item.name.substring(0, 50)) + (item.name.length > 50 ? '...' : '') + '</span>';
-            listHtml += ' <span class="text-muted ms-1" style="white-space:nowrap;">x' + item.qty + '</span>';
-            listHtml += '<span style="white-space:nowrap;margin-left:8px;color:#198754;font-weight:600;">' + item.price.toLocaleString('th-TH', {minimumFractionDigits:0}) + '</span>';
+            listHtml += '<div style="flex:1;overflow:hidden;">';
+            listHtml += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(item.name.substring(0, 50)) + (item.name.length > 50 ? '...' : '') + '</div>';
+            if (item.note) {
+                listHtml += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
+            }
+            listHtml += '</div>';
             listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveSetItem(' + idx + ')"><i class="bi bi-x"></i></button>';
             listHtml += '</div>';
         });
@@ -593,17 +698,11 @@ function _mtmRenderSetPricePanel() {
             <div class="set-label">กำหนดราคาสำหรับรายการนี้</div>
             <div class="set-sublabel">${_mtmEscapeHtml(_mtmSelectedCategory || '')} › ${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
             ${shortMenu ? '<div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size:0.8rem;">' + _mtmEscapeHtml(shortMenu) + '</div>' : ''}
-            <div style="display:flex;gap:12px;max-width:300px;margin:0 auto;">
-                <div style="flex:1;text-align:left;">
-                    <label style="font-size:0.8rem;font-weight:600;color:#555;">จำนวน</label>
-                    <input type="number" id="mtmSetQtyInput" value="1" min="1" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:10px 12px;font-size:1.2rem;font-weight:700;text-align:center;color:#333;outline:none;-moz-appearance:textfield;" onfocus="this.select()">
-                </div>
-                <div style="flex:2;text-align:left;">
-                    <label style="font-size:0.8rem;font-weight:600;color:#555;">ราคา/หน่วย</label>
-                    <input type="number" id="mtmSetPriceInput" value="${_mtmSetPrice}" min="0" step="100" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:10px 12px;font-size:1.2rem;font-weight:700;text-align:center;color:#333;outline:none;-moz-appearance:textfield;" oninput="_mtmSetPrice=parseFloat(this.value)||0;" onfocus="this.select()">
-                </div>
+            ${priceHtml}
+            <div style="max-width:300px;margin:10px auto 0;text-align:left;">
+                <label style="font-size:0.8rem;font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
+                <input type="text" id="mtmSetNoteInput" placeholder="เช่น ไม่ใส่ใบกระเพรา" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">
             </div>
-            <div class="set-hint">ใส่จำนวนและราคาต่อหน่วย</div>
             <button type="button" class="btn btn-success fw-bold mt-3" onclick="_mtmAddToSetList()" style="min-width:160px;">
                 <i class="bi bi-plus-circle me-1"></i>เพิ่มลงรายการ
             </button>
@@ -611,16 +710,20 @@ function _mtmRenderSetPricePanel() {
         ${listHtml}
     `;
     setTimeout(() => {
-        const inp = document.getElementById('mtmSetQtyInput');
-        if (inp) { inp.focus(); inp.select(); }
+        const inp = document.getElementById('mtmSetPriceInput') || document.getElementById('mtmSetNoteInput');
+        if (inp) inp.focus();
     }, 100);
 }
 
 function _mtmAddToSetList() {
     if (!_mtmSelectedTemplate) return;
-    const price = parseFloat(_mtmSetPrice) || 0;
-    const qty = parseInt(document.getElementById('mtmSetQtyInput').value) || 1;
-    if (price <= 0) { alert('กรุณาระบุราคามากกว่า 0'); return; }
+    const manualEl = document.getElementById('mtmSetPriceInput');
+    const manualPrice = manualEl ? (parseFloat(manualEl.value) || 0) : 0;
+    const price = _mtmSetPrice > 0 ? _mtmSetPrice : manualPrice;
+    const qty = 1;
+    const noteEl = document.getElementById('mtmSetNoteInput');
+    const note = noteEl ? noteEl.value.trim() : '';
+    if (price <= 0) { alert('ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้ กรุณากรอกราคาเซตก่อน'); return; }
 
     _mtmSetItems.push({
         id: _mtmSelectedTemplate.id,
@@ -628,6 +731,7 @@ function _mtmAddToSetList() {
         type_name: _mtmSelectedType,
         name: _mtmSelectedTemplate.menu_items || _mtmSelectedType,
         qty: qty,
+        note: note,
         price: price,
         cost: 0,
         description: _mtmSelectedTemplate.menu_items || ''
@@ -640,14 +744,26 @@ function _mtmAddToSetList() {
 
     _mtmSelectedTemplate = null;
     _mtmSetPrice = 3000;
-    _mtmLevel = 2;
+    _mtmLevel = 1;
+    _mtmSelectedType = null;
+    _mtmSelectedTypeId = null;
     _mtmRenderBreadcrumb();
     _mtmUpdateFooter();
-    _mtmLoadTemplates(_mtmSelectedTypeId);
+    document.getElementById('menuTypeSearchInput').value = '';
+    _mtmRenderTypesForCategory(_mtmSelectedCategory, '');
 }
 
 function _mtmRemoveSetItem(idx) {
     _mtmSetItems.splice(idx, 1);
+    _mtmSelectedTypeIds = [];
+    _mtmSelectedTemplateIds = {};
+    _mtmSetItems.forEach(function(item) {
+        const tid = Number(item.type_id);
+        if (!_mtmSelectedTypeIds.includes(tid)) _mtmSelectedTypeIds.push(tid);
+        if (!_mtmSelectedTemplateIds[tid]) _mtmSelectedTemplateIds[tid] = [];
+        if (!_mtmSelectedTemplateIds[tid].includes(Number(item.id)))
+            _mtmSelectedTemplateIds[tid].push(Number(item.id));
+    });
     _mtmUpdateFooter();
     if (_mtmLevel === 3) {
         _mtmRenderSetPricePanel();
@@ -691,18 +807,27 @@ function _mtmRenderTemplates(filter) {
             const curSel = _mtmSelectedTemplate && _mtmSelectedTemplate.id === item.id;
             const sel = (prevSel || curSel) ? ' selected' : '';
             const shortDesc = (item.menu_items || '').length > 100 ? item.menu_items.substring(0, 100) + '...' : item.menu_items;
+            const imgKw = (item.menu_items || item.name || _mtmSelectedType || '').split('\n')[0].trim();
             const onclick = (_mtmSubMode === 'set')
                 ? `_mtmPickTemplateForSet(${item.id})`
                 : `_mtmSelectTemplate(${item.id})`;
             html += `<div class="template-card${sel}" onclick="${onclick}">
-                <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
-                <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc || item.menu_items || item.name)}</div>
-                <div class="tpl-price">${parseFloat(item.price_per_pax).toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
+                <div class="tpl-thumb-wrap">
+                    <img class="tpl-img" data-kw="${_mtmEscapeAttr(imgKw)}" alt="" loading="lazy" onerror="this.style.display='none'">
+                    <div style="flex:1;min-width:0;">
+                        <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
+                        <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc || item.menu_items || item.name)}</div>
+                        <div class="tpl-price">${parseFloat(item.price_per_pax).toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
+                    </div>
+                </div>
             </div>`;
         });
     }
 
     body.innerHTML = html;
+    body.querySelectorAll('.tpl-img').forEach(img => {
+        _mtmLoadMenuImage(img, img.getAttribute('data-kw') || 'food');
+    });
 }
 
 function _mtmPickTemplateForSet(id) {
@@ -746,9 +871,11 @@ function _mtmUpdateFooter() {
     footer.style.display = 'flex';
 
     if (_mtmMode === 'template-menu' && _mtmSubMode === 'set') {
-        qtyWrap.style.display = 'none';
+        qtyWrap.style.display = 'inline';
+        const qtyEl = document.getElementById('mtmFooterQty');
+        const qty = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
         if (_mtmSetItems.length > 0) {
-            const total = _mtmSetItems.reduce((s, i) => s + (i.qty * i.price), 0);
+            const total = _mtmSetItems[0].price * qty;
             info.innerHTML = '<strong>' + _mtmSetItems.length + ' รายการ</strong> — รวม ' + total.toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท';
             info.style.color = '#198754';
             btn.disabled = false;
@@ -758,6 +885,36 @@ function _mtmUpdateFooter() {
             info.style.color = '#999';
             btn.disabled = true;
             btnLabel.textContent = 'ยืนยัน';
+        }
+    } else if (_mtmMode === 'template-break') {
+        if (_mtmSubMode === 'set') {
+            qtyWrap.style.display = 'inline';
+            if (_mtmBreakItems.length > 0) {
+                const total = _mtmBreakItems[0].price;
+                info.innerHTML = '<strong>' + _mtmBreakItems.length + ' รายการ</strong> — รวม ' + total.toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท';
+                info.style.color = '#198754';
+                btn.disabled = false;
+                btnLabel.textContent = 'ยืนยัน (' + _mtmBreakItems.length + ' รายการ)';
+            } else {
+                info.textContent = 'เลือกเบรกแล้วกดยืนยัน';
+                info.style.color = '#999';
+                btn.disabled = true;
+                btnLabel.textContent = 'ยืนยัน';
+            }
+        } else {
+            qtyWrap.style.display = 'none';
+            if (_mtmBreakItems.length > 0) {
+                const total = _mtmBreakItems.reduce(function(s, it) { return s + (it.qty * it.price); }, 0);
+                info.innerHTML = '<strong>' + _mtmBreakItems.length + ' รายการ</strong> — รวม ' + total.toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท';
+                info.style.color = '#198754';
+                btn.disabled = false;
+                btnLabel.textContent = 'ยืนยัน (' + _mtmBreakItems.length + ' รายการ)';
+            } else {
+                info.textContent = 'เลือกเบรกแล้วกดยืนยัน';
+                info.style.color = '#999';
+                btn.disabled = true;
+                btnLabel.textContent = 'ยืนยัน';
+            }
         }
     } else if (_mtmSelectedTemplate) {
         qtyWrap.style.display = 'inline';
@@ -781,13 +938,30 @@ function confirmTemplateSelection() {
 
     if (_mtmMode === 'template-menu' && _mtmSubMode === 'set') {
         if (_mtmSetItems.length === 0) return;
+        var setQty = parseInt(document.getElementById('mtmFooterQty').value) || 1;
         result = _mtmSetItems.slice();
+        result.forEach(function(it) { it.qty = setQty; });
+        result.category_name = _mtmSelectedCategory || '';
+        result.set_price = _mtmSetItems[0].price;
+    } else if (_mtmMode === 'template-break') {
+        if (_mtmBreakItems.length === 0) return;
+        if (_mtmSubMode === 'set') {
+            var setQty = parseInt(document.getElementById('mtmFooterQty').value) || 1;
+            result = _mtmBreakItems.slice();
+            result.forEach(function(it) { it.qty = setQty; });
+            result.set_price = _mtmBreakItems[0].price;
+            result.category_name = _mtmBreakItems[0].type_name || '';
+        } else {
+            result = _mtmBreakItems.slice();
+        }
     } else if (_mtmSelectedTemplate) {
         const tpl = _mtmSelectedTemplate;
         const qtyEl = document.getElementById('mtmFooterQty');
         const qty = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
         result = {
             id: tpl.id,
+            type_id: _mtmSelectedTypeId,
+            type_name: _mtmSelectedType || '',
             name: tpl.menu_items || tpl.break_menu || '',
             qty: qty,
             price: parseFloat(tpl.price_per_pax || tpl.break_price || 0),
@@ -848,7 +1022,10 @@ function openTemplateModal(mode, callbackName, subMode) {
         document.getElementById('menuTypeSearchInput').placeholder = 'พิมพ์เพื่อค้นหาเมนู...';
         renderMenuTypeModalCards('');
     } else if (mode === 'template-break') {
-        tabs.classList.remove('visible');
+        tabs.classList.add('visible');
+        document.querySelectorAll('#menuTypeTabs .tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.submode === _mtmSubMode);
+        });
         document.getElementById('menuTypeSearchInput').placeholder = 'พิมพ์เพื่อค้นหาเบรก...';
         _mtmRenderBreakTypes('');
     }
@@ -874,11 +1051,16 @@ function _mtmRenderBreakTypes(filter) {
         html += '<div class="card-grid">';
         types.forEach(bt => {
             const sel = (_mtmSelectedType === bt.type_name) ? ' selected' : '';
-            html += `<div class="menu-card${sel}" onclick="_mtmSelectBreakType('${_mtmEscapeAttr(bt.type_name)}',${bt.id})">${_mtmEscapeHtml(bt.type_name)}</div>`;
+            const hasItems = _mtmBreakItems.some(it => it.type_name === bt.type_name);
+            const isSetMode = _mtmMode === 'template-break' && _mtmSubMode === 'set';
+            const disabled = isSetMode && _mtmBreakItems.length > 0 && hasItems;
+            const cnt = _mtmBreakItems.filter(it => it.type_name === bt.type_name).length;
+            html += `<div class="menu-card${sel || (hasItems ? ' selected' : '')}${disabled ? ' disabled-card' : ''}"${disabled ? '' : ` onclick="_mtmSelectBreakType('${_mtmEscapeAttr(bt.type_name)}',${bt.id})"`}>${_mtmEscapeHtml(bt.type_name)}${cnt ? `<small class="text-muted d-block">${cnt} รายการ</small>` : ''}</div>`;
         });
         html += '</div>';
     }
 
+    html += _mtmBreakListHtml();
     body.innerHTML = html;
 }
 
@@ -916,17 +1098,75 @@ function _mtmRenderBreakTemplates(items) {
         html = '<div class="no-results"><i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>ยังไม่มีเทมเพลตเบรกในประเภทนี้</div>';
     } else {
         items.forEach(item => {
-            const sel = (_mtmSelectedTemplate && _mtmSelectedTemplate.id === item.id) ? ' selected' : '';
+            const sel = (_mtmBreakItems.some(it => it.id === item.id)) ? ' selected' : '';
             const shortDesc = (item.break_menu || '').length > 100 ? item.break_menu.substring(0, 100) + '...' : item.break_menu;
+            const typePrice = _mtmGetBreakTypePrice();
+            const showPrice = (typePrice !== null) ? typePrice : (parseFloat(item.break_price) || 0);
             html += `<div class="template-card${sel}" onclick="_mtmSelectBreakTemplate(${item.id})">
-                <div class="tpl-name">${_mtmEscapeHtml('[ ' + (_mtmSelectedType || '') + ' ]')}</div>
-                <div class="tpl-detail">${_mtmEscapeHtml(shortDesc)}</div>
-                <div class="tpl-price">${parseFloat(item.break_price).toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
+                <div class="tpl-thumb-wrap">
+                    <img class="tpl-img" data-kw="${_mtmEscapeAttr(item.break_menu || '')}" alt="" loading="lazy" onerror="this.style.display='none'">
+                    <div style="flex:1;min-width:0;">
+                        <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
+                        <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc)}</div>
+                        <div class="tpl-price">${showPrice.toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
+                    </div>
+                </div>
             </div>`;
         });
     }
 
+    html += _mtmBreakListHtml();
     body.innerHTML = html;
+    body.querySelectorAll('.tpl-img').forEach(img => {
+        _mtmLoadMenuImage(img, img.getAttribute('data-kw') || 'food');
+    });
+}
+
+function _mtmBreakListHtml() {
+    if (_mtmBreakItems.length === 0) return '';
+    const isSet = (_mtmMode === 'template-break' && _mtmSubMode === 'set');
+    let h = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
+    h += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
+    _mtmBreakItems.forEach((item, idx) => {
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
+        h += '<div style="flex:1;min-width:0;overflow:hidden;">';
+        h += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(item.name) + '</div>';
+        if (item.note) {
+            h += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
+        }
+        h += '</div>';
+        if (!isSet) {
+            h += '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">';
+            h += '<label style="font-size:0.7rem;color:#555;">จำนวน</label>';
+            h += '<input type="number" value="' + item.qty + '" min="1" style="width:55px;border:1px solid #ccc;border-radius:6px;padding:3px 5px;font-size:0.8rem;text-align:center;" onchange="_mtmSetBreakQty(' + idx + ', this.value)">';
+            h += '<span style="font-weight:600;color:#198754;font-size:0.82rem;">' + (item.qty * item.price).toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท</span>';
+            h += '</div>';
+        }
+        h += '<button type="button" class="btn btn-sm btn-outline-danger" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
+        h += '</div>';
+    });
+    h += '</div>';
+    return h;
+}
+
+function _mtmSetBreakQty(idx, val) {
+    _mtmBreakItems[idx].qty = parseInt(val) || 1;
+    _mtmUpdateFooter();
+    const typeId = _breakTypesData.find(bt => bt.type_name === _mtmSelectedType)?.id || 0;
+    if (_mtmLevel === 0) _mtmRenderBreakTypes('');
+    else _mtmRenderBreakTemplates(_mtmTypeCache[typeId] || []);
+}
+
+function _mtmRemoveBreakItem(idx) {
+    _mtmBreakItems.splice(idx, 1);
+    _mtmUpdateFooter();
+    if (_mtmBreakPending) {
+        _mtmRenderBreakPricePanel();
+        return;
+    }
+    const typeId = _breakTypesData.find(bt => bt.type_name === _mtmSelectedType)?.id || 0;
+    if (_mtmLevel === 0) _mtmRenderBreakTypes('');
+    else _mtmRenderBreakTemplates(_mtmTypeCache[typeId] || []);
 }
 
 function _mtmSelectBreakTemplate(id) {
@@ -935,12 +1175,105 @@ function _mtmSelectBreakTemplate(id) {
     const item = items.find(t => t.id === id);
     if (!item) return;
 
-    _mtmSelectedTemplate = item;
+    if (_mtmBreakItems.some(it => it.id === item.id)) return;
 
-    document.querySelectorAll('.menu-type-modal-body .template-card').forEach(c => c.classList.remove('selected'));
-    event.target.closest('.template-card').classList.add('selected');
+    const typePrice = _mtmGetBreakTypePrice();
+    _mtmBreakPending = {
+        id: item.id,
+        type_name: _mtmSelectedType || '',
+        name: item.break_menu || '',
+        qty: 1,
+        note: '',
+        price: (typePrice !== null) ? typePrice : (parseFloat(item.break_price) || 0),
+        cost: parseFloat(item.break_cost) || 0,
+        description: item.break_menu || ''
+    };
 
     _mtmUpdateFooter();
+    if (_mtmSubMode === 'set') {
+        _mtmRenderBreakPricePanel();
+    } else {
+        _mtmBreakItems.push(_mtmBreakPending);
+        _mtmBreakPending = null;
+        _mtmRenderBreakTemplates(items);
+    }
+}
+
+function _mtmRenderBreakPricePanel() {
+    const body = document.getElementById('menuTypeModalBody');
+    const item = _mtmBreakPending;
+    if (!item) return;
+    const shortName = item.name.length > 80 ? item.name.substring(0, 80) + '...' : item.name;
+
+    let listHtml = '';
+    if (_mtmBreakItems.length > 0) {
+        listHtml = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
+        listHtml += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
+        _mtmBreakItems.forEach((it, idx) => {
+            listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
+            listHtml += '<div style="flex:1;overflow:hidden;">';
+            listHtml += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(it.name.substring(0, 50)) + (it.name.length > 50 ? '...' : '') + '</div>';
+            if (it.note) {
+                listHtml += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(it.note) + '</div>';
+            }
+            listHtml += '</div>';
+            listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
+            listHtml += '</div>';
+        });
+        listHtml += '</div>';
+    }
+
+    body.innerHTML = `
+        <div style="text-align:left;margin-bottom:6px;">
+            <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;" onclick="_mtmCancelBreakPanel()"><i class="bi bi-arrow-left me-1"></i>ย้อนกลับ</button>
+        </div>
+        <div class="set-price-panel">
+            <div class="set-label">เพิ่มรายการเบรก</div>
+            <div class="set-sublabel">${_mtmEscapeHtml(item.type_name || '')}</div>
+            <div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size:0.8rem;">${_mtmEscapeHtml(shortName)}</div>
+            <div style="font-size:1.3rem;font-weight:700;color:${item.price > 0 ? '#198754' : '#999'};margin-bottom:14px;">
+                ${item.price > 0 ? item.price.toLocaleString('th-TH', {minimumFractionDigits: 0}) + ' บาท' : 'ยังไม่ได้ตั้งราคาเบรกสำหรับประเภทนี้'}
+            </div>
+            <div style="max-width:300px;margin:10px auto 0;text-align:left;">
+                <label style="font-size:0.8rem;font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
+                <input type="text" id="mtmBreakNoteInput" placeholder="เช่น ไม่ใส่ผักชี" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">
+            </div>
+            <div class="set-hint">ใช้ราคาเบรกของประเภทนี้ (จำนวนจะใส่ตอนยืนยันด้านล่าง)</div>
+            <button type="button" class="btn btn-success fw-bold mt-3" onclick="_mtmAddToBreakList()" style="min-width:160px;">
+                <i class="bi bi-plus-circle me-1"></i>เพิ่มลงรายการ
+            </button>
+        </div>
+        ${listHtml}
+    `;
+    setTimeout(() => {
+        const inp = document.getElementById('mtmBreakNoteInput');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+function _mtmCancelBreakPanel() {
+    if (_mtmBreakPending) {
+        _mtmBreakPending = null;
+        const typeId = _breakTypesData.find(bt => bt.type_name === _mtmSelectedType)?.id || 0;
+        _mtmRenderBreakTemplates(_mtmTypeCache[typeId] || []);
+    }
+}
+
+function _mtmAddToBreakList() {
+    if (!_mtmBreakPending) return;
+    const noteEl = document.getElementById('mtmBreakNoteInput');
+    _mtmBreakPending.note = noteEl ? noteEl.value.trim() : '';
+
+    _mtmBreakItems.push(_mtmBreakPending);
+    _mtmBreakPending = null;
+
+    _mtmUpdateFooter();
+    _mtmLevel = 0;
+    _mtmSelectedType = null;
+    _mtmSelectedTypeId = null;
+    _mtmRenderBreadcrumb();
+    document.getElementById('menuTypeSearchInput').value = '';
+    _mtmRenderBreakTypes('');
 }
 
 function closeMenuTypeModal() {

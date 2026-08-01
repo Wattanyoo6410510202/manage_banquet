@@ -377,7 +377,7 @@ $menus = $conn->query($sql_menus);
                 ?>
                     <tr>
                         <td class="text-center"><?php echo $row['menu_time']; ?></td>
-                        <td class="text-center"><small class="text-muted"><?= htmlspecialchars($row['category_name'] ?? '') ?></small> &rsaquo; <?= htmlspecialchars($row['set_name'] ?? 'ไม่ได้เลือกเซต') ?></td>
+                        <td class="text-center"><?= htmlspecialchars($row['category_name'] ?? ($row['set_name'] ?? '-')) ?></td>
                         <td><?php echo nl2br($row['menu_detail']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
                         <td class="text-end"><?php echo number_format($row['menu_price'], 2); ?></td>

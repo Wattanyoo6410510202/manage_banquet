@@ -16,7 +16,7 @@ $project_id = $_GET['project_id'] ?? null;
 $selected_customer_id = "";
 $event_name = "";
 $event_date = date('Y-m-d');
-$expiry_date = date('Y-m-d', strtotime('+30 days')); // Default วันหมดอายุล่วงหน้า 30 วัน
+$expiry_date = date('Y-m-d', strtotime('+3 days')); // Default วันหมดอายุล่วงหน้า 3 วัน
 
 if ($function_id) {
     $sql = "SELECT * FROM functions WHERE id = ?";
@@ -32,7 +32,7 @@ if ($function_id) {
     }
 }
 
-$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name, mmc.set_price 
     FROM master_menu_types mmt 
     LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
     ORDER BY mmc.sort_order ASC, mmt.id ASC");
@@ -41,7 +41,7 @@ while ($mt = $menu_types_with_cat->fetch_assoc()) {
     $menu_types_array[] = $mt;
 }
 
-$break_types_with_cat = $conn->query("SELECT id, type_name FROM master_break_types ORDER BY id ASC");
+$break_types_with_cat = $conn->query("SELECT id, type_name, break_price FROM master_break_types ORDER BY id ASC");
 $break_types_array = [];
 while ($bt = $break_types_with_cat->fetch_assoc()) {
     $break_types_array[] = $bt;
@@ -62,7 +62,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
             <input type="hidden" name="function_id" value="<?= $function_id ?>">
 
-            <!-- Row 1: Company, Quote No, Project -->
+            <!-- Row 1: Company, Quote No, Project, Event name -->
             <div class="row g-3 mb-3">
                 <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1"><i class="bi bi-building me-1"></i> บริษัท/ธุรกิจ</label>
@@ -84,7 +84,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                     <label class="form-label fw-bold small mb-1">เลขที่ใบเสนอราคา</label>
                     <input type="text" name="quote_no" class="form-control form-control-sm bg-light" value="QT-<?= date('Ymd-Hi') ?>" readonly>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1">อ้างอิงโครงการที่มีอยู่เดิม</label>
                     <select name="project_id" class="form-select form-select-sm select2">
                         <option value="">--- ไม่ระบุโครงการ ---</option>
@@ -103,11 +103,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                         ?>
                     </select>
                 </div>
-            </div>
-
-            <!-- Row 2: Customer (full width) -->
-            <div class="row g-3 mb-3">
-                <div class="col-12">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1 text-danger">เลือกลูกค้า *</label>
                     <select name="customer_id" id="customer_select" class="form-select form-select-sm select2-customer-search" required>
                         <?php if ($selected_customer_id): 
@@ -135,21 +131,17 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 </div>
             </div>
 
-            <!-- Row 3: Event name (full width) -->
-            <div class="row g-3 mb-3">
-                <div class="col-12">
+            <!-- Row 2: Event name + Event date + Expiry date -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
                     <label class="form-label fw-bold small mb-1">ชื่อโครงการ/งาน</label>
                     <input type="text" name="event_name" class="form-control form-control-sm" value="<?= $event_name ?>" placeholder="ระบุชื่องาน">
                 </div>
-            </div>
-
-            <!-- Row 4: Event date, Expiry date -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1">วันที่จัดงาน</label>
                     <input type="date" name="event_date" class="form-control form-control-sm" value="<?= $event_date ?>">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1">วันที่สิ้นสุด</label>
                     <input type="date" name="expiry_date" class="form-control form-control-sm" value="<?= $expiry_date ?>">
                 </div>
@@ -269,7 +261,20 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         return d.innerHTML;
     }
 
+    function autoGrowTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight) + 'px';
+    }
+
     $(document).ready(function () {
+        // 1. Auto-resize textarea ในคอลัมน์รายละเอียดรายการ
+        $(document).on('input', '#itemTable textarea', function () {
+            autoGrowTextarea(this);
+        });
+        $('#itemTable textarea').each(function () {
+            autoGrowTextarea(this);
+        });
+
         // 2. เพิ่มแถวรายการใหม่
         $('#addRow').click(function () {
             let rowCount = $('#itemTable tbody tr').length + 1;
@@ -282,6 +287,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 <td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>
             </tr>`;
             $('#itemTable tbody').append(newRow);
+            autoGrowTextarea($('#itemTable tbody tr:last textarea')[0]);
         });
 
         // 3. ลบแถวรายการ
@@ -368,35 +374,71 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
     // Modal callback: เลือกเมนูเสร็จ → เพิ่มแถวทันที (items = single, set = array)
     window.onMenuTemplateSelect = function(data) {
+        function prefixed(typeName, name) {
+            return typeName ? typeName + ':' + name : name;
+        }
+        function itemText(item) {
+            return prefixed(item.type_name, item.name) + ' จำนวน ' + (item.qty || 1) + ' ราคา ' + (parseFloat(item.price) || 0) + ' บาท';
+        }
         if (Array.isArray(data)) {
-            data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
+            var lines = [];
+            if (data.category_name) lines.push(data.category_name);
+            data.forEach(function(item) {
+                lines.push(item.name);
+            });
+            var notes = data.map(function(item) {
+                return item.note ? { name: item.name, note: item.note } : null;
+            }).filter(Boolean);
+            if (notes.length > 0) {
+                lines.push('');
+                lines.push('หมายเหตุ:');
+                notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
+            }
+            var total = data.set_price !== undefined ? parseFloat(data.set_price) || 0 : data.reduce(function(s, item) { return s + (item.qty * item.price); }, 0);
+            addTemplateRow(lines.join('\n'), data[0].qty || 1, total);
         } else {
-            addTemplateRow(data.name, data.qty || 1, data.price);
+            addTemplateRow(itemText(data), data.qty || 1, data.price);
         }
     };
 
     // Modal callback: เลือกเบรกเสร็จ → เพิ่มแถวทันที
     window.onBreakTemplateSelect = function(data) {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.set_price !== undefined) {
+            var lines = [];
+            data.forEach(function(item) {
+                lines.push((item.type_name || data.category_name || '') + ' :' + item.name);
+            });
+            var notes = data.map(function(item) {
+                return item.note ? { name: item.name, note: item.note } : null;
+            }).filter(Boolean);
+            if (notes.length > 0) {
+                lines.push('');
+                lines.push('หมายเหตุ:');
+                notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
+            }
+            var setTotal = parseFloat(data.set_price) || 0;
+            addTemplateRow(lines.join('\n'), data[0].qty || 1, setTotal);
+        } else if (Array.isArray(data)) {
             data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
         } else {
             addTemplateRow(data.name, data.qty || 1, data.price);
         }
     };
 
-    // 12. ฟังก์ชันเพิ่มแถวจากเทมเพลต
-    function addTemplateRow(name, qty, price) {
-        var total = (qty * price).toFixed(2);
+    // 12. ฟังก์ชันเพิ่มแถวจากเทมเพลต (ล็อกไม่ให้แก้ไข)
+    function addTemplateRow(name, qty, price, explicitTotal) {
+        var total = (explicitTotal !== undefined && explicitTotal !== null) ? Number(explicitTotal).toFixed(2) : (qty * price).toFixed(2);
         var rowCount = $('#itemTable tbody tr').length + 1;
-        var row = '<tr>'
+        var row = '<tr class="template-row">'
             + '<td class="text-center">' + rowCount + '</td>'
-            + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
-            + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1"></td>'
-            + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01"></td>'
+            + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" readonly>' + escapeHtml(name) + '</textarea></td>'
+            + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1" readonly></td>'
+            + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01" readonly></td>'
             + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total + '" readonly></td>'
-            + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
+            + '<td class="text-center"><i class="bi bi-lock-fill text-secondary me-1" title="รายการจากเทมเพลต - แก้ไขไม่ได้"></i><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
             + '</tr>';
         $('#itemTable tbody').append(row);
+        autoGrowTextarea($('#itemTable tbody tr:last textarea')[0]);
         calculateAll();
     }
 
@@ -551,6 +593,9 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                                 + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
                                 + '</tr>';
                             $('#itemTable tbody').append(row);
+                        });
+                        $('#itemTable textarea').each(function () {
+                            autoGrowTextarea(this);
                         });
                         calculateAll();
                     }

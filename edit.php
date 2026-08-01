@@ -76,6 +76,13 @@ $res_customers = $conn->query("SELECT * FROM customers ORDER BY cust_name ASC");
 $query_breaks = "SELECT id, type_name FROM master_break_types ORDER BY id ASC";
 $res_breaks = $conn->query($query_breaks);
 
+// ดึงข้อมูลประเภท Break สำหรับ Modal Picker
+$break_types_array = [];
+$res_break_array = $conn->query("SELECT id, type_name, break_price FROM master_break_types ORDER BY id ASC");
+while ($bt = $res_break_array->fetch_assoc()) {
+    $break_types_array[] = $bt;
+}
+
 // ดึงประเภทเซตเมนู สำหรับตารางรายละเอียดเมนู
 $query_menu_types = "SELECT id, type_name FROM master_menu_types ORDER BY id ASC";
 $res_menu_sets = $conn->query($query_menu_types);
@@ -83,13 +90,38 @@ $res_menu_sets = $conn->query($query_menu_types);
 $query_categories = "SELECT id, category_name FROM master_menu_categories ORDER BY sort_order ASC, id ASC";
 $res_categories = $conn->query($query_categories);
 
-$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name, mmc.set_price 
     FROM master_menu_types mmt 
     LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
     ORDER BY mmc.sort_order ASC, mmt.id ASC");
 $menu_types_array = [];
 while ($mt = $menu_types_with_cat->fetch_assoc()) {
     $menu_types_array[] = $mt;
+}
+
+function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
+    $html = '<option value="" disabled selected>-- เลือกเซตเมนู --</option>';
+    $current_cat_id = null;
+    $hasoptgroup = false;
+    foreach ($menu_types_array as $m) {
+        $cat_id = $m['category_id'] ?? 0;
+        $cat_name = $m['category_name'] ?? '';
+        if ($cat_id != $current_cat_id) {
+            if ($hasoptgroup) $html .= '</optgroup>';
+            if ($cat_id > 0 && $cat_name) {
+                $html .= '<optgroup label="' . htmlspecialchars($cat_name) . '">';
+                $hasoptgroup = true;
+            } else {
+                $hasoptgroup = false;
+            }
+            $current_cat_id = $cat_id;
+        }
+        $label = ($m['category_name'] ?? '') !== '' ? ($m['category_name'] . '/' . ($m['type_name'] ?? '')) : ($m['type_name'] ?? '');
+        $sel = ($selected_id && $m['id'] == $selected_id) ? 'selected' : '';
+        $html .= '<option value="' . $m['id'] . '" ' . $sel . '>' . htmlspecialchars($label) . '</option>';
+    }
+    if ($hasoptgroup) $html .= '</optgroup>';
+    return $html;
 }
 
 // 1. ดึง ID บริษัทของงานนี้ออกมาก่อน (จารย์มีตัวแปร $data อยู่แล้ว)
@@ -572,7 +604,17 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     class="bi bi-plus-lg"></i> เพิ่มกำหนดการ</button>
                         </div>
 
-                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก</h5>
+                        <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
+                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="breakModalBtn"
+                                onclick="openTemplateModal('template-break', 'onBreakSectionSelect')">
+                                <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเบรก
+                            </button>
+                            <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                                <input class="form-check-input" type="checkbox" role="switch" id="breakModalToggle" checked
+                                    onchange="toggleBreakPicker(this.checked)">
+                                <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                            </label>
+                        </h5>
                         <div class="table-responsive mb-4">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
     <thead>
@@ -603,7 +645,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
 
             <td style="width: 140px;">
                 <select name="k_type_id[]"
-                    class="form-select form-select-sm border-0 bg-light">
+                    class="form-select form-select-sm border-0 bg-light break-type-select">
                     <option value="">-- เลือกประเภท --</option>
                     <?php
                     if ($res_breaks && $res_breaks->num_rows > 0):
@@ -617,10 +659,11 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     <?php endwhile; endif; ?>
                 </select>
             </td>
+            </td>
 
             <td>
                 <textarea name="k_item[]" 
-                    class="form-control form-control-sm border-0 bg-light w-100" 
+                    class="form-control form-control-sm border-0 bg-light w-100 break-menu-input" 
                     style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;"
                     oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"
                 ><?php echo $k['k_item']; ?></textarea>
@@ -680,6 +723,15 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 </div>
 
                 <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4. รายละเอียดเมนูอาหารและเครื่องดื่ม
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="menuModalBtn"
+                        onclick="openTemplateModal('template-menu', 'onMenuSectionSelect', 'set')">
+                        <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเมนู
+                    </button>
+                    <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                        <input class="form-check-input" type="checkbox" role="switch" id="menuModalToggle" checked
+                            onchange="toggleMenuPicker(this.checked)">
+                        <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                    </label>
                 </h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle" id="menuTable" style="table-layout: fixed; width: 100%;">
@@ -711,16 +763,15 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <td style="width: 150px;">
                 <?php
                 $current_menu_val = $m['menu_set_id'] ?? '';
-                $current_menu_name = '';
-                foreach ($menu_types_array as $mt) { if ($mt['id'] == $current_menu_val) { $current_menu_name = $mt['type_name']; break; } }
                 ?>
-                <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="<?= $current_menu_val ?>">
-                <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
-                <span class="menu-type-label <?= $current_menu_val ? 'fw-semibold text-dark' : 'text-muted' ?>"><?= htmlspecialchars($current_menu_name ?: 'ยังไม่ได้เลือก') ?></span>
+                <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light menu-type-select"
+                    onchange="fetchMenuDetail(this)">
+                    <?php echo renderMenuTypeOptions($menu_types_array, $current_menu_val); ?>
+                </select>
             </td>
 
             <td>
-                <textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100"
+                <textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100 menu-detail-input"
                     rows="1"
                     style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;"
                     oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"
@@ -872,7 +923,7 @@ function addKitchenRow() {
     row.innerHTML = `
         <td width="12%"><input type="date" name="k_date[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td width="18%">
-            <select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light" 
+            <select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light break-type-select" 
                     onchange="fetchBreakMenu(this)"> <option value="">-- เลือกประเภท --</option>
                 <?php
                 if ($res_breaks) {
@@ -898,20 +949,23 @@ function addKitchenRow() {
     `;
 }
 
-const menuTypeOptions = <?= json_encode($menu_types_array) ?>;
-
 function addMenuRow() {
     const table = document.querySelector("#menuTable tbody");
     const row = table.insertRow();
     row.className = "align-top";
+
+    const menuOptions = `
+        <option value="" disabled selected>-- เลือกเซตเมนู --</option>
+        <?php foreach ($menu_types_array as $mt): ?>
+            <option value="<?= $mt['id'] ?>"><?= htmlspecialchars(($mt['category_name'] ?? '') !== '' ? ($mt['category_name'] . '/' . ($mt['type_name'] ?? '')) : ($mt['type_name'] ?? '')) ?></option>
+        <?php endforeach; ?>`;
+
     row.innerHTML = `
         <td style="width: 130px;"><input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td style="width: 150px;">
-            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
-            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
-            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
+            <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light menu-type-select" onchange="fetchMenuDetail(this)">${menuOptions}</select>
         </td>
-        <td><textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100" rows="1" style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"></textarea></td>
+        <td><textarea name="menu_detail[]" class="form-control form-control-sm border-0 bg-light w-100 menu-detail-input" rows="1" style="field-sizing: content; min-height: 2.2rem; resize: none; overflow:hidden;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';"></textarea></td>
         <td style="width: 70px;"><input type="number" name="menu_qty[]" class="form-control form-control-sm border-0 bg-light text-center menu-qty" placeholder="จำนวน" oninput="updateMenuRowTotal(this)"></td>
         <td style="width: 90px;"><input type="number" step="0.01" name="menu_price[]" class="form-control form-control-sm border-0 bg-light text-end menu-price" placeholder="ราคา" oninput="updateMenuRowTotal(this)"></td>
         <td style="width: 90px;"><input type="number" step="0.01" name="menu_cost[]" class="form-control form-control-sm border-0 bg-light text-end menu-cost" placeholder="ทุน"></td>
@@ -994,7 +1048,47 @@ function selectRoom(element, roomId) {
     console.log("จารเลือกห้อง ID:", roomId);
 }
 
+let menuPickerOn = true;
+let breakPickerOn = true;
+
+function toggleMenuPicker(on) {
+    menuPickerOn = on;
+    const btn = document.getElementById('menuModalBtn');
+    if (btn) btn.style.display = on ? '' : 'none';
+}
+
+function toggleBreakPicker(on) {
+    breakPickerOn = on;
+    const btn = document.getElementById('breakModalBtn');
+    if (btn) btn.style.display = on ? '' : 'none';
+}
+
+function shortenMenuTypeLabel(selectEl) {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    if (opt && opt.text.indexOf('/') > 0) {
+        opt.text = opt.text.substring(0, opt.text.indexOf('/'));
+    }
+}
+
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList.contains('menu-type-select')) {
+        shortenMenuTypeLabel(e.target);
+    }
+});
+
+document.querySelectorAll('.menu-type-select').forEach(function(sel) {
+    if (sel.selectedIndex > 0) shortenMenuTypeLabel(sel);
+});
+
+function autoResizeTextarea(ta) {
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = (ta.scrollHeight) + 'px';
+}
+document.querySelectorAll('.menu-detail-input, .break-menu-input').forEach(autoResizeTextarea);
+
 async function fetchBreakMenu(selectEl) {
+    if (!breakPickerOn) return;
     const row = selectEl.closest('tr');
     const textarea = row.querySelector('.break-menu-input');
     const typeId = selectEl.value;
@@ -1017,6 +1111,8 @@ async function fetchBreakMenu(selectEl) {
 
 // ฟังก์ชันดึงรายละเอียดเมนูหลัก
 async function fetchMenuDetail(selectEl) {
+    if (!menuPickerOn) return;
+    shortenMenuTypeLabel(selectEl);
     const row = selectEl.closest('tr');
     const textarea = row.querySelector('.menu-detail-input'); // มั่นใจว่าคลาสตรงกัน
     const setId = selectEl.value;
@@ -1365,40 +1461,107 @@ $(document).on('click', '#rollbackStatusBtn', function() {
 </script>
 
 <script>
-    let _mtmActiveRow = null;
-
-    function openTemplateModalForRow(btn, mode, cb) {
-        _mtmActiveRow = btn.closest('tr');
-        openTemplateModal(mode, cb);
+    function getEmptyMenuRow() {
+        const rows = document.querySelectorAll('#menuTable tbody tr');
+        for (const r of rows) {
+            const sel = r.querySelector('.menu-type-select');
+            const detail = r.querySelector('.menu-detail-input');
+            const qty = r.querySelector('.menu-qty');
+            if ((!sel || !sel.value) && (!detail || !detail.value.trim()) && (!qty || !qty.value)) {
+                return r;
+            }
+        }
+        addMenuRow();
+        return document.querySelector('#menuTable tbody tr:last-child');
     }
 
-    function onMenuTypeSelect(result) {
-        if (!_mtmActiveRow) return;
-        const row = _mtmActiveRow;
-        const hidden = row.querySelector('.menu-type-id');
-        const label = row.querySelector('.menu-type-label');
-        const detail = row.querySelector('.menu-detail-input');
-        const price = row.querySelector('.menu-price');
-        const cost = row.querySelector('.menu-cost');
-
-        if (hidden) hidden.value = result.type_id || result.id;
-        if (label) {
-            label.textContent = result.type_name || result.name;
-            label.classList.remove('text-muted');
-            label.classList.add('fw-semibold', 'text-dark');
+    function getEmptyKitchenRow() {
+        const rows = document.querySelectorAll('#kitchenTable tbody tr');
+        for (const r of rows) {
+            const sel = r.querySelector('.break-type-select');
+            const item = r.querySelector('.break-menu-input');
+            const qty = r.querySelector('.kitchen-qty');
+            if ((!sel || !sel.value) && (!item || !item.value.trim()) && (!qty || !qty.value)) {
+                return r;
+            }
         }
-        if (detail && result.description) {
-            detail.value = result.description;
+        addKitchenRow();
+        return document.querySelector('#kitchenTable tbody tr:last-child');
+    }
+
+    function onMenuSectionSelect(result) {
+        const list = (Array.isArray(result) && result.set_price !== undefined) ? result : (Array.isArray(result) ? result : [result]);
+        if (list.length === 0) return;
+        const first = list[0];
+        const row = getEmptyMenuRow();
+
+        const select = row.querySelector('.menu-type-select');
+        if (select) {
+            if (first.type_id) {
+                select.value = first.type_id;
+            } else if (first.type_name) {
+                Array.prototype.forEach.call(select.options, function(opt) {
+                    if (opt.text.trim() === first.type_name || opt.text.trim().endsWith('/' + first.type_name)) opt.selected = true;
+                });
+            }
+            shortenMenuTypeLabel(select);
+        }
+
+        const detail = row.querySelector('.menu-detail-input');
+        if (detail) {
+            detail.value = list.map(it => (it.description || it.name || '')).filter(Boolean).join('\n');
             detail.style.height = 'auto';
             detail.style.height = detail.scrollHeight + 'px';
         }
-        if (price && result.price !== undefined) price.value = parseFloat(result.price).toFixed(2);
-        if (cost && result.cost !== undefined) cost.value = parseFloat(result.cost).toFixed(2);
 
-        _mtmActiveRow = null;
+        const price = row.querySelector('.menu-price');
+        if (price && first.price !== undefined) price.value = parseFloat(first.price).toFixed(2);
+        const cost = row.querySelector('.menu-cost');
+        if (cost && first.cost !== undefined) cost.value = parseFloat(first.cost).toFixed(2);
+        const qty = row.querySelector('.menu-qty');
+        if (qty && first.qty) qty.value = first.qty;
+
+        const qtyEl = row.querySelector('.menu-qty');
+        if (qtyEl && typeof updateMenuRowTotal === 'function') updateMenuRowTotal(qtyEl);
+    }
+
+    function onBreakSectionSelect(data) {
+        const list = (Array.isArray(data) && data.set_price !== undefined) ? data : (Array.isArray(data) ? data : [data]);
+        if (list.length === 0) return;
+
+        const groups = {};
+        list.forEach(function(it) {
+            const key = it.type_name || 'รายการเบรก';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(it);
+        });
+
+        Object.keys(groups).forEach(function(typeName) {
+            const items = groups[typeName];
+            const first = items[0];
+            const row = getEmptyKitchenRow();
+
+            const select = row.querySelector('.break-type-select');
+            if (select) {
+                Array.prototype.forEach.call(select.options, function(opt) {
+                    if (opt.text.trim() === typeName) opt.selected = true;
+                });
+            }
+
+            const item = row.querySelector('.break-menu-input');
+            if (item) item.value = items.map(it => (it.description || it.name || '')).filter(Boolean).join('\n');
+
+            const price = row.querySelector('.kitchen-price');
+            if (price && first.price !== undefined) price.value = parseFloat(first.price).toFixed(2);
+            const cost = row.querySelector('.kitchen-cost');
+            if (cost && first.cost !== undefined) cost.value = parseFloat(first.cost).toFixed(2);
+            const qty = row.querySelector('.kitchen-qty');
+            if (qty && first.qty) qty.value = first.qty;
+
+            if (typeof updateKitchenRowTotal === 'function' && price) updateKitchenRowTotal(price);
+        });
     }
 </script>
-
 
 <?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

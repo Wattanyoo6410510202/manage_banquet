@@ -30,7 +30,7 @@ $query_categories = "SELECT id, category_name FROM master_menu_categories ORDER 
 $res_categories = $conn->query($query_categories);
 
 // ดึงข้อมูลประเภทเมนูพร้อม category
-$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name, mmc.set_price 
     FROM master_menu_types mmt 
     LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
     ORDER BY mmc.sort_order ASC, mmt.id ASC");
@@ -47,10 +47,19 @@ $res_customers = $conn->query($query_customers);
 $query_breaks = "SELECT id, type_name FROM master_break_types ORDER BY id ASC";
 $res_breaks = $conn->query($query_breaks);
 
+// ดึงข้อมูลประเภท Break สำหรับ Modal Picker
+$break_types_array = [];
+$res_break_array = $conn->query("SELECT id, type_name, break_price FROM master_break_types ORDER BY id ASC");
+while ($bt = $res_break_array->fetch_assoc()) {
+    $break_types_array[] = $bt;
+}
+
 // --- [เพิ่มใหม่] ดึงข้อมูลจากใบเสนอราคา (ถ้ามี) ---
 $quote_id = isset($_GET['quote_id']) ? intval($_GET['quote_id']) : 0;
 $quote_data = null;
 $quote_items = [];
+$quote_menu_items = [];
+$quote_break_items = [];
 
 if ($quote_id > 0) {
     $sql_quote = "SELECT q.*, c.cust_name, c.cust_phone, c.cust_address 
@@ -67,6 +76,22 @@ if ($quote_id > 0) {
         $res_items = $conn->query($sql_items);
         while ($item = $res_items->fetch_assoc()) {
             $quote_items[] = $item;
+        }
+
+        // แยก items ในใบเสนอราคา: เมนูหลัก กับ รายการเบรก
+        $quote_menu_items = [];
+        $quote_break_items = [];
+        foreach ($quote_items as $item) {
+            $parsed_breaks = parseQuoteBreakItem($item['item_name'], $break_types_array);
+            if ($parsed_breaks) {
+                foreach ($parsed_breaks as $br) {
+                    $br['quantity'] = $item['quantity'];
+                    $br['unit_price'] = $item['unit_price'];
+                    $quote_break_items[] = $br;
+                }
+            } else {
+                $quote_menu_items[] = $item;
+            }
         }
     }
 }
@@ -118,11 +143,115 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
             }
             $current_cat_id = $cat_id;
         }
+        $label = ($m['category_name'] ?? '') !== '' ? ($m['category_name'] . '/' . ($m['type_name'] ?? '')) : ($m['type_name'] ?? '');
         $sel = ($selected_id && $m['id'] == $selected_id) ? 'selected' : '';
-        $html .= '<option value="' . $m['id'] . '" ' . $sel . '>' . htmlspecialchars($m['type_name']) . '</option>';
+        $html .= '<option value="' . $m['id'] . '" ' . $sel . '>' . htmlspecialchars($label) . '</option>';
     }
     if ($hasoptgroup) $html .= '</optgroup>';
     return $html;
+}
+
+function stripQuoteMenuHeading($text, $categories) {
+    if (!$text) return $text;
+    $lines = preg_split('/\r\n|\r|\n/', trim($text));
+    if (count($lines) > 1 && isset($categories[trim($lines[0])])) {
+        array_shift($lines);
+    }
+    return implode("\n", $lines);
+}
+
+function resolveMenuSetIdFromHeading($text, $menu_types_array) {
+    if (!$text) return '';
+    $lines = preg_split('/\r\n|\r|\n/', trim($text));
+    $heading = trim($lines[0]);
+    foreach ($menu_types_array as $mt) {
+        if (trim($mt['category_name'] ?? '') === $heading) {
+            return $mt['id'];
+        }
+    }
+    return '';
+}
+
+function parseQuoteBreakItem($text, $break_types) {
+    if (!$text) return null;
+    $lines = preg_split('/\r\n|\r|\n/', trim($text));
+    $sections = [];
+    $current = -1;
+    foreach ($lines as $line) {
+        $t = trim($line);
+        if ($t === '') continue;
+        $matched = null;
+        foreach ($break_types as $bt) {
+            if (mb_strpos($t, $bt['type_name']) === 0) { $matched = $bt; break; }
+        }
+        if ($matched) {
+            $current = count($sections);
+            $sections[$current] = [
+                'type_id' => $matched['id'],
+                'type_name' => $matched['type_name'],
+                'heading_items' => [],
+                'lines' => []
+            ];
+            $rest = trim(mb_substr($t, mb_strlen($matched['type_name'])));
+            $rest = preg_replace('/^[:：]\s*/', '', $rest);
+            if ($rest !== '') {
+                $sections[$current]['lines'][] = $rest;
+                foreach (preg_split('/[,，、]/', $rest) as $ni) {
+                    $ni = trim($ni);
+                    if ($ni !== '') $sections[$current]['heading_items'][] = $ni;
+                }
+            }
+        } elseif ($current >= 0) {
+            $sections[$current]['lines'][] = $t;
+        }
+    }
+    if (empty($sections)) return null;
+
+    $notes = [];
+    foreach ($sections as $gi => $g) {
+        $kept = [];
+        foreach ($g['lines'] as $ln) {
+            if (preg_match('/^หมายเหตุ\s*[:：]?$/u', $ln)) continue;
+            if (preg_match('/^[-•]\s*(.+)$/', $ln, $m)) {
+                $full = $m[1];
+                $itemName = trim(preg_replace('/\s*[:：]\s*.*$/', '', $full));
+                $notes[] = ['item' => $itemName, 'text' => $ln];
+                continue;
+            }
+            $kept[] = $ln;
+        }
+        $sections[$gi]['lines'] = $kept;
+    }
+
+    foreach ($notes as $note) {
+        $target = -1;
+        foreach ($sections as $gi => $g) {
+            foreach ($g['heading_items'] as $hi) {
+                if ($hi === $note['item'] || mb_strpos($hi, $note['item']) !== false || mb_strpos($note['item'], $hi) !== false) {
+                    $target = $gi;
+                    break 2;
+                }
+            }
+        }
+        if ($target < 0) $target = count($sections) - 1;
+        $sections[$target]['lines'][] = $note['text'];
+    }
+
+    $result = [];
+    foreach ($sections as $g) {
+        $result[] = [
+            'type_id' => $g['type_id'],
+            'type_name' => $g['type_name'],
+            'items' => implode("\n", $g['lines'])
+        ];
+    }
+    return $result;
+}
+?>
+<?php
+$known_categories = [];
+foreach ($menu_types_array as $mt) {
+    if (!empty($mt['category_name'])) $known_categories[$mt['category_name']] = true;
 }
 ?>
 <style>
@@ -424,6 +553,15 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                             </div>
 
                             <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="breakModalBtn"
+                                    onclick="openTemplateModal('template-break', 'onBreakSectionSelect')">
+                                    <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเบรก
+                                </button>
+                                <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="breakModalToggle" checked
+                                        onchange="toggleBreakPicker(this.checked)">
+                                    <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                                </label>
                             </h5>
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover align-middle" id="kitchenTable">
@@ -440,6 +578,64 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        <?php if (!empty($quote_break_items)): ?>
+                                            <?php foreach ($quote_break_items as $br):
+                                                $k_qty = (float)($br['quantity'] ?? 0);
+                                                $k_price = (float)($br['unit_price'] ?? 0);
+                                                $k_total = $k_qty * $k_price;
+                                            ?>
+                                                <tr>
+                                                    <td>
+                                                        <input type="date" name="k_date[]"
+                                                            class="form-control form-control-sm border-0 bg-light"
+                                                            value="<?= htmlspecialchars($quote_data['event_date'] ?? '') ?>">
+                                                    </td>
+                                                    <td>
+                                                        <select name="k_type_id[]"
+                                                            class="form-select form-select-sm border-0 bg-light break-type-select"
+                                                            onchange="fetchBreakMenu(this)">
+                                                            <option value="" disabled>-- เลือกประเภท Break --</option>
+                                                            <?php if ($res_breaks && $res_breaks->num_rows > 0):
+                                                                $res_breaks->data_seek(0);
+                                                                while ($b = $res_breaks->fetch_assoc()): ?>
+                                                                    <option value="<?= $b['id'] ?>" <?= ($b['id'] == $br['type_id']) ? 'selected' : '' ?>>
+                                                                        <?= htmlspecialchars($b['type_name']) ?>
+                                                                    </option>
+                                                                <?php endwhile; endif; ?>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <textarea name="k_item[]"
+                                                            class="form-control form-control-sm border-0 bg-light break-menu-input"
+                                                            rows="3" onfocus="initFirstLine(this)"><?= htmlspecialchars($br['items']) ?></textarea>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="k_qty[]"
+                                                            class="form-control form-control-sm border-0 bg-light text-center kitchen-qty"
+                                                            placeholder="0" value="<?= $k_qty ?>"
+                                                            oninput="updateKitchenRowTotal(this)">
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="k_price[]"
+                                                            class="form-control form-control-sm border-0 bg-light text-end kitchen-price"
+                                                            placeholder="0.00" step="0.01" value="<?= $k_price ?>"
+                                                            oninput="updateKitchenRowTotal(this)">
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="k_cost[]"
+                                                            class="form-control form-control-sm border-0 bg-light text-end kitchen-cost"
+                                                            placeholder="0.00" step="0.01">
+                                                    </td>
+                                                    <td class="text-end fw-bold kitchen-row-total"><?php echo number_format($k_total, 2); ?></td>
+                                                    <td>
+                                                        <button type="button" class="btn text-danger btn-sm border-0"
+                                                            onclick="removeRow(this)">
+                                                            <i class="bi bi-dash-circle"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
                                         <tr>
                                             <td>
                                                 <input type="date" name="k_date[]"
@@ -447,7 +643,7 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                             </td>
                                             <td>
                                                 <select name="k_type_id[]"
-                                                    class="form-select form-select-sm border-0 bg-light"
+                                                    class="form-select form-select-sm border-0 bg-light break-type-select"
                                                     onchange="fetchBreakMenu(this)">
                                                     <option value="" disabled selected>-- เลือกประเภท Break --</option>
                                                     <?php if ($res_breaks && $res_breaks->num_rows > 0):
@@ -488,6 +684,7 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                                 </button>
                                             </td>
                                         </tr>
+                                        <?php endif; ?>
                                     </tbody>
                                     <tfoot class="table-light">
                                         <tr>
@@ -509,6 +706,15 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
 
                     <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4.
                         รายละเอียดเมนูอาหารและเครื่องดื่ม
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="menuModalBtn"
+                            onclick="openTemplateModal('template-menu', 'onMenuSectionSelect', 'set')">
+                            <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเมนู
+                        </button>
+                        <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
+                            <input class="form-check-input" type="checkbox" role="switch" id="menuModalToggle" checked
+                                onchange="toggleMenuPicker(this.checked)">
+                            <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                        </label>
                     </h5>
                     <div class="table-responsive mb-5">
                         <table class="table table-sm table-hover align-middle border" id="menuTable">
@@ -525,8 +731,8 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (!empty($quote_items)): ?>
-                                    <?php foreach ($quote_items as $item): 
+                                <?php if (!empty($quote_menu_items)): ?>
+                                    <?php foreach ($quote_menu_items as $item): 
                                         $menu_qty = (float)($item['quantity'] ?? 0);
                                         $menu_price = (float)($item['unit_price'] ?? 0);
                                         $menu_total = $menu_qty * $menu_price;
@@ -536,14 +742,21 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                                     class="form-control form-control-sm border-0" 
                                                     value="<?= $quote_data['event_date'] ?>"></td>
                                             <td>
-                                                <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="<?= $item['menu_set_id'] ?? '' ?>">
-                                                <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
-                                                <span class="menu-type-label <?= ($item['menu_set_id'] ?? '') ? 'fw-semibold text-dark' : 'text-muted' ?>"><?= htmlspecialchars($item['menu_set_id'] ? ($menu_types_array[array_search($item['menu_set_id'], array_column($menu_types_array, 'id'))]['type_name'] ?? '') : 'ยังไม่ได้เลือก') ?></span>
+                                                <select name="menu_set_id[]"
+                                                    class="form-select form-select-sm border-0 bg-light menu-type-select"
+                                                    onchange="fetchMenuDetail(this)">
+                                                    <?php
+                                                    $menu_set_val = !empty($item['menu_set_id'])
+                                                        ? $item['menu_set_id']
+                                                        : resolveMenuSetIdFromHeading($item['item_name'], $menu_types_array);
+                                                    echo renderMenuTypeOptions($menu_types_array, $menu_set_val);
+                                                    ?>
+                                                </select>
                                             </td>
                                             <td>
                                                 <textarea name="menu_detail[]"
                                                     class="form-control form-control-sm border-0 menu-detail-input"
-                                                    rows="1"><?= htmlspecialchars($item['item_name']) ?></textarea>
+                                                    rows="1"><?= htmlspecialchars(stripQuoteMenuHeading($item['item_name'], $known_categories)) ?></textarea>
                                             </td>
                                             <td><input type="text" name="menu_qty[]"
                                                     class="form-control form-control-sm border-0 menu-qty"
@@ -568,9 +781,11 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
                                         <td><input type="date" name="menu_time[]"
                                                 class="form-control form-control-sm border-0" placeholder="10:30"></td>
                                         <td>
-                                            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
-                                            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
-                                            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
+                                            <select name="menu_set_id[]"
+                                                class="form-select form-select-sm border-0 bg-light menu-type-select"
+                                                onchange="fetchMenuDetail(this)">
+                                                <?php echo renderMenuTypeOptions($menu_types_array); ?>
+                                            </select>
                                         </td>
                                         <td>
                                             <textarea name="menu_detail[]"
@@ -730,7 +945,50 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
         document.getElementById('customer_address').value = customerAddress || '';
     }
 
+    let menuPickerOn = true;
+    let breakPickerOn = true;
+
+    function toggleMenuPicker(on) {
+        menuPickerOn = on;
+        const btn = document.getElementById('menuModalBtn');
+        if (btn) btn.style.display = on ? '' : 'none';
+    }
+
+    function toggleBreakPicker(on) {
+        breakPickerOn = on;
+        const btn = document.getElementById('breakModalBtn');
+        if (btn) btn.style.display = on ? '' : 'none';
+    }
+
+    function shortenMenuTypeLabel(selectEl) {
+        const opt = selectEl.options[selectEl.selectedIndex];
+        if (opt && opt.text.indexOf('/') > 0) {
+            opt.text = opt.text.substring(0, opt.text.indexOf('/'));
+        }
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('menu-type-select')) {
+            shortenMenuTypeLabel(e.target);
+        }
+    });
+
+    document.querySelectorAll('.menu-type-select').forEach(function(sel) {
+        if (sel.selectedIndex > 0) shortenMenuTypeLabel(sel);
+    });
+
+    function autoResizeTextarea(ta) {
+        if (!ta) return;
+        ta.style.height = 'auto';
+        ta.style.height = (ta.scrollHeight) + 'px';
+    }
+    document.querySelectorAll('.menu-detail-input, .break-menu-input').forEach(autoResizeTextarea);
+
+    if (typeof updateMenuGrandTotal === 'function') updateMenuGrandTotal();
+    if (typeof updateKitchenGrandTotal === 'function') updateKitchenGrandTotal();
+
     async function fetchBreakMenu(selectEl) {
+        if (!breakPickerOn) return;
         const row = selectEl.closest('tr');
         const textarea = row.querySelector('.break-menu-input');
         const typeId = selectEl.value;
@@ -782,12 +1040,16 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
         const row = table.insertRow();
         row.className = "align-top";
 
+        const menuOptions = `
+        <option value="" disabled selected>-- เลือกเซตเมนู --</option>
+        <?php foreach ($menu_types_array as $mt): ?>
+            <option value="<?= $mt['id'] ?>"><?= htmlspecialchars(($mt['category_name'] ?? '') !== '' ? ($mt['category_name'] . '/' . ($mt['type_name'] ?? '')) : ($mt['type_name'] ?? '')) ?></option>
+        <?php endforeach; ?>`;
+
         row.innerHTML = `
         <td width="150"><input type="date" name="menu_time[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td width="200">
-            <input type="hidden" name="menu_set_id[]" class="menu-type-id" value="">
-            <button type="button" class="btn-menu-type-picker" onclick="openTemplateModalForRow(this, 'template-menu', 'onMenuTypeSelect')"><i class="bi bi-grid-3x3-gap me-1"></i>เลือก</button>
-            <span class="menu-type-label text-muted">ยังไม่ได้เลือก</span>
+            <select name="menu_set_id[]" class="form-select form-select-sm border-0 bg-light menu-type-select" onchange="fetchMenuDetail(this)">${menuOptions}</select>
         </td>
         <td>
             <textarea name="menu_detail[]"
@@ -820,7 +1082,7 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
 
         newRow.innerHTML = `
         <td><input type="date" name="k_date[]" class="form-control form-control-sm border-0 bg-light"></td>
-        <td><select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
+        <td><select name="k_type_id[]" class="form-select form-select-sm border-0 bg-light break-type-select" onchange="fetchBreakMenu(this)">${breakOptions}</select></td>
         <td><textarea name="k_item[]" class="form-control form-control-sm border-0 bg-light break-menu-input" rows="3" onfocus="initFirstLine(this)"></textarea></td>
         <td><input type="number" name="k_qty[]" class="form-control form-control-sm border-0 bg-light text-center kitchen-qty" placeholder="0" oninput="updateKitchenRowTotal(this)"></td>
         <td><input type="number" name="k_price[]" class="form-control form-control-sm border-0 bg-light text-end kitchen-price" placeholder="0.00" step="0.01" oninput="updateKitchenRowTotal(this)"></td>
@@ -896,6 +1158,8 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
     });
 
     async function fetchMenuDetail(selectEl) {
+        if (!menuPickerOn) return;
+        shortenMenuTypeLabel(selectEl);
         const row = selectEl.closest('tr');
         const textarea = row.querySelector('.menu-detail-input'); // มั่นใจว่าคลาสตรงกัน
         const setId = selectEl.value;
@@ -1011,40 +1275,108 @@ function renderMenuTypeOptions($menu_types_array, $selected_id = '') {
             document.getElementById('customer_address').value = '';
         });
     }
-    let _mtmActiveRow = null;
+    initCustomerSelect();
 
-    function openTemplateModalForRow(btn, mode, cb) {
-        _mtmActiveRow = btn.closest('tr');
-        openTemplateModal(mode, cb);
+    function getEmptyMenuRow() {
+        const rows = document.querySelectorAll('#menuTable tbody tr');
+        for (const r of rows) {
+            const sel = r.querySelector('.menu-type-select');
+            const detail = r.querySelector('.menu-detail-input');
+            const qty = r.querySelector('.menu-qty');
+            if ((!sel || !sel.value) && (!detail || !detail.value.trim()) && (!qty || !qty.value)) {
+                return r;
+            }
+        }
+        addMenuRow();
+        return document.querySelector('#menuTable tbody tr:last-child');
     }
 
-    function onMenuTypeSelect(result) {
-        if (!_mtmActiveRow) return;
-        const row = _mtmActiveRow;
-        const hidden = row.querySelector('.menu-type-id');
-        const label = row.querySelector('.menu-type-label');
-        const detail = row.querySelector('.menu-detail-input');
-        const price = row.querySelector('.menu-price');
-        const cost = row.querySelector('.menu-cost');
-
-        if (hidden) hidden.value = result.type_id || result.id;
-        if (label) {
-            label.textContent = result.type_name || result.name;
-            label.classList.remove('text-muted');
-            label.classList.add('fw-semibold', 'text-dark');
+    function getEmptyKitchenRow() {
+        const rows = document.querySelectorAll('#kitchenTable tbody tr');
+        for (const r of rows) {
+            const sel = r.querySelector('.break-type-select');
+            const item = r.querySelector('.break-menu-input');
+            const qty = r.querySelector('.kitchen-qty');
+            if ((!sel || !sel.value) && (!item || !item.value.trim()) && (!qty || !qty.value)) {
+                return r;
+            }
         }
-        if (detail && result.description) {
-            detail.value = result.description;
+        addKitchenRow();
+        return document.querySelector('#kitchenTable tbody tr:last-child');
+    }
+
+    function onMenuSectionSelect(result) {
+        const list = (Array.isArray(result) && result.set_price !== undefined) ? result : (Array.isArray(result) ? result : [result]);
+        if (list.length === 0) return;
+        const first = list[0];
+        const row = getEmptyMenuRow();
+
+        const select = row.querySelector('.menu-type-select');
+        if (select) {
+            if (first.type_id) {
+                select.value = first.type_id;
+            } else if (first.type_name) {
+                Array.prototype.forEach.call(select.options, function(opt) {
+                    if (opt.text.trim() === first.type_name || opt.text.trim().endsWith('/' + first.type_name)) opt.selected = true;
+                });
+            }
+            shortenMenuTypeLabel(select);
+        }
+
+        const detail = row.querySelector('.menu-detail-input');
+        if (detail) {
+            detail.value = list.map(it => (it.description || it.name || '')).filter(Boolean).join('\n');
             detail.style.height = 'auto';
             detail.style.height = detail.scrollHeight + 'px';
         }
-        if (price && result.price !== undefined) price.value = parseFloat(result.price).toFixed(2);
-        if (cost && result.cost !== undefined) cost.value = parseFloat(result.cost).toFixed(2);
 
-        _mtmActiveRow = null;
+        const price = row.querySelector('.menu-price');
+        if (price && first.price !== undefined) price.value = parseFloat(first.price).toFixed(2);
+        const cost = row.querySelector('.menu-cost');
+        if (cost && first.cost !== undefined) cost.value = parseFloat(first.cost).toFixed(2);
+        const qty = row.querySelector('.menu-qty');
+        if (qty && first.qty) qty.value = first.qty;
+
+        const qtyEl = row.querySelector('.menu-qty');
+        if (qtyEl && typeof updateMenuRowTotal === 'function') updateMenuRowTotal(qtyEl);
     }
 
-    initCustomerSelect();
+    function onBreakSectionSelect(data) {
+        const list = (Array.isArray(data) && data.set_price !== undefined) ? data : (Array.isArray(data) ? data : [data]);
+        if (list.length === 0) return;
+
+        const groups = {};
+        list.forEach(function(it) {
+            const key = it.type_name || 'รายการเบรก';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(it);
+        });
+
+        Object.keys(groups).forEach(function(typeName) {
+            const items = groups[typeName];
+            const first = items[0];
+            const row = getEmptyKitchenRow();
+
+            const select = row.querySelector('.break-type-select');
+            if (select) {
+                Array.prototype.forEach.call(select.options, function(opt) {
+                    if (opt.text.trim() === typeName) opt.selected = true;
+                });
+            }
+
+            const item = row.querySelector('.break-menu-input');
+            if (item) item.value = items.map(it => (it.description || it.name || '')).filter(Boolean).join('\n');
+
+            const price = row.querySelector('.kitchen-price');
+            if (price && first.price !== undefined) price.value = parseFloat(first.price).toFixed(2);
+            const cost = row.querySelector('.kitchen-cost');
+            if (cost && first.cost !== undefined) cost.value = parseFloat(first.cost).toFixed(2);
+            const qty = row.querySelector('.kitchen-qty');
+            if (qty && first.qty) qty.value = first.qty;
+
+            if (typeof updateKitchenRowTotal === 'function' && price) updateKitchenRowTotal(price);
+        });
+    }
 </script>
 <?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

@@ -285,7 +285,8 @@ require_once "header.php";
         // ตั้งค่า DataTable
         menuTable = $('#menuTable').DataTable({
             "order": [[0, "asc"]],
-            "pageLength": 10,
+            "pageLength": 100,
+            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
             },

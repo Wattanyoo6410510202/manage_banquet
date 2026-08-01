@@ -19,12 +19,17 @@ $result = $stmt->get_result();
 
 $items = [];
 while ($row = $result->fetch_assoc()) {
-    $items[] = [
-        'id' => intval($row['id']),
-        'break_menu' => $row['break_menu'],
-        'break_price' => floatval($row['break_price']),
-        'break_cost' => floatval($row['break_cost']),
-    ];
+    $lines = preg_split('/\r\n|\r|\n/', trim($row['break_menu']));
+    foreach ($lines as $i => $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+        $items[] = [
+            'id' => intval($row['id']) * 1000 + $i,
+            'break_menu' => $line,
+            'break_price' => floatval($row['break_price']),
+            'break_cost' => floatval($row['break_cost']),
+        ];
+    }
 }
 
 echo json_encode($items, JSON_UNESCAPED_UNICODE);

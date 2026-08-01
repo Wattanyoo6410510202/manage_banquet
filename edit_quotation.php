@@ -41,7 +41,7 @@ $projects_sql = "SELECT ep.id, ep.project_name,
 $projects_res = $conn->query($projects_sql);
 
 // ดึงเทมเพลตเมนูและเบรก
-$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name 
+$menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name, mmc.set_price 
     FROM master_menu_types mmt 
     LEFT JOIN master_menu_categories mmc ON mmt.category_id = mmc.id 
     ORDER BY mmc.sort_order ASC, mmt.id ASC");
@@ -50,7 +50,7 @@ while ($mt = $menu_types_with_cat->fetch_assoc()) {
     $menu_types_array[] = $mt;
 }
 
-$break_types_with_cat = $conn->query("SELECT id, type_name FROM master_break_types ORDER BY id ASC");
+$break_types_with_cat = $conn->query("SELECT id, type_name, break_price FROM master_break_types ORDER BY id ASC");
 $break_types_array = [];
 while ($bt = $break_types_with_cat->fetch_assoc()) {
     $break_types_array[] = $bt;
@@ -318,7 +318,20 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         return d.innerHTML;
     }
 
+    function autoGrowTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight) + 'px';
+    }
+
     $(document).ready(function () {
+        // 0. Auto-resize textarea ในคอลัมน์รายละเอียดรายการ
+        $(document).on('input', '#itemTable textarea', function () {
+            autoGrowTextarea(this);
+        });
+        $('#itemTable textarea').each(function () {
+            autoGrowTextarea(this);
+        });
+
         // 1. คำนวณยอดเริ่มต้นทันทีเมื่อโหลดหน้า (เพื่อให้สอดคล้องกับสถานะ Toggle จาก DB)
         calculateAll();
 
@@ -341,6 +354,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 </td>
             </tr>`;
             $('#itemTable tbody').append(newRow);
+            autoGrowTextarea($('#itemTable tbody tr:last textarea')[0]);
         });
 
         // ลบแถวรายการ
@@ -414,35 +428,71 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
         // Modal callback: เลือกเมนูเสร็จ → เพิ่มแถวทันที (items = single, set = array)
         window.onMenuTemplateSelect = function(data) {
+            function prefixed(typeName, name) {
+                return typeName ? typeName + ':' + name : name;
+            }
+            function itemText(item) {
+                return prefixed(item.type_name, item.name) + ' จำนวน ' + (item.qty || 1) + ' ราคา ' + (parseFloat(item.price) || 0) + ' บาท';
+            }
             if (Array.isArray(data)) {
-                data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
+                var lines = [];
+                if (data.category_name) lines.push(data.category_name);
+                data.forEach(function(item) {
+                    lines.push(item.name);
+                });
+                var notes = data.map(function(item) {
+                    return item.note ? { name: item.name, note: item.note } : null;
+                }).filter(Boolean);
+                if (notes.length > 0) {
+                    lines.push('');
+                    lines.push('หมายเหตุ:');
+                    notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
+                }
+                var total = data.set_price !== undefined ? parseFloat(data.set_price) || 0 : data.reduce(function(s, item) { return s + (item.qty * item.price); }, 0);
+                addTemplateRow(lines.join('\n'), data[0].qty || 1, total);
             } else {
-                addTemplateRow(data.name, data.qty || 1, data.price);
+                addTemplateRow(itemText(data), data.qty || 1, data.price);
             }
         };
 
         // Modal callback: เลือกเบรกเสร็จ → เพิ่มแถวทันที
         window.onBreakTemplateSelect = function(data) {
-            if (Array.isArray(data)) {
+            if (Array.isArray(data) && data.set_price !== undefined) {
+                var lines = [];
+                data.forEach(function(item) {
+                    lines.push((item.type_name || data.category_name || '') + ' :' + item.name);
+                });
+                var notes = data.map(function(item) {
+                    return item.note ? { name: item.name, note: item.note } : null;
+                }).filter(Boolean);
+                if (notes.length > 0) {
+                    lines.push('');
+                    lines.push('หมายเหตุ:');
+                    notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
+                }
+                var setTotal = parseFloat(data.set_price) || 0;
+                addTemplateRow(lines.join('\n'), data[0].qty || 1, setTotal);
+            } else if (Array.isArray(data)) {
                 data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
             } else {
                 addTemplateRow(data.name, data.qty || 1, data.price);
             }
         };
 
-        // ฟังก์ชันเพิ่มแถวจากเทมเพลต
-        function addTemplateRow(name, qty, price) {
-            var total = (qty * price).toFixed(2);
+        // ฟังก์ชันเพิ่มแถวจากเทมเพลต (ล็อกไม่ให้แก้ไข)
+        function addTemplateRow(name, qty, price, explicitTotal) {
+            var total = (explicitTotal !== undefined && explicitTotal !== null) ? Number(explicitTotal).toFixed(2) : (qty * price).toFixed(2);
             var rowCount = $('#itemTable tbody tr').length + 1;
-            var row = '<tr>'
+            var row = '<tr class="template-row">'
                 + '<td class="text-center fw-bold">' + rowCount + '</td>'
-                + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical;" required>' + escapeHtml(name) + '</textarea></td>'
-                + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1"></td>'
-                + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01"></td>'
+                + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical;" readonly>' + escapeHtml(name) + '</textarea></td>'
+                + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1" readonly></td>'
+                + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01" readonly></td>'
                 + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total + '" readonly></td>'
-                + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer; font-size: 1.2rem;"></i></td>'
+                + '<td class="text-center"><i class="bi bi-lock-fill text-secondary me-1" title="รายการจากเทมเพลต - แก้ไขไม่ได้"></i><i class="bi bi-trash text-danger removeRow" style="cursor:pointer; font-size: 1.2rem;"></i></td>'
                 + '</tr>';
             $('#itemTable tbody').append(row);
+            autoGrowTextarea($('#itemTable tbody tr:last textarea')[0]);
             calculateAll();
         }
     });

@@ -7,6 +7,28 @@
 <!-- Driver.js for Tutorial -->
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script>
+    // --- Global Auto-Resize Textarea (ทุกหน้า) ---
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight) + 'px';
+    }
+    document.querySelectorAll('textarea').forEach(autoResizeTextarea);
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.tagName === 'TEXTAREA') autoResizeTextarea(e.target);
+    });
+    const _taObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            m.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                if (node.tagName === 'TEXTAREA') autoResizeTextarea(node);
+                if (node.querySelectorAll) node.querySelectorAll('textarea').forEach(autoResizeTextarea);
+            });
+        });
+    });
+    if (document.body) _taObserver.observe(document.body, { childList: true, subtree: true });
+</script>
+<script>
     // --- Select2 Global Initializations ---
     $(document).ready(function() {
         // สำหรับ Select2 ทั่วไป

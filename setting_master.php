@@ -34,10 +34,18 @@ if (isset($_POST['action'])) {
             }
         } elseif ($table === 'master_menu_categories') {
             $sort_order = intval($_POST['sort_order'] ?? 0);
+            $set_price = ($_POST['set_price'] ?? '') !== '' ? floatval($_POST['set_price']) : 'NULL';
             if ($id > 0) {
-                $sql = "UPDATE $table SET category_name='$name', sort_order=$sort_order WHERE id=$id";
+                $sql = "UPDATE $table SET category_name='$name', sort_order=$sort_order, set_price=$set_price WHERE id=$id";
             } else {
-                $sql = "INSERT INTO $table (category_name, sort_order) VALUES ('$name', $sort_order)";
+                $sql = "INSERT INTO $table (category_name, sort_order, set_price) VALUES ('$name', $sort_order, $set_price)";
+            }
+        } elseif ($table === 'master_break_types') {
+            $break_price = ($_POST['break_price'] ?? '') !== '' ? floatval($_POST['break_price']) : 'NULL';
+            if ($id > 0) {
+                $sql = "UPDATE $table SET type_name='$name', break_price=$break_price WHERE id=$id";
+            } else {
+                $sql = "INSERT INTO $table (type_name, break_price) VALUES ('$name', $break_price)";
             }
         } else {
             if ($id > 0) {
@@ -58,7 +66,9 @@ if (isset($_POST['action'])) {
                 $cr = $conn->query("SELECT category_name FROM master_menu_categories WHERE id=$category_id");
                 $cat_name = $cr ? ($cr->fetch_assoc()['category_name'] ?? '') : '';
             }
-            echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $name, 'table' => $table, 'category_name' => $cat_name]);
+            $resp_set_price = (isset($set_price) && $set_price !== 'NULL') ? $set_price : null;
+            $resp_break_price = (isset($break_price) && $break_price !== 'NULL') ? $break_price : null;
+            echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $name, 'table' => $table, 'category_name' => $cat_name, 'set_price' => $resp_set_price, 'break_price' => $resp_break_price]);
         } else {
             $new_id = $conn->insert_id;
             $cat_name = '';
@@ -66,7 +76,9 @@ if (isset($_POST['action'])) {
                 $cr = $conn->query("SELECT category_name FROM master_menu_categories WHERE id=$category_id");
                 $cat_name = $cr ? ($cr->fetch_assoc()['category_name'] ?? '') : '';
             }
-            echo json_encode(['status' => 'inserted', 'id' => $new_id, 'name' => $name, 'table' => $table, 'category_name' => $cat_name]);
+            $resp_set_price = (isset($set_price) && $set_price !== 'NULL') ? $set_price : null;
+            $resp_break_price = (isset($break_price) && $break_price !== 'NULL') ? $break_price : null;
+            echo json_encode(['status' => 'inserted', 'id' => $new_id, 'name' => $name, 'table' => $table, 'category_name' => $cat_name, 'set_price' => $resp_set_price, 'break_price' => $resp_break_price]);
         }
         exit;
     }
@@ -107,6 +119,7 @@ require_once "header.php";
                             <button class="btn btn-light border" type="button" onclick="resetSettingForm('category')">ล้าง</button>
                         </div>
                         <input type="number" id="category_sort" class="form-control form-control-sm" placeholder="ลำดับ (sort_order)" value="0" style="max-width:180px;">
+                        <input type="number" id="category_set_price" class="form-control form-control-sm mt-2" placeholder="ราคาเซต (บาท)" value="" style="max-width:180px;" step="0.01" min="0">
                     </form>
 
                     <div class="table-responsive" style="max-height: 400px;">
@@ -116,6 +129,7 @@ require_once "header.php";
                                     <th width="15%" class="ps-3">ID</th>
                                     <th>ชื่อกลุ่ม</th>
                                     <th width="15%" class="text-center">ลำดับ</th>
+                                    <th width="15%" class="text-center">ราคาเซต</th>
                                     <th width="20%" class="text-center">จัดการ</th>
                                 </tr>
                             </thead>
@@ -125,9 +139,10 @@ require_once "header.php";
                                     <td class="ps-3 text-muted small">#<?= $row['id'] ?></td>
                                     <td><span class="name-text fw-semibold"><?= htmlspecialchars($row['category_name']) ?></span></td>
                                     <td class="text-center"><small class="text-muted"><?= $row['sort_order'] ?></small></td>
+                                    <td class="text-center"><small class="set-price-text"><?= ($row['set_price'] !== null) ? number_format($row['set_price'], 2) : '-' ?></small></td>
                                     <td class="text-center">
                                         <div class="btn-group">
-                                            <button class="btn btn-sm text-primary" onclick="editSetting('category', <?= $row['id'] ?>, '<?= addslashes($row['category_name']) ?>', <?= $row['sort_order'] ?>)"><i class="bi bi-pencil-square"></i></button>
+                                            <button class="btn btn-sm text-primary" onclick="editSetting('category', <?= $row['id'] ?>, '<?= addslashes($row['category_name']) ?>', <?= $row['sort_order'] ?>, 0, <?= ($row['set_price'] !== null) ? $row['set_price'] : "''" ?>)"><i class="bi bi-pencil-square"></i></button>
                                             <button class="btn btn-sm text-danger" onclick="deleteSetting('master_menu_categories', <?= $row['id'] ?>)"><i class="bi bi-trash"></i></button>
                                         </div>
                                     </td>
@@ -212,6 +227,7 @@ require_once "header.php";
                             <button class="btn btn-warning fw-bold px-4" type="submit">บันทึก</button>
                             <button class="btn btn-light border" type="button" onclick="resetSettingForm('break')">ล้าง</button>
                         </div>
+                        <input type="number" id="break_price" class="form-control form-control-sm mt-2" placeholder="ราคาเบรก (บาท)" value="" style="max-width:180px;" step="0.01" min="0">
                     </form>
 
                     <div class="table-responsive" style="max-height: 500px;">
@@ -220,6 +236,7 @@ require_once "header.php";
                                 <tr class="small text-muted">
                                     <th width="15%" class="ps-3">ID</th>
                                     <th>ชื่อประเภท</th>
+                                    <th width="15%" class="text-center">ราคา</th>
                                     <th width="20%" class="text-center">จัดการ</th>
                                 </tr>
                             </thead>
@@ -228,9 +245,10 @@ require_once "header.php";
                                 <tr id="master_break_types-<?= $row['id'] ?>">
                                     <td class="ps-3 text-muted small">#<?= $row['id'] ?></td>
                                     <td><span class="name-text fw-semibold"><?= htmlspecialchars($row['type_name']) ?></span></td>
+                                    <td class="text-center"><small class="break-price-text"><?= ($row['break_price'] !== null) ? number_format($row['break_price'], 2) : '-' ?></small></td>
                                     <td class="text-center">
                                         <div class="btn-group">
-                                            <button class="btn btn-sm text-primary" onclick="editSetting('break', <?= $row['id'] ?>, '<?= addslashes($row['type_name']) ?>')"><i class="bi bi-pencil-square"></i></button>
+                                            <button class="btn btn-sm text-primary" onclick="editSetting('break', <?= $row['id'] ?>, '<?= addslashes($row['type_name']) ?>', 0, 0, <?= ($row['break_price'] !== null) ? $row['break_price'] : "''" ?>)"><i class="bi bi-pencil-square"></i></button>
                                             <button class="btn btn-sm text-danger" onclick="deleteSetting('master_break_types', <?= $row['id'] ?>)"><i class="bi bi-trash"></i></button>
                                         </div>
                                     </td>
@@ -273,6 +291,10 @@ function saveData(event, type) {
     }
     if (type === 'category') {
         fd.append('sort_order', document.getElementById('category_sort').value || 0);
+        fd.append('set_price', document.getElementById('category_set_price').value);
+    }
+    if (type === 'break') {
+        fd.append('break_price', document.getElementById('break_price').value);
     }
 
     fetch('setting_master.php', { method: 'POST', body: fd })
@@ -284,6 +306,12 @@ function saveData(event, type) {
             if (res.table === 'master_menu_types' && row.querySelector('.cat-text')) {
                 row.querySelector('.cat-text').innerText = res.category_name || '-';
             }
+            if (res.table === 'master_menu_categories' && row.querySelector('.set-price-text')) {
+                row.querySelector('.set-price-text').innerText = (res.set_price !== null && res.set_price !== '') ? Number(res.set_price).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
+            }
+            if (res.table === 'master_break_types' && row.querySelector('.break-price-text')) {
+                row.querySelector('.break-price-text').innerText = (res.break_price !== null && res.break_price !== '') ? Number(res.break_price).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
+            }
             row.style.backgroundColor = '#e0f2fe';
             setTimeout(() => row.style.backgroundColor = 'transparent', 1000);
         } else if (res.status === 'inserted') {
@@ -293,8 +321,18 @@ function saveData(event, type) {
             if (res.table === 'master_menu_types') {
                 extraCol = `<td><span class="badge bg-light text-dark cat-text">${res.category_name || '-'}</span></td>`;
             } else if (res.table === 'master_menu_categories') {
-                extraCol = `<td class="text-center"><small class="text-muted">${document.getElementById('category_sort').value || 0}</small></td>`;
+                const sp = (res.set_price !== null && res.set_price !== '') ? Number(res.set_price).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
+                extraCol = `<td class="text-center"><small class="text-muted">${document.getElementById('category_sort').value || 0}</small></td>
+                            <td class="text-center"><small class="set-price-text">${sp}</small></td>`;
+            } else if (res.table === 'master_break_types') {
+                const bp = (res.break_price !== null && res.break_price !== '') ? Number(res.break_price).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
+                extraCol = `<td class="text-center"><small class="break-price-text">${bp}</small></td>`;
             }
+            let setPriceArg = "''";
+            if (res.table === 'master_menu_categories') setPriceArg = (res.set_price !== null && res.set_price !== '') ? res.set_price : "''";
+            let breakPriceArg = "''";
+            if (res.table === 'master_break_types') breakPriceArg = (res.break_price !== null && res.break_price !== '') ? res.break_price : "''";
+            const priceArg = (res.table === 'master_break_types') ? breakPriceArg : setPriceArg;
             const newRow = `
                 <tr id="${res.table}-${res.id}" style="background-color: #dcfce7;">
                     <td class="ps-3 text-muted small">#${res.id}</td>
@@ -302,7 +340,7 @@ function saveData(event, type) {
                     ${extraCol}
                     <td class="text-center">
                         <div class="btn-group">
-                            <button class="btn btn-sm text-primary" onclick="editSetting('${type}', ${res.id}, '${res.name.replace(/'/g,"\\'")}', 0, 0)"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-sm text-primary" onclick="editSetting('${type}', ${res.id}, '${res.name.replace(/'/g,"\\'")}', 0, 0, ${priceArg})"><i class="bi bi-pencil-square"></i></button>
                             <button class="btn btn-sm text-danger" onclick="deleteSetting('${res.table}', ${res.id})"><i class="bi bi-trash"></i></button>
                         </div>
                     </td>
@@ -327,13 +365,19 @@ function saveData(event, type) {
     });
 }
 
-function editSetting(type, id, name, sortOrder, catId) {
+function editSetting(type, id, name, sortOrder, catId, setPrice) {
     document.getElementById(type + '_id').value = id;
     document.getElementById(type + '_name').value = name;
     document.getElementById(type + '_name').focus();
     document.getElementById(type + '_name').style.border = '2px solid #0ea5e9';
     if (type === 'category' && sortOrder !== undefined) {
         document.getElementById('category_sort').value = sortOrder || 0;
+    }
+    if (type === 'category') {
+        document.getElementById('category_set_price').value = (setPrice !== undefined && setPrice !== null && setPrice !== '') ? setPrice : '';
+    }
+    if (type === 'break') {
+        document.getElementById('break_price').value = (setPrice !== undefined && setPrice !== null && setPrice !== '') ? setPrice : '';
     }
     if (type === 'menu' && catId !== undefined) {
         document.getElementById('menu_category').value = catId || 0;
@@ -349,6 +393,10 @@ function resetSettingForm(type) {
     }
     if (type === 'category') {
         document.getElementById('category_sort').value = 0;
+        document.getElementById('category_set_price').value = '';
+    }
+    if (type === 'break') {
+        document.getElementById('break_price').value = '';
     }
 }
 
