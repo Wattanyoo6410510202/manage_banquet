@@ -39,18 +39,44 @@
         });
     });
 
-    // สำหรับ Toggle Sidebar บนมือถือ
+    // สำหรับ Toggle Sidebar (มือถือ = เลื่อน, Desktop = พับเล็ก) พร้อมจำสถานะ
+    const applySidebarState = function () {
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
+        if (!sidebar || !content) return;
+
+        if (window.innerWidth <= 991) {
+            sidebar.classList.remove('collapsed');
+            content.classList.remove('expanded');
+            if (localStorage.getItem('sidebarCollapsed') === '1') {
+                sidebar.classList.remove('active');
+            }
+        } else {
+            if (localStorage.getItem('sidebarCollapsed') === '1') {
+                sidebar.classList.add('collapsed');
+                content.classList.add('expanded');
+            } else {
+                sidebar.classList.remove('collapsed');
+                content.classList.remove('expanded');
+            }
+        }
+    };
+
     document.getElementById('sidebarCollapse').addEventListener('click', function () {
         const sidebar = document.getElementById('sidebar');
         const content = document.getElementById('content');
-        
+
         if (window.innerWidth <= 991) {
             sidebar.classList.toggle('active');
         } else {
-            sidebar.classList.toggle('collapsed');
-            content.classList.toggle('expanded');
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            content.classList.toggle('expanded', isCollapsed);
+            localStorage.setItem('sidebarCollapsed', isCollapsed ? '1' : '0');
         }
     });
+
+    applySidebarState();
+    window.addEventListener('resize', applySidebarState);
 
     // --- Tutorial Logic ---
     const driver = window.driver.js.driver;

@@ -124,7 +124,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white border-0 pt-3 pb-0">
                     <div class="row g-2 align-items-center mb-2">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <select id="companyFilter" class="form-select form-select-sm" onchange="filterRooms()">
                                 <option value="all">ทุกโรงแรม</option>
                                 <?php while ($c = $companies->fetch_assoc()): ?>
@@ -132,7 +132,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                                 <?php endwhile; ?>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <select id="roomFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="all">ทุกห้องประชุม</option>
                             </select>

@@ -201,7 +201,7 @@ function is_active($pages)
         <div class="container-fluid px-2 px-md-3">
 
             <div class="d-flex align-items-center">
-                <button type="button" id="sidebarCollapse" class="btn btn-link text-gold d-lg-none me-1 p-1">
+                <button type="button" id="sidebarCollapse" class="btn btn-link text-gold me-1 p-1" title="ยุบ/ขยายเมนู">
                     <i class="bi bi-list fs-4"></i>
                 </button>
 

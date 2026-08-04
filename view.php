@@ -87,6 +87,22 @@ if ($creator_id > 0) {
 $approver_id = intval($data['approve_by'] ?? 0);
 $approver_sig = "";
 
+// --- 🔎 เช็คว่าผู้ใช้ที่ login อยู่มีลายเซ็นหรือยัง ---
+$current_user_id = intval($_SESSION['user_id'] ?? 0);
+$current_user_has_sig = false;
+if ($current_user_id > 0) {
+    $sql_check_sig = "SELECT id FROM signatures WHERE users_id = ? ORDER BY id DESC LIMIT 1";
+    if ($stmt_check = $conn->prepare($sql_check_sig)) {
+        $stmt_check->bind_param("i", $current_user_id);
+        $stmt_check->execute();
+        $stmt_check->store_result();
+        if ($stmt_check->num_rows > 0) {
+            $current_user_has_sig = true;
+        }
+        $stmt_check->close();
+    }
+}
+
 // 2. ถ้ามี ID ผู้อนุมัติ (ค่ามากกว่า 0) ให้ไปค้นหาลายเซ็น
 if ($approver_id > 0) {
     // จารครับ ผมใช้ users_id เพื่อดึงลายเซ็นล่าสุดของคนๆ นั้นออกมา
@@ -149,69 +165,209 @@ $menus = $conn->query($sql_menus);
         width: auto;
         object-fit: contain;
     }
+
+    /* เส้นแบ่งระหว่างหัวข้อ (toggle จากปุ่มปรับแต่ง) */
+    #printableArea.section-divider .section-group:not(.no-frame) {
+        border: 2px solid #333;
+        border-radius: 0;
+        margin-top: 10px;
+        padding: 10px;
+    }
+
+    /* หัวข้อตัวหนา */
+    #printableArea.bold-titles .section-title {
+        font-weight: 800 !important;
+    }
+
+    /* ซ่อนราคาทุน (คอลัมน์ที่ 6 ของตารางเบรก/เมนู) */
+    #printableArea.hide-cost th:nth-child(6),
+    #printableArea.hide-cost td:nth-child(6) {
+        display: none !important;
+    }
+
+    /* หัวข้อสั้น: ซ่อนคำภาษาอังกฤษในวงเล็บ */
+    #printableArea.short-titles .section-en {
+        display: none !important;
+    }
+
+    /* ซ่อนโลโก้ */
+    #printableArea.hide-logo .doc-logo {
+        display: none !important;
+    }
+
+    /* ซ่อนหมายเหตุครัว */
+    #printableArea.hide-kitchen .kitchen-remark {
+        display: none !important;
+    }
+
+    /* ฟองคำพูดด้านซ้ายของปุ่ม */
+    .custom-btn-pill {
+        position: relative;
+    }
+
+    .speech-bubble {
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 10px;
+        background: #1a1a1a;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        z-index: 9999;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .speech-bubble::after {
+        content: '';
+        position: absolute;
+        right: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 6px solid transparent;
+        border-right-color: #1a1a1a;
+    }
+
+    .speech-bubble.warning {
+        background: #b89441;
+    }
+
+    .speech-bubble.warning::after {
+        border-right-color: #b89441;
+    }
 </style>
 
 
 <div class="no-print"
     style="position: fixed; top: 100px; left: calc(50% + 105mm); transform: translateX(180px); z-index: 9999;">
-    <div class="bg-white p-2 rounded-pill  border border-gold-soft d-flex flex-column align-items-center gap-1">
+    <div class="position-relative">
+        <div class="bg-white p-2 rounded-pill  border border-gold-soft d-flex flex-column align-items-center gap-1">
 
-        <button onclick="window.print()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="พิมพ์">
-            <i class="bi bi-printer-fill text-secondary fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">พิมพ์</span>
-        </button>
+            <button onclick="toggleCustomizePanel()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ปรับแต่งเอกสารก่อนพิมพ์">
+                <i class="bi bi-sliders text-secondary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">ปรับแต่ง</span>
+            </button>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <button onclick="window.location.href='signature_page.php?id=<?php echo $id; ?>'"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="จัดการลายเซ็น">
-            <i class="bi bi-pen-fill text-info fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">ลายเซ็น</span>
-        </button>
+            <button onclick="window.print()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="พิมพ์">
+                <i class="bi bi-printer-fill text-secondary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">พิมพ์</span>
+            </button>
 
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
-
-        <button onclick="downloadPDF(this)"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ดาวน์โหลด PDF">
-            <i class="bi bi-file-pdf-fill text-danger fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">PDF</span>
-        </button>
-
-        <div class="hr-custom w-75 border-top opacity-25"></div>
-
-        <button onclick="exportToWord()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ส่งออก Word">
-            <i class="bi bi-file-earmark-word-fill text-primary fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">Word</span>
-        </button>
+            <button onclick="window.location.href='signature_page.php?id=<?php echo $id; ?>'"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="จัดการลายเซ็น">
+                <i class="bi bi-pen-fill text-info fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">ลายเซ็น</span>
+                <?php if (!$current_user_has_sig): ?>
+                <span class="speech-bubble warning">คุณยังไม่มีลายเซ็นนะ เพิ่มตรงนี้สิ</span>
+                <?php endif; ?>
+            </button>
 
 
+            <div class="hr-custom w-75 border-top opacity-25"></div>
+
+            <button onclick="downloadPDF(this)"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ดาวน์โหลด PDF">
+                <i class="bi bi-file-pdf-fill text-danger fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">PDF</span>
+                <span class="speech-bubble">อยู่ระหว่างพัฒนา</span>
+            </button>
+
+            <div class="hr-custom w-75 border-top opacity-25"></div>
+
+            <button onclick="exportToWord()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ส่งออก Word">
+                <i class="bi bi-file-earmark-word-fill text-primary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">Word</span>
+                <span class="speech-bubble">อยู่ระหว่างพัฒนา</span>
+            </button>
 
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <button onclick="exportToDoc()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ส่งออกเอกสาร">
-            <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">DOC</span>
-        </button>
 
+            <div class="hr-custom w-75 border-top opacity-25"></div>
+
+            <button onclick="exportToDoc()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ส่งออกเอกสาร">
+                <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">DOC</span>
+            </button>
+
+        </div>
+
+        <!-- Panel ปรับแต่งเอกสาร -->
+        <div id="customizePanel"
+            class="no-print bg-white shadow-lg rounded-3 border"
+            style="display: none; position: absolute; top: 0; right: calc(100% + 12px); width: 250px; z-index: 9999; padding: 14px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-1 text-gold"></i>ปรับแต่งเอกสาร</h6>
+                <button type="button" class="btn-close" onclick="toggleCustomizePanel()"></button>
+            </div>
+            <hr class="my-2">
+
+            <label class="form-label small fw-bold text-secondary mb-1 d-flex justify-content-between align-items-center">
+                <span>ขนาดตัวอักษร</span>
+                <span id="fontSizeLabel" class="badge bg-dark" style="font-size: 10px;">ปกติ (10px)</span>
+            </label>
+            <input type="range" class="form-range" id="fontSizeSlider" min="7" max="14" step="0.5" value="10">
+            <div class="d-flex justify-content-between text-muted mb-2" style="font-size: 10px;">
+                <span>เล็ก</span><span>ปกติ</span><span>ใหญ่</span>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="dividerToggle">
+                <label class="form-check-label small" for="dividerToggle">เส้นแบ่งระหว่างหัวข้อ</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="boldTitleToggle">
+                <label class="form-check-label small" for="boldTitleToggle">หัวข้อตัวหนา</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="hideCostToggle">
+                <label class="form-check-label small" for="hideCostToggle">ซ่อนราคาทุน</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="shortTitleToggle">
+                <label class="form-check-label small" for="shortTitleToggle">หัวข้อสั้น (ซ่อนภาษาอังกฤษ)</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="hideLogoToggle">
+                <label class="form-check-label small" for="hideLogoToggle">ซ่อนโลโก้</label>
+            </div>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="hideKitchenToggle">
+                <label class="form-check-label small" for="hideKitchenToggle">ซ่อนหมายเหตุครัว</label>
+            </div>
+
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="resetPrintSettings()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> รีเซ็ตค่าเริ่มต้น
+            </button>
+        </div>
     </div>
 </div>
 
 <div id="printableArea">
-    <div class="section-group">
+    <div class="section-group no-frame">
         <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
             <div class="d-flex align-items-center">
                 <img src="<?php echo !empty($data['logo_path']) ? $data['logo_path'] : 'assets/img/default-company.png'; ?>"
-                    style="max-height: 50px; max-width: 100px;" class="me-3">
+                    style="max-height: 50px; max-width: 100px;" class="me-3 doc-logo">
                 <div>
                     <?php if ($data['approve'] == 1): ?>
                         <h5 class="mb-0 fw-bold text-dark">EVENT ORDER</h5>
@@ -229,7 +385,7 @@ $menus = $conn->query($sql_menus);
             </div>
         </div>
         <div class="section-group">
-            <div class="section-title">1. ข้อมูลการจองทั่วไป (GENERAL INFORMATION)</div>
+            <div class="section-title">1. ข้อมูลการจองทั่วไป <span class="section-en">(GENERAL INFORMATION)</span></div>
             <div class="row g-2 mb-2">
                 <div class="col-7">
                     <div class="row g-2">
@@ -271,7 +427,7 @@ $menus = $conn->query($sql_menus);
         </div>
     </div>
     <div class="section-group">
-        <div class="section-title">2. ตารางกำหนดการ (SCHEDULE)</div>
+        <div class="section-title">2. ตารางกำหนดการ <span class="section-en">(SCHEDULE)</span></div>
         <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
                 <tr>
@@ -333,27 +489,29 @@ $menus = $conn->query($sql_menus);
                 <?php endwhile; ?>
             </tbody>
         </table>
-        <div class="p-2 border rounded bg-light" style="font-size: 8.5px; mb-0">
+        <div class="p-2 border rounded bg-light kitchen-remark" style="font-size: 8.5px; mb-0">
             <strong>หมายเหตุครัว:</strong> <?php echo nl2br(htmlspecialchars($data['main_kitchen_remark'] ?? '-')); ?>
         </div>
     </div>
 
-    <div class="section-group mb-0">
-        <div class="row">
-            <div class="col-6">
-                <div class="section-title">4. รูปแบบการจัดงาน (SET-UP)</div>
+    <div class="row g-2">
+        <div class="col-6">
+            <div class="section-group">
+                <div class="section-title">4. รูปแบบการจัดงาน <span class="section-en">(SET-UP)</span></div>
                 <div class="box-detail">
                     <?php echo nl2br(htmlspecialchars($data['banquet_style'] ?? 'ตามมาตรฐาน')); ?>
                 </div>
             </div>
-            <div class="col-6">
-                <div class="section-title">5. ระบบวิศวกรรม (TECHNICAL)</div>
+        </div>
+        <div class="col-6">
+            <div class="section-group">
+                <div class="section-title">5. ระบบวิศวกรรม <span class="section-en">(TECHNICAL)</span></div>
                 <div class="box-detail"><?php echo nl2br(htmlspecialchars($data['equipment'] ?? '-')); ?></div>
             </div>
         </div>
     </div>
     <div class="section-group">
-        <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม (FOOD & BEVERAGE DETAILS)</div>
+        <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม <span class="section-en">(FOOD &amp; BEVERAGE DETAILS)</span></div>
         <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
                 <tr>
@@ -394,10 +552,10 @@ $menus = $conn->query($sql_menus);
             </tfoot>
         </table>
     </div>
-    <div class="section-group mb-0">
-        <div class="row ">
-            <div class="col-6">
-                <div class="section-title">7. ป้ายชื่อและฉาก (BACKDROP & SIGNAGE)</div>
+    <div class="row g-2">
+        <div class="col-6">
+            <div class="section-group">
+                <div class="section-title">7. ป้ายชื่อและฉาก <span class="section-en">(BACKDROP &amp; SIGNAGE)</span></div>
                 <div class="box-detail mb-1"><?php echo nl2br(htmlspecialchars($data['backdrop_detail'] ?? '-')); ?></div>
                 <?php if (!empty($data['backdrop_img'])): ?>
                     <div class="text-center border p-1 rounded bg-white mt-1">
@@ -405,8 +563,10 @@ $menus = $conn->query($sql_menus);
                     </div>
                 <?php endif; ?>
             </div>
-            <div class="col-6">
-                <div class="section-title">8. แม่บ้านและดอกไม้ (FLORIST & HK)</div>
+        </div>
+        <div class="col-6">
+            <div class="section-group">
+                <div class="section-title">8. แม่บ้านและดอกไม้ <span class="section-en">(FLORIST &amp; HK)</span></div>
                 <div class="box-detail" style="min-height: 60px;">
                     <?php echo nl2br(htmlspecialchars($data['hk_florist_detail'] ?? '-')); ?>
                 </div>
@@ -475,69 +635,127 @@ $menus = $conn->query($sql_menus);
 </div>
 
 <script>
-    // ฟังก์ชันสำหรับ Export เป็น Word
+    // ฟังก์ชันสำหรับ Export เป็น Word (อยู่ระหว่างพัฒนา)
     function exportToWord() {
-        var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
-            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
-            "xmlns='http://www.w3.org/TR/REC-html40'>" +
-            "<head><meta charset='utf-8'><title>Export HTML to Word</title>" +
-            "<style>" +
-            "body { font-family: 'Sarabun', sans-serif; }" +
-            "table { border-collapse: collapse; width: 100%; }" +
-            "th, td { border: 1px solid black; padding: 5px; font-size: 12pt; }" +
-            ".section-title { background-color: #f8f9fa; font-weight: bold; border-left: 5px solid #D4AF37; padding: 5px; margin-top: 10px; }" +
-            ".text-end { text-align: right; }" +
-            ".fw-bold { font-weight: bold; }" +
-            ".row { display: table; width: 100%; }" +
-            ".col-6 { display: table-cell; width: 50%; }" +
-            "</style></head><body>";
-
-        var footer = "</body></html>";
-
-        // ดึงเนื้อหาจาก printableArea
-        var sourceHTML = header + document.getElementById("printableArea").innerHTML + footer;
-
-        // สร้าง Blob สำหรับดาวน์โหลดไฟล์
-        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-        var fileDownload = document.createElement("a");
-        document.body.appendChild(fileDownload);
-        fileDownload.href = source;
-        fileDownload.download = 'FS-<?php echo htmlspecialchars($data['type_prefix']) . htmlspecialchars($data['function_code']); ?>.doc';
-        fileDownload.click();
-        document.body.removeChild(fileDownload);
+        return;
     }
 
-    // ฟังก์ชัน PDF เดิมของจาร
+    // ฟังก์ชัน PDF (อยู่ระหว่างพัฒนา)
     function downloadPDF(btn) {
-        const element = document.getElementById('printableArea');
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        btn.disabled = true;
-
-        const opt = {
-            // [top, left, bottom, right] - ปรับเป็น 2mm คือชิดมากแล้วครับ
-            margin: [2, 2, 2, 2],
-            filename: 'FS-<?php echo htmlspecialchars($data['type_prefix']) . htmlspecialchars($data['function_code']); ?>.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 3, // เพิ่ม scale เป็น 3 เพื่อความคมชัดเวลาขอบชิด
-                useCORS: true,
-                logging: false
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            // เพิ่มส่วนนี้เพื่อรองรับจุดตัดกระดาษ
-            pagebreak: { mode: ['css', 'legacy'] }
-        };
-
-        html2pdf().set(opt).from(element).save().then(() => {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        });
+        return;
     }
 
 </script>
 <script>
+    // --- ปุ่มปรับแต่งเอกสาร ---
+    function toggleCustomizePanel() {
+        const p = document.getElementById('customizePanel');
+        if (p) p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function printFontSizeLabel(v) {
+        return v == 10 ? 'ปกติ (10px)' : (v + 'px');
+    }
+
+    function applyPrintSettings() {
+        const root = document.documentElement;
+        const area = document.getElementById('printableArea');
+        if (!area) return;
+
+        const fs = localStorage.getItem('printFontSize');
+        if (fs) {
+            root.style.setProperty('--print-fs', fs + 'px');
+            const s = document.getElementById('fontSizeSlider');
+            const l = document.getElementById('fontSizeLabel');
+            if (s) s.value = fs;
+            if (l) l.textContent = printFontSizeLabel(fs);
+        }
+
+        const t = document.getElementById('dividerToggle');
+        if (localStorage.getItem('printDivider') === '1') { area.classList.add('section-divider'); if (t) t.checked = true; }
+        const b = document.getElementById('boldTitleToggle');
+        if (localStorage.getItem('printBold') === '1') { area.classList.add('bold-titles'); if (b) b.checked = true; }
+        const h = document.getElementById('hideCostToggle');
+        if (localStorage.getItem('printHideCost') === '1') { area.classList.add('hide-cost'); if (h) h.checked = true; }
+        const st = document.getElementById('shortTitleToggle');
+        if (localStorage.getItem('printShortTitle') === '1') { area.classList.add('short-titles'); if (st) st.checked = true; }
+        const lg = document.getElementById('hideLogoToggle');
+        if (localStorage.getItem('printHideLogo') === '1') { area.classList.add('hide-logo'); if (lg) lg.checked = true; }
+        const kt = document.getElementById('hideKitchenToggle');
+        if (localStorage.getItem('printHideKitchen') === '1') { area.classList.add('hide-kitchen'); if (kt) kt.checked = true; }
+    }
+
+    function resetPrintSettings() {
+        ['printFontSize', 'printDivider', 'printBold', 'printHideCost', 'printShortTitle', 'printHideLogo', 'printHideKitchen'].forEach(k => localStorage.removeItem(k));
+        const area = document.getElementById('printableArea');
+        if (area) area.classList.remove('section-divider', 'bold-titles', 'hide-cost', 'short-titles', 'hide-logo', 'hide-kitchen');
+        document.documentElement.style.setProperty('--print-fs', '10px');
+        const s = document.getElementById('fontSizeSlider');
+        const l = document.getElementById('fontSizeLabel');
+        if (s) s.value = 10;
+        if (l) l.textContent = printFontSizeLabel(10);
+        const t = document.getElementById('dividerToggle');
+        const b = document.getElementById('boldTitleToggle');
+        const h = document.getElementById('hideCostToggle');
+        const st = document.getElementById('shortTitleToggle');
+        const lg = document.getElementById('hideLogoToggle');
+        const kt = document.getElementById('hideKitchenToggle');
+        if (t) t.checked = false;
+        if (b) b.checked = false;
+        if (h) h.checked = false;
+        if (st) st.checked = false;
+        if (lg) lg.checked = false;
+        if (kt) kt.checked = false;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const fsSlider = document.getElementById('fontSizeSlider');
+        const fsLabel = document.getElementById('fontSizeLabel');
+        if (fsSlider && fsLabel) {
+            fsSlider.addEventListener('input', function () {
+                const v = this.value;
+                document.documentElement.style.setProperty('--print-fs', v + 'px');
+                fsLabel.textContent = printFontSizeLabel(v);
+                localStorage.setItem('printFontSize', v);
+            });
+        }
+        const dt = document.getElementById('dividerToggle');
+        if (dt) dt.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('section-divider', this.checked);
+            localStorage.setItem('printDivider', this.checked ? '1' : '0');
+        });
+        const bt = document.getElementById('boldTitleToggle');
+        if (bt) bt.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('bold-titles', this.checked);
+            localStorage.setItem('printBold', this.checked ? '1' : '0');
+        });
+        const ht = document.getElementById('hideCostToggle');
+        if (ht) ht.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('hide-cost', this.checked);
+            localStorage.setItem('printHideCost', this.checked ? '1' : '0');
+        });
+        const st = document.getElementById('shortTitleToggle');
+        if (st) st.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('short-titles', this.checked);
+            localStorage.setItem('printShortTitle', this.checked ? '1' : '0');
+        });
+        const lg = document.getElementById('hideLogoToggle');
+        if (lg) lg.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('hide-logo', this.checked);
+            localStorage.setItem('printHideLogo', this.checked ? '1' : '0');
+        });
+        const kt = document.getElementById('hideKitchenToggle');
+        if (kt) kt.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('hide-kitchen', this.checked);
+            localStorage.setItem('printHideKitchen', this.checked ? '1' : '0');
+        });
+        applyPrintSettings();
+    });
+
     window.onbeforeprint = function () {
+        // ถ้าผู้ใช้ตั้งขนาดตัวอักษรเอง ให้ใช้ค่าที่ตั้งแทนการบีบอัตโนมัติ
+        if (localStorage.getItem('printFontSize')) return;
+
         // 1. นับจำนวนแถว (tr) ทั้งหมดใน printableArea
         const rows = document.querySelectorAll('#printableArea tr').length;
         const root = document.documentElement;
@@ -565,6 +783,9 @@ $menus = $conn->query($sql_menus);
 
     // เมื่อพิมพ์เสร็จ คืนค่าหน้าจอให้กลับมาเป็น Font 10px ปกติ
     window.onafterprint = function () {
+        // ถ้าผู้ใช้ตั้งขนาดตัวอักษรเอง ให้คงค่าเดิมไว้
+        if (localStorage.getItem('printFontSize')) return;
+
         const root = document.documentElement;
         root.style.setProperty('--print-fs', '10px');
         root.style.setProperty('--print-pad', '3px 5px');
