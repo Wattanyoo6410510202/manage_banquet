@@ -764,6 +764,7 @@ CREATE TABLE `quotations` (
   `expiry_date` date DEFAULT NULL,
   `subtotal` decimal(10,2) DEFAULT 0.00,
   `service_charge` decimal(10,2) DEFAULT 0.00,
+  `discount` decimal(10,2) NOT NULL DEFAULT 0.00,
   `vat` decimal(10,2) DEFAULT 0.00,
   `grand_total` decimal(10,2) DEFAULT 0.00,
   `vat_type` varchar(20) DEFAULT 'exclude',

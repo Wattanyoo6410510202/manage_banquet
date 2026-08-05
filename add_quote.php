@@ -228,9 +228,22 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
                     <div class="card p-3 border shadow-sm bg-white">
                         <div class="d-flex justify-content-between mb-2 small">
-                            <span class="text-muted">รวมเป็นเงิน (Subtotal):</span>
+                            <span class="text-muted">รวมเป็นเงิน (Subtotal) Ex.VAT:</span>
                             <input type="number" id="subtotal" name="subtotal"
                                 class="text-end border-0 bg-transparent fw-bold w-50" value="0.00" readonly>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 small text-danger" id="discount-row">
+                            <span>ส่วนลดท้ายบิล (Special Discount):</span>
+                            <input type="number" id="discount" name="discount"
+                                class="text-end border-0 bg-transparent fw-bold text-danger w-50" value="0.00"
+                                step="0.01" min="0">
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 small text-muted">
+                            <span>รวมหลังหักส่วนลด (After Discount):</span>
+                            <input type="number" id="after_discount" name="after_discount"
+                                class="text-end border-0 bg-transparent w-50" value="0.00" readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
@@ -247,6 +260,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                                 class="text-end border-0 bg-transparent fw-bold text-primary fs-5 w-50" value="0.00"
                                 readonly>
                         </div>
+                        <input type="hidden" name="service_charge" id="service_charge" value="0.00">
                     </div>
                 </div>
             </div>
@@ -321,6 +335,11 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             }
         });
 
+        // 5.1 กรอกส่วนลดท้ายบิล → คำนวณใหม่ทันที (ลดก่อนคำนวณ VAT)
+        $('#discount').on('input', function () {
+            calculateAll();
+        });
+
         // 6. ฟังก์ชันหลักในการคำนวณยอดรวมทั้งหมด
         window.calculateAll = function calculateAll() {
             let sumItems = 0;
@@ -334,30 +353,36 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             let service = sumItems * 0;
 
             let vatType = $('#vatType').val();
+            let discount = parseFloat($('#discount').val()) || 0;
             let subtotal = 0;
             let vat = 0;
             let grand = 0;
+            let afterDiscount = 0;
 
-            if (vatType === 'exclude') {
-                // แยกนอก (Exclude VAT)
+            if (vatType === 'exclude' || vatType === 'no') {
+                // แยกนอก / ไม่มี VAT → ยอดรายการเป็นราคาที่ยังไม่รวม VAT
                 subtotal = sumItems;
-                vat = (subtotal + service) * 0.07;
-                grand = subtotal + service + vat;
-            } else if (vatType === 'include') {
-                // รวมใน (Include VAT)
-                grand = sumItems + service;
-                subtotal = grand / 1.07;
-                vat = grand - subtotal;
             } else {
-                // ไม่มี VAT
-                subtotal = sumItems;
-                vat = 0;
-                grand = subtotal + service;
+                // รวมใน (Include VAT) → แยก VAT ออกก่อน 45,400 / 1.07 = 42,429.91
+                subtotal = sumItems / 1.07;
             }
+
+            // ลดท้ายบิลก่อน แล้วค่อยคำนวณ VAT จากยอดหลังหักส่วนลด
+            afterDiscount = subtotal + service - discount;
+            if (afterDiscount < 0) afterDiscount = 0;
+
+            if (vatType === 'exclude' || vatType === 'include') {
+                vat = afterDiscount * 0.07;
+            } else {
+                vat = 0;
+            }
+            grand = afterDiscount + vat;
 
             // แสดงผลลัพธ์
             $('#subtotal').val(subtotal.toFixed(2));
             $('#service_charge').val(service.toFixed(2));
+            $('#discount').val(discount.toFixed(2));
+            $('#after_discount').val(afterDiscount.toFixed(2));
             $('#vat').val(vat.toFixed(2));
             $('#grand_total').val(grand.toFixed(2));
         }
@@ -578,6 +603,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
                     if (q.company_id) $('select[name="company_id"]').val(q.company_id);
                     if (q.vat_type) $('#vatType').val(q.vat_type);
+                    if (q.discount) $('#discount').val(parseFloat(q.discount).toFixed(2));
                     if (q.remarks) $('textarea[name="remarks"]').val(q.remarks);
 
                     if (res.items && res.items.length > 0) {

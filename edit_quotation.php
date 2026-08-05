@@ -284,10 +284,25 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
                     <div class="card p-3 shadow-sm bg-white border">
                         <div class="d-flex justify-content-between mb-2 small">
-                            <span class="text-muted">รวมเป็นเงิน (Subtotal):</span>
+                            <span class="text-muted">รวมเป็นเงิน (Subtotal) Ex.VAT:</span>
                             <input type="number" id="subtotal" name="subtotal"
                                 class="text-end border-0 bg-transparent fw-bold w-50"
                                 value="<?= number_format($quote['subtotal'] ?? 0, 2, '.', '') ?>" readonly>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 small text-danger" id="discount-row">
+                            <span>ส่วนลดท้ายบิล (Special Discount):</span>
+                            <input type="number" id="discount" name="discount"
+                                class="text-end border-0 bg-transparent fw-bold text-danger w-50"
+                                value="<?= number_format($quote['discount'] ?? 0, 2, '.', '') ?>" step="0.01" min="0">
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 small text-muted">
+                            <span>รวมหลังหักส่วนลด (After Discount):</span>
+                            <input type="number" id="after_discount" name="after_discount"
+                                class="text-end border-0 bg-transparent w-50"
+                                value="<?= number_format(($quote['subtotal'] ?? 0) - ($quote['discount'] ?? 0), 2, '.', '') ?>"
+                                readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
@@ -304,6 +319,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                                 class="text-end border-0 bg-transparent fw-bold text-primary fs-5 w-50"
                                 value="<?= number_format($quote['grand_total'] ?? 0, 2, '.', '') ?>" readonly>
                         </div>
+                        <input type="hidden" name="service_charge" id="service_charge" value="0.00">
                     </div>
                 </div>
             </div>
@@ -338,6 +354,11 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         // เมื่อมีการเปลี่ยนประเภท VAT
         $('#vatType').change(function() {
             calculateAll(); // สั่งคำนวณยอดใหม่ทันที
+        });
+
+        // กรอกส่วนลดท้ายบิล → คำนวณใหม่ทันที (ลดก่อนคำนวณ VAT)
+        $('#discount').on('input', function() {
+            calculateAll();
         });
 
         // เพิ่มแถวรายการใหม่
@@ -378,7 +399,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             calculateAll();
         });
 
-        // ฟังก์ชันคำนวณยอดรวมทั้งหมด (Subtotal, VAT, Grand Total)
+        // ฟังก์ชันคำนวณยอดรวมทั้งหมด (Subtotal, Discount, After Discount, VAT, Grand Total)
         function calculateAll() {
             let sumItems = 0;
             
@@ -388,26 +409,34 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             });
 
             let vatType = $('#vatType').val();
+            let discount = parseFloat($('#discount').val()) || 0;
             let subtotal = 0;
             let vat = 0;
             let grand = 0;
+            let afterDiscount = 0;
 
-            if (vatType === 'exclude') {
+            if (vatType === 'exclude' || vatType === 'no') {
                 subtotal = sumItems;
-                vat = subtotal * 0.07;
-                grand = subtotal + vat;
-            } else if (vatType === 'include') {
-                grand = sumItems;
-                subtotal = grand / 1.07;
-                vat = grand - subtotal;
             } else {
-                subtotal = sumItems;
-                vat = 0;
-                grand = subtotal;
+                subtotal = sumItems / 1.07;
             }
+
+            // ลดท้ายบิลก่อน แล้วค่อยคำนวณ VAT จากยอดหลังหักส่วนลด
+            afterDiscount = subtotal - discount;
+            if (afterDiscount < 0) afterDiscount = 0;
+
+            if (vatType === 'exclude' || vatType === 'include') {
+                vat = afterDiscount * 0.07;
+            } else {
+                vat = 0;
+            }
+            grand = afterDiscount + vat;
 
             // แสดงผลลงในช่อง Input ต่างๆ
             $('#subtotal').val(subtotal.toFixed(2));
+            $('#service_charge').val(0);
+            $('#discount').val(discount.toFixed(2));
+            $('#after_discount').val(afterDiscount.toFixed(2));
             $('#vat').val(vat.toFixed(2));
             $('#grand_total').val(grand.toFixed(2));
 

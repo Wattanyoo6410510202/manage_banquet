@@ -286,6 +286,9 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 .exec-card .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
 .exec-card .stat-sub { font-size: 0.72rem; color: #6c757d; }
 .section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #b89441; border-bottom: 2px solid #b89441; padding-bottom: 6px; margin-bottom: 16px; }
+.section-desc { font-size: 0.78rem; color: #6c757d; font-style: italic; margin: -8px 0 14px 0; line-height: 1.5; }
+.chart-desc { font-size: 0.72rem; color: #6c757d; font-style: italic; padding: 0 12px 8px; line-height: 1.5; }
+.desc-icon { color: #b89441; }
 .alert-badge { font-size: 0.75rem; }
 .pipeline-stage { text-align: center; padding: 12px 8px; border-radius: 8px; }
 .pipeline-stage .stage-num { font-size: 1.8rem; font-weight: 800; }
@@ -345,6 +348,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 1: EXECUTIVE SUMMARY ===== -->
     <div class="section-title"><i class="bi bi-bar-chart-line me-1"></i> 1. Executive Summary</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ภาพรวมผลประกอบการตามวันที่/เดือน/ปี/โรงแรม/เซลล์ ที่เลือกไว้ด้านบน: รายได้รวมวันนี้ (และสะสมทั้งเดือน MTD) จำนวนงาน จำนวนผู้เข้าร่วม และยอดเงินมัดจำรวม กดที่การ์ด "รายได้รวมวันนี้" เพื่อเปิดดูรายละเอียดงานของวันนั้นได้</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card exec-card border shadow-sm h-100" id="cardTodayTotal" style="cursor:pointer">
@@ -391,6 +395,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-graph-up text-gold me-1"></i>2. รายได้ตามประเภทงาน (Today vs MTD)</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>เปรียบเทียบรายได้ของงานแต่ละประเภท (เช่น สัมมนา ประชุม งานเลี้ยง) ระหว่างวันนี้ (สีทอง) กับทั้งเดือน MTD (สีน้ำเงิน) กดแท่งกราฟเพื่อเปิดดูรายละเอียดงานของประเภทนั้น</div>
                 <div class="card-body">
                     <?php if (count($type_names) > 0): ?>
                     <canvas id="typeRevChart" height="200"></canvas>
@@ -405,6 +410,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-pie-chart text-gold me-1"></i>สัดส่วนรายได้ MTD</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ทั้งเดือนของแต่ละประเภทงาน (โดนัท) ดูว่าประเภทไหนสร้างรายได้มากที่สุด เพื่อจัดลำดับการขาย กดวงกลมเพื่อดูรายละเอียดงาน</div>
                 <div class="card-body">
                     <?php if (count($seg_labels) > 0): ?>
                     <canvas id="segPieChart" height="200"></canvas>
@@ -418,6 +424,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 3: BANQUET & MEETING PERFORMANCE ===== -->
     <div class="section-title"><i class="bi bi-calendar-event me-1"></i> 3. Banquet & Meeting Performance</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตัวชี้วัดผลงานจัดเลี้ยง/ประชุมทั้งเดือน (MTD): จำนวนงาน รายได้รวม จำนวนผู้เข้าร่วมทั้งหมด เงินเฉลี่ยต่องาน ห้องที่ถูกใช้งาน และจำนวนงานที่ถูกยกเลิก (พร้อมอัตราการยกเลิกเป็น %) เพื่อดูภาพรวมกำลังผลิตและผลตอบแทน</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card exec-card border shadow-sm h-100">
@@ -472,6 +479,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 4: FUTURE BOOKING PIPELINE ===== -->
     <div class="section-title"><i class="bi bi-calendar-check me-1"></i> 4. Future Booking Pipeline</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>จำนวนงานและมูลค่างานที่ยืนยันแล้ว (อนุมัติแล้ว) ซึ่งจะจัดขึ้นภายใน 7 / 30 / 90 / 180 วันข้างหน้า ใช้คาดการณ์งานในคิว วางแผนห้อง พนักงาน และวัตถุดิบล่วงหน้า กดการ์ดแต่ละใบเพื่อเปิดดูรายการงานที่จะมาถึง</div>
     <div class="row g-2 mb-4" id="pipelineCards">
         <?php
         $pipes = [
@@ -495,6 +503,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 5: QUOTATION & CONVERSION ===== -->
     <div class="section-title"><i class="bi bi-file-text me-1"></i> 5. Quotation & Conversion</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สถิติใบเสนอราคาในเดือนที่เลือก: จำนวนใบทั้งหมด ใบที่ออกวันนี้ ใบที่ลูกค้ายืนยันแล้ว (Approved) อัตราการปิดการขาย (ใบยืนยัน ÷ ใบทั้งหมด) ใบที่ยังรอลูกค้าตอบกลับ และใบที่ปิดงานไม่สำเร็จ (Lost) เพื่อประเมินประสิทธิภาพของทีมขาย</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-2 col-md-4 col-6">
             <div class="card exec-card border shadow-sm h-100">
@@ -548,6 +557,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 6: DEPOSIT DASHBOARD ===== -->
     <div class="section-title"><i class="bi bi-wallet2 me-1"></i> 6. Deposit Dashboard</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สถานะเงินมัดจำ: เงินมัดจำที่รับได้วันนี้และทั้งเดือน ยอดมัดจำที่ค้างอยู่ในระบบสำหรับงานที่ยังไม่จัด และจำนวนงานที่ยังไม่ได้วางเงินมัดจำ (ความเสี่ยงถูกยกเลิก) กดการ์ด "รับเงินมัดจำ MTD" เพื่อเปิดดูรายการโอนเงินทั้งหมด</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card exec-card border shadow-sm h-100">
@@ -585,6 +595,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 7: SALES PIPELINE (Funnel) ===== -->
     <div class="section-title"><i class="bi bi-funnel me-1"></i> 7. Sales Pipeline</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>กรวยการขายตั้งแต่ใบเสนอราคายังไม่ได้ส่ง (Draft/Prospect) → ส่งใบแล้ว (Quotation Sent) → ลูกค้าตกลงยืนยัน (Confirmed) → ปิดงานไม่สำเร็จ (Lost) แสดงทั้งจำนวนใบและมูลค่ารวมของแต่ละขั้น เพื่อดูว่างานหลุดออกจากช่องทางตรงจุดไหน แล้วเข้าไปแก้ไข กดการ์ดเพื่อเปิดดูใบเสนอราคาในแต่ละสถานะ</div>
     <div class="row g-2 mb-4" id="funnelCards">
         <?php
         $funnel = [
@@ -613,6 +624,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-trophy text-gold me-1"></i>8. Top 10 งานตามมูลค่า</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>10 งานที่ทำรายได้สูงสุดในเดือนที่เลือก เรียงจากมูลค่ามากไปน้อย เพื่อดูว่างานใหญ่มาจากลูกค้า/ประเภทไหน และใช้เป็นกรณีศึกษาการขายงานใหญ่</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0 align-middle small">
@@ -639,6 +651,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-people text-gold me-1"></i>9. Sales Pipeline Funnel</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>แสดงจำนวนใบเสนอราคาในแต่ละสถานะของช่องทางการขาย (Draft/Sent/Confirmed/Lost) เห็นภาพว่ามีงานติดอยู่ในขั้นไหนมากที่สุด กดแท่งกราฟเพื่อเปิดดูรายชื่อใบเสนอราคา</div>
                 <div class="card-body">
                     <canvas id="funnelChart" height="250"></canvas>
                 </div>
@@ -653,6 +666,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-diagram-3 text-gold me-1"></i>10. แหล่งลูกค้า MTD</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ตามแหล่งที่มาของลูกค้า (เช่น โฆษณา ถูกแนะนำ เดินเข้ามา หรือไม่ได้ระบุ) ดูว่าช่องทางใดสร้างรายได้มากที่สุด เพื่อจัดสรรงบการตลาดให้คุ้มค่า กดวงกลมเพื่อดูรายละเอียดงาน</div>
                 <div class="card-body">
                     <?php if (count($src_labels) > 0): ?>
                     <canvas id="sourceChart" height="200"></canvas>
@@ -667,6 +681,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-clock text-gold me-1"></i>11. เช้า/บ่าย/เย็น MTD</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ตามช่วงเวลาจัดงาน: เช้า (เริ่มก่อน 12:00) บ่าย (12:00-17:00) เย็น (หลัง 17:00) ใช้ดูว่างานช่วงใดเป็นรายได้หลัก และวางแผนการใช้ห้องให้เกิดประโยชน์สูงสุดต่อวัน กดวงกลมเพื่อดูงานแต่ละช่วงเวลา</div>
                 <div class="card-body">
                     <?php if (count($period_labels_arr) > 0): ?>
                     <canvas id="periodChart" height="200"></canvas>
@@ -681,6 +696,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-credit-card text-gold me-1"></i>12. ช่องทางชำระเงิน MTD</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนยอดเงินที่เข้ามาตามช่องทางการชำระเงิน (เงินสด / โอนธนาคาร / บัตรเครดิต ฯลฯ) ในเดือนที่เลือก เพื่อดูพฤติกรรมการชำระเงินของลูกค้า กดวงกลมเพื่อเปิดดูรายการชำระเงิน</div>
                 <div class="card-body">
                     <?php if (count($pay_labels) > 0): ?>
                     <canvas id="payChart" height="200"></canvas>
@@ -694,6 +710,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 13: SALES BY PERSON ===== -->
     <div class="section-title"><i class="bi bi-person-lines-fill me-1"></i> 13. Sales by Salesperson (MTD)</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ผลงานของเซลล์แต่ละคนในเดือนที่เลือก: จำนวนงานที่ปิดได้ รายได้รวม เงินมัดจำที่เรียกเก็บ เป้าหมายประจำเดือน และ % ความสำเร็จเทียบกับเป้าหมาย (เขียว = ถึงเป้า, เหลือง = ผ่านครึ่งหนึ่ง, แดง = ต่ำกว่าครึ่ง) ใช้ประเมินและวางแผนสนับสนุนทีมขาย</div>
     <div class="card border shadow-sm mb-4">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -739,6 +756,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 14: KPI vs TARGET ===== -->
     <div class="section-title"><i class="bi bi-bullseye me-1"></i> 14. KPI Dashboard</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตัวชี้วัดหลักของเดือน: เปรียบเทียบรายได้รวมกับเป้าหมาย (พร้อม % สำเร็จ) อัตราการปิดการขาย เงินเฉลี่ยต่องาน อัตราการยกเลิก (เกิน 10% = เสี่ยง) % ลูกค้าที่กลับมาใช้บริการซ้ำ และกำไรขั้นต้นโดยประมาณ (GOP = รายรับ − ต้นทุน) กดการ์ดแรกเพื่อเปิดดูรายชื่อเซลล์เทียบเป้าหมาย</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-4">
             <div class="card border shadow-sm h-100" id="kpiTargetCard" style="cursor:pointer">
@@ -777,6 +795,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-bar-chart-line text-gold me-1"></i>15. แนวโน้มรายได้ 6 เดือน</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>กราฟแท่งแสดงรายได้รวมย้อนหลัง 6 เดือน (รวมเดือนปัจจุบัน) เพื่อดูแนวโน้มว่าเพิ่มขึ้นหรือลดลง เดือนไหนเป็นไฮซีซัน กดแท่งกราฟเพื่อเปิดดูรายการงานของเดือนนั้น</div>
                 <div class="card-body">
                     <canvas id="trendChart" height="180"></canvas>
                 </div>
@@ -787,6 +806,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-building text-gold me-1"></i>16. รายได้ตามโรงแรม MTD</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>รายได้ทั้งเดือนของแต่ละโรงแรม/บริษัทในเครือ เปรียบเทียบว่าโรงแรมไหนทำรายได้มากที่สุด ใช้ดูสัดส่วนผลงานระหว่างสาขา กดแท่งกราฟเพื่อเปิดดูรายละเอียดงาน</div>
                 <div class="card-body">
                     <?php if (count($comp_names) > 0): ?>
                     <canvas id="companyChart" height="180"></canvas>
@@ -800,6 +820,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 14: MEETING ROOM UTILIZATION ===== -->
     <div class="section-title"><i class="bi bi-door-open me-1"></i> 17. Meeting Room Utilization (MTD)</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>จำนวนงานที่ถูกจองใช้ห้องประชุมแต่ละห้องในเดือนที่เลือก (เฉพาะห้องที่ยัง active) เพื่อดูว่าห้องไหนถูกใช้งานมาก/น้อย นำไปวางแผนการขายห้องว่างหรือปรับปรุงห้องที่ใช้งานน้อย กดแท่งกราฟเพื่อดูรายการงานแต่ละห้อง</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-8">
             <div class="card border shadow-sm h-100">
@@ -817,6 +838,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
                 <div class="card-header bg-white py-2 border-bottom">
                     <h6 class="fw-bold mb-0" style="font-size:0.85rem">Quotation ใกล้หมดอายุ</h6>
                 </div>
+                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ใบเสนอราคาที่สถานะ "ส่งใบแล้ว" และจะหมดอายุภายใน 7 วันข้างหน้า เรียงวันหมดอายุที่ใกล้ที่สุดก่อน ควรติดตามลูกค้าให้ตัดสินใจก่อนใบหมดอายุ กดรายการเพื่อเปิดใบเสนอราคา</div>
                 <div class="card-body p-0">
                     <?php if ($expiring_quotes->num_rows > 0): ?>
                     <div class="list-group list-group-flush small" style="font-size:0.75rem">
@@ -837,6 +859,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 15: EXECUTIVE ALERT ===== -->
     <div class="section-title"><i class="bi bi-exclamation-triangle me-1"></i> 18. Executive Alert</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>รายการเตือนที่ผู้บริหารควรทราบ: งานที่ยังไม่วางเงินมัดจำภายใน 7 วัน (เหลือง) ห้องประชุมที่ถูกจองซ้ำวันเดียวกัน (แดง) งานที่รออนุมัติ (เหลือง) และใบเสนอราคาที่เกินกำหนด (แดง) กดการ์ดเพื่อเปิดดูรายละเอียดและเข้าไปแก้ไขได้ทันที</div>
     <div class="row g-2 mb-4">
         <div class="col-xl-3 col-md-6">
             <div class="card border shadow-sm h-100 border-<?= $alert_no_deposit > 0 ? 'warning' : 'success' ?> alert-clickable" data-alert-type="alert_no_deposit" data-alert-label="งานยังไม่ชำระมัดจำ (7 วัน)" style="cursor:pointer">
@@ -886,6 +909,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 16: TODAY EVENTS LIST ===== -->
     <div class="section-title"><i class="bi bi-calendar-week me-1"></i> 19. งานวันนี้</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตารางงานทั้งหมดที่จัดในวันนี้ (ตามวันที่เลือกด้านบน) เรียงตามเวลาเริ่มงาน แสดงประเภทงาน เซลล์ผู้ดูแล โรงแรม ห้องที่ใช้ ช่วงเวลา จำนวนผู้ร่วมงาน และมูลค่างาน เพื่อเตรียมความพร้อมของทีมงานก่อนงานเริ่ม</div>
     <div class="card border shadow-sm mb-4">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -918,6 +942,7 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
     <!-- ===== SECTION 17: UPCOMING EVENTS ===== -->
     <div class="section-title"><i class="bi bi-calendar2-week me-1"></i> 20. งานที่กำลังจะมาถึง</div>
+    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>งานที่ยืนยันแล้ว (อนุมัติแล้ว) ซึ่งจะจัดในอนาคต 10 งานแรกเรียงตามวันที่ใกล้ที่สุด เพื่อให้ทีมขายและทีมปฏิบัติการเตรียมความพร้อมด้านห้อง พนักงาน อาหาร และอุปกรณ์ล่วงหน้า กดชื่องานเพื่อดูรายละเอียด</div>
     <div class="card border shadow-sm mb-4">
         <div class="card-body p-0">
             <div class="table-responsive">

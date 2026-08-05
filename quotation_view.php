@@ -218,10 +218,20 @@ $items = $conn->query($sql_items);
                 <div class="col-5">
                     <table class="table table-sm table-borderless table-tight" style="font-size: 12px;">
                         <tr>
-                            <td class="text-end">รวมเป็นเงิน / Subtotal:</td>
+                            <td class="text-end">รวมเป็นเงิน / Subtotal (Ex.vat):</td>
                             <td class="text-end border-bottom" width="40%"><?= number_format($quote['subtotal'], 2) ?>
                             </td>
                         </tr>
+                        <?php if (floatval($quote['discount'] ?? 0) > 0): ?>
+                        <tr>
+                            <td class="text-end text-danger">ส่วนลดท้ายบิล / Special Discount:</td>
+                            <td class="text-end border-bottom text-danger">- <?= number_format($quote['discount'], 2) ?></td>
+                        </tr>
+                        <tr>
+                            <td class="text-end">รวมหลังหักส่วนลด / After Discount:</td>
+                            <td class="text-end border-bottom"><?= number_format(($quote['subtotal'] ?? 0) - ($quote['discount'] ?? 0), 2) ?></td>
+                        </tr>
+                        <?php endif; ?>
                         <tr>
                             <td class="text-end">ค่าบริการ / Service Charge:</td>
                             <td class="text-end border-bottom"><?= number_format($quote['service_charge'], 2) ?></td>
@@ -237,7 +247,8 @@ $items = $conn->query($sql_items);
                                         echo '(แยกนอก)';
                                     }
                                 }
-                                ?>:
+                                ?>
+                                (คำนวณจากยอดหลังหักส่วนลด):
                             </td>
                             <td class="text-end border-bottom"><?= number_format($quote['vat'], 2) ?></td>
                         </tr>
