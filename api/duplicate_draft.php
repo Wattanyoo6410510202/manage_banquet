@@ -53,8 +53,10 @@ try {
     // 4. Update ค่าที่ต้องเปลี่ยน
     $conn->query("UPDATE functions SET 
                   version_no = $new_version, 
-                  is_approved = 0, 
-                  approve = 0, 
+                  is_approved = 0,
+                  approve = 0,
+                  approve_by = NULL,
+                  approve_date = NULL,
                   draft_name = '$new_draft_name',
                   function_code = CONCAT(LPAD($new_id, 5, '0'), '/', DATE_FORMAT(NOW(), '%d%m'))
                   WHERE id = $new_id");

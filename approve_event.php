@@ -59,19 +59,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     // --- End log ---
 
-    $sql = "UPDATE functions SET 
-                approve = ?,
-                status = ?,
-                modify = CURRENT_TIMESTAMP
-            WHERE id = ?";
-    
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        echo json_encode(['status' => 'error', 'message' => 'Prepare failed: ' . $conn->error]);
-        exit();
-    }
+    if ($approve_val === 1) {
+        // บันทึกคนอนุมัติ + วันที่อนุมัติ (เก็บค่าเดิมไว้ถ้าเคยอนุมัติแล้ว)
+        $sql = "UPDATE functions SET
+                    approve = ?,
+                    status = ?,
+                    approve_by = COALESCE(approve_by, ?),
+                    approve_date = COALESCE(approve_date, NOW()),
+                    modify = CURRENT_TIMESTAMP
+                WHERE id = ?";
 
-    $stmt->bind_param("isi", $approve_val, $status, $id);
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            echo json_encode(['status' => 'error', 'message' => 'Prepare failed: ' . $conn->error]);
+            exit();
+        }
+
+        $stmt->bind_param("isii", $approve_val, $status, $user_id, $id);
+    } else {
+        $sql = "UPDATE functions SET
+                    approve = ?,
+                    status = ?,
+                    modify = CURRENT_TIMESTAMP
+                WHERE id = ?";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            echo json_encode(['status' => 'error', 'message' => 'Prepare failed: ' . $conn->error]);
+            exit();
+        }
+
+        $stmt->bind_param("isi", $approve_val, $status, $id);
+    }
 
     if (!$stmt->execute()) {
         echo json_encode(['status' => 'error', 'message' => 'Database Error: ' . $stmt->error]);

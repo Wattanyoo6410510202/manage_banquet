@@ -604,11 +604,19 @@ $menus = $conn->query($sql_menus);
                     <?php endif; ?>
                 </div>
                 <div class="mx-auto border-top w-75 pt-1">
-                    <div class="fw-bold"><?php echo $approver_name; ?></div>
+                    <div class="fw-bold"><?php echo htmlspecialchars($approver_name); ?></div>
                     ผู้อนุมัติ (Authorized By)
                 </div>
                 <small class="text-muted">
-                    วันที่: <?php echo ($data['approve'] == 1) ? $data['approve_date'] : '______/______/______'; ?>
+                    วันที่:
+                    <?php
+                    $approve_date_raw = $data['approve_date'] ?? '';
+                    if ($data['approve'] == 1 && !empty($approve_date_raw) && $approve_date_raw !== '0000-00-00 00:00:00') {
+                        echo date('d/m/Y', strtotime($approve_date_raw));
+                    } else {
+                        echo '______/______/______';
+                    }
+                    ?>
                 </small>
             </div>
 

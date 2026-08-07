@@ -66,6 +66,12 @@ if ($stmt->execute()) {
         $stmt_upd->bind_param("i", $id);
         $stmt_upd->execute();
     }
+    // Clear approver stamp when rolling back to a non-approved state
+    if ($approve_val === 0) {
+        $stmt_upd = $conn->prepare("UPDATE functions SET approve_by = NULL, approve_date = NULL WHERE id = ?");
+        $stmt_upd->bind_param("i", $id);
+        $stmt_upd->execute();
+    }
     // Clear cancel_reason when rolling back from Cancelled
     if ($current_status === 'Cancelled') {
         $stmt_upd = $conn->prepare("UPDATE functions SET cancel_reason = NULL WHERE id = ?");
