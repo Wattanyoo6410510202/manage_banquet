@@ -128,6 +128,20 @@ function displaySignature($path)
     // แต่ถ้าเก็บเต็ม "uploads/signatures/sig1.png" อยู่แล้วก็ใช้ได้เลย
     return (strpos($path, 'uploads/') !== false) ? $path : "uploads/signatures/" . $path;
 }
+// ฟังก์ชันแปลงวันที่เป็นแบบไทย เช่น 1 เม.ย. 2567
+function thai_date($dateStr, $withTime = false)
+{
+    if (empty($dateStr)) return '';
+    $ts = strtotime($dateStr);
+    if (!$ts) return $dateStr;
+    $thaiMonths = [1 => 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    $d = (int)date('j', $ts);
+    $m = $thaiMonths[(int)date('n', $ts)];
+    $y = (int)date('Y', $ts) + 543;
+    $out = $d . ' ' . $m . ' ' . $y;
+    if ($withTime) $out .= ' เวลา ' . date('H:i', $ts);
+    return $out;
+}
 // ลองเปลี่ยน k_type_id เป็นชื่อคอลัมน์จริงๆ ใน DB ของจาร
 $sql_kitchens = "SELECT fk.*, mbt.type_name as k_type_name 
                  FROM function_kitchens fk 
@@ -442,7 +456,7 @@ $menus = $conn->query($sql_menus);
                 $schedules = $conn->query("SELECT * FROM function_schedules WHERE function_id = $id");
                 while ($row = $schedules->fetch_assoc()): ?>
                     <tr>
-                        <td class="text-center"><?php echo $row['schedule_date']; ?></td>
+                        <td class="text-center"><?php echo thai_date($row['schedule_date']); ?></td>
                         <td class="text-center"><?php echo $row['schedule_hour']; ?></td>
                         <td><?php echo nl2br($row['schedule_function']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['schedule_guarantee']); ?></td>
@@ -470,7 +484,7 @@ $menus = $conn->query($sql_menus);
                 // ลบบรรทัด $kitchens = $conn->query(...) ออกไปเลยครับ เพราะเราทำไว้ข้างบนแล้ว
                 while ($row = $kitchens->fetch_assoc()): ?>
                     <tr>
-                        <td class="text-center"><?php echo $row['k_date']; ?></td>
+                        <td class="text-center"><?php echo thai_date($row['k_date']); ?></td>
 
                         <td><?php echo $row['k_type_name'] ?? 'ไม่ระบุ'; ?></td>
 
@@ -591,7 +605,7 @@ $menus = $conn->query($sql_menus);
                     <div class="fw-bold"><?php echo htmlspecialchars($data['created_by'] ?? '-'); ?></div>
                     ผู้จัดทำ (Event Organizer)
                 </div>
-                <small class="text-muted">วันที่: <?php echo htmlspecialchars($data['created_at'] ?? '-'); ?></small>
+                <small class="text-muted">วันที่: <?php echo thai_date($data['created_at'] ?? '', true); ?></small>
             </div>
 
             <div class="col-4 text-center">
@@ -612,7 +626,7 @@ $menus = $conn->query($sql_menus);
                     <?php
                     $approve_date_raw = $data['approve_date'] ?? '';
                     if ($data['approve'] == 1 && !empty($approve_date_raw) && $approve_date_raw !== '0000-00-00 00:00:00') {
-                        echo date('d/m/Y', strtotime($approve_date_raw));
+                        echo thai_date($approve_date_raw, true);
                     } else {
                         echo '______/______/______';
                     }
