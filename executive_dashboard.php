@@ -277,708 +277,862 @@ while ($r = $apr->fetch_assoc()) $dd['alert_pending'][] = $r;
 $dd['alert_room_conflict'] = [];
 $rcr = $conn->query("SELECT f.id, f.function_name, mr.room_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name FROM functions f LEFT JOIN meeting_rooms mr ON f.room_id=mr.id LEFT JOIN companies c ON f.company_id=c.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND (f.room_id, DATE(f.start_time)) IN (SELECT f2.room_id, DATE(f2.start_time) FROM functions f2 WHERE f2.approve=1 AND f2.status NOT IN ('Cancelled','Completed') AND f2.room_id IS NOT NULL $company_filter $staff_filter GROUP BY f2.room_id, DATE(f2.start_time) HAVING COUNT(*)>1) $company_filter $staff_filter ORDER BY f.start_time ASC");
 while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
+
+/* =========================================================
+   PRESENTATION LAYER — จัดชุดข้อมูลให้พร้อมวาดกราฟ
+   ========================================================= */
+
+/** ยุบรายการเล็ก ๆ เป็น "อื่นๆ" ให้เหลือไม่เกิน 6 ชิ้น (โดนัทอ่านง่าย) */
+function viz_top(array $labels, array $values, int $max = 5): array
+{
+    $pairs = [];
+    foreach ($labels as $i => $l) {
+        $v = (float) ($values[$i] ?? 0);
+        if ($v > 0) $pairs[] = [$l, $v];
+    }
+    usort($pairs, fn($a, $b) => $b[1] <=> $a[1]);
+    if (count($pairs) > $max + 1) {
+        $rest = array_slice($pairs, $max);
+        $pairs = array_slice($pairs, 0, $max);
+        $pairs[] = ['อื่นๆ', array_sum(array_column($rest, 1))];
+    }
+    return ['labels' => array_column($pairs, 0), 'values' => array_column($pairs, 1)];
+}
+
+// รายได้ตามประเภทงาน (ตัดประเภทที่ไม่มียอด + เรียงมาก→น้อย)
+$type_rows = [];
+foreach ($type_names as $i => $tn) {
+    $mtd = (float) ($type_mtd[$i] ?? 0);
+    $tod = (float) ($type_today[$i] ?? 0);
+    if ($mtd <= 0 && $tod <= 0) continue;
+    $type_rows[] = ['label' => $tn, 'today' => $tod, 'mtd' => $mtd];
+}
+usort($type_rows, fn($a, $b) => $b['mtd'] <=> $a['mtd']);
+$type_sum = array_sum(array_column($type_rows, 'mtd'));
+
+// รายได้ตามโรงแรม
+$comp_rows = [];
+foreach ($comp_names as $i => $cn) {
+    if ((float) ($comp_mtd[$i] ?? 0) > 0) $comp_rows[] = ['label' => $cn, 'value' => (float) $comp_mtd[$i]];
+}
+usort($comp_rows, fn($a, $b) => $b['value'] <=> $a['value']);
+
+// การใช้ห้องประชุม
+$room_rows = [];
+foreach ($room_labels as $i => $rl) {
+    if ((int) ($room_bookings[$i] ?? 0) > 0) $room_rows[] = ['label' => $rl, 'value' => (int) $room_bookings[$i]];
+}
+usort($room_rows, fn($a, $b) => $b['value'] <=> $a['value']);
+
+// สัดส่วนธุรกิจ (3 มุมมองในการ์ดเดียว)
+$mix_source = viz_top($src_labels, $src_values);
+$mix_period = viz_top($period_labels_arr, $period_rev_arr);
+$mix_pay    = viz_top($pay_labels, $pay_values);
+
+// กรวยการขาย
+$funnel_rows = [
+    ['key' => 'Draft',     'label' => 'ร่าง / Prospect', 'cnt' => $pipe_prospect,  'val' => $pipe_prospect_val,  'color' => '#86b6ef'],
+    ['key' => 'Sent',      'label' => 'ส่งใบแล้ว',        'cnt' => $pipe_quotation, 'val' => $pipe_quotation_val, 'color' => '#3987e5'],
+    ['key' => 'Approved',  'label' => 'ยืนยันแล้ว',       'cnt' => $pipe_confirmed, 'val' => $pipe_confirmed_val, 'color' => '#1c5cab'],
+    ['key' => 'Cancelled', 'label' => 'ปิดไม่สำเร็จ',      'cnt' => $pipe_lost,      'val' => $pipe_lost_val,      'color' => '#d03b3b'],
+];
+$funnel_max = max(1, max(array_column($funnel_rows, 'cnt')));
+
+// งานในคิวข้างหน้า
+$pipe_rows = [
+    ['days' => '7',   'label' => '7 วัน',   'cnt' => (int) $pipe_7d['c'],   'val' => (float) $pipe_7d['t']],
+    ['days' => '30',  'label' => '30 วัน',  'cnt' => (int) $pipe_30d['c'],  'val' => (float) $pipe_30d['t']],
+    ['days' => '90',  'label' => '90 วัน',  'cnt' => (int) $pipe_90d['c'],  'val' => (float) $pipe_90d['t']],
+    ['days' => '180', 'label' => '180 วัน', 'cnt' => (int) $pipe_180d['c'], 'val' => (float) $pipe_180d['t']],
+];
+$pipe_max = max(1, max(array_column($pipe_rows, 'val')));
+
+// การ์ดแจ้งเตือน
+$alert_rows = [
+    ['type' => 'alert_no_deposit',    'label' => 'งานยังไม่วางมัดจำ (7 วัน)', 'n' => $alert_no_deposit,      'icon' => 'bi-cash-coin',           'level' => 'warn'],
+    ['type' => 'alert_room_conflict', 'label' => 'ห้องประชุมถูกจองซ้ำ',       'n' => $alert_room_conflict,   'icon' => 'bi-exclamation-octagon', 'level' => 'crit'],
+    ['type' => 'alert_pending',       'label' => 'งานรออนุมัติ',              'n' => $alert_pending_approval,'icon' => 'bi-hourglass-split',     'level' => 'warn'],
+    ['type' => 'alert_overdue',       'label' => 'ใบเสนอราคาเกินกำหนด',       'n' => $alert_overdue,         'icon' => 'bi-calendar-x',          'level' => 'crit'],
+];
+$alert_total = array_sum(array_column($alert_rows, 'n'));
+
+$h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <style>
-.exec-card { border-left: 4px solid #b89441; transition: transform 0.2s; }
-.exec-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.exec-card .stat-value { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; }
-.exec-card .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; }
-.exec-card .stat-sub { font-size: 0.72rem; color: #6c757d; }
-.section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #b89441; border-bottom: 2px solid #b89441; padding-bottom: 6px; margin-bottom: 16px; }
-.section-desc { font-size: 0.78rem; color: #6c757d; font-style: italic; margin: -8px 0 14px 0; line-height: 1.5; }
-.chart-desc { font-size: 0.72rem; color: #6c757d; font-style: italic; padding: 0 12px 8px; line-height: 1.5; }
-.desc-icon { color: #b89441; }
-.alert-badge { font-size: 0.75rem; }
-.pipeline-stage { text-align: center; padding: 12px 8px; border-radius: 8px; }
-.pipeline-stage .stage-num { font-size: 1.8rem; font-weight: 800; }
-.pipeline-stage .stage-label { font-size: 0.7rem; text-transform: uppercase; }
-.kpi-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
-.kpi-row:last-child { border-bottom: none; }
-.kpi-row .kpi-label { font-size: 0.8rem; color: #495057; }
-.kpi-row .kpi-val { font-weight: 700; font-size: 0.85rem; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-.dot-green { background: #198754; }
-.dot-yellow { background: #ffc107; }
-.dot-red { background: #dc3545; }
-@media print {
-    .no-print { display: none !important; }
-    .exec-card { break-inside: avoid; }
+/* =======================================================
+   EXECUTIVE DASHBOARD — UI
+   ======================================================= */
+.exec-dash{
+    --gold:#b89441; --gold-tint:#f7f1e3;
+    --ink:#111318; --ink-2:#5b6470; --muted:#8a9099;
+    --line:#e8eaee; --line-soft:#f0f2f5; --surface:#fff;
+    --ok:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+    font-family:'Sarabun','Inter',sans-serif; color:var(--ink);
+}
+.exec-dash .text-dim{color:var(--ink-2)}
+.exec-dash .num{font-variant-numeric:tabular-nums}
+
+/* ---------- Hero + filter ---------- */
+.exec-hero{
+    position:relative; overflow:hidden; border-radius:18px; padding:18px 20px; color:#fff;
+    background:linear-gradient(118deg,#15171c 0%,#24272f 58%,#2e313a 100%);
+    box-shadow:0 10px 30px rgba(16,24,40,.14);
+}
+.exec-hero::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(560px 220px at 88% -30%, rgba(184,148,65,.42), transparent 68%);
+}
+.exec-hero > *{position:relative; z-index:1}
+.exec-hero .section-title{font-size:1.05rem;font-weight:700;margin:0;letter-spacing:.2px}
+.exec-hero .hero-sub{font-size:.78rem;color:rgba(255,255,255,.62)}
+.exec-hero .form-control,.exec-hero .form-select{
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff;
+    font-size:.78rem; border-radius:9px; box-shadow:none;
+}
+.exec-hero .form-control:focus,.exec-hero .form-select:focus{
+    background:rgba(255,255,255,.14); border-color:var(--gold); color:#fff;
+}
+.exec-hero .form-select option{color:#111}
+.exec-hero .form-control::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
+.exec-hero .flt-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.5);margin-bottom:3px;display:block}
+.btn-gold{background:var(--gold);border:1px solid var(--gold);color:#fff;font-weight:600;font-size:.78rem;border-radius:9px;padding:6px 16px}
+.btn-gold:hover{background:#a5833a;border-color:#a5833a;color:#fff}
+
+/* ---------- Stat tiles ---------- */
+.tile{
+    height:100%; background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:14px 15px; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.tile:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(16,24,40,.09);border-color:#dcdfe5}
+.tile.is-click{cursor:pointer}
+.tile-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tile-label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.tile-ico{width:30px;height:30px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;font-size:.9rem}
+.tile-value{margin-top:7px;font-size:1.5rem;font-weight:700;line-height:1.15;letter-spacing:-.2px}
+.tile-sub{margin-top:3px;font-size:.74rem;color:var(--ink-2)}
+.tile .bar{height:6px;border-radius:99px;background:var(--line-soft);overflow:hidden;margin-top:9px}
+.tile .bar > span{display:block;height:100%;border-radius:99px}
+
+/* ---------- Alert chips ---------- */
+.chip{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.chip:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(16,24,40,.08);border-color:#dcdfe5}
+.chip-ico{width:32px;height:32px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;font-size:1rem}
+.chip-lb{font-size:.76rem;font-weight:600;color:var(--ink-2);line-height:1.25}
+.chip-n{margin-left:auto;font-size:1.15rem;font-weight:700}
+.chip.ok .chip-ico{background:#e9f7e9;color:var(--ok)} .chip.ok .chip-n{color:var(--ok)}
+.chip.warn .chip-ico{background:#fdf4de;color:#9a6a06} .chip.warn .chip-n{color:#9a6a06}
+.chip.warn{border-color:#f4e3bb}
+.chip.crit .chip-ico{background:#fbeaea;color:var(--crit)} .chip.crit .chip-n{color:var(--crit)}
+.chip.crit{border-color:#f2cfcf}
+
+/* ---------- Tabs ---------- */
+.exec-tabs{border:0;gap:6px;flex-wrap:wrap}
+.exec-tabs .nav-link{
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+    border-radius:999px;padding:7px 16px;font-size:.8rem;font-weight:600;
+}
+.exec-tabs .nav-link:hover{border-color:#d3d7dd;color:var(--ink)}
+.exec-tabs .nav-link.active{background:#16181d;border-color:#16181d;color:#fff}
+.exec-tabs .nav-link .badge{font-size:.62rem;font-weight:700}
+
+/* ---------- Panels ---------- */
+.pnl{background:var(--surface);border:1px solid var(--line);border-radius:14px;height:100%;overflow:hidden}
+.pnl-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+.pnl-hd h6{margin:0;font-size:.88rem;font-weight:700}
+.pnl-hd .hint{font-size:.72rem;color:var(--muted);font-weight:400}
+.pnl-bd{padding:16px}
+.pnl-bd.tight{padding:8px 16px 14px}
+.pnl-note{font-size:.72rem;color:var(--muted);padding:0 16px 12px;line-height:1.55}
+.pnl-desc{display:flex;gap:7px;font-size:.72rem;color:var(--muted);line-height:1.6;padding:10px 16px 0}
+.pnl-desc i{color:var(--gold);flex:0 0 auto;margin-top:2px}
+.sec-desc{display:flex;gap:7px;font-size:.74rem;color:var(--ink-2);line-height:1.6;margin:0 2px 9px}
+.sec-desc i{color:var(--gold);flex:0 0 auto;margin-top:3px}
+
+/* ---------- Segmented toggle ---------- */
+.seg{display:inline-flex;background:#f2f4f7;border-radius:999px;padding:3px;gap:2px}
+.seg-btn{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size:.74rem;font-weight:600;color:var(--ink-2)}
+.seg-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.14)}
+
+/* ---------- Chart box ---------- */
+.chart-box{position:relative;width:100%}
+.chart-empty{display:grid;place-items:center;color:var(--muted);font-size:.8rem;min-height:160px}
+
+/* ---------- Donut legend / table twin ---------- */
+.lgd{list-style:none;margin:0;padding:0}
+.lgd li{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size:.79rem;cursor:pointer}
+.lgd li:last-child{border-bottom:0}
+.lgd li:hover{background:#f8f9fb}
+.lgd .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.lgd .nm{flex:1;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lgd .vl{font-weight:700;font-variant-numeric:tabular-nums}
+.lgd .pc{width:46px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- Funnel / runway ---------- */
+.fn-row{display:grid;grid-template-columns:112px 1fr auto;align-items:center;gap:12px;padding:9px 6px;border-radius:9px;cursor:pointer}
+.fn-row:hover{background:#f7f8fa}
+.fn-lb{font-size:.78rem;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.fn-track{height:12px;border-radius:99px;background:var(--line-soft);overflow:hidden}
+.fn-fill{display:block;height:100%;border-radius:99px;min-width:3px}
+.fn-num{text-align:right;min-width:96px}
+.fn-num b{font-size:.92rem;font-variant-numeric:tabular-nums}
+.fn-num small{display:block;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- Mini stats ---------- */
+.ministat{border:1px solid var(--line);border-radius:11px;padding:9px 8px;text-align:center;height:100%;background:var(--surface)}
+.ministat .v{font-size:1.1rem;font-weight:700;line-height:1.2}
+.ministat .l{font-size:.68rem;color:var(--muted);margin-top:2px}
+
+/* ---------- Tables ---------- */
+.tbl{width:100%;margin:0;font-size:.79rem}
+.tbl thead th{
+    background:#fafbfc;color:var(--muted);font-weight:700;font-size:.68rem;text-transform:uppercase;
+    letter-spacing:.4px;border-bottom:1px solid var(--line)!important;white-space:nowrap;padding:9px 12px;
+}
+.tbl tbody td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:#f8f9fb}
+.tbl .num{font-variant-numeric:tabular-nums}
+.tag{display:inline-block;background:#f1f3f6;color:var(--ink-2);border-radius:6px;padding:1px 7px;font-size:.7rem;font-weight:600}
+.rank{width:22px;height:22px;border-radius:7px;display:inline-grid;place-items:center;background:var(--gold-tint);color:#8a6c22;font-size:.68rem;font-weight:700}
+.who{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:#eef1f6;color:var(--ink-2);font-size:.68rem;font-weight:700;margin-right:7px}
+.prog{height:6px;border-radius:99px;background:var(--line-soft);width:66px;overflow:hidden}
+.prog > span{display:block;height:100%;border-radius:99px}
+
+.exec-dash a.lk{color:var(--ink);text-decoration:none;font-weight:600}
+.exec-dash a.lk:hover{color:var(--gold)}
+
+@media (max-width:575px){
+    .tile-value{font-size:1.3rem}
+    .fn-row{grid-template-columns:92px 1fr auto}
+}
+@media print{
+    .no-print{display:none!important}
+    .exec-dash .tab-pane{display:block!important;opacity:1!important}
+    .pnl,.tile,.chip{break-inside:avoid}
+    .exec-hero{background:#fff!important;color:#000!important;box-shadow:none}
 }
 </style>
 
-<div class="container-fluid px-0">
-    <!-- HEADER -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 no-print">
-        <div>
-            <h5 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-gold me-2"></i>Daily Hotel Sales Executive Dashboard</h5>
-            <small class="text-muted">ประจำวันที่ <?= date('d M Y', strtotime($selected_date)) ?> <?= ($selected_year + 543) ?></small>
-        </div>
-        <form method="GET" class="d-flex align-items-center gap-2 flex-wrap" id="execFilter">
-            <label class="small text-muted fw-bold">วันที่</label>
-            <input type="date" name="date" value="<?= $selected_date ?>" class="form-control form-control-sm" style="width:150px">
-            <label class="small text-muted fw-bold">เดือน</label>
-            <select name="month" class="form-select form-select-sm" style="width:110px">
-                <?php for ($m = 1; $m <= 12; $m++): ?>
-                <option value="<?= $m ?>" <?= $selected_month == $m ? 'selected' : '' ?>><?= date('F', mktime(0,0,0,$m,1)) ?></option>
-                <?php endfor; ?>
-            </select>
-            <select name="year" class="form-select form-select-sm" style="width:90px">
-                <?php for ($y = date('Y')-2; $y <= date('Y')+1; $y++): ?>
-                <option value="<?= $y ?>" <?= $selected_year == $y ? 'selected' : '' ?>><?= $y+543 ?></option>
-                <?php endfor; ?>
-            </select>
-            <label class="small text-muted fw-bold">โรงแรม</label>
-            <select name="company_id" class="form-select form-select-sm" style="width:160px">
-                <option value="0">ทั้งหมด</option>
-                <?php $companies->data_seek(0); while ($c = $companies->fetch_assoc()): ?>
-                <option value="<?= $c['id'] ?>" <?= $selected_company == $c['id'] ? 'selected' : '' ?>><?= $c['company_name'] ?></option>
-                <?php endwhile; ?>
-            </select>
-            <label class="small text-muted fw-bold">เซลล์</label>
-            <select name="staff_id" class="form-select form-select-sm" style="width:130px" <?= $role === 'staff' ? 'disabled' : '' ?>>
-                <option value="0">ทั้งหมด</option>
-                <?php $staff_list->data_seek(0); while ($s = $staff_list->fetch_assoc()): ?>
-                <option value="<?= $s['id'] ?>" <?= $selected_staff == $s['id'] ? 'selected' : '' ?>><?= $s['name'] ?></option>
-                <?php endwhile; ?>
-            </select>
-            <button type="submit" class="btn btn-sm btn-dark"><i class="bi bi-filter"></i></button>
-        </form>
-    </div>
+<div class="exec-dash">
 
-    <!-- ===== SECTION 1: EXECUTIVE SUMMARY ===== -->
-    <div class="section-title"><i class="bi bi-bar-chart-line me-1"></i> 1. Executive Summary</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ภาพรวมผลประกอบการตามวันที่/เดือน/ปี/โรงแรม/เซลล์ ที่เลือกไว้ด้านบน: รายได้รวมวันนี้ (และสะสมทั้งเดือน MTD) จำนวนงาน จำนวนผู้เข้าร่วม และยอดเงินมัดจำรวม กดที่การ์ด "รายได้รวมวันนี้" เพื่อเปิดดูรายละเอียดงานของวันนั้นได้</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100" id="cardTodayTotal" style="cursor:pointer">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">รายได้รวมวันนี้</div>
-                    <div class="stat-value text-success">฿<?= number_format($today_total, 0) ?></div>
-                    <div class="stat-sub">MTD: ฿<?= number_format($mtd_total, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">งานวันนี้</div>
-                    <div class="stat-value text-primary"><?= $today_events ?></div>
-                    <div class="stat-sub">MTD: <?= $mtd_events ?> งาน | สะสมปี: <?= number_format($year_total, 0) ?> บาท</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">จำนวนคนวันนี้</div>
-                    <div class="stat-value text-info"><?= number_format($today_pax) ?></div>
-                    <div class="stat-sub">MTD: <?= number_format($mtd_pax) ?> คน</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">เงินมัดจำรวม</div>
-                    <div class="stat-value text-warning">฿<?= number_format($total_deposit_balance, 0) ?></div>
-                    <div class="stat-sub">รับวันนี้: ฿<?= number_format($deposit_received, 0) ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 2: REVENUE BY TYPE ===== -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-8">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-graph-up text-gold me-1"></i>2. รายได้ตามประเภทงาน (Today vs MTD)</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>เปรียบเทียบรายได้ของงานแต่ละประเภท (เช่น สัมมนา ประชุม งานเลี้ยง) ระหว่างวันนี้ (สีทอง) กับทั้งเดือน MTD (สีน้ำเงิน) กดแท่งกราฟเพื่อเปิดดูรายละเอียดงานของประเภทนั้น</div>
-                <div class="card-body">
-                    <?php if (count($type_names) > 0): ?>
-                    <canvas id="typeRevChart" height="200"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-4 small">ไม่มีข้อมูล</div>
+    <!-- ===================== HERO + FILTER ===================== -->
+    <div class="exec-hero mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+            <div>
+                <h5 class="section-title"><i class="bi bi-speedometer2 me-2" style="color:var(--gold)"></i>Executive Dashboard</h5>
+                <div class="hero-sub mt-1">
+                    ข้อมูลวันที่ <?= date('d M Y', strtotime($selected_date)) ?>
+                    · เดือน <?= date('F', mktime(0, 0, 0, $selected_month, 1)) ?> <?= $selected_year + 543 ?>
+                    <?php if ($selected_company > 0 || $selected_staff > 0): ?>
+                        · <span style="color:var(--gold)">กรองข้อมูลอยู่</span>
                     <?php endif; ?>
                 </div>
             </div>
+            <form method="GET" class="d-flex flex-wrap align-items-end gap-2 no-print" id="execFilter">
+                <div>
+                    <label class="flt-label">วันที่</label>
+                    <input type="date" name="date" value="<?= $selected_date ?>" class="form-control form-control-sm" style="width:145px">
+                </div>
+                <div>
+                    <label class="flt-label">เดือน / ปี</label>
+                    <div class="d-flex gap-1">
+                        <select name="month" class="form-select form-select-sm" style="width:105px">
+                            <?php for ($m = 1; $m <= 12; $m++): ?>
+                                <option value="<?= $m ?>" <?= $selected_month == $m ? 'selected' : '' ?>><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <select name="year" class="form-select form-select-sm" style="width:82px">
+                            <?php for ($y = date('Y') - 2; $y <= date('Y') + 1; $y++): ?>
+                                <option value="<?= $y ?>" <?= $selected_year == $y ? 'selected' : '' ?>><?= $y + 543 ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="flt-label">โรงแรม</label>
+                    <select name="company_id" class="form-select form-select-sm" style="width:150px">
+                        <option value="0">ทั้งหมด</option>
+                        <?php $companies->data_seek(0); while ($c = $companies->fetch_assoc()): ?>
+                            <option value="<?= $c['id'] ?>" <?= $selected_company == $c['id'] ? 'selected' : '' ?>><?= $h($c['company_name']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="flt-label">เซลล์</label>
+                    <select name="staff_id" class="form-select form-select-sm" style="width:130px" <?= $role === 'staff' ? 'disabled' : '' ?>>
+                        <option value="0">ทั้งหมด</option>
+                        <?php $staff_list->data_seek(0); while ($s = $staff_list->fetch_assoc()): ?>
+                            <option value="<?= $s['id'] ?>" <?= $selected_staff == $s['id'] ? 'selected' : '' ?>><?= $h($s['name']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-gold btn-sm"><i class="bi bi-funnel me-1"></i>ดูข้อมูล</button>
+            </form>
         </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-pie-chart text-gold me-1"></i>สัดส่วนรายได้ MTD</h6>
+    </div>
+
+    <!-- ===================== KPI TILES ===================== -->
+    <div class="sec-desc"><i class="bi bi-info-circle"></i>
+        <span>ตัวเลขสรุปทั้งหมดคิดตามตัวกรองด้านบน (วันที่ / เดือน / โรงแรม / เซลล์) และนับเฉพาะงานที่อนุมัติแล้วและไม่ถูกยกเลิก
+            — การ์ดรายได้วันนี้ รายได้เดือนนี้ ปิดการขาย และเงินมัดจำ กดเข้าไปดูรายละเอียดรายการได้</span>
+    </div>
+    <div class="row g-2 g-lg-3 mb-3">
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile is-click" id="tileToday">
+                <div class="tile-head">
+                    <span class="tile-label">รายได้วันนี้</span>
+                    <span class="tile-ico" style="background:var(--gold-tint);color:#8a6c22"><i class="bi bi-cash-stack"></i></span>
                 </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ทั้งเดือนของแต่ละประเภทงาน (โดนัท) ดูว่าประเภทไหนสร้างรายได้มากที่สุด เพื่อจัดลำดับการขาย กดวงกลมเพื่อดูรายละเอียดงาน</div>
-                <div class="card-body">
-                    <?php if (count($seg_labels) > 0): ?>
-                    <canvas id="segPieChart" height="200"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-4 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
+                <div class="tile-value">฿<?= number_format($today_total) ?></div>
+                <div class="tile-sub"><?= $today_events ?> งาน · <?= number_format($today_pax) ?> คน</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile is-click" id="tileMtd">
+                <div class="tile-head">
+                    <span class="tile-label">รายได้เดือนนี้</span>
+                    <span class="tile-ico" style="background:#e9f0fc;color:#2a78d6"><i class="bi bi-graph-up-arrow"></i></span>
                 </div>
+                <div class="tile-value">฿<?= number_format($mtd_total) ?></div>
+                <div class="tile-sub d-flex justify-content-between">
+                    <span><?= $mtd_events ?> งาน · <?= number_format($mtd_pax) ?> คน</span>
+                    <span class="fw-bold" style="color:<?= $team_target_pct >= 100 ? 'var(--ok)' : ($team_target_pct >= 50 ? '#9a6a06' : 'var(--crit)') ?>"><?= $team_target_pct ?>%</span>
+                </div>
+                <div class="bar"><span style="width:<?= min($team_target_pct, 100) ?>%;background:<?= $team_target_pct >= 100 ? 'var(--ok)' : ($team_target_pct >= 50 ? 'var(--warn)' : 'var(--crit)') ?>"></span></div>
+                <div class="tile-sub">เป้า ฿<?= number_format($team_target) ?></div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile">
+                <div class="tile-head">
+                    <span class="tile-label">สะสมทั้งปี</span>
+                    <span class="tile-ico" style="background:#eaf7f1;color:#0d8a60"><i class="bi bi-calendar3"></i></span>
+                </div>
+                <div class="tile-value">฿<?= number_format($year_total) ?></div>
+                <div class="tile-sub">เฉลี่ยต่องาน ฿<?= number_format($avg_deal) ?></div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile is-click" id="tileConv">
+                <div class="tile-head">
+                    <span class="tile-label">ปิดการขาย</span>
+                    <span class="tile-ico" style="background:#f0edfb;color:#4a3aa7"><i class="bi bi-percent"></i></span>
+                </div>
+                <div class="tile-value"><?= $conversion_rate ?>%</div>
+                <div class="tile-sub">ใบเสนอราคา <?= $q_total ?> ใบ · ยืนยัน <?= $q_approved ?></div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile is-click" id="tileDeposit">
+                <div class="tile-head">
+                    <span class="tile-label">เงินมัดจำ</span>
+                    <span class="tile-ico" style="background:#fdf4de;color:#9a6a06"><i class="bi bi-wallet2"></i></span>
+                </div>
+                <div class="tile-value">฿<?= number_format($total_deposit_balance) ?></div>
+                <div class="tile-sub">รับเดือนนี้ ฿<?= number_format($deposit_received_mtd) ?></div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="tile">
+                <div class="tile-head">
+                    <span class="tile-label">กำไรขั้นต้น</span>
+                    <span class="tile-ico" style="background:#eef1f6;color:#5b6470"><i class="bi bi-pie-chart"></i></span>
+                </div>
+                <div class="tile-value" style="color:<?= $gop_forecast >= 0 ? 'var(--ok)' : 'var(--crit)' ?>">฿<?= number_format($gop_forecast) ?></div>
+                <div class="tile-sub">Margin <?= $gop_margin ?>% · ยกเลิก <?= $cancel_rate ?>%</div>
             </div>
         </div>
     </div>
 
-    <!-- ===== SECTION 3: BANQUET & MEETING PERFORMANCE ===== -->
-    <div class="section-title"><i class="bi bi-calendar-event me-1"></i> 3. Banquet & Meeting Performance</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตัวชี้วัดผลงานจัดเลี้ยง/ประชุมทั้งเดือน (MTD): จำนวนงาน รายได้รวม จำนวนผู้เข้าร่วมทั้งหมด เงินเฉลี่ยต่องาน ห้องที่ถูกใช้งาน และจำนวนงานที่ถูกยกเลิก (พร้อมอัตราการยกเลิกเป็น %) เพื่อดูภาพรวมกำลังผลิตและผลตอบแทน</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">จำนวนงาน MTD</div>
-                    <div class="stat-value" style="font-size:1.1rem"><?= $mtd_events ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">รายได้ MTD</div>
-                    <div class="stat-value" style="font-size:1.1rem">฿<?= number_format($mtd_total, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">ผู้เข้าร่วม MTD</div>
-                    <div class="stat-value" style="font-size:1.1rem"><?= number_format($mtd_pax) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">เฉลี่ยต่องาน</div>
-                    <div class="stat-value" style="font-size:1.1rem">฿<?= number_format($mtd_avg_revenue, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">ห้องใช้งาน MTD</div>
-                    <div class="stat-value" style="font-size:1.1rem"><?= $mtd_rooms_used ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">งานยกเลิก MTD</div>
-                    <div class="stat-value text-danger" style="font-size:1.1rem"><?= $cancelled_count ?></div>
-                    <div class="stat-sub"><?= $cancel_rate ?>%</div>
-                </div>
-            </div>
-        </div>
+    <!-- ===================== ALERT STRIP ===================== -->
+    <div class="sec-desc"><i class="bi bi-bell"></i>
+        <span>เรื่องที่ต้องรีบจัดการ — เขียวคือปกติ เหลืองคือควรติดตาม แดงคือต้องแก้ไขทันที กดที่การ์ดเพื่อดูว่าเป็นงานหรือใบเสนอราคาใดบ้าง</span>
     </div>
-
-    <!-- ===== SECTION 4: FUTURE BOOKING PIPELINE ===== -->
-    <div class="section-title"><i class="bi bi-calendar-check me-1"></i> 4. Future Booking Pipeline</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>จำนวนงานและมูลค่างานที่ยืนยันแล้ว (อนุมัติแล้ว) ซึ่งจะจัดขึ้นภายใน 7 / 30 / 90 / 180 วันข้างหน้า ใช้คาดการณ์งานในคิว วางแผนห้อง พนักงาน และวัตถุดิบล่วงหน้า กดการ์ดแต่ละใบเพื่อเปิดดูรายการงานที่จะมาถึง</div>
-    <div class="row g-2 mb-4" id="pipelineCards">
-        <?php
-        $pipes = [
-            ['label' => '7 วัน', 'cnt' => $pipe_7d['c'], 'val' => $pipe_7d['t'], 'color' => 'success', 'days' => '7'],
-            ['label' => '30 วัน', 'cnt' => $pipe_30d['c'], 'val' => $pipe_30d['t'], 'color' => 'primary', 'days' => '30'],
-            ['label' => '90 วัน', 'cnt' => $pipe_90d['c'], 'val' => $pipe_90d['t'], 'color' => 'info', 'days' => '90'],
-            ['label' => '180 วัน', 'cnt' => $pipe_180d['c'], 'val' => $pipe_180d['t'], 'color' => 'secondary', 'days' => '180'],
-        ];
-        foreach ($pipes as $p): ?>
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 pipe-card" data-days="<?= $p['days'] ?>" data-label="<?= $p['label'] ?>" style="cursor:pointer">
-                <div class="card-body py-3 text-center">
-                    <div class="small fw-bold text-muted">ภายใน <?= $p['label'] ?></div>
-                    <div class="fw-bold text-<?= $p['color'] ?>" style="font-size:1.5rem"><?= $p['cnt'] ?> งาน</div>
-                    <div class="small">฿<?= number_format($p['val'], 0) ?></div>
-                </div>
+    <div class="row g-2 mb-3">
+        <?php foreach ($alert_rows as $a):
+            $lvl = $a['n'] > 0 ? $a['level'] : 'ok'; ?>
+            <div class="col-xl-3 col-md-6">
+                <button type="button" class="chip <?= $lvl ?> alert-clickable" data-alert-type="<?= $a['type'] ?>" data-alert-label="<?= $h($a['label']) ?>">
+                    <span class="chip-ico"><i class="bi <?= $a['n'] > 0 ? $a['icon'] : 'bi-check-circle' ?>"></i></span>
+                    <span class="chip-lb"><?= $h($a['label']) ?></span>
+                    <span class="chip-n num"><?= $a['n'] ?></span>
+                </button>
             </div>
-        </div>
         <?php endforeach; ?>
     </div>
 
-    <!-- ===== SECTION 5: QUOTATION & CONVERSION ===== -->
-    <div class="section-title"><i class="bi bi-file-text me-1"></i> 5. Quotation & Conversion</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สถิติใบเสนอราคาในเดือนที่เลือก: จำนวนใบทั้งหมด ใบที่ออกวันนี้ ใบที่ลูกค้ายืนยันแล้ว (Approved) อัตราการปิดการขาย (ใบยืนยัน ÷ ใบทั้งหมด) ใบที่ยังรอลูกค้าตอบกลับ และใบที่ปิดงานไม่สำเร็จ (Lost) เพื่อประเมินประสิทธิภาพของทีมขาย</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">ใบเสนอราคา MTD</div>
-                    <div class="stat-value" style="font-size:1.1rem"><?= $q_total ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">วันนี้</div>
-                    <div class="stat-value" style="font-size:1.1rem"><?= $q_today_total ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">ยืนยัน MTD</div>
-                    <div class="stat-value text-success" style="font-size:1.1rem"><?= $q_approved ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">Conversion Rate</div>
-                    <div class="stat-value text-primary" style="font-size:1.1rem"><?= $conversion_rate ?>%</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">รอตอบ</div>
-                    <div class="stat-value text-warning" style="font-size:1.1rem"><?= $q_pending ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-2 text-center">
-                    <div class="stat-label">Lost MTD</div>
-                    <div class="stat-value text-danger" style="font-size:1.1rem"><?= $q_cancelled ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- ===================== TABS ===================== -->
+    <ul class="nav exec-tabs mb-3 no-print" id="execTab" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button"><i class="bi bi-bar-chart-line me-1"></i>ภาพรวมรายได้</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sales" type="button"><i class="bi bi-funnel me-1"></i>งานขาย</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button"><i class="bi bi-calendar-week me-1"></i>ปฏิบัติการ<?php if ($today_events_list->num_rows > 0): ?> <span class="badge rounded-pill text-bg-light"><?= $today_events_list->num_rows ?></span><?php endif; ?></button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-finance" type="button"><i class="bi bi-wallet2 me-1"></i>การเงิน</button></li>
+    </ul>
 
-    <!-- ===== SECTION 6: DEPOSIT DASHBOARD ===== -->
-    <div class="section-title"><i class="bi bi-wallet2 me-1"></i> 6. Deposit Dashboard</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สถานะเงินมัดจำ: เงินมัดจำที่รับได้วันนี้และทั้งเดือน ยอดมัดจำที่ค้างอยู่ในระบบสำหรับงานที่ยังไม่จัด และจำนวนงานที่ยังไม่ได้วางเงินมัดจำ (ความเสี่ยงถูกยกเลิก) กดการ์ด "รับเงินมัดจำ MTD" เพื่อเปิดดูรายการโอนเงินทั้งหมด</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">รับเงินมัดจำวันนี้</div>
-                    <div class="stat-value text-success">฿<?= number_format($deposit_received, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100 deposit-clickable" style="cursor:pointer">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">รับเงินมัดจำ MTD</div>
-                    <div class="stat-value text-success">฿<?= number_format($deposit_received_mtd, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">คงเหลือเงินมัดจำ</div>
-                    <div class="stat-value text-warning">฿<?= number_format($total_deposit_balance, 0) ?></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card exec-card border shadow-sm h-100">
-                <div class="card-body py-2 px-3">
-                    <div class="stat-label">งานค้างชำระมัดจำ</div>
-                    <div class="stat-value text-danger"><?= $deposit_pending_events ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="tab-content">
 
-    <!-- ===== SECTION 7: SALES PIPELINE (Funnel) ===== -->
-    <div class="section-title"><i class="bi bi-funnel me-1"></i> 7. Sales Pipeline</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>กรวยการขายตั้งแต่ใบเสนอราคายังไม่ได้ส่ง (Draft/Prospect) → ส่งใบแล้ว (Quotation Sent) → ลูกค้าตกลงยืนยัน (Confirmed) → ปิดงานไม่สำเร็จ (Lost) แสดงทั้งจำนวนใบและมูลค่ารวมของแต่ละขั้น เพื่อดูว่างานหลุดออกจากช่องทางตรงจุดไหน แล้วเข้าไปแก้ไข กดการ์ดเพื่อเปิดดูใบเสนอราคาในแต่ละสถานะ</div>
-    <div class="row g-2 mb-4" id="funnelCards">
-        <?php
-        $funnel = [
-            ['label' => 'Draft/ Prospect', 'cnt' => $pipe_prospect, 'val' => $pipe_prospect_val, 'color' => '#6c757d', 'bg' => 'bg-secondary-subtle', 'status' => 'Draft'],
-            ['label' => 'Quotation Sent', 'cnt' => $pipe_quotation, 'val' => $pipe_quotation_val, 'color' => '#0d6efd', 'bg' => 'bg-primary-subtle', 'status' => 'Sent'],
-            ['label' => 'Confirmed', 'cnt' => $pipe_confirmed, 'val' => $pipe_confirmed_val, 'color' => '#198754', 'bg' => 'bg-success-subtle', 'status' => 'Approved'],
-            ['label' => 'Lost', 'cnt' => $pipe_lost, 'val' => $pipe_lost_val, 'color' => '#dc3545', 'bg' => 'bg-danger-subtle', 'status' => 'Cancelled'],
-        ];
-        foreach ($funnel as $f): ?>
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 <?= $f['bg'] ?> funnel-card" data-status="<?= $f['status'] ?>" data-label="<?= $f['label'] ?>" style="cursor:pointer">
-                <div class="card-body py-3 text-center">
-                    <div class="small fw-bold" style="color:<?= $f['color'] ?>"><?= $f['label'] ?></div>
-                    <div class="fw-bold" style="font-size:1.6rem;color:<?= $f['color'] ?>"><?= $f['cnt'] ?></div>
-                    <div class="small text-muted">฿<?= number_format($f['val'], 0) ?></div>
+        <!-- ============ TAB 1: ภาพรวมรายได้ ============ -->
+        <div class="tab-pane fade show active" id="tab-overview">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-7">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-activity me-1" style="color:var(--gold)"></i>แนวโน้มรายได้ 6 เดือน</h6>
+                            <span class="hint ms-auto">คลิกจุดบนกราฟเพื่อดูงานของเดือนนั้น</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>รายได้รวมย้อนหลัง 6 เดือนจนถึงเดือนปัจจุบัน (นับตามวันจัดงาน) ใช้ดูว่ายอดกำลังขึ้นหรือลง
+                                และเดือนไหนเป็นไฮซีซัน — ตัวเลขที่กำกับไว้คือเดือนที่ทำได้สูงสุดและเดือนล่าสุด</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <div class="chart-box" style="height:270px"><canvas id="trendChart"></canvas></div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- ===== SECTION 8 & 9: TOP 10 + SALES BY SEGMENT ===== -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-7">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-trophy text-gold me-1"></i>8. Top 10 งานตามมูลค่า</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>10 งานที่ทำรายได้สูงสุดในเดือนที่เลือก เรียงจากมูลค่ามากไปน้อย เพื่อดูว่างานใหญ่มาจากลูกค้า/ประเภทไหน และใช้เป็นกรณีศึกษาการขายงานใหญ่</div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 align-middle small">
-                            <thead class="table-light">
-                                <tr><th>ลูกค้า</th><th>ประเภท</th><th>วันที่</th><th class="text-end">มูลค่า</th></tr>
-                            </thead>
-                            <tbody>
-                            <?php while ($te = $top_events->fetch_assoc()): ?>
-                                <tr>
-                                    <td class="text-truncate" style="max-width:200px"><?= $te['function_name'] ?></td>
-                                    <td><span class="badge bg-dark-subtle text-dark"><?= $te['type_name'] ?: '-' ?></span></td>
-                                    <td><?= $te['event_date'] ? date('d M', strtotime($te['event_date'])) : '-' ?></td>
-                                    <td class="text-end fw-bold">฿<?= number_format($te['total_amount'], 0) ?></td>
-                                </tr>
-                            <?php endwhile; ?>
-                            </tbody>
-                        </table>
+                <div class="col-xl-5">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-layers me-1" style="color:var(--gold)"></i>รายได้ตามประเภทงาน</h6>
+                            <span class="hint ms-auto">เดือนนี้</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>เทียบรายได้ของงานแต่ละประเภท (สัมมนา ประชุม งานเลี้ยง ฯลฯ) ในเดือนที่เลือก เรียงจากมากไปน้อย
+                                ตารางด้านล่างแยกให้เห็นยอดเฉพาะวันนี้และสัดส่วนของทั้งเดือน กดแท่งหรือแถวในตารางเพื่อดูรายชื่องาน</span>
+                        </div>
+                        <?php if (count($type_rows) > 0): ?>
+                            <div class="pnl-bd tight">
+                                <div class="chart-box" style="height:<?= max(150, min(count($type_rows), 8) * 30 + 30) ?>px"><canvas id="typeChart"></canvas></div>
+                            </div>
+                            <div class="table-responsive" style="max-height:210px;overflow:auto">
+                                <table class="tbl">
+                                    <thead>
+                                        <tr><th>ประเภทงาน</th><th class="text-end">วันนี้</th><th class="text-end">เดือนนี้</th><th class="text-end">สัดส่วน</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($type_rows as $tr): ?>
+                                            <tr class="drill-type" data-label="<?= $h($tr['label']) ?>" style="cursor:pointer">
+                                                <td><?= $h($tr['label']) ?></td>
+                                                <td class="text-end num text-dim"><?= $tr['today'] > 0 ? '฿' . number_format($tr['today']) : '–' ?></td>
+                                                <td class="text-end num fw-bold">฿<?= number_format($tr['mtd']) ?></td>
+                                                <td class="text-end num text-dim"><?= $type_sum > 0 ? round($tr['mtd'] / $type_sum * 100) : 0 ?>%</td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <div class="chart-empty">ไม่มีข้อมูลในเดือนนี้</div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-5">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-people text-gold me-1"></i>9. Sales Pipeline Funnel</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>แสดงจำนวนใบเสนอราคาในแต่ละสถานะของช่องทางการขาย (Draft/Sent/Confirmed/Lost) เห็นภาพว่ามีงานติดอยู่ในขั้นไหนมากที่สุด กดแท่งกราฟเพื่อเปิดดูรายชื่อใบเสนอราคา</div>
-                <div class="card-body">
-                    <canvas id="funnelChart" height="250"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ===== SECTION 10 & 11: SALES BY SOURCE + PERIOD ===== -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-diagram-3 text-gold me-1"></i>10. แหล่งลูกค้า MTD</h6>
+            <div class="row g-3">
+                <div class="col-xl-6">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-buildings me-1" style="color:var(--gold)"></i>รายได้ตามโรงแรม</h6>
+                            <span class="hint ms-auto">เดือนนี้ · คลิกแท่งเพื่อดูรายละเอียด</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>รายได้ทั้งเดือนแยกตามโรงแรม/บริษัทในเครือ ใช้เทียบผลงานระหว่างสาขาว่าที่ไหนทำยอดได้มากที่สุด</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <?php if (count($comp_rows) > 0): ?>
+                                <div class="chart-box" style="height:<?= max(160, count($comp_rows) * 38 + 30) ?>px"><canvas id="companyChart"></canvas></div>
+                            <?php else: ?>
+                                <div class="chart-empty">ไม่มีข้อมูล</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ตามแหล่งที่มาของลูกค้า (เช่น โฆษณา ถูกแนะนำ เดินเข้ามา หรือไม่ได้ระบุ) ดูว่าช่องทางใดสร้างรายได้มากที่สุด เพื่อจัดสรรงบการตลาดให้คุ้มค่า กดวงกลมเพื่อดูรายละเอียดงาน</div>
-                <div class="card-body">
-                    <?php if (count($src_labels) > 0): ?>
-                    <canvas id="sourceChart" height="200"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-clock text-gold me-1"></i>11. เช้า/บ่าย/เย็น MTD</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนรายได้ตามช่วงเวลาจัดงาน: เช้า (เริ่มก่อน 12:00) บ่าย (12:00-17:00) เย็น (หลัง 17:00) ใช้ดูว่างานช่วงใดเป็นรายได้หลัก และวางแผนการใช้ห้องให้เกิดประโยชน์สูงสุดต่อวัน กดวงกลมเพื่อดูงานแต่ละช่วงเวลา</div>
-                <div class="card-body">
-                    <?php if (count($period_labels_arr) > 0): ?>
-                    <canvas id="periodChart" height="200"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-credit-card text-gold me-1"></i>12. ช่องทางชำระเงิน MTD</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>สัดส่วนยอดเงินที่เข้ามาตามช่องทางการชำระเงิน (เงินสด / โอนธนาคาร / บัตรเครดิต ฯลฯ) ในเดือนที่เลือก เพื่อดูพฤติกรรมการชำระเงินของลูกค้า กดวงกลมเพื่อเปิดดูรายการชำระเงิน</div>
-                <div class="card-body">
-                    <?php if (count($pay_labels) > 0): ?>
-                    <canvas id="payChart" height="200"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 13: SALES BY PERSON ===== -->
-    <div class="section-title"><i class="bi bi-person-lines-fill me-1"></i> 13. Sales by Salesperson (MTD)</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ผลงานของเซลล์แต่ละคนในเดือนที่เลือก: จำนวนงานที่ปิดได้ รายได้รวม เงินมัดจำที่เรียกเก็บ เป้าหมายประจำเดือน และ % ความสำเร็จเทียบกับเป้าหมาย (เขียว = ถึงเป้า, เหลือง = ผ่านครึ่งหนึ่ง, แดง = ต่ำกว่าครึ่ง) ใช้ประเมินและวางแผนสนับสนุนทีมขาย</div>
-    <div class="card border shadow-sm mb-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle small">
-                    <thead class="table-light">
-                        <tr>
-                            <th>พนักงาน</th>
-                            <th class="text-center">งาน</th>
-                            <th class="text-end">รายได้</th>
-                            <th class="text-end">มัดจำ</th>
-                            <th class="text-end">เป้าหมาย</th>
-                            <th class="text-end">% เป้าหมาย</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (count($staff_data) > 0): ?>
-                        <?php foreach ($staff_data as $sd): ?>
-                        <?php $pct = $sd['target_amount'] > 0 ? round(($sd['total_revenue'] / $sd['target_amount']) * 100, 1) : 0; ?>
-                        <tr>
-                            <td class="fw-medium"><?= $sd['name'] ?></td>
-                            <td class="text-center"><?= $sd['total_events'] ?></td>
-                            <td class="text-end fw-bold text-primary">฿<?= number_format($sd['total_revenue'], 0) ?></td>
-                            <td class="text-end">฿<?= number_format($sd['total_deposit'], 0) ?></td>
-                            <td class="text-end">฿<?= number_format($sd['target_amount'], 0) ?></td>
-                            <td class="text-end" style="min-width:120px">
-                                <div class="d-flex align-items-center gap-2 justify-content-end">
-                                    <span class="fw-bold <?= $pct >= 100 ? 'text-success' : ($pct >= 50 ? 'text-warning' : 'text-danger') ?>"><?= $pct ?>%</span>
-                                    <div class="progress" style="width:60px;height:6px">
-                                        <div class="progress-bar <?= $pct >= 100 ? 'bg-success' : ($pct >= 50 ? 'bg-warning' : 'bg-danger') ?>" style="width:<?= min($pct, 100) ?>%"></div>
-                                    </div>
+                <div class="col-xl-6">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-diagram-3 me-1" style="color:var(--gold)"></i>สัดส่วนธุรกิจ</h6>
+                            <div class="seg ms-auto" id="mixSeg">
+                                <button type="button" class="seg-btn active" data-mix="source">แหล่งลูกค้า</button>
+                                <button type="button" class="seg-btn" data-mix="period">ช่วงเวลา</button>
+                                <button type="button" class="seg-btn" data-mix="pay">ช่องทางชำระ</button>
+                            </div>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>สัดส่วนรายได้ของเดือนนี้ สลับดูได้ 3 มุมมอง — <b>แหล่งลูกค้า</b> ลูกค้ามาจากช่องทางไหน (ใช้จัดงบการตลาด),
+                                <b>ช่วงเวลา</b> เช้า/บ่าย/เย็นช่วงไหนทำเงิน (ใช้วางแผนรอบใช้ห้อง), <b>ช่องทางชำระ</b> ลูกค้าจ่ายด้วยวิธีใด
+                                กดที่วงกลมหรือรายการด้านข้างเพื่อดูรายละเอียด</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-sm-5">
+                                    <div class="chart-box" style="height:190px"><canvas id="mixChart"></canvas></div>
                                 </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="6" class="text-center text-muted py-3">ไม่มีข้อมูล</td></tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 14: KPI vs TARGET ===== -->
-    <div class="section-title"><i class="bi bi-bullseye me-1"></i> 14. KPI Dashboard</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตัวชี้วัดหลักของเดือน: เปรียบเทียบรายได้รวมกับเป้าหมาย (พร้อม % สำเร็จ) อัตราการปิดการขาย เงินเฉลี่ยต่องาน อัตราการยกเลิก (เกิน 10% = เสี่ยง) % ลูกค้าที่กลับมาใช้บริการซ้ำ และกำไรขั้นต้นโดยประมาณ (GOP = รายรับ − ต้นทุน) กดการ์ดแรกเพื่อเปิดดูรายชื่อเซลล์เทียบเป้าหมาย</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100" id="kpiTargetCard" style="cursor:pointer">
-                <div class="card-body py-3 px-3">
-                    <div class="kpi-row"><span class="kpi-label">รายได้รวม MTD</span><span class="kpi-val">฿<?= number_format($mtd_total, 0) ?></span></div>
-                    <div class="kpi-row"><span class="kpi-label">เป้าหมายรวม</span><span class="kpi-val">฿<?= number_format($team_target, 0) ?></span></div>
-                    <div class="kpi-row"><span class="kpi-label">% สำเร็จ</span><span class="kpi-val <?= $team_target_pct >= 100 ? 'text-success' : ($team_target_pct >= 50 ? 'text-warning' : 'text-danger') ?>"><?= $team_target_pct ?>%</span></div>
-                    <div class="progress mt-1" style="height:10px"><div class="progress-bar <?= $team_target_pct >= 100 ? 'bg-success' : ($team_target_pct >= 50 ? 'bg-warning' : 'bg-danger') ?>" style="width:<?= min($team_target_pct, 100) ?>%"></div></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-3 px-3">
-                    <div class="kpi-row"><span class="kpi-label">Conversion Rate</span><span class="kpi-val"><?= $conversion_rate ?>%</span></div>
-                    <div class="kpi-row"><span class="kpi-label">เฉลี่ยต่องาน</span><span class="kpi-val">฿<?= number_format($avg_deal, 0) ?></span></div>
-                    <div class="kpi-row"><span class="kpi-label">อัตรายกเลิก</span><span class="kpi-val <?= $cancel_rate > 10 ? 'text-danger' : 'text-success' ?>"><?= $cancel_rate ?>%</span></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body py-3 px-3">
-                    <div class="kpi-row"><span class="kpi-label">ลูกค้าซ้ำ</span><span class="kpi-val"><?= $repeat_pct ?>% (<?= $repeat_cust ?>/<?= $total_cust ?>)</span></div>
-                    <div class="kpi-row"><span class="kpi-label">GOP Forecast MTD</span><span class="kpi-val <?= $gop_forecast >= 0 ? 'text-success' : 'text-danger' ?>">฿<?= number_format($gop_forecast, 0) ?></span></div>
-                    <div class="kpi-row"><span class="kpi-label">GOP Margin</span><span class="kpi-val"><?= $gop_margin ?>%</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 15: GOP + MONTHLY TREND ===== -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-7">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-bar-chart-line text-gold me-1"></i>15. แนวโน้มรายได้ 6 เดือน</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>กราฟแท่งแสดงรายได้รวมย้อนหลัง 6 เดือน (รวมเดือนปัจจุบัน) เพื่อดูแนวโน้มว่าเพิ่มขึ้นหรือลดลง เดือนไหนเป็นไฮซีซัน กดแท่งกราฟเพื่อเปิดดูรายการงานของเดือนนั้น</div>
-                <div class="card-body">
-                    <canvas id="trendChart" height="180"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-5">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem"><i class="bi bi-building text-gold me-1"></i>16. รายได้ตามโรงแรม MTD</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>รายได้ทั้งเดือนของแต่ละโรงแรม/บริษัทในเครือ เปรียบเทียบว่าโรงแรมไหนทำรายได้มากที่สุด ใช้ดูสัดส่วนผลงานระหว่างสาขา กดแท่งกราฟเพื่อเปิดดูรายละเอียดงาน</div>
-                <div class="card-body">
-                    <?php if (count($comp_names) > 0): ?>
-                    <canvas id="companyChart" height="180"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 14: MEETING ROOM UTILIZATION ===== -->
-    <div class="section-title"><i class="bi bi-door-open me-1"></i> 17. Meeting Room Utilization (MTD)</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>จำนวนงานที่ถูกจองใช้ห้องประชุมแต่ละห้องในเดือนที่เลือก (เฉพาะห้องที่ยัง active) เพื่อดูว่าห้องไหนถูกใช้งานมาก/น้อย นำไปวางแผนการขายห้องว่างหรือปรับปรุงห้องที่ใช้งานน้อย กดแท่งกราฟเพื่อดูรายการงานแต่ละห้อง</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-8">
-            <div class="card border shadow-sm h-100">
-                <div class="card-body">
-                    <?php if (count($room_labels) > 0): ?>
-                    <canvas id="roomChart" height="140"></canvas>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีข้อมูล</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card border shadow-sm h-100">
-                <div class="card-header bg-white py-2 border-bottom">
-                    <h6 class="fw-bold mb-0" style="font-size:0.85rem">Quotation ใกล้หมดอายุ</h6>
-                </div>
-                <div class="chart-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ใบเสนอราคาที่สถานะ "ส่งใบแล้ว" และจะหมดอายุภายใน 7 วันข้างหน้า เรียงวันหมดอายุที่ใกล้ที่สุดก่อน ควรติดตามลูกค้าให้ตัดสินใจก่อนใบหมดอายุ กดรายการเพื่อเปิดใบเสนอราคา</div>
-                <div class="card-body p-0">
-                    <?php if ($expiring_quotes->num_rows > 0): ?>
-                    <div class="list-group list-group-flush small" style="font-size:0.75rem">
-                        <?php while ($eq = $expiring_quotes->fetch_assoc()): ?>
-                        <a href="quotation_view.php?id=<?= $eq['id'] ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center px-2 py-1">
-                            <span class="text-truncate me-1"><?= $eq['event_name'] ?: $eq['quote_no'] ?></span>
-                            <small class="text-danger flex-shrink-0 fw-bold">฿<?= number_format($eq['grand_total'], 0) ?></small>
-                        </a>
-                        <?php endwhile; ?>
-                    </div>
-                    <?php else: ?>
-                    <div class="text-center text-muted py-3 small">ไม่มีใบเสนอราคาใกล้หมดอายุ</div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== SECTION 15: EXECUTIVE ALERT ===== -->
-    <div class="section-title"><i class="bi bi-exclamation-triangle me-1"></i> 18. Executive Alert</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>รายการเตือนที่ผู้บริหารควรทราบ: งานที่ยังไม่วางเงินมัดจำภายใน 7 วัน (เหลือง) ห้องประชุมที่ถูกจองซ้ำวันเดียวกัน (แดง) งานที่รออนุมัติ (เหลือง) และใบเสนอราคาที่เกินกำหนด (แดง) กดการ์ดเพื่อเปิดดูรายละเอียดและเข้าไปแก้ไขได้ทันที</div>
-    <div class="row g-2 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 border-<?= $alert_no_deposit > 0 ? 'warning' : 'success' ?> alert-clickable" data-alert-type="alert_no_deposit" data-alert-label="งานยังไม่ชำระมัดจำ (7 วัน)" style="cursor:pointer">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <span class="status-dot <?= $alert_no_deposit > 0 ? 'dot-yellow' : 'dot-green' ?>"></span>
-                    <div>
-                        <div class="small fw-bold">งานยังไม่ชำระมัดจำ (7 วัน)</div>
-                        <div class="fw-bold" style="font-size:1.1rem"><?= $alert_no_deposit ?></div>
+                                <div class="col-sm-7">
+                                    <ul class="lgd" id="mixLegend"></ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 border-<?= $alert_room_conflict > 0 ? 'danger' : 'success' ?> alert-clickable" data-alert-type="alert_room_conflict" data-alert-label="ห้องประชุมถูกจองซ้ำ" style="cursor:pointer">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <span class="status-dot <?= $alert_room_conflict > 0 ? 'dot-red' : 'dot-green' ?>"></span>
-                    <div>
-                        <div class="small fw-bold">ห้องประชุมถูกจองซ้ำ</div>
-                        <div class="fw-bold" style="font-size:1.1rem"><?= $alert_room_conflict ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 border-<?= $alert_pending_approval > 0 ? 'warning' : 'success' ?> alert-clickable" data-alert-type="alert_pending" data-alert-label="งานรออนุมัติ" style="cursor:pointer">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <span class="status-dot <?= $alert_pending_approval > 0 ? 'dot-yellow' : 'dot-green' ?>"></span>
-                    <div>
-                        <div class="small fw-bold">งานรออนุมัติ</div>
-                        <div class="fw-bold" style="font-size:1.1rem"><?= $alert_pending_approval ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card border shadow-sm h-100 border-<?= $alert_overdue > 0 ? 'danger' : 'success' ?> alert-clickable" data-alert-type="alert_overdue" data-alert-label="ใบเสนอราคาเกินกำหนด" style="cursor:pointer">
-                <div class="card-body py-2 px-3 d-flex align-items-center gap-2">
-                    <span class="status-dot <?= $alert_overdue > 0 ? 'dot-red' : 'dot-green' ?>"></span>
-                    <div>
-                        <div class="small fw-bold">ใบเสนอราคาเกินกำหนด</div>
-                        <div class="fw-bold" style="font-size:1.1rem"><?= $alert_overdue ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ===== SECTION 16: TODAY EVENTS LIST ===== -->
-    <div class="section-title"><i class="bi bi-calendar-week me-1"></i> 19. งานวันนี้</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>ตารางงานทั้งหมดที่จัดในวันนี้ (ตามวันที่เลือกด้านบน) เรียงตามเวลาเริ่มงาน แสดงประเภทงาน เซลล์ผู้ดูแล โรงแรม ห้องที่ใช้ ช่วงเวลา จำนวนผู้ร่วมงาน และมูลค่างาน เพื่อเตรียมความพร้อมของทีมงานก่อนงานเริ่ม</div>
-    <div class="card border shadow-sm mb-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle small">
-                    <thead class="table-light">
-                        <tr><th>ชื่องาน</th><th>ประเภท</th><th>เซลล์</th><th>โรงแรม</th><th>ห้อง</th><th>เวลา</th><th>คน</th><th class="text-end">มูลค่า</th></tr>
-                    </thead>
-                    <tbody>
-                    <?php if ($today_events_list->num_rows > 0): ?>
-                        <?php while ($ev = $today_events_list->fetch_assoc()): ?>
-                        <tr>
-                            <td><a href="view.php?id=<?= $ev['id'] ?>" class="text-decoration-none fw-medium"><?= $ev['function_name'] ?></a></td>
-                            <td><span class="badge bg-dark-subtle text-dark"><?= $ev['type_name'] ?: '-' ?></span></td>
-                            <td><?= $ev['staff_name'] ?: '-' ?></td>
-                            <td><?= $ev['company_name'] ?: '-' ?></td>
-                            <td><?= $ev['room_name'] ?: '-' ?></td>
-                            <td><?= $ev['start_time'] ? date('H:i', strtotime($ev['start_time'])).'-'.date('H:i', strtotime($ev['end_time'])) : '-' ?></td>
-                            <td class="text-center"><?= $ev['pax'] ?></td>
-                            <td class="text-end fw-bold">฿<?= number_format($ev['total_amount'], 0) ?></td>
-                        </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="8" class="text-center text-muted py-3">ไม่มีงานวันนี้</td></tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
+        <!-- ============ TAB 2: งานขาย ============ -->
+        <div class="tab-pane fade" id="tab-sales">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-5">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-funnel me-1" style="color:var(--gold)"></i>กรวยการขาย</h6>
+                            <span class="hint ms-auto">ทุกช่วงเวลา · คลิกเพื่อดูใบเสนอราคา</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>ใบเสนอราคาทั้งหมดในระบบแยกตามขั้นของการขาย: ร่างยังไม่ส่ง → ส่งให้ลูกค้าแล้ว → ลูกค้ายืนยัน → ปิดไม่สำเร็จ
+                                ความยาวแท่งคือจำนวนใบ ตัวเลขขวามือคือจำนวนใบและมูลค่ารวม ใช้ดูว่างานไปค้างอยู่ขั้นไหนมากที่สุด</span>
+                        </div>
+                        <div class="pnl-bd tight">
+                            <?php foreach ($funnel_rows as $f): ?>
+                                <div class="fn-row funnel-card" data-status="<?= $f['key'] ?>" data-label="<?= $h($f['label']) ?>">
+                                    <div class="fn-lb">
+                                        <?php if ($f['key'] === 'Cancelled'): ?><i class="bi bi-x-circle-fill" style="color:var(--crit)"></i><?php endif; ?>
+                                        <?= $h($f['label']) ?>
+                                    </div>
+                                    <div class="fn-track"><span class="fn-fill" style="width:<?= round($f['cnt'] / $funnel_max * 100) ?>%;background:<?= $f['color'] ?>"></span></div>
+                                    <div class="fn-num"><b><?= $f['cnt'] ?> ใบ</b><small>฿<?= number_format($f['val']) ?></small></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="pnl-note">
+                            อัตราปิดการขายเดือนนี้ <b style="color:var(--ink)"><?= $conversion_rate ?>%</b>
+                            (ยืนยัน <?= $q_approved ?> จาก <?= $q_total ?> ใบ) · เสียงาน <?= $q_cancelled ?> ใบ
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-7">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-file-earmark-text me-1" style="color:var(--gold)"></i>ใบเสนอราคา</h6><span class="hint ms-auto">เดือนนี้</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>สถิติใบเสนอราคาของเดือนที่เลือก — Conversion คืออัตราปิดการขาย (ใบที่ลูกค้ายืนยัน ÷ ใบที่ออกทั้งหมด)
+                                ส่วนด้านล่างคือใบที่จะหมดอายุใน 7 วัน ควรรีบตามลูกค้าให้ตัดสินใจก่อนใบหมดอายุ</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <div class="row g-2 mb-3">
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num"><?= $q_total ?></div><div class="l">ออกทั้งหมด</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num"><?= $q_today_total ?></div><div class="l">ออกวันนี้</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:var(--ok)"><?= $q_approved ?></div><div class="l">ยืนยันแล้ว</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:#9a6a06"><?= $q_pending ?></div><div class="l">รอลูกค้าตอบ</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:var(--crit)"><?= $q_cancelled ?></div><div class="l">ปิดไม่สำเร็จ</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:#2a78d6"><?= $conversion_rate ?>%</div><div class="l">Conversion</div></div></div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-alarm" style="color:var(--crit)"></i>
+                                <span class="fw-bold" style="font-size:.8rem">ใกล้หมดอายุใน 7 วัน</span>
+                            </div>
+                            <?php if ($expiring_quotes->num_rows > 0): ?>
+                                <div class="table-responsive">
+                                    <table class="tbl">
+                                        <thead><tr><th>ใบเสนอราคา</th><th>ลูกค้า</th><th>หมดอายุ</th><th class="text-end">มูลค่า</th></tr></thead>
+                                        <tbody>
+                                            <?php while ($eq = $expiring_quotes->fetch_assoc()): ?>
+                                                <tr>
+                                                    <td><a class="lk" href="quotation_view.php?id=<?= $eq['id'] ?>"><?= $h($eq['event_name'] ?: $eq['quote_no']) ?></a></td>
+                                                    <td class="text-dim"><?= $h($eq['company_name'] ?: '-') ?></td>
+                                                    <td class="num" style="color:var(--crit)"><?= date('d M', strtotime($eq['expiry_date'])) ?></td>
+                                                    <td class="text-end num fw-bold">฿<?= number_format($eq['grand_total']) ?></td>
+                                                </tr>
+                                            <?php endwhile; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <div class="text-dim" style="font-size:.78rem"><i class="bi bi-check-circle me-1" style="color:var(--ok)"></i>ไม่มีใบเสนอราคาใกล้หมดอายุ</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- ===== SECTION 17: UPCOMING EVENTS ===== -->
-    <div class="section-title"><i class="bi bi-calendar2-week me-1"></i> 20. งานที่กำลังจะมาถึง</div>
-    <div class="section-desc"><i class="bi bi-info-circle desc-icon me-1"></i>งานที่ยืนยันแล้ว (อนุมัติแล้ว) ซึ่งจะจัดในอนาคต 10 งานแรกเรียงตามวันที่ใกล้ที่สุด เพื่อให้ทีมขายและทีมปฏิบัติการเตรียมความพร้อมด้านห้อง พนักงาน อาหาร และอุปกรณ์ล่วงหน้า กดชื่องานเพื่อดูรายละเอียด</div>
-    <div class="card border shadow-sm mb-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle small">
-                    <thead class="table-light">
-                        <tr><th>ชื่องาน</th><th>ประเภท</th><th>วันที่</th><th>เวลา</th><th>โรงแรม</th><th>ห้อง</th><th class="text-end">มูลค่า</th></tr>
-                    </thead>
-                    <tbody>
-                    <?php if ($upcoming_all->num_rows > 0): ?>
-                        <?php while ($ua = $upcoming_all->fetch_assoc()): ?>
-                        <tr>
-                            <td><a href="view.php?id=<?= $ua['id'] ?>" class="text-decoration-none fw-medium"><?= $ua['function_name'] ?></a></td>
-                            <td><span class="badge bg-dark-subtle text-dark"><?= $ua['type_name'] ?: '-' ?></span></td>
-                            <td><?= $ua['start_time'] ? date('d M Y', strtotime($ua['start_time'])) : '-' ?></td>
-                            <td><?= $ua['start_time'] ? date('H:i', strtotime($ua['start_time'])).'-'.date('H:i', strtotime($ua['end_time'])) : '-' ?></td>
-                            <td><?= $ua['company_name'] ?: '-' ?></td>
-                            <td><?= $ua['room_name'] ?: '-' ?></td>
-                            <td class="text-end fw-bold">฿<?= number_format($ua['total_amount'], 0) ?></td>
-                        </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="7" class="text-center text-muted py-3">ไม่มีงานที่กำลังจะมาถึง</td></tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
+            <div class="row g-3">
+                <div class="col-xl-7">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-people me-1" style="color:var(--gold)"></i>ผลงานทีมขาย</h6>
+                            <span class="hint ms-auto">เดือนนี้ · เทียบเป้าหมาย</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>ผลงานเซลล์รายคนในเดือนที่เลือก: จำนวนงานที่ปิดได้ รายได้รวม เงินมัดจำที่เก็บได้ และ % เทียบเป้าหมายเดือนนั้น
+                                (เขียว = ถึงเป้า, เหลือง = เกินครึ่งทาง, แดง = ต่ำกว่าครึ่ง)</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="tbl">
+                                <thead><tr><th>พนักงาน</th><th class="text-center">งาน</th><th class="text-end">รายได้</th><th class="text-end">มัดจำ</th><th class="text-end">เป้าหมาย</th><th class="text-end" style="width:130px">% เป้า</th></tr></thead>
+                                <tbody>
+                                    <?php if (count($staff_data) > 0): ?>
+                                        <?php foreach ($staff_data as $sd):
+                                            $pct = $sd['target_amount'] > 0 ? round(($sd['total_revenue'] / $sd['target_amount']) * 100, 1) : 0;
+                                            $pc = $pct >= 100 ? 'var(--ok)' : ($pct >= 50 ? '#9a6a06' : 'var(--crit)');
+                                            $pb = $pct >= 100 ? 'var(--ok)' : ($pct >= 50 ? 'var(--warn)' : 'var(--crit)');
+                                            ?>
+                                            <tr>
+                                                <td><span class="who"><?= $h(mb_substr($sd['name'], 0, 1, 'UTF-8')) ?></span><?= $h($sd['name']) ?></td>
+                                                <td class="text-center num"><?= $sd['total_events'] ?></td>
+                                                <td class="text-end num fw-bold">฿<?= number_format($sd['total_revenue']) ?></td>
+                                                <td class="text-end num text-dim">฿<?= number_format($sd['total_deposit']) ?></td>
+                                                <td class="text-end num text-dim">฿<?= number_format($sd['target_amount']) ?></td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2 justify-content-end">
+                                                        <span class="fw-bold num" style="color:<?= $pc ?>"><?= $pct ?>%</span>
+                                                        <div class="prog"><span style="width:<?= min($pct, 100) ?>%;background:<?= $pb ?>"></span></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="6" class="text-center text-dim py-4">ไม่มีข้อมูล</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-5">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-trophy me-1" style="color:var(--gold)"></i>งานมูลค่าสูงสุด</h6><span class="hint ms-auto">10 อันดับแรก</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>10 งานที่มีมูลค่าสูงที่สุด ใช้ดูว่างานใหญ่มาจากลูกค้าหรือประเภทงานแบบไหน เพื่อนำไปต่อยอดการขาย</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="tbl">
+                                <thead><tr><th style="width:34px">#</th><th>ชื่องาน</th><th>วันที่</th><th class="text-end">มูลค่า</th></tr></thead>
+                                <tbody>
+                                    <?php $rk = 0; while ($te = $top_events->fetch_assoc()): $rk++; ?>
+                                        <tr>
+                                            <td><span class="rank"><?= $rk ?></span></td>
+                                            <td>
+                                                <div class="text-truncate" style="max-width:190px"><?= $h($te['function_name']) ?></div>
+                                                <span class="tag"><?= $h($te['type_name'] ?: '-') ?></span>
+                                            </td>
+                                            <td class="num text-dim"><?= $te['event_date'] ? date('d M', strtotime($te['event_date'])) : '-' ?></td>
+                                            <td class="text-end num fw-bold">฿<?= number_format($te['total_amount']) ?></td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- ============ TAB 3: ปฏิบัติการ ============ -->
+        <div class="tab-pane fade" id="tab-ops">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-5">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-calendar-check me-1" style="color:var(--gold)"></i>งานในคิวข้างหน้า</h6>
+                            <span class="hint ms-auto">คลิกเพื่อดูรายการ</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>งานที่อนุมัติแล้วและยังไม่ถึงวันจัด นับสะสมภายใน 7 / 30 / 90 / 180 วันข้างหน้า
+                                (ช่วงยาวจะรวมช่วงสั้นไว้ด้วย) ความยาวแท่งคือมูลค่างาน ใช้คาดการณ์รายได้และเตรียมห้อง ทีมงาน วัตถุดิบล่วงหน้า</span>
+                        </div>
+                        <div class="pnl-bd tight">
+                            <?php foreach ($pipe_rows as $p): ?>
+                                <div class="fn-row pipe-card" data-days="<?= $p['days'] ?>" data-label="<?= $h($p['label']) ?>">
+                                    <div class="fn-lb">ภายใน <?= $h($p['label']) ?></div>
+                                    <div class="fn-track"><span class="fn-fill" style="width:<?= round($p['val'] / $pipe_max * 100) ?>%;background:#b89441"></span></div>
+                                    <div class="fn-num"><b><?= $p['cnt'] ?> งาน</b><small>฿<?= number_format($p['val']) ?></small></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-7">
+                    <div class="pnl">
+                        <div class="pnl-hd">
+                            <h6><i class="bi bi-door-open me-1" style="color:var(--gold)"></i>การใช้ห้องประชุม</h6>
+                            <span class="hint ms-auto">จำนวนงานเดือนนี้ · คลิกแท่งเพื่อดูรายละเอียด</span>
+                        </div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>จำนวนงานที่จองใช้ห้องประชุมแต่ละห้องในเดือนที่เลือก (เฉพาะห้องที่เปิดใช้งาน)
+                                ห้องที่แท่งสั้นคือห้องที่ยังว่างมาก ควรนำไปเสนอขายหรือทบทวนราคา</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <?php if (count($room_rows) > 0): ?>
+                                <div class="chart-box" style="height:<?= max(160, count($room_rows) * 34 + 30) ?>px"><canvas id="roomChart"></canvas></div>
+                            <?php else: ?>
+                                <div class="chart-empty">ยังไม่มีการจองห้องในเดือนนี้</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pnl">
+                <div class="pnl-hd">
+                    <h6><i class="bi bi-list-check me-1" style="color:var(--gold)"></i>ตารางงาน</h6>
+                    <div class="seg ms-auto" id="evSeg">
+                        <button type="button" class="seg-btn active" data-ev="today">วันนี้ (<?= $today_events_list->num_rows ?>)</button>
+                        <button type="button" class="seg-btn" data-ev="upcoming">กำลังจะมาถึง (<?= $upcoming_all->num_rows ?>)</button>
+                    </div>
+                </div>
+                <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                    <span><b>วันนี้</b> = งานทั้งหมดของวันที่เลือก เรียงตามเวลาเริ่มงาน ใช้เช็กความพร้อมก่อนงานเริ่ม ·
+                        <b>กำลังจะมาถึง</b> = 10 งานถัดไปที่ยืนยันแล้ว เรียงตามวันที่ใกล้ที่สุด กดชื่องานเพื่อเปิดรายละเอียดงาน</span>
+                </div>
+                <div class="table-responsive" id="evToday">
+                    <table class="tbl">
+                        <thead><tr><th>ชื่องาน</th><th>ประเภท</th><th>เซลล์</th><th>โรงแรม</th><th>ห้อง</th><th>เวลา</th><th class="text-center">คน</th><th class="text-end">มูลค่า</th></tr></thead>
+                        <tbody>
+                            <?php if ($today_events_list->num_rows > 0): ?>
+                                <?php while ($ev = $today_events_list->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><a class="lk" href="view.php?id=<?= $ev['id'] ?>"><?= $h($ev['function_name']) ?></a></td>
+                                        <td><span class="tag"><?= $h($ev['type_name'] ?: '-') ?></span></td>
+                                        <td class="text-dim"><?= $h($ev['staff_name'] ?: '-') ?></td>
+                                        <td class="text-dim"><?= $h($ev['company_name'] ?: '-') ?></td>
+                                        <td class="text-dim"><?= $h($ev['room_name'] ?: '-') ?></td>
+                                        <td class="num"><?= $ev['start_time'] ? date('H:i', strtotime($ev['start_time'])) . '-' . date('H:i', strtotime($ev['end_time'])) : '-' ?></td>
+                                        <td class="text-center num"><?= $ev['pax'] ?></td>
+                                        <td class="text-end num fw-bold">฿<?= number_format($ev['total_amount']) ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr><td colspan="8" class="text-center text-dim py-4">ไม่มีงานในวันที่เลือก</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-responsive d-none" id="evUpcoming">
+                    <table class="tbl">
+                        <thead><tr><th>ชื่องาน</th><th>ประเภท</th><th>วันที่</th><th>เวลา</th><th>โรงแรม</th><th>ห้อง</th><th class="text-end">มูลค่า</th></tr></thead>
+                        <tbody>
+                            <?php if ($upcoming_all->num_rows > 0): ?>
+                                <?php while ($ua = $upcoming_all->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><a class="lk" href="view.php?id=<?= $ua['id'] ?>"><?= $h($ua['function_name']) ?></a></td>
+                                        <td><span class="tag"><?= $h($ua['type_name'] ?: '-') ?></span></td>
+                                        <td class="num"><?= $ua['start_time'] ? date('d M Y', strtotime($ua['start_time'])) : '-' ?></td>
+                                        <td class="num text-dim"><?= $ua['start_time'] ? date('H:i', strtotime($ua['start_time'])) . '-' . date('H:i', strtotime($ua['end_time'])) : '-' ?></td>
+                                        <td class="text-dim"><?= $h($ua['company_name'] ?: '-') ?></td>
+                                        <td class="text-dim"><?= $h($ua['room_name'] ?: '-') ?></td>
+                                        <td class="text-end num fw-bold">฿<?= number_format($ua['total_amount']) ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr><td colspan="7" class="text-center text-dim py-4">ไม่มีงานที่กำลังจะมาถึง</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TAB 4: การเงิน ============ -->
+        <div class="tab-pane fade" id="tab-finance">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-7">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-wallet2 me-1" style="color:var(--gold)"></i>เงินมัดจำ</h6><span class="hint ms-auto">คลิกการ์ด "รับเดือนนี้" เพื่อดูรายการโอน</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>เงินมัดจำที่รับเข้ามาจริงในวันนี้และทั้งเดือน · <b>คงเหลือในระบบ</b> คือมัดจำของงานที่ยังไม่ได้จัด ·
+                                <b>งานค้างมัดจำ</b> คือจำนวนงานที่ยืนยันแล้วแต่ยังไม่วางเงิน ซึ่งมีความเสี่ยงถูกยกเลิก ควรเร่งติดตาม</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <div class="row g-2">
+                                <div class="col-6 col-lg-3"><div class="ministat"><div class="v num" style="color:var(--ok)">฿<?= number_format($deposit_received) ?></div><div class="l">รับวันนี้</div></div></div>
+                                <div class="col-6 col-lg-3"><div class="ministat deposit-clickable" style="cursor:pointer"><div class="v num" style="color:var(--ok)">฿<?= number_format($deposit_received_mtd) ?></div><div class="l">รับเดือนนี้</div></div></div>
+                                <div class="col-6 col-lg-3"><div class="ministat"><div class="v num" style="color:#9a6a06">฿<?= number_format($total_deposit_balance) ?></div><div class="l">คงเหลือในระบบ</div></div></div>
+                                <div class="col-6 col-lg-3"><div class="ministat"><div class="v num" style="color:var(--crit)"><?= $deposit_pending_events ?></div><div class="l">งานค้างมัดจำ</div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-5">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-cash-coin me-1" style="color:var(--gold)"></i>กำไรขั้นต้น (GOP)</h6><span class="hint ms-auto">เดือนนี้</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>คำนวณจากรายการเงินที่บันทึกจริงในเดือนนี้: กำไร = รายรับ − ต้นทุน
+                                ส่วน Margin คือกำไรคิดเป็น % ของรายรับ ยิ่งสูงยิ่งดี</span>
+                        </div>
+                        <div class="pnl-bd">
+                            <div class="chart-box" style="height:150px"><canvas id="gopChart"></canvas></div>
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2" style="border-top:1px solid var(--line)">
+                                <span class="text-dim" style="font-size:.78rem">GOP Margin</span>
+                                <span class="fw-bold num" style="color:<?= $gop_forecast >= 0 ? 'var(--ok)' : 'var(--crit)' ?>"><?= $gop_margin ?>%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-xl-6">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-credit-card me-1" style="color:var(--gold)"></i>ช่องทางรับชำระเงิน</h6><span class="hint ms-auto">เดือนนี้</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>ยอดเงินที่รับเข้ามาแยกตามวิธีชำระ (เงินสด / โอน / บัตรเครดิต ฯลฯ) กดที่แถวเพื่อดูรายการรับเงินทั้งหมดของช่องทางนั้น</span>
+                        </div>
+                        <?php if (count($pay_labels) > 0): ?>
+                            <div class="table-responsive">
+                                <table class="tbl">
+                                    <thead><tr><th>ช่องทาง</th><th class="text-end">ยอดเงิน</th><th class="text-end">สัดส่วน</th></tr></thead>
+                                    <tbody>
+                                        <?php $pay_sum = array_sum($pay_values); foreach ($pay_labels as $i => $pl): ?>
+                                            <tr class="drill-pay" data-label="<?= $h($pl) ?>" style="cursor:pointer">
+                                                <td><?= $h($pl) ?></td>
+                                                <td class="text-end num fw-bold">฿<?= number_format($pay_values[$i]) ?></td>
+                                                <td class="text-end num text-dim"><?= $pay_sum > 0 ? round($pay_values[$i] / $pay_sum * 100) : 0 ?>%</td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <div class="chart-empty">ยังไม่มีรายการรับชำระในเดือนนี้</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-xl-6">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-clipboard-data me-1" style="color:var(--gold)"></i>ตัวชี้วัดสำคัญ</h6><span class="hint ms-auto">เดือนนี้</span></div>
+                        <div class="pnl-desc"><i class="bi bi-info-circle"></i>
+                            <span>สรุปตัวเลขสุขภาพธุรกิจของเดือน — <b>อัตรายกเลิก</b> ถ้าเกิน 10% ถือว่าเสี่ยง ควรตรวจสอบสาเหตุ ·
+                                <b>ลูกค้าใช้ซ้ำ</b> ยิ่งสูงยิ่งดี แปลว่าลูกค้าเก่ากลับมาจองอีก</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="tbl">
+                                <tbody>
+                                    <tr><td class="text-dim">รายรับที่บันทึกจริง</td><td class="text-end num fw-bold">฿<?= number_format($total_income_mtd) ?></td></tr>
+                                    <tr><td class="text-dim">ต้นทุนที่บันทึกจริง</td><td class="text-end num fw-bold">฿<?= number_format($total_cost_mtd) ?></td></tr>
+                                    <tr><td class="text-dim">กำไรขั้นต้น (GOP)</td><td class="text-end num fw-bold" style="color:<?= $gop_forecast >= 0 ? 'var(--ok)' : 'var(--crit)' ?>">฿<?= number_format($gop_forecast) ?></td></tr>
+                                    <tr><td class="text-dim">มูลค่าเฉลี่ยต่องาน</td><td class="text-end num fw-bold">฿<?= number_format($avg_deal) ?></td></tr>
+                                    <tr><td class="text-dim">อัตราการยกเลิกงาน</td><td class="text-end num fw-bold" style="color:<?= $cancel_rate > 10 ? 'var(--crit)' : 'var(--ok)' ?>"><?= $cancel_rate ?>% (<?= $cancelled_count ?> งาน)</td></tr>
+                                    <tr><td class="text-dim">ลูกค้าที่กลับมาใช้ซ้ำ</td><td class="text-end num fw-bold"><?= $repeat_pct ?>% (<?= $repeat_cust ?>/<?= $total_cust ?> ราย)</td></tr>
+                                    <tr><td class="text-dim">ห้องที่ถูกใช้งาน</td><td class="text-end num fw-bold"><?= $mtd_rooms_used ?> ห้อง</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <!-- DRILL-DOWN MODAL -->
 <div class="modal fade" id="drillModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header py-2" style="background:#1a1a1a;color:#fff">
-                <h6 class="modal-title fw-bold"><i class="bi bi-search text-gold me-2"></i><span id="drillTitle">รายละเอียด</span></h6>
+        <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden">
+            <div class="modal-header py-2" style="background:#16181d;color:#fff;border:0">
+                <h6 class="modal-title fw-bold" style="font-size:.9rem"><i class="bi bi-search me-2" style="color:#b89441"></i><span id="drillTitle">รายละเอียด</span></h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-2" id="drillBody"></div>
@@ -987,297 +1141,422 @@ while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 </div>
 
 <script>
-const chartColors = ['#b89441','#0d6efd','#198754','#dc3545','#6f42c1','#fd7e14','#20c997','#d63384','#0dcaf0','#6c757d'];
+/* =========================================================
+   THEME & HELPERS
+   ========================================================= */
+const SERIES = ['#b89441','#2a78d6','#eb6834','#1baf7a','#4a3aa7','#e87ba4','#008300','#e34948'];
+const INK = '#111318', INK2 = '#5b6470', MUTED = '#8a9099', GRID = '#eceef1';
+
+Chart.defaults.font.family = "'Sarabun','Inter',sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = INK2;
+Chart.defaults.maintainAspectRatio = false;
+Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(22,24,29,.95)';
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.titleFont = { size: 12, weight: '600' };
+Chart.defaults.plugins.tooltip.bodyFont = { size: 12 };
+Chart.defaults.plugins.tooltip.displayColors = false;
+
+const baht  = n => '฿' + Math.round(Number(n) || 0).toLocaleString('th-TH');
+const short = n => {
+    n = Number(n) || 0;
+    const a = Math.abs(n);
+    if (a >= 1e6) return '฿' + (n / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
+    if (a >= 1e3) return '฿' + Math.round(n / 1e3) + 'K';
+    return '฿' + Math.round(n);
+};
+const plain = n => Math.round(Number(n) || 0).toLocaleString('th-TH');
+
+/* ป้ายตัวเลขบนแท่ง — ให้อ่านค่าได้โดยไม่ต้องเล็งแกน */
+const barValues = {
+    id: 'barValues',
+    afterDatasetsDraw(chart, args, opts) {
+        const fmt = opts.fmt || short;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = "600 11px 'Sarabun',sans-serif";
+        ctx.fillStyle = INK2;
+        ctx.textBaseline = 'middle';
+        chart.data.datasets.forEach((ds, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (meta.hidden) return;
+            meta.data.forEach((el, i) => {
+                const v = ds.data[i];
+                if (!v) return;
+                if (chart.options.indexAxis === 'y') {
+                    ctx.textAlign = 'left';
+                    ctx.fillText(fmt(v), el.x + 7, el.y);
+                } else {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(fmt(v), el.x, el.y - 9);
+                }
+            });
+        });
+        ctx.restore();
+    }
+};
+
+/* ยอดรวมกลางโดนัท */
+const donutCenter = {
+    id: 'donutCenter',
+    afterDraw(chart, args, opts) {
+        const total = chart.data.datasets[0].data.reduce((s, v) => s + (Number(v) || 0), 0);
+        const { top, bottom, left, right } = chart.chartArea;
+        const x = (left + right) / 2, y = (top + bottom) / 2;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = MUTED;
+        ctx.font = "600 10px 'Sarabun',sans-serif";
+        ctx.fillText(opts.label || 'รวม', x, y - 11);
+        ctx.fillStyle = INK;
+        ctx.font = "700 16px 'Sarabun',sans-serif";
+        ctx.fillText(short(total), x, y + 9);
+        ctx.restore();
+    }
+};
+
+const axisMoney = { grid: { color: GRID, drawTicks: false }, border: { display: false }, ticks: { callback: v => short(v), padding: 6 } };
+const axisCat   = { grid: { display: false }, border: { display: false }, ticks: { padding: 4, color: INK2, font: { size: 11 } } };
+
+/* =========================================================
+   DRILL-DOWN
+   ========================================================= */
 const drillData = <?= json_encode($dd, JSON_UNESCAPED_UNICODE) ?>;
 
 function showDrill(title, rows, columns) {
     document.getElementById('drillTitle').textContent = title;
-    let html = '';
+    let html;
     if (!rows || rows.length === 0) {
-        html = '<div class="text-center text-muted py-5">ไม่มีข้อมูลรายละเอียด</div>';
+        html = '<div class="text-center py-5" style="color:#8a9099">ไม่มีข้อมูลรายละเอียด</div>';
     } else {
-        html = '<div class="table-responsive"><table class="table table-hover table-sm align-middle mb-0" style="font-size:0.8rem"><thead class="table-light"><tr>';
-        columns.forEach(c => { html += '<th>' + c.label + '</th>'; });
+        html = '<div class="table-responsive"><table class="tbl"><thead><tr>';
+        columns.forEach(c => { html += '<th' + (c.type === 'money' ? ' class="text-end"' : '') + '>' + c.label + '</th>'; });
         html += '</tr></thead><tbody>';
         rows.forEach(r => {
             html += '<tr>';
             columns.forEach(c => {
-                let val = r[c.key] || '-';
-                if (c.type === 'money') val = '฿' + Number(val).toLocaleString();
-                if (c.type === 'link') val = '<a href="view.php?id=' + r.id + '" class="text-decoration-none fw-medium">' + val + '</a>';
-                if (c.type === 'q_link') val = '<a href="quotation_view.php?id=' + r.id + '" class="text-decoration-none fw-medium">' + val + '</a>';
-                html += '<td>' + val + '</td>';
+                let val = (r[c.key] === null || r[c.key] === undefined || r[c.key] === '') ? '-' : r[c.key];
+                let cls = '';
+                if (c.type === 'money') { val = baht(r[c.key]); cls = ' class="text-end num fw-bold"'; }
+                if (c.type === 'link')   val = '<a class="lk" href="view.php?id=' + r.id + '">' + val + '</a>';
+                if (c.type === 'q_link') val = '<a class="lk" href="quotation_view.php?id=' + r.id + '">' + val + '</a>';
+                html += '<td' + cls + '>' + val + '</td>';
             });
             html += '</tr>';
         });
         html += '</tbody></table></div>';
-        html += '<div class="text-end small text-muted mt-1">ทั้งหมด ' + rows.length + ' รายการ | รวม ฿' + rows.reduce((s,r) => s + Number(r.total_amount||r.grand_total||r.amount||0), 0).toLocaleString() + '</div>';
+        const sum = rows.reduce((s, r) => s + Number(r.total_amount || r.grand_total || r.amount || 0), 0);
+        html += '<div class="text-end mt-2 px-2" style="font-size:.78rem;color:#5b6470">ทั้งหมด <b>' + rows.length + '</b> รายการ · รวม <b>' + baht(sum) + '</b></div>';
     }
     document.getElementById('drillBody').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('drillModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('drillModal')).show();
 }
-
-function filterDrill(key, field, value) {
-    return drillData[key].filter(r => r[field] === value);
-}
+const filterDrill = (key, field, value) => (drillData[key] || []).filter(r => r[field] === value);
 
 const eventCols = [
-    {key:'function_name', label:'ชื่องาน', type:'link'},
-    {key:'type_name', label:'ประเภท'},
-    {key:'company_name', label:'โรงแรม'},
-    {key:'staff_name', label:'เซลล์'},
-    {key:'ev_date', label:'วันที่'},
-    {key:'ev_time', label:'เวลา'},
-    {key:'pax', label:'คน'},
-    {key:'total_amount', label:'มูลค่า', type:'money'}
+    { key: 'function_name', label: 'ชื่องาน', type: 'link' },
+    { key: 'type_name', label: 'ประเภท' },
+    { key: 'company_name', label: 'โรงแรม' },
+    { key: 'staff_name', label: 'เซลล์' },
+    { key: 'ev_date', label: 'วันที่' },
+    { key: 'ev_time', label: 'เวลา' },
+    { key: 'pax', label: 'คน' },
+    { key: 'total_amount', label: 'มูลค่า', type: 'money' }
 ];
 const eventColsShort = [
-    {key:'function_name', label:'ชื่องาน', type:'link'},
-    {key:'type_name', label:'ประเภท'},
-    {key:'company_name', label:'โรงแรม'},
-    {key:'ev_date', label:'วันที่'},
-    {key:'total_amount', label:'มูลค่า', type:'money'}
+    { key: 'function_name', label: 'ชื่องาน', type: 'link' },
+    { key: 'type_name', label: 'ประเภท' },
+    { key: 'company_name', label: 'โรงแรม' },
+    { key: 'ev_date', label: 'วันที่' },
+    { key: 'total_amount', label: 'มูลค่า', type: 'money' }
 ];
 const quoteCols = [
-    {key:'quote_no', label:'เลขที่', type:'q_link'},
-    {key:'event_name', label:'ชื่องาน'},
-    {key:'company_name', label:'โรงแรม'},
-    {key:'status', label:'สถานะ'},
-    {key:'ev_date', label:'วันจัดงาน'},
-    {key:'staff_name', label:'เซลล์'},
-    {key:'grand_total', label:'มูลค่า', type:'money'}
+    { key: 'quote_no', label: 'เลขที่', type: 'q_link' },
+    { key: 'event_name', label: 'ชื่องาน' },
+    { key: 'company_name', label: 'โรงแรม' },
+    { key: 'status', label: 'สถานะ' },
+    { key: 'ev_date', label: 'วันจัดงาน' },
+    { key: 'staff_name', label: 'เซลล์' },
+    { key: 'grand_total', label: 'มูลค่า', type: 'money' }
 ];
 const depositCols = [
-    {key:'function_name', label:'ชื่องาน'},
-    {key:'company_name', label:'โรงแรม'},
-    {key:'detail', label:'รายละเอียด'},
-    {key:'amount', label:'จำนวนเงิน', type:'money'},
-    {key:'payment_method', label:'ช่องทาง'},
-    {key:'tx_date', label:'วันที่'}
+    { key: 'function_name', label: 'ชื่องาน' },
+    { key: 'company_name', label: 'โรงแรม' },
+    { key: 'detail', label: 'รายละเอียด' },
+    { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+    { key: 'payment_method', label: 'ช่องทาง' },
+    { key: 'tx_date', label: 'วันที่' }
 ];
 
-<?php if (count($type_names) > 0): ?>
-var typeRevChart = new Chart(document.getElementById('typeRevChart'), {
-    type: 'bar',
-    data: {
-        labels: [<?php foreach ($type_names as $tn): ?>'<?= addslashes($tn) ?>',<?php endforeach; ?>],
-        datasets: [
-            { label: 'วันนี้', data: [<?php foreach ($type_today as $tt): ?><?= $tt ?>,<?php endforeach; ?>], backgroundColor: '#b89441', borderRadius: 4 },
-            { label: 'MTD', data: [<?php foreach ($type_mtd as $tm): ?><?= $tm ?>,<?php endforeach; ?>], backgroundColor: '#0d6efd', borderRadius: 4 }
-        ]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }, cursor: { pointer: true } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '฿'+v.toLocaleString() } } } }
-});
-document.getElementById('typeRevChart').onclick = function(e) {
-    var pts = typeRevChart.getElementsAtEventForMode(e, 'index', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = typeRevChart.data.labels[pts[0].index];
-        var rows = filterDrill('type', 'type_name', label);
-        showDrill('รายได้ตามประเภท: ' + label + ' (MTD)', rows, eventColsShort);
+/* =========================================================
+   CHART DATA (from PHP)
+   ========================================================= */
+const D = {
+    trend:   <?= json_encode($monthly_trend, JSON_UNESCAPED_UNICODE) ?>,
+    type:    <?= json_encode($type_rows, JSON_UNESCAPED_UNICODE) ?>,
+    company: <?= json_encode($comp_rows, JSON_UNESCAPED_UNICODE) ?>,
+    room:    <?= json_encode($room_rows, JSON_UNESCAPED_UNICODE) ?>,
+    gop:     { income: <?= (float) $total_income_mtd ?>, cost: <?= (float) $total_cost_mtd ?>, profit: <?= (float) $gop_forecast ?> },
+    mix: {
+        source: { title: 'แหล่งลูกค้า', labels: <?= json_encode($mix_source['labels'], JSON_UNESCAPED_UNICODE) ?>, values: <?= json_encode($mix_source['values']) ?>, key: 'source',  field: 'lead_source',    cols: 'short' },
+        period: { title: 'ช่วงเวลาจัดงาน', labels: <?= json_encode($mix_period['labels'], JSON_UNESCAPED_UNICODE) ?>, values: <?= json_encode($mix_period['values']) ?>, key: 'period',  field: 'period',         cols: 'full' },
+        pay:    { title: 'ช่องทางชำระเงิน', labels: <?= json_encode($mix_pay['labels'], JSON_UNESCAPED_UNICODE) ?>,    values: <?= json_encode($mix_pay['values']) ?>,    key: 'payment', field: 'payment_method', cols: 'deposit' }
     }
 };
-<?php endif; ?>
+const COLS = { short: eventColsShort, full: eventCols, deposit: depositCols };
 
-<?php if (count($seg_labels) > 0): ?>
-var segPieChart = new Chart(document.getElementById('segPieChart'), {
-    type: 'doughnut',
-    data: {
-        labels: [<?php foreach ($seg_labels as $sl): ?>'<?= addslashes($sl) ?>',<?php endforeach; ?>],
-        datasets: [{ data: [<?php foreach ($seg_values as $sv): ?><?= $sv ?>,<?php endforeach; ?>], backgroundColor: chartColors, borderWidth: 1 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } } } }
-});
-document.getElementById('segPieChart').onclick = function(e) {
-    var pts = segPieChart.getElementsAtEventForMode(e, 'nearest', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = segPieChart.data.labels[pts[0].index];
-        var rows = filterDrill('type', 'type_name', label);
-        showDrill('สัดส่วนรายได้: ' + label, rows, eventColsShort);
-    }
-};
-<?php endif; ?>
+/* =========================================================
+   CHART BUILDERS (lazy — สร้างเมื่อแท็บถูกเปิด)
+   ========================================================= */
+const charts = {};
 
-var funnelChart = new Chart(document.getElementById('funnelChart'), {
-    type: 'bar',
-    data: {
-        labels: ['Draft/Prospect','Quotation Sent','Confirmed','Lost'],
-        datasets: [{ data: [<?= $pipe_prospect ?>,<?= $pipe_quotation ?>,<?= $pipe_confirmed ?>,<?= $pipe_lost ?>], backgroundColor: ['#6c757d','#0d6efd','#198754','#dc3545'], borderRadius: 4 }]
-    },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
-});
-var pipeStatusMap = {0:'Draft', 1:'Sent', 2:'Approved', 3:'Cancelled'};
-document.getElementById('funnelChart').onclick = function(e) {
-    var pts = funnelChart.getElementsAtEventForMode(e, 'index', {intersect:true}, true);
-    if (pts.length > 0) {
-        var idx = pts[0].index;
-        var status = pipeStatusMap[idx];
-        var label = funnelChart.data.labels[idx];
-        var rows = filterDrill('pipeline', 'status', status);
-        showDrill('Sales Pipeline: ' + label, rows, quoteCols);
-    }
-};
+function buildTrend() {
+    const el = document.getElementById('trendChart');
+    if (!el) return;
+    const labels = D.trend.map(r => r.label), values = D.trend.map(r => r.total);
+    const maxIdx = values.indexOf(Math.max(...values));
+    const g = el.getContext('2d').createLinearGradient(0, 0, 0, 240);
+    g.addColorStop(0, 'rgba(184,148,65,.28)');
+    g.addColorStop(1, 'rgba(184,148,65,0)');
 
-<?php if (count($src_labels) > 0): ?>
-var sourceChart = new Chart(document.getElementById('sourceChart'), {
-    type: 'pie',
-    data: {
-        labels: [<?php foreach ($src_labels as $sl): ?>'<?= addslashes($sl) ?>',<?php endforeach; ?>],
-        datasets: [{ data: [<?php foreach ($src_values as $sv): ?><?= $sv ?>,<?php endforeach; ?>], backgroundColor: chartColors, borderWidth: 1 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } } } }
-});
-document.getElementById('sourceChart').onclick = function(e) {
-    var pts = sourceChart.getElementsAtEventForMode(e, 'nearest', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = sourceChart.data.labels[pts[0].index];
-        var rows = filterDrill('source', 'lead_source', label);
-        showDrill('แหล่งลูกค้า: ' + label, rows, eventColsShort);
-    }
-};
-<?php endif; ?>
-
-<?php if (count($period_labels_arr) > 0): ?>
-var periodChart = new Chart(document.getElementById('periodChart'), {
-    type: 'doughnut',
-    data: {
-        labels: [<?php foreach ($period_labels_arr as $pl): ?>'<?= $pl ?>',<?php endforeach; ?>],
-        datasets: [{ data: [<?php foreach ($period_rev_arr as $pr): ?><?= $pr ?>,<?php endforeach; ?>], backgroundColor: ['#ffc107','#0d6efd','#6f42c1'], borderWidth: 1 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } } } }
-});
-document.getElementById('periodChart').onclick = function(e) {
-    var pts = periodChart.getElementsAtEventForMode(e, 'nearest', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = periodChart.data.labels[pts[0].index];
-        var rows = filterDrill('period', 'period', label);
-        showDrill('ช่วงเวลา: ' + label + ' (MTD)', rows, eventCols);
-    }
-};
-<?php endif; ?>
-
-<?php if (count($pay_labels) > 0): ?>
-var payChart = new Chart(document.getElementById('payChart'), {
-    type: 'doughnut',
-    data: {
-        labels: [<?php foreach ($pay_labels as $pl): ?>'<?= addslashes($pl) ?>',<?php endforeach; ?>],
-        datasets: [{ data: [<?php foreach ($pay_values as $pv): ?><?= $pv ?>,<?php endforeach; ?>], backgroundColor: chartColors, borderWidth: 1 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } } } }
-});
-document.getElementById('payChart').onclick = function(e) {
-    var pts = payChart.getElementsAtEventForMode(e, 'nearest', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = payChart.data.labels[pts[0].index];
-        var rows = filterDrill('payment', 'payment_method', label);
-        showDrill('ช่องทางชำระเงิน: ' + label, rows, depositCols);
-    }
-};
-<?php endif; ?>
-
-var trendChart = new Chart(document.getElementById('trendChart'), {
-    type: 'bar',
-    data: {
-        labels: [<?php foreach ($monthly_trend as $mt): ?>'<?= $mt['label'] ?>',<?php endforeach; ?>],
-        datasets: [{ label: 'รายได้ (บาท)', data: [<?php foreach ($monthly_trend as $mt): ?><?= $mt['total'] ?>,<?php endforeach; ?>], backgroundColor: '#b89441', borderColor: '#b89441', borderWidth: 1, borderRadius: 4 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '฿'+v.toLocaleString() } } } }
-});
-var monthLabels = [<?php foreach ($monthly_trend as $mt): ?>'<?= $mt['label'] ?>',<?php endforeach; ?>];
-document.getElementById('trendChart').onclick = function(e) {
-    var pts = trendChart.getElementsAtEventForMode(e, 'index', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = trendChart.data.labels[pts[0].index];
-        var rows = drillData['month'].filter(r => r.month_label === label);
-        showDrill('แนวโน้มรายได้เดือน ' + label, rows, eventColsShort);
-    }
-};
-
-<?php if (count($comp_names) > 0): ?>
-var companyChart = new Chart(document.getElementById('companyChart'), {
-    type: 'bar',
-    data: {
-        labels: [<?php foreach ($comp_names as $cn): ?>'<?= addslashes($cn) ?>',<?php endforeach; ?>],
-        datasets: [{ label: 'รายได้ MTD', data: [<?php foreach ($comp_mtd as $cm): ?><?= $cm ?>,<?php endforeach; ?>], backgroundColor: '#0d6efd', borderRadius: 4 }]
-    },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { callback: v => '฿'+v.toLocaleString() } } } }
-});
-document.getElementById('companyChart').onclick = function(e) {
-    var pts = companyChart.getElementsAtEventForMode(e, 'index', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = companyChart.data.labels[pts[0].index];
-        var rows = filterDrill('company', 'company_name', label);
-        showDrill('รายได้ตามโรงแรม: ' + label, rows, eventColsShort);
-    }
-};
-<?php endif; ?>
-
-<?php if (count($room_labels) > 0): ?>
-var roomChart = new Chart(document.getElementById('roomChart'), {
-    type: 'bar',
-    data: {
-        labels: [<?php foreach ($room_labels as $rl): ?>'<?= addslashes($rl) ?>',<?php endforeach; ?>],
-        datasets: [{ label: 'จำนวนงาน MTD', data: [<?php foreach ($room_bookings as $rb): ?><?= $rb ?>,<?php endforeach; ?>], backgroundColor: '#20c997', borderRadius: 4 }]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-});
-document.getElementById('roomChart').onclick = function(e) {
-    var pts = roomChart.getElementsAtEventForMode(e, 'index', {intersect:true}, true);
-    if (pts.length > 0) {
-        var label = roomChart.data.labels[pts[0].index];
-        var rows = filterDrill('room', 'room_name', label);
-        showDrill('ห้องประชุม: ' + label, rows, eventCols);
-    }
-};
-<?php endif; ?>
-
-// ===== CARD CLICK HANDLERS =====
-// Pipeline cards
-document.querySelectorAll('#pipelineCards .pipe-card').forEach(function(card) {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() {
-        var days = this.dataset.days;
-        var label = this.dataset.label;
-        var rows = drillData['future'][days] || [];
-        showDrill('งานที่จะมาถึงภายใน ' + label, rows, eventCols);
+    charts.trend = new Chart(el, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'รายได้', data: values,
+                borderColor: SERIES[0], backgroundColor: g, borderWidth: 2,
+                fill: true, tension: .2, cubicInterpolationMode: 'monotone',
+                pointBackgroundColor: SERIES[0], pointBorderColor: '#fff', pointBorderWidth: 2,
+                pointRadius: 5, pointHoverRadius: 8, pointHitRadius: 24
+            }]
+        },
+        options: {
+            layout: { padding: { top: 24, right: 10 } },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => 'รายได้ ' + baht(c.parsed.y) } },
+                pointTips: { indexes: [maxIdx, values.length - 1] }
+            },
+            scales: { y: { beginAtZero: true, ...axisMoney }, x: axisCat }
+        },
+        plugins: [{
+            id: 'pointTips',
+            afterDatasetsDraw(chart, a, opts) {
+                const meta = chart.getDatasetMeta(0), ctx = chart.ctx;
+                ctx.save();
+                ctx.font = "700 11px 'Sarabun',sans-serif";
+                ctx.fillStyle = INK;
+                ctx.textAlign = 'center';
+                [...new Set(opts.indexes)].forEach(i => {
+                    const p = meta.data[i];
+                    if (p) ctx.fillText(short(chart.data.datasets[0].data[i]), p.x, p.y - 14);
+                });
+                ctx.restore();
+            }
+        }]
     });
-});
+    el.onclick = e => {
+        const pts = charts.trend.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+        if (!pts.length) return;
+        const label = labels[pts[0].index];
+        showDrill('งานของเดือน ' + label, (drillData.month || []).filter(r => r.month_label === label), eventColsShort);
+    };
+}
 
-// Funnel pipeline cards
-document.querySelectorAll('#funnelCards .funnel-card').forEach(function(card) {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() {
-        var status = this.dataset.status;
-        var label = this.dataset.label;
-        var rows = filterDrill('pipeline', 'status', status);
-        showDrill('Sales Pipeline: ' + label, rows, quoteCols);
+function hBar(elId, rows, color, fmt, onPick) {
+    const el = document.getElementById(elId);
+    if (!el || !rows.length) return null;
+    const c = new Chart(el, {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                data: rows.map(r => r.value !== undefined ? r.value : r.mtd),
+                backgroundColor: color, borderRadius: 4, borderSkipped: false,
+                barThickness: 14, maxBarThickness: 18
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            layout: { padding: { right: 58 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.x) } },
+                barValues: { fmt }
+            },
+            scales: {
+                x: { beginAtZero: true, display: false, grid: { display: false } },
+                y: axisCat
+            }
+        },
+        plugins: [barValues]
     });
-});
+    if (onPick) el.onclick = e => {
+        const pts = c.getElementsAtEventForMode(e, 'y', { intersect: false }, true);
+        if (pts.length) onPick(c.data.labels[pts[0].index]);
+    };
+    return c;
+}
 
-// Alert cards
-document.querySelectorAll('.alert-clickable').forEach(function(card) {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() {
-        var type = this.dataset.alertType;
-        var label = this.dataset.alertLabel;
-        var rows = drillData[type] || [];
-        var cols = type === 'alert_overdue' ? quoteCols : eventColsShort;
-        showDrill(label, rows, cols);
+function buildOverview() {
+    buildTrend();
+    charts.type = hBar('typeChart', D.type.slice(0, 8), SERIES[0], baht,
+        label => showDrill('ประเภทงาน: ' + label, filterDrill('type', 'type_name', label), eventColsShort));
+    charts.company = hBar('companyChart', D.company, SERIES[1], baht,
+        label => showDrill('โรงแรม: ' + label, filterDrill('company', 'company_name', label), eventColsShort));
+    buildMix('source');
+}
+
+let mixKey = 'source';
+function buildMix(which) {
+    mixKey = which;
+    const m = D.mix[which], el = document.getElementById('mixChart');
+    if (!el) return;
+    const total = m.values.reduce((s, v) => s + v, 0);
+
+    if (charts.mix) charts.mix.destroy();
+    charts.mix = new Chart(el, {
+        type: 'doughnut',
+        data: {
+            labels: m.labels,
+            datasets: [{
+                data: m.values, backgroundColor: SERIES.slice(0, m.labels.length),
+                borderColor: '#fff', borderWidth: 2, hoverOffset: 6
+            }]
+        },
+        options: {
+            cutout: '64%',
+            plugins: {
+                legend: { display: false },
+                donutCenter: { label: m.title },
+                tooltip: { callbacks: { label: c => c.label + ' · ' + baht(c.parsed) + ' (' + (total ? Math.round(c.parsed / total * 100) : 0) + '%)' } }
+            }
+        },
+        plugins: [donutCenter]
     });
-});
 
-// Deposit cards
-document.querySelectorAll('.deposit-clickable').forEach(function(card) {
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() {
-        var rows = drillData['deposit'] || [];
-        showDrill('รายการรับเงินมัดจำ MTD', rows, depositCols);
+    const lg = document.getElementById('mixLegend');
+    lg.innerHTML = m.labels.length
+        ? m.labels.map((l, i) => '<li data-label="' + l.replace(/"/g, '&quot;') + '">'
+            + '<span class="sw" style="background:' + SERIES[i] + '"></span>'
+            + '<span class="nm">' + l + '</span>'
+            + '<span class="vl">' + baht(m.values[i]) + '</span>'
+            + '<span class="pc">' + (total ? Math.round(m.values[i] / total * 100) : 0) + '%</span></li>').join('')
+        : '<li class="text-center d-block" style="color:#8a9099">ไม่มีข้อมูลในเดือนนี้</li>';
+
+    const pick = label => {
+        const rows = label === 'อื่นๆ'
+            ? (drillData[m.key] || []).filter(r => !m.labels.includes(r[m.field]))
+            : filterDrill(m.key, m.field, label);
+        showDrill(m.title + ': ' + label, rows, COLS[m.cols]);
+    };
+    lg.querySelectorAll('li[data-label]').forEach(li => li.onclick = () => pick(li.dataset.label));
+    el.onclick = e => {
+        const pts = charts.mix.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+        if (pts.length) pick(m.labels[pts[0].index]);
+    };
+}
+
+function buildOps() {
+    charts.room = hBar('roomChart', D.room, SERIES[3], v => plain(v) + ' งาน',
+        label => showDrill('ห้องประชุม: ' + label, filterDrill('room', 'room_name', label), eventCols));
+}
+
+function buildFinance() {
+    const el = document.getElementById('gopChart');
+    if (!el) return;
+    charts.gop = new Chart(el, {
+        type: 'bar',
+        data: {
+            labels: ['รายรับ', 'ต้นทุน', 'กำไร'],
+            datasets: [{
+                data: [D.gop.income, D.gop.cost, D.gop.profit],
+                backgroundColor: [SERIES[1], SERIES[2], D.gop.profit >= 0 ? '#0ca30c' : '#d03b3b'],
+                borderRadius: 4, borderSkipped: false, barThickness: 34
+            }]
+        },
+        options: {
+            layout: { padding: { top: 22 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => baht(c.parsed.y) } },
+                barValues: { fmt: short }
+            },
+            scales: { y: { beginAtZero: true, display: false }, x: axisCat }
+        },
+        plugins: [barValues]
     });
+}
+
+/* =========================================================
+   TABS — สร้างกราฟครั้งแรกที่เปิดแท็บ (canvas ในแท็บที่ซ่อนอยู่วัดขนาดไม่ได้)
+   ========================================================= */
+const builders = { 'tab-overview': buildOverview, 'tab-sales': null, 'tab-ops': buildOps, 'tab-finance': buildFinance };
+const built = {};
+function buildTab(id) {
+    if (built[id]) return;
+    built[id] = true;
+    if (builders[id]) builders[id]();
+}
+document.querySelectorAll('#execTab [data-bs-toggle="tab"]').forEach(btn => {
+    btn.addEventListener('shown.bs.tab', e => buildTab(e.target.dataset.bsTarget.replace('#', '')));
+});
+buildTab('tab-overview');
+
+/* สลับมุมมองสัดส่วนธุรกิจ */
+document.querySelectorAll('#mixSeg .seg-btn').forEach(b => b.addEventListener('click', function () {
+    document.querySelectorAll('#mixSeg .seg-btn').forEach(x => x.classList.remove('active'));
+    this.classList.add('active');
+    buildMix(this.dataset.mix);
+}));
+
+/* สลับตารางงานวันนี้ / กำลังจะมาถึง */
+document.querySelectorAll('#evSeg .seg-btn').forEach(b => b.addEventListener('click', function () {
+    document.querySelectorAll('#evSeg .seg-btn').forEach(x => x.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('evToday').classList.toggle('d-none', this.dataset.ev !== 'today');
+    document.getElementById('evUpcoming').classList.toggle('d-none', this.dataset.ev !== 'upcoming');
+}));
+
+/* =========================================================
+   CLICK HANDLERS
+   ========================================================= */
+document.querySelectorAll('.pipe-card').forEach(c => c.addEventListener('click', function () {
+    showDrill('งานที่จะมาถึงภายใน ' + this.dataset.label, drillData.future[this.dataset.days] || [], eventCols);
+}));
+
+document.querySelectorAll('.funnel-card').forEach(c => c.addEventListener('click', function () {
+    showDrill('ใบเสนอราคา: ' + this.dataset.label, filterDrill('pipeline', 'status', this.dataset.status), quoteCols);
+}));
+
+document.querySelectorAll('.alert-clickable').forEach(c => c.addEventListener('click', function () {
+    const t = this.dataset.alertType;
+    showDrill(this.dataset.alertLabel, drillData[t] || [], t === 'alert_overdue' ? quoteCols : eventColsShort);
+}));
+
+document.querySelectorAll('.deposit-clickable').forEach(c => c.addEventListener('click', () => {
+    showDrill('รายการรับเงินมัดจำเดือนนี้', drillData.deposit || [], depositCols);
+}));
+
+document.querySelectorAll('.drill-type').forEach(r => r.addEventListener('click', function () {
+    showDrill('ประเภทงาน: ' + this.dataset.label, filterDrill('type', 'type_name', this.dataset.label), eventColsShort);
+}));
+
+document.querySelectorAll('.drill-pay').forEach(r => r.addEventListener('click', function () {
+    showDrill('ช่องทางชำระเงิน: ' + this.dataset.label, filterDrill('payment', 'payment_method', this.dataset.label), depositCols);
+}));
+
+document.getElementById('tileToday')?.addEventListener('click', () => {
+    showDrill('งานวันที่ <?= date('d M Y', strtotime($selected_date)) ?>',
+        (drillData.type || []).filter(r => r.ev_date === '<?= $selected_date ?>'), eventCols);
 });
 
-// KPI target card
-document.getElementById('kpiTargetCard') && (document.getElementById('kpiTargetCard').style.cursor = 'pointer');
-document.getElementById('kpiTargetCard') && document.getElementById('kpiTargetCard').addEventListener('click', function() {
-    showDrill('รายชื่อพนักงาน vs เป้าหมาย', <?= json_encode(array_map(function($s) use ($selected_year, $selected_month) {
+document.getElementById('tileMtd')?.addEventListener('click', () => {
+    showDrill('ผลงานทีมขายเทียบเป้าหมาย', <?= json_encode(array_map(function ($s) {
         $pct = $s['target_amount'] > 0 ? round(($s['total_revenue'] / $s['target_amount']) * 100, 1) : 0;
         return [
             'function_name' => $s['name'],
@@ -1289,10 +1568,12 @@ document.getElementById('kpiTargetCard') && document.getElementById('kpiTargetCa
     }, $staff_data), JSON_UNESCAPED_UNICODE) ?>, eventColsShort);
 });
 
-// Stat cards - today total
-document.getElementById('cardTodayTotal') && document.getElementById('cardTodayTotal').addEventListener('click', function() {
-    var rows = drillData['type'].filter(r => r.ev_date === '<?= $selected_date ?>');
-    showDrill('งานวันนี้ <?= date('d M Y', strtotime($selected_date)) ?>', rows, eventCols);
+document.getElementById('tileConv')?.addEventListener('click', () => {
+    showDrill('ใบเสนอราคาทั้งหมด', drillData.pipeline || [], quoteCols);
+});
+
+document.getElementById('tileDeposit')?.addEventListener('click', () => {
+    showDrill('รายการรับเงินมัดจำเดือนนี้', drillData.deposit || [], depositCols);
 });
 </script>
 

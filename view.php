@@ -548,7 +548,7 @@ $menus = $conn->query($sql_menus);
                     $menu_grand_total += $menu_total;
                 ?>
                     <tr>
-                        <td class="text-center"><?php echo $row['menu_time']; ?></td>
+                        <td class="text-center"><?php echo thai_date($row['menu_time']); ?></td>
                         <td class="text-center"><?= htmlspecialchars($row['category_name'] ?? ($row['set_name'] ?? '-')) ?></td>
                         <td><?php echo nl2br($row['menu_detail']); ?></td>
                         <td class="text-center fw-bold"><?php echo number_format($row['menu_qty']); ?></td>
