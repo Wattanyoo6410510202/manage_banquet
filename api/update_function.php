@@ -280,6 +280,46 @@ if (isset($_POST['update'])) {
 
         $conn->commit();
         $_SESSION['flash_msg'] = "update_success";
+
+        // LINE แจ้งทุกแผนกเมื่อมีการแก้งานที่อนุมัติไปแล้ว
+        // (งานที่ยังไม่อนุมัติยังไม่มีใครเตรียมของ ไม่ต้องกวนให้รก)
+        try {
+            include_once __DIR__ . "/../line_helper.php";
+            $u = $conn->query("SELECT function_name, booking_name, phone, booking_room, pax, total_amount,
+                                      function_code, start_time, end_time, approve
+                               FROM functions WHERE id = " . intval($function_id))->fetch_assoc();
+
+            if ($u && intval($u['approve']) === 1) {
+                $origin = lineOriginUrl();
+                $flex = buildNotifyFlex([
+                    'title'    => '✏️ งานที่อนุมัติแล้วถูกแก้ไข',
+                    'subtitle' => 'Approved Event Updated',
+                    'color'    => '#E67E22',
+                    'rows'     => [
+                        ['📌', $u['function_name'], '#111111'],
+                        ['👤', $u['booking_name']],
+                        ['📞', $u['phone']],
+                        ['🏠', $u['booking_room']],
+                        ['👥', $u['pax'] . ' ท่าน'],
+                        ['📅 เริ่ม', !empty($u['start_time']) ? date('d/m/Y H:i', strtotime($u['start_time'])) : '-'],
+                        ['📅 สิ้นสุด', !empty($u['end_time']) ? date('d/m/Y H:i', strtotime($u['end_time'])) : '-'],
+                        ['🆔', $u['function_code'], '#111111'],
+                        ['✍️ แก้โดย', $_SESSION['user_name'] ?? '-'],
+                    ],
+                    'note'     => 'กรุณาเปิดดูรายละเอียดใหม่ ข้อมูลที่เตรียมไว้เดิมอาจไม่ตรงแล้ว',
+                    'buttons'  => [['ดูรายละเอียดล่าสุด', $origin . '/manage_banquet/view.php?id=' . intval($function_id)]],
+                ]);
+                sendLineFlexToRoles(
+                    $conn,
+                    ['banquet_staff', 'technician', 'housekeeping', 'admin', 'procurement', 'gm'],
+                    $flex,
+                    '✏️ งานถูกแก้ไข: ' . $u['function_name']
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('[LINE] update function notify failed: ' . $e->getMessage());
+        }
+
         header("Location: ../edit.php?id=" . $function_id);
         exit;
     } catch (\Throwable $e) {

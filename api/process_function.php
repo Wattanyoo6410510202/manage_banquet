@@ -299,6 +299,35 @@ if (isset($_POST['save'])) {
         $conn->commit();
         $_SESSION['flash_msg'] = "success";
 
+        // LINE แจ้ง GM/Admin ว่ามีงานใหม่รออนุมัติ
+        // ครอบ try ไว้เพราะแจ้งเตือนล้มเหลวต้องไม่ทำให้การบันทึกงานพัง (commit ไปแล้ว)
+        try {
+            include_once __DIR__ . "/../line_helper.php";
+            $origin = lineOriginUrl();
+            $flex = buildNotifyFlex([
+                'title'    => '⏳ มีงานใหม่รออนุมัติ',
+                'subtitle' => 'New Event - Pending Approval',
+                'color'    => '#F39C12',
+                'rows'     => [
+                    ['📌', $function_name, '#111111'],
+                    ['👤', $booking_name],
+                    ['📞', $phone],
+                    ['🏠', $booking_room],
+                    ['👥', $pax . ' ท่าน'],
+                    ['📅 เริ่ม', $start_date ? date('d/m/Y H:i', strtotime($start_date)) : '-'],
+                    ['📅 สิ้นสุด', $end_date ? date('d/m/Y H:i', strtotime($end_date)) : '-'],
+                    ['💰', number_format($total_amount, 2) . ' บาท', '#111111'],
+                    ['🆔', $final_code, '#111111'],
+                    ['✍️ ผู้สร้าง', $created_by_name],
+                ],
+                'note'     => 'รอ GM กดอนุมัติเพื่อเปิดงานให้ทุกแผนก',
+                'buttons'  => [['ตรวจสอบและอนุมัติ', $origin . '/manage_banquet/view.php?id=' . $last_id]],
+            ]);
+            sendLineFlexToRoles($conn, ['gm', 'admin'], $flex, '⏳ มีงานใหม่รออนุมัติ: ' . $function_name);
+        } catch (Throwable $e) {
+            error_log('[LINE] new function notify failed: ' . $e->getMessage());
+        }
+
         header("Location: manage_banquet.php");
         exit();
 

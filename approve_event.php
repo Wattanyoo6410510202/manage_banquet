@@ -162,6 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $staffFlex = buildApprovedFlex($detail, $approveName, $origin, 'staff', [], [], $calendarUrl);
             $r = sendLineFlexToRole($conn, 'staff', $staffFlex, '✅ งานได้รับการอนุมัติ');
             $lineSent += $r['sent']; $lineFailed += $r['failed'];
+
+            // GM คนอื่นที่ไม่ได้เป็นคนกดอนุมัติ ก็ต้องรู้ว่างานนี้เปิดแล้ว
+            $gmFlex = buildApprovedFlex($detail, $approveName, $origin, 'admin', [], [], $calendarUrl);
+            $r = sendLineFlexToRole($conn, 'gm', $gmFlex, '✅ งานได้รับการอนุมัติ');
+            $lineSent += $r['sent']; $lineFailed += $r['failed'];
         }
 
         // อัปเดต is_approved ของ project
@@ -197,6 +202,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt_cancel->close();
             }
         }
+
+        // LINE แจ้งทุกแผนกว่างานถูกยกเลิก จะได้ไม่เตรียมของต่อ
+        // ส่งเฉพาะงานที่เคยอนุมัติแล้ว งานที่ยังไม่อนุมัติไม่มีใครเตรียมอยู่แล้ว
+        try {
+            include_once __DIR__ . "/line_helper.php";
+            $c = $conn->query("SELECT function_name, booking_name, phone, booking_room, function_code,
+                                      start_time, end_time, cancel_reason, approve
+                               FROM functions WHERE id = $id")->fetch_assoc();
+
+            if ($c && $old_status === 'Confirmed') {
+                $origin = lineOriginUrl();
+                $flex = buildNotifyFlex([
+                    'title'    => '❌ งานถูกยกเลิก',
+                    'subtitle' => 'Event Cancelled',
+                    'color'    => '#D32F2F',
+                    'rows'     => [
+                        ['📌', $c['function_name'], '#111111'],
+                        ['👤', $c['booking_name']],
+                        ['🏠', $c['booking_room']],
+                        ['📅 เริ่ม', !empty($c['start_time']) ? date('d/m/Y H:i', strtotime($c['start_time'])) : '-'],
+                        ['📅 สิ้นสุด', !empty($c['end_time']) ? date('d/m/Y H:i', strtotime($c['end_time'])) : '-'],
+                        ['🆔', $c['function_code'], '#111111'],
+                        ['📝 เหตุผล', $c['cancel_reason'] ?: '-', '#D32F2F'],
+                        ['🙍 ยกเลิกโดย', $_SESSION['user_name'] ?? '-'],
+                    ],
+                    'note'     => 'หยุดเตรียมงานนี้ได้เลย และยกเลิกของที่สั่งไว้',
+                    'buttons'  => [['เปิดดูรายละเอียด', $origin . '/manage_banquet/view.php?id=' . $id]],
+                ]);
+                $r = sendLineFlexToRoles(
+                    $conn,
+                    ['banquet_staff', 'technician', 'housekeeping', 'admin', 'procurement', 'staff', 'gm'],
+                    $flex,
+                    '❌ งานถูกยกเลิก: ' . $c['function_name']
+                );
+                $lineSent += $r['sent']; $lineFailed += $r['failed'];
+            }
+        } catch (Throwable $e) {
+            error_log('[LINE] cancel notify failed: ' . $e->getMessage());
+        }
+
         $_SESSION['flash_msg'] = "cancelled";
     }
 

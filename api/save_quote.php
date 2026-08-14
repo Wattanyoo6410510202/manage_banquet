@@ -115,6 +115,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $conn->commit();
 
+        // LINE แจ้ง GM/Admin ว่ามีใบเสนอราคาใหม่รออนุมัติ
+        // ครอบ try ไว้เพราะแจ้งเตือนล้มเหลวต้องไม่ทำให้ใบเสนอราคาที่ commit แล้วพัง
+        try {
+            include_once __DIR__ . "/../line_helper.php";
+
+            $cust_name = '';
+            if ($customer_id) {
+                $q_c = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
+                $q_c->bind_param("i", $customer_id);
+                $q_c->execute();
+                $c_row = $q_c->get_result()->fetch_assoc();
+                $cust_name = $c_row['cust_name'] ?? '';
+            }
+
+            $origin = lineOriginUrl();
+            $flex = buildNotifyFlex([
+                'title'    => '📄 ใบเสนอราคาใหม่รออนุมัติ',
+                'subtitle' => 'New Quotation - Pending Approval',
+                'color'    => '#1A73E8',
+                'rows'     => [
+                    ['📌', $event_name, '#111111'],
+                    ['🧾', $quote_no, '#111111'],
+                    ['👤', $cust_name],
+                    ['📅 วันจัดงาน', $event_date ? date('d/m/Y', strtotime($event_date)) : '-'],
+                    ['⏳ ยืนราคาถึง', $expiry_date ? date('d/m/Y', strtotime($expiry_date)) : '-'],
+                    ['💰 ยอดรวม', number_format($grand_total, 2) . ' บาท', '#111111'],
+                    ['💸 ส่วนลด', number_format($discount, 2) . ' บาท'],
+                ],
+                'note'     => 'รอ GM อนุมัติก่อนส่งให้ลูกค้า',
+                'buttons'  => [
+                    ['ดูใบเสนอราคา', $origin . '/manage_banquet/quotation_view.php?id=' . $last_quote_id],
+                    ['📋 รายการทั้งหมด', $origin . '/manage_banquet/quotation_list.php'],
+                ],
+            ]);
+            sendLineFlexToRoles($conn, ['gm', 'admin'], $flex, '📄 ใบเสนอราคาใหม่รออนุมัติ: ' . $event_name);
+        } catch (Throwable $e) {
+            error_log('[LINE] new quotation notify failed: ' . $e->getMessage());
+        }
+
         $_SESSION['flash_msg'] = "success";
         header("Location: ../quotation_list.php");
         exit();

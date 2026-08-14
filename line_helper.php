@@ -131,9 +131,133 @@ function sendLineFlexToRole($conn, $role, $flexJson, $altText = 'แจ้งเ
     return ['sent' => $sent, 'failed' => $failed];
 }
 
+/**
+ * ส่ง Flex ให้หลาย role พร้อมกัน โดยรวม LINE ID ที่ซ้ำกันให้เหลือครั้งเดียว
+ *
+ * จำเป็นเพราะหลาย role อาจผูกกับ LINE ID เดียวกัน (คนเดียวสวมหลายหมวก)
+ * ถ้าวนส่งทีละ role คนนั้นจะได้การ์ดเดิมซ้ำหลายใบ
+ */
+function sendLineFlexToRoles($conn, array $roles, $flexJson, $altText = 'แจ้งเตือนจากระบบ')
+{
+    $roles = array_values(array_filter(array_map('strtolower', $roles)));
+    if (empty($roles)) {
+        return ['sent' => 0, 'failed' => 0];
+    }
+
+    $ph  = implode(',', array_fill(0, count($roles), '?'));
+    $sql = "SELECT DISTINCT line_user_id FROM users
+            WHERE LOWER(role) IN ($ph) AND line_user_id IS NOT NULL AND line_user_id != ''";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(str_repeat('s', count($roles)), ...$roles);
+    $stmt->execute();
+    $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $sent = 0;
+    $failed = 0;
+    foreach ($users as $u) {
+        if (sendLineFlex($u['line_user_id'], $flexJson, $altText)) $sent++;
+        else $failed++;
+    }
+    if ($failed > 0) {
+        error_log('[LINE] Flex Roles "' . implode(',', $roles) . '": sent ' . $sent . ', failed ' . $failed);
+    }
+    return ['sent' => $sent, 'failed' => $failed];
+}
+
+/** ส่ง Flex ให้ผู้ใช้คนเดียวจาก users.id */
+function sendLineFlexToUserId($conn, $userRowId, $flexJson, $altText = 'แจ้งเตือนจากระบบ')
+{
+    $userRowId = intval($userRowId);
+    if ($userRowId <= 0) {
+        return ['sent' => 0, 'failed' => 0];
+    }
+
+    $stmt = $conn->prepare("SELECT line_user_id FROM users WHERE id = ?");
+    $stmt->bind_param("i", $userRowId);
+    $stmt->execute();
+    $u = $stmt->get_result()->fetch_assoc();
+
+    if (!$u || empty($u['line_user_id'])) {
+        error_log('[LINE] No LINE User ID for users.id ' . $userRowId);
+        return ['sent' => 0, 'failed' => 1];
+    }
+    return sendLineFlex($u['line_user_id'], $flexJson, $altText)
+        ? ['sent' => 1, 'failed' => 0]
+        : ['sent' => 0, 'failed' => 1];
+}
+
 // ═══════════════════════════════════════════════════════
 // Flex Message Builders
 // ═══════════════════════════════════════════════════════
+
+/**
+ * การ์ดแจ้งเตือนแบบทั่วไป ใช้ร่วมกันทุกเหตุการณ์ที่ไม่ต้องแยกเนื้อหารายแผนก
+ *
+ * $opts = [
+ *   'title'    => หัวการ์ด
+ *   'subtitle' => บรรทัดรองภาษาอังกฤษ
+ *   'color'    => สีแถบหัว
+ *   'rows'     => [[label, value] หรือ [label, value, สีค่า], ...]
+ *   'note'     => ข้อความเน้นใต้ตาราง (ไม่ใส่ก็ได้)
+ *   'buttons'  => [[label, uri], ...]
+ * ]
+ */
+function buildNotifyFlex(array $opts)
+{
+    $color = $opts['color'] ?? '#607D8B';
+
+    $rows = [];
+    foreach ($opts['rows'] ?? [] as $r) {
+        $rows[] = flexLabelValue($r[0], $r[1], $r[2] ?? '#555555');
+    }
+
+    if (!empty($opts['note'])) {
+        $rows[] = flexSeparator();
+        $rows[] = [
+            'type' => 'text', 'text' => $opts['note'], 'size' => 'xs',
+            'color' => $color, 'wrap' => true, 'margin' => 'md', 'weight' => 'bold',
+        ];
+    }
+
+    $buttons = [];
+    foreach ($opts['buttons'] ?? [] as $i => $b) {
+        $buttons[] = [
+            'type' => 'button', 'height' => 'sm', 'color' => $color,
+            'style' => $i === 0 ? 'primary' : 'link',
+            'action' => ['type' => 'uri', 'label' => $b[0], 'uri' => $b[1]],
+        ];
+    }
+
+    return [
+        'type' => 'bubble', 'size' => 'mega',
+        'header' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs',
+            'contents' => [
+                ['type' => 'text', 'text' => $opts['title'] ?? 'แจ้งเตือน', 'weight' => 'bold', 'size' => 'lg', 'color' => '#FFFFFF', 'wrap' => true],
+                ['type' => 'text', 'text' => $opts['subtitle'] ?? '', 'size' => 'xs', 'color' => '#FFFFFFBB'],
+            ],
+            'backgroundColor' => $color, 'paddingAll' => '16px',
+        ],
+        'body' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'sm', 'paddingAll' => '16px',
+            'contents' => $rows,
+        ],
+        'footer' => [
+            'type' => 'box', 'layout' => 'vertical', 'spacing' => 'xs',
+            'contents' => $buttons, 'paddingAll' => '12px',
+        ],
+    ];
+}
+
+/** URL ฐานของเว็บ ใช้ประกอบลิงก์ในปุ่มการ์ด */
+function lineOriginUrl()
+{
+    if (!empty($_SERVER['HTTP_ORIGIN'])) {
+        return $_SERVER['HTTP_ORIGIN'];
+    }
+    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+}
 
 function flexLabelValue($label, $value, $color = '#555555') {
     return [
