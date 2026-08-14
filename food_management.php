@@ -422,10 +422,29 @@ require_once "header.php";
                 });
 
                 fetch('api/sync_kitchen_cost.php', { method: 'POST' })
-                    .then(function (res) { return res.json(); })
+                    .then(function (res) {
+                        // เซิร์ฟเวอร์ตายก่อนตอบ JSON (500 body ว่าง) ต้องอ่านเป็น text ก่อนจะได้เห็นสาเหตุ
+                        return res.text().then(function (body) {
+                            try {
+                                return JSON.parse(body);
+                            } catch (e) {
+                                return {
+                                    status: 'error',
+                                    message: 'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (HTTP ' + res.status + ')',
+                                    detail: body.replace(/<[^>]*>/g, '').trim().slice(0, 500) || '(ไม่มีข้อความตอบกลับ)'
+                                };
+                            }
+                        });
+                    })
                     .then(function (res) {
                         if (res.status !== 'success') {
-                            Swal.fire('ผิดพลาด', res.message || 'ปรับปรุงราคาทุนไม่สำเร็จ', 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ผิดพลาด',
+                                html: $('<div>').text(res.message || 'ปรับปรุงราคาทุนไม่สำเร็จ').html() +
+                                    (res.detail ? '<hr class="my-2"><div class="small text-muted text-start" style="word-break:break-all;">' +
+                                        $('<div>').text(res.detail).html() + '</div>' : '')
+                            });
                             return;
                         }
 

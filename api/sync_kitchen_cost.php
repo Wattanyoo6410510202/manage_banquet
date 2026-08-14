@@ -12,35 +12,91 @@
  * = ต้นทุนรวม
  * ถ้าฝั่งครัวแก้สูตร ต้องตามมาแก้ที่นี่ด้วย
  */
-include "../config.php";
+require_once __DIR__ . "/../config.php";
 
 header('Content-Type: application/json; charset=utf-8');
 
+/** ตอบ JSON แล้วจบ — ทุกทางออกของไฟล์นี้ต้องผ่านตรงนี้ ห้ามปล่อยให้ตายเป็น 500 ตัวเปล่า */
+function jsonOut($payload)
+{
+    if (ob_get_length()) ob_clean();
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// PHP 8.1+ ตั้ง mysqli ให้โยน exception เป็นค่าเริ่มต้น ถ้าไม่ดักไว้จะกลายเป็น fatal 500
+// ที่ฝั่ง browser จะเห็นเป็น "Unexpected end of JSON input" เพราะ body ว่าง
+set_exception_handler(function ($e) {
+    http_response_code(200);
+    jsonOut([
+        'status'  => 'error',
+        'message' => 'เกิดข้อผิดพลาดฝั่งเซิร์ฟเวอร์: ' . $e->getMessage(),
+        'detail'  => basename($e->getFile()) . ':' . $e->getLine(),
+    ]);
+});
+
+// ดัก fatal error ที่ exception handler จับไม่ได้ (เช่น memory/timeout)
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (ob_get_length()) ob_clean();
+        http_response_code(200);
+        echo json_encode([
+            'status'  => 'error',
+            'message' => 'เกิดข้อผิดพลาดร้ายแรงฝั่งเซิร์ฟเวอร์: ' . $err['message'],
+            'detail'  => basename($err['file']) . ':' . $err['line'],
+        ], JSON_UNESCAPED_UNICODE);
+    }
+});
+
 // ── ตั้งค่าการเชื่อมต่อฐานข้อมูลครัว ──
-define('KITCHEN_DB_HOST', '127.0.0.1');
-define('KITCHEN_DB_USER', 'root');
-define('KITCHEN_DB_PASS', '12345gta');
-define('KITCHEN_DB_NAME', 'manage_kitchen');
+// เครื่องที่ MySQL ไม่ได้อยู่ port มาตรฐาน (NAS บางรุ่น) ให้แก้ KITCHEN_DB_PORT ด้วย
+if (!defined('KITCHEN_DB_HOST')) define('KITCHEN_DB_HOST', '127.0.0.1');
+if (!defined('KITCHEN_DB_USER')) define('KITCHEN_DB_USER', 'root');
+if (!defined('KITCHEN_DB_PASS')) define('KITCHEN_DB_PASS', '12345gta');
+if (!defined('KITCHEN_DB_NAME')) define('KITCHEN_DB_NAME', 'manage_kitchen');
+if (!defined('KITCHEN_DB_PORT')) define('KITCHEN_DB_PORT', 3307);
 
 $user_role = strtolower($_SESSION['role'] ?? 'viewer');
 if ($user_role === 'viewer') {
-    echo json_encode([
+    jsonOut([
         'status'  => 'error',
         'message' => 'ขออภัย! สิทธิ์ Viewer ไม่สามารถปรับปรุงราคาทุนได้'
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+    ]);
 }
 
 // ── เชื่อมต่อฐานข้อมูลครัว ──
-$kconn = @new mysqli(KITCHEN_DB_HOST, KITCHEN_DB_USER, KITCHEN_DB_PASS, KITCHEN_DB_NAME);
+// ปิดโหมดโยน exception เฉพาะตอนต่อ เพื่อให้อ่าน connect_error มาบอกผู้ใช้ได้ตรงๆ
+mysqli_report(MYSQLI_REPORT_OFF);
+$kconn = @new mysqli(KITCHEN_DB_HOST, KITCHEN_DB_USER, KITCHEN_DB_PASS, KITCHEN_DB_NAME, (int) KITCHEN_DB_PORT);
 if ($kconn->connect_errno) {
-    echo json_encode([
+    jsonOut([
         'status'  => 'error',
-        'message' => 'เชื่อมต่อฐานข้อมูลครัว (' . KITCHEN_DB_NAME . ') ไม่ได้: ' . $kconn->connect_error
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+        'message' => 'เชื่อมต่อฐานข้อมูลครัวไม่ได้: ' . $kconn->connect_error,
+        'detail'  => KITCHEN_DB_USER . '@' . KITCHEN_DB_HOST . ':' . KITCHEN_DB_PORT . '/' . KITCHEN_DB_NAME,
+    ]);
 }
 $kconn->set_charset('utf8mb4');
+
+// ── ตรวจว่าตารางที่ต้องใช้มีครบ ก่อนจะไปพังตอน query ──
+foreach (['menus', 'overhead_costs', 'menu_overhead_overrides'] as $need) {
+    $chk = $kconn->query("SHOW TABLES LIKE '$need'");
+    if (!$chk || $chk->num_rows === 0) {
+        jsonOut([
+            'status'  => 'error',
+            'message' => 'ฐานข้อมูล ' . KITCHEN_DB_NAME . ' ไม่มีตาราง `' . $need . '` — ตรวจว่า import ครบหรือชี้ถูกฐานข้อมูลแล้วหรือยัง',
+        ]);
+    }
+}
+
+// ฝั่งจัดเลี้ยงต้องมีคอลัมน์ราคาทุนให้เขียนลง
+$chk = $conn->query("SHOW COLUMNS FROM function_menu_details LIKE 'cost_per_pax'");
+if (!$chk || $chk->num_rows === 0) {
+    jsonOut([
+        'status'  => 'error',
+        'message' => 'ตาราง function_menu_details ยังไม่มีคอลัมน์ cost_per_pax บนเซิร์ฟเวอร์นี้',
+    ]);
+}
 
 // ── ต้นทุนแฝงกลาง (ใช้กับทุกเมนู) ──
 $overhead_global = [];
@@ -118,11 +174,10 @@ while ($res && $row = $res->fetch_assoc()) {
 $kconn->close();
 
 if (empty($kitchen_cost)) {
-    echo json_encode([
+    jsonOut([
         'status'  => 'error',
-        'message' => 'ไม่พบรายการเมนูในฐานข้อมูลครัว'
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+        'message' => 'ไม่พบรายการเมนู (is_active = 1) ในฐานข้อมูล ' . KITCHEN_DB_NAME
+    ]);
 }
 
 // ── ไล่อัปเดตราคาทุนฝั่งจัดเลี้ยง ──
@@ -164,7 +219,7 @@ while ($res && $row = $res->fetch_assoc()) {
 }
 $stmt->close();
 
-echo json_encode([
+jsonOut([
     'status'        => 'success',
     'updated'       => count($updated_rows),
     'unchanged'     => $unchanged,
@@ -172,4 +227,4 @@ echo json_encode([
     'duplicates'    => array_keys($dup_names),
     'kitchen_menus' => count($kitchen_cost),
     'rows'          => $updated_rows,
-], JSON_UNESCAPED_UNICODE);
+]);
