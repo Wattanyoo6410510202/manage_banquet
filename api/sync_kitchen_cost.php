@@ -17,9 +17,9 @@ include "../config.php";
 header('Content-Type: application/json; charset=utf-8');
 
 // ── ตั้งค่าการเชื่อมต่อฐานข้อมูลครัว ──
-define('KITCHEN_DB_HOST', 'localhost');
+define('KITCHEN_DB_HOST', '127.0.0.1');
 define('KITCHEN_DB_USER', 'root');
-define('KITCHEN_DB_PASS', '');
+define('KITCHEN_DB_PASS', '12345gta');
 define('KITCHEN_DB_NAME', 'manage_kitchen');
 
 $user_role = strtolower($_SESSION['role'] ?? 'viewer');
