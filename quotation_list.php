@@ -222,6 +222,7 @@ $status_map = [
                                             <?php if ($q['status'] === 'Approved'): ?>
                                                 <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
                                             <?php endif; ?>
+                                            <a href="finance.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning" title="บัญชี/เงินมัดจำ"><i class="bi bi-cash-coin"></i></a>
                                             <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
                                             <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                             <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
@@ -321,6 +322,7 @@ $status_map = [
                                             <?php if ($q['status'] === 'Approved'): ?>
                                                 <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i class="bi bi-calendar-plus"></i></a>
                                             <?php endif; ?>
+                                            <a href="finance.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning" title="บัญชี/เงินมัดจำ"><i class="bi bi-cash-coin"></i></a>
                                             <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
                                             <?php if ($role === 'admin' || intval($q['created_by']) === $current_user_id): ?>
                                             <button type="button" class="btn btn-sm btn-outline-danger btn-delete-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-trash"></i></button>
@@ -402,7 +404,8 @@ $status_map = [
                                                     <?php else: ?>
                                                         <button type="button" class="btn btn-sm btn-outline-primary btn-select-quote" data-id="<?= $q['id'] ?>"><i class="bi bi-check-lg"></i></button>
                                                     <?php endif; ?>
-                                                    <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
+                                                    <a href="finance.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning" title="บัญชี/เงินมัดจำ"><i class="bi bi-cash-coin"></i></a>
+                                            <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
                                                 </div>
                                             </div>
                                         </div>
@@ -508,6 +511,10 @@ $status_map = [
                                                         <i class="bi bi-calendar-plus"></i>
                                                     </a>
                                                 <?php endif; ?>
+
+                                                <a href="finance.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-warning" title="บัญชี/เงินมัดจำ">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                </a>
 
                                                 <a href="quotation_view.php?id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-printer"></i>

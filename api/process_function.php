@@ -203,6 +203,16 @@ if (isset($_POST['save'])) {
         $stmt_upd_code->bind_param("si", $final_code, $last_id);
         $stmt_upd_code->execute();
 
+        // โอนรายการบัญชีที่คีย์ไว้ตอนยังเป็นใบเสนอราคา (เช่น เงินมัดจำ) มาเข้า EO ใบนี้
+        // EO ใบแรกที่แปลงจากใบเสนอราคานั้นเป็นคนรับไป ใบถัดไปจะไม่ดึงซ้ำเพราะ function_id ไม่ NULL แล้ว
+        if ($quotation_id) {
+            $stmt_ff = $conn->prepare("UPDATE function_finance
+                                       SET function_id = ?
+                                       WHERE quotation_id = ? AND function_id IS NULL");
+            $stmt_ff->bind_param("ii", $last_id, $quotation_id);
+            $stmt_ff->execute();
+        }
+
         // --- 4. บันทึกตารางย่อย (เหมือนเดิม) ---
 
         // Schedule

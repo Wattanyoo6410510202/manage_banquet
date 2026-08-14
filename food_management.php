@@ -200,6 +200,11 @@ require_once "header.php";
                             <i class="bi bi-file-earmark-excel fs-5"></i>
                             <span class="d-none d-md-inline small ms-1">Excel</span>
                         </button>
+                        <button type="button" id="customUpdateCost"
+                            class="btn btn-link btn-sm text-warning text-decoration-none p-1" title="ปรับปรุงราคาทุน">
+                            <i class="bi bi-cash-stack fs-5"></i>
+                            <span class="d-none d-md-inline small ms-1">ปรับปรุงราคาทุน</span>
+                        </button>
                         <button type="button" id="customPrint"
                             class="btn btn-link btn-sm text-secondary text-decoration-none p-1" title="Print">
                             <i class="bi bi-printer fs-5"></i>
@@ -395,6 +400,71 @@ require_once "header.php";
         // ปุ่ม Export
         $('#customExcel').on('click', function () { menuTable.button('.buttons-excel').trigger(); });
         $('#customPrint').on('click', function () { menuTable.button('.buttons-print').trigger(); });
+
+        // ปุ่มปรับปรุงราคาทุน — ดึงต้นทุนรวมจากฐานข้อมูลครัว (manage_kitchen) ตามชื่อเมนูที่ตรงกัน
+        $('#customUpdateCost').on('click', function () {
+            Swal.fire({
+                title: 'ปรับปรุงราคาทุน?',
+                html: 'ระบบจะดึง <b>ต้นทุนรวม</b> จากฐานข้อมูลครัว มาทับ "ราคาทุน/หัว"<br>' +
+                    '<span class="text-muted small">เฉพาะเมนูที่ชื่อตรงกันเท่านั้น ชื่อที่ไม่เจอจะแจ้งให้ทราบ</span>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#fd7e14',
+                confirmButtonText: 'ปรับปรุงเลย',
+                cancelButtonText: 'ยกเลิก'
+            }).then(function (result) {
+                if (!result.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'กำลังปรับปรุง...',
+                    allowOutsideClick: false,
+                    didOpen: function () { Swal.showLoading(); }
+                });
+
+                fetch('api/sync_kitchen_cost.php', { method: 'POST' })
+                    .then(function (res) { return res.json(); })
+                    .then(function (res) {
+                        if (res.status !== 'success') {
+                            Swal.fire('ผิดพลาด', res.message || 'ปรับปรุงราคาทุนไม่สำเร็จ', 'error');
+                            return;
+                        }
+
+                        let html = '<div class="text-start small">' +
+                            '<div>อัปเดตแล้ว <b class="text-success">' + res.updated + '</b> รายการ</div>' +
+                            '<div>ราคาเท่าเดิม <b>' + res.unchanged + '</b> รายการ</div>' +
+                            '<div>ไม่พบชื่อในครัว <b class="text-danger">' + res.not_found.length + '</b> รายการ</div>';
+
+                        if (res.not_found.length) {
+                            html += '<hr class="my-2"><div class="fw-bold mb-1">รายการที่หาไม่เจอ</div>' +
+                                '<ul class="mb-0 ps-3" style="max-height:180px;overflow:auto;">' +
+                                res.not_found.map(function (n) { return '<li>' + $('<div>').text(n).html() + '</li>'; }).join('') +
+                                '</ul>';
+                        }
+
+                        if (res.duplicates.length) {
+                            html += '<hr class="my-2"><div class="fw-bold mb-1 text-warning">ชื่อซ้ำในครัว (ใช้รายการล่าสุด)</div>' +
+                                '<ul class="mb-0 ps-3" style="max-height:120px;overflow:auto;">' +
+                                res.duplicates.map(function (n) { return '<li>' + $('<div>').text(n).html() + '</li>'; }).join('') +
+                                '</ul>';
+                        }
+
+                        html += '</div>';
+
+                        Swal.fire({
+                            title: 'ปรับปรุงเสร็จแล้ว',
+                            html: html,
+                            icon: res.updated > 0 ? 'success' : 'info',
+                            confirmButtonText: 'ปิด'
+                        }).then(function () {
+                            if (res.updated > 0) location.reload();
+                        });
+                    })
+                    .catch(function (err) {
+                        console.error('Error:', err);
+                        Swal.fire('ผิดพลาด', 'การเชื่อมต่อล้มเหลว', 'error');
+                    });
+            });
+        });
     });
 
     function editMenu(data) {

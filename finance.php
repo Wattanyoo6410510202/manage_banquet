@@ -1,22 +1,81 @@
 <?php
 include "config.php";
+include_once __DIR__ . '/includes/quote_cost.php';
+include_once __DIR__ . '/includes/finance_stage.php';
+include_once __DIR__ . '/includes/menu_cost_lookup.php';
 $id = intval($_GET['id'] ?? 0);
+$quote_id = intval($_GET['quote_id'] ?? 0);
 
-// 1. ดึงข้อมูลงานหลัก + ข้อมูลลูกค้า/บริษัท
-$sql = "SELECT f.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
-               ft.type_name as function_type_name, r.room_name
-        FROM functions f 
-        LEFT JOIN companies c ON f.company_id = c.id
-        LEFT JOIN customers cust ON f.customer_id = cust.id
-        LEFT JOIN function_types ft ON f.function_type_id = ft.id
-        LEFT JOIN meeting_rooms r ON f.room_id = r.id
-        WHERE f.id = $id";
-$res = $conn->query($sql);
-$data = $res->fetch_assoc();
+// โหมดใบเสนอราคา: งานที่ยังไม่ถูกแปลงเป็น EO ยังไม่มีแถวใน functions
+// จึงผูกรายการบัญชีไว้กับ quotations ไปก่อน แล้วค่อยโอนเข้า EO ตอนแปลง
+$is_quote = ($quote_id > 0 && $id === 0);
+$eo_of_quote = null;
+$quote_locked = false;
 
-if (!$data) {
-    die("ไม่พบข้อมูลงานนี้");
+if ($is_quote) {
+    // 1. ดึงข้อมูลใบเสนอราคา + ข้อมูลลูกค้า/บริษัท
+    $sql = "SELECT q.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
+                   u.name as creator_name
+            FROM quotations q
+            LEFT JOIN companies c ON q.company_id = c.id
+            LEFT JOIN customers cust ON q.customer_id = cust.id
+            LEFT JOIN users u ON q.created_by = u.id
+            WHERE q.id = $quote_id";
+    $res = $conn->query($sql);
+    $data = $res->fetch_assoc();
+
+    if (!$data) {
+        die("ไม่พบใบเสนอราคานี้");
+    }
+
+    // ใบเสนอราคานี้ถูกแปลงเป็น EO ไปแล้วหรือยัง (ถ้าแปลงแล้วให้ไปคีย์ต่อที่ EO)
+    $res_eo = $conn->query("SELECT id, function_name FROM functions
+                            WHERE quotation_id = $quote_id AND status != 'Cancelled'
+                            ORDER BY id ASC LIMIT 1");
+    $eo_of_quote = $res_eo ? $res_eo->fetch_assoc() : null;
+
+    // อนุมัติใบเสนอราคาแล้ว = ล็อกรายการบัญชี แก้ไข/ลบ/เพิ่มไม่ได้
+    // (ใบที่แปลงเป็น EO แล้วก็ล็อกด้วย รายการใหม่ต้องไปคีย์ที่ EO)
+    $quote_locked = (($data['status'] ?? '') === 'Approved') || !empty($eo_of_quote);
+
+    // แปลงชื่อฟิลด์ให้ตรงกับฝั่ง EO เพื่อให้ส่วนที่เหลือของหน้าใช้โค้ดร่วมกันได้
+    $data['created_by_id']      = intval($data['created_by'] ?? 0);
+    $data['created_by']         = $data['creator_name'] ?? '';
+    $data['function_name']      = $data['event_name'] ?? '';
+    $data['function_code']      = $data['quote_no'] ?? '';
+    $data['type_prefix']        = '';
+    $data['booking_name']       = $data['cust_name'] ?? '';
+    $data['phone']              = $data['cust_phone'] ?? '';
+    $data['function_type_name'] = '';
+    $data['room_name']          = '';
+    $data['pax']                = 0;
+    $data['total_amount']       = $data['grand_total'] ?? 0;
+    $data['start_time']         = !empty($data['event_date']) ? $data['event_date'] . ' 00:00:00' : null;
+    // ใบเสนอราคาไม่มีสถานะอนุมัติงาน รายการที่คีย์จึงนับเป็นก่อนอนุมัติทั้งหมด
+    $data['approve']            = 0;
+} else {
+    // 1. ดึงข้อมูลงานหลัก + ข้อมูลลูกค้า/บริษัท
+    $sql = "SELECT f.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
+                   ft.type_name as function_type_name, r.room_name
+            FROM functions f
+            LEFT JOIN companies c ON f.company_id = c.id
+            LEFT JOIN customers cust ON f.customer_id = cust.id
+            LEFT JOIN function_types ft ON f.function_type_id = ft.id
+            LEFT JOIN meeting_rooms r ON f.room_id = r.id
+            WHERE f.id = $id";
+    $res = $conn->query($sql);
+    $data = $res->fetch_assoc();
+
+    if (!$data) {
+        die("ไม่พบข้อมูลงานนี้");
+    }
 }
+
+// URL ของหน้านี้ (ใช้ต่อกับ AJAX refresh และปุ่มต่างๆ)
+$page_key = $is_quote ? "quote_id=$quote_id" : "id=$id";
+// ใบเสนอราคาเก็บแค่วันจัดงาน ไม่มีเวลาเริ่มงาน
+$event_date_txt = !empty($data['start_time']) ? date('d/m/Y', strtotime($data['start_time'])) : '';
+$event_time_txt = (!$is_quote && !empty($data['start_time'])) ? date('H:i', strtotime($data['start_time'])) : '';
 
 // 1.1 ดึงลายเซ็นผู้สร้างงาน
 $creator_id = intval($data['created_by_id'] ?? 0);
@@ -36,7 +95,9 @@ if ($creator_id > 0) {
 }
 
 // 2. ดึงรายการบัญชี
-$sql_fin = "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
+$sql_fin = $is_quote
+    ? "SELECT * FROM function_finance WHERE quotation_id = $quote_id ORDER BY transaction_date ASC, id ASC"
+    : "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
 $res_fin = $conn->query($sql_fin);
 $finances = [];
 $total_income = 0;
@@ -47,7 +108,18 @@ $extra_cost = 0;
 $post_income = 0;
 $post_cost = 0;
 
+// ยอดที่คีย์ตั้งแต่ขั้นใบเสนอราคา (นับรวมอยู่ในฝั่งก่อนอนุมัติ แยกมาโชว์ให้เห็น)
+$quote_income = 0;
+$quote_cost = 0;
+
 while ($f = $res_fin->fetch_assoc()) {
+    if (financeStage($f) === 'quote') {
+        if ($f['type'] == 'income' || $f['type'] == 'deposit') {
+            $quote_income += $f['amount'];
+        } else {
+            $quote_cost += $f['amount'];
+        }
+    }
     if ($f['is_post_approval']) {
         if ($f['type'] == 'income' || $f['type'] == 'deposit') {
             $post_income += $f['amount'];
@@ -67,9 +139,15 @@ while ($f = $res_fin->fetch_assoc()) {
     $finances[] = $f;
 }
 
-// 2.5 ดึงข้อมูลต้นทุนจากครัว (Auto)
-$kitchen_data = getKitchenCost($conn, $id);
-$kitchen_total = $kitchen_data['total'];
+// 2.5 ดึงข้อมูลต้นทุนอาหาร (Auto)
+if ($is_quote) {
+    // ขั้นใบเสนอราคา: รายการมาจาก quotation_items ราคาทุนล้วงตามชื่อเมนู
+    $quote_cost_detail = getQuoteCostDetailed($conn, $quote_id);
+    $kitchen_total = $quote_cost_detail['sum_main_cost'] + $quote_cost_detail['sum_break_cost'];
+} else {
+    $kitchen_data = getKitchenCost($conn, $id);
+    $kitchen_total = $kitchen_data['total'];
+}
 
 // ป้องกัน Error กรณีคอลัมน์ชื่อไม่ตรง หรือไม่มีข้อมูล
 $main_price = (float) ($data['total_amount'] ?? 0);
@@ -153,6 +231,9 @@ if (isset($_GET['ajax'])) {
             <div class="card border-0 shadow-sm text-center p-3">
                 <small class="text-muted">เงินมัดจำรวม</small>
                 <h4 class="text-info mb-0"><?= number_format($total_deposit, 2) ?></h4>
+                <?php if ($quote_income > 0): ?>
+                    <small class="text-info">(จากใบเสนอราคา <?= number_format($quote_income, 2) ?>)</small>
+                <?php endif; ?>
             </div>
         </div>
         <div class="col">
@@ -161,6 +242,9 @@ if (isset($_GET['ajax'])) {
                 <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
                 <?php if ($post_cost > 0): ?>
                     <small class="text-warning">(หลังอนุมัติ <?= number_format($post_cost, 2) ?>)</small>
+                <?php endif; ?>
+                <?php if ($quote_cost > 0): ?>
+                    <small class="text-info">(จากใบเสนอราคา <?= number_format($quote_cost, 2) ?>)</small>
                 <?php endif; ?>
             </div>
         </div>
@@ -220,9 +304,7 @@ if (isset($_GET['ajax'])) {
                                 <td class="small text-muted"><?= htmlspecialchars($f['created_by_name'] ?? '-') ?></td>
                                 <td>
                                     <span class="badge bg-light text-dark border"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span>
-                                    <?php if ($f['is_post_approval']): ?>
-                                        <span class="badge bg-warning text-dark">หลังอนุมัติ</span>
-                                    <?php endif; ?>
+                                    <span class="badge <?= financeStageBadgeClass($f) ?>"><?= financeStageLabel($f) ?></span>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($f['type'] == 'deposit'): ?>
@@ -241,8 +323,8 @@ if (isset($_GET['ajax'])) {
                                             data-phone="<?= htmlspecialchars($data['phone'] ?? $data['cust_phone'] ?? '') ?>"
                                             data-email="<?= htmlspecialchars($data['cust_email'] ?? '') ?>"
                                             data-func-type="<?= htmlspecialchars($data['function_type_name'] ?? '') ?>"
-                                            data-event-date="<?= !empty($data['start_time']) ? date('d/m/Y', strtotime($data['start_time'])) : '' ?>"
-                                            data-event-time="<?= !empty($data['start_time']) ? date('H:i', strtotime($data['start_time'])) : '' ?>"
+                                            data-event-date="<?= $event_date_txt ?>"
+                                            data-event-time="<?= $event_time_txt ?>"
                                             data-room="<?= htmlspecialchars($data['room_name'] ?? '') ?>"
                                             data-pax="<?= $data['pax'] ?? 0 ?>"
                                             data-createdby="<?= htmlspecialchars($creator_name) ?>"
@@ -251,10 +333,14 @@ if (isset($_GET['ajax'])) {
                                             <i class="bi bi-printer"></i>
                                         </button>
                                     <?php endif; ?>
-                                    <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
-                                        data-id="<?= $f['id'] ?>">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <?php if ($quote_locked): ?>
+                                        <i class="bi bi-lock text-muted" title="ใบเสนอราคาอนุมัติแล้ว แก้ไขไม่ได้"></i>
+                                    <?php else: ?>
+                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
+                                            data-id="<?= $f['id'] ?>">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -280,8 +366,18 @@ function getKitchenCost($conn, $function_id)
         $price_direct = (float) $m['menu_price'];
         $cost_direct = (float) ($m['menu_cost'] ?? 0);
 
-        if ($cost_direct > 0) {
-            $total_cost += ($cost_direct * $qty);
+        // ทุน/หน่วย: ใช้ menu_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
+        // จับคู่ไม่ได้สักเมนูค่อยตกไปที่ราคาขาย (ต้องตรงกับ calculate_costs.php)
+        $unit_cost = $cost_direct;
+        if ($unit_cost <= 0) {
+            foreach (preg_split('/\r\n|\r|\n/', $m['menu_detail']) as $line) {
+                $n = trim(preg_replace('/^[0-9\.\-\s]+/u', '', $line));
+                if ($n !== '') $unit_cost += menuLineCostSplit($conn, $n);
+            }
+        }
+
+        if ($unit_cost > 0) {
+            $total_cost += ($unit_cost * $qty);
         } elseif ($price_direct > 0) {
             $total_cost += ($price_direct * $qty);
         } else {
@@ -315,8 +411,17 @@ function getKitchenCost($conn, $function_id)
         $k_price = (float) ($k['k_price'] ?? 0);
         $k_cost = (float) ($k['k_cost'] ?? 0);
 
-        if ($k_cost > 0) {
-            $total_cost += ($k_cost * $k_qty);
+        // ทุน/หน่วย: ใช้ k_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
+        $k_unit_cost = $k_cost;
+        if ($k_unit_cost <= 0) {
+            foreach (preg_split('/\r\n|\r|\n/', $k['k_item']) as $line) {
+                $n = trim(preg_replace('/^[0-9\.\-\s]+/u', '', $line));
+                if ($n !== '') $k_unit_cost += menuLineCostSplit($conn, $n);
+            }
+        }
+
+        if ($k_unit_cost > 0) {
+            $total_cost += ($k_unit_cost * $k_qty);
         } elseif ($k_price > 0) {
             $total_cost += ($k_price * $k_qty);
         } else {
@@ -410,7 +515,11 @@ include "header.php";
     <div class="d-flex justify-content-between align-items-center mb-4 ">
         <div>
             <h4 class="mb-1 fw-bold text-dark">
-                <i class="bi bi-cash-coin text-primary"></i> บัญชีงาน: <?= htmlspecialchars($data['function_name']) ?>
+                <i class="bi bi-cash-coin text-primary"></i>
+                <?= $is_quote ? 'บัญชีใบเสนอราคา' : 'บัญชีงาน' ?>: <?= htmlspecialchars($data['function_name']) ?>
+                <?php if ($is_quote): ?>
+                    <span class="badge bg-secondary align-middle"><?= htmlspecialchars($data['quote_no'] ?? '') ?></span>
+                <?php endif; ?>
             </h4>
             <small class="text-muted">จัดการรายรับ-รายจ่าย และสรุปผลกำไรสุทธิ</small>
         </div>
@@ -419,11 +528,38 @@ include "header.php";
             <button type="button" onclick="exportExcel()" class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </button>
-            <button type="button" onclick="window.open('print_finance_report.php?id=<?= $id ?>', '_blank', 'width=1100,height=900');" class="btn btn-dark btn-sm">
+            <button type="button" onclick="window.open('print_finance_report.php?<?= $page_key ?>', '_blank', 'width=1100,height=900');" class="btn btn-dark btn-sm">
                 <i class="bi bi-printer"></i> พิมพ์รายงาน
             </button>
         </div>
     </div>
+
+    <?php if ($is_quote): ?>
+        <?php if ($eo_of_quote): ?>
+            <div class="alert alert-warning d-flex justify-content-between align-items-center py-2">
+                <div class="small">
+                    <i class="bi bi-arrow-right-circle"></i>
+                    ใบเสนอราคานี้แปลงเป็น EO แล้ว รายการที่คีย์ไว้ถูกโอนไปที่งานเรียบร้อย — รายการใหม่ให้คีย์ที่หน้าบัญชีของ EO
+                </div>
+                <a href="finance.php?id=<?= $eo_of_quote['id'] ?>" class="btn btn-sm btn-warning fw-bold">
+                    ไปที่บัญชี EO
+                </a>
+            </div>
+        <?php elseif ($quote_locked): ?>
+            <div class="alert alert-secondary small py-2">
+                <i class="bi bi-lock-fill"></i>
+                ใบเสนอราคานี้<b>อนุมัติแล้ว</b> รายการบัญชีถูกล็อก เพิ่ม/ลบไม่ได้
+                หากต้องแก้ไขต้องยกเลิกการอนุมัติใบเสนอราคาก่อน
+            </div>
+        <?php else: ?>
+            <div class="alert alert-info small py-2">
+                <i class="bi bi-info-circle"></i>
+                ขั้นใบเสนอราคา — ต้นทุนเมนูดึงจากรายการในใบเสนอราคา แล้วล้วงราคาทุนตามชื่อเมนู
+                (เมนูที่จับคู่ชื่อไม่ได้จะถือว่าทุนเท่ากับราคาขาย)
+                เมื่อแปลงใบนี้เป็น EO รายการบัญชีทั้งหมดจะถูกโอนไปให้อัตโนมัติ
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
 
     <div id="summaryWrapper">
         <div class="row g-3 mb-4">
@@ -437,6 +573,9 @@ include "header.php";
                 <div class="card border-0 shadow-sm text-center p-3">
                     <small class="text-muted">เงินมัดจำรวม</small>
                     <h4 class="text-info mb-0"><?= number_format($total_deposit, 2) ?></h4>
+                    <?php if ($quote_income > 0): ?>
+                        <small class="text-info">(จากใบเสนอราคา <?= number_format($quote_income, 2) ?>)</small>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="col">
@@ -445,6 +584,9 @@ include "header.php";
                     <h4 class="text-danger mb-0"><?= number_format($total_cost, 2) ?></h4>
                     <?php if ($post_cost > 0): ?>
                         <small class="text-warning">(หลังอนุมัติ <?= number_format($post_cost, 2) ?>)</small>
+                    <?php endif; ?>
+                    <?php if ($quote_cost > 0): ?>
+                        <small class="text-info">(จากใบเสนอราคา <?= number_format($quote_cost, 2) ?>)</small>
                     <?php endif; ?>
                 </div>
             </div>
@@ -473,6 +615,19 @@ include "header.php";
 
     <div class="row">
         <div class="col-md-4">
+            <?php if ($quote_locked): ?>
+                <!-- อนุมัติ/แปลงเป็น EO แล้ว ไม่ให้คีย์ค้างไว้ที่ใบเสนอราคาอีก -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="bi bi-lock fs-3 d-block mb-2"></i>
+                        <?php if ($eo_of_quote): ?>
+                            <div class="small">ใบเสนอราคานี้แปลงเป็น EO แล้ว<br>บันทึกรายการใหม่ได้ที่หน้าบัญชีของ EO</div>
+                        <?php else: ?>
+                            <div class="small">ใบเสนอราคานี้อนุมัติแล้ว<br>เพิ่มหรือลบรายการบัญชีไม่ได้</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php else: ?>
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <h5 class="card-title mb-3 text-warning"><i class="bi bi-plus-circle"></i> บันทึกรายการ</h5>
@@ -484,7 +639,8 @@ include "header.php";
                     </div>
 
                     <form id="financeForm">
-                        <input type="hidden" name="function_id" value="<?= $id ?>">
+                        <input type="hidden" name="function_id" value="<?= $is_quote ? '' : $id ?>">
+                        <input type="hidden" name="quotation_id" value="<?= $is_quote ? $quote_id : '' ?>">
                         <div class="mb-3">
                             <label class="form-label small fw-bold">ประเภท</label>
                             <select name="type" class="form-select" required>
@@ -530,6 +686,7 @@ include "header.php";
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <div class="col-md-8" id="financeTableContainer">
@@ -581,10 +738,8 @@ include "header.php";
                                         </td>
                                         <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['payment_method'] ?? '-') ?></span></td>
                                         <td>
-                                            <span class="badge bg-secondary"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span>
-                                            <?php if ($f['is_post_approval']): ?>
-                                                <span class="badge bg-warning text-dark">หลังอนุมัติ</span>
-                                            <?php endif; ?>
+                                            <span class="badge bg-light text-dark border"><?= htmlspecialchars($f['created_by_role'] ?? '-') ?></span>
+                                            <span class="badge <?= financeStageBadgeClass($f) ?>"><?= financeStageLabel($f) ?></span>
                                         </td>
                                         <td class="text-center d-print-none">
                                             <?php if (strtolower($_SESSION['role'] ?? 'viewer') !== 'viewer'): ?>
@@ -604,8 +759,8 @@ include "header.php";
                                                         data-phone="<?= htmlspecialchars($data['phone'] ?? $data['cust_phone'] ?? '') ?>"
                                                         data-email="<?= htmlspecialchars($data['cust_email'] ?? '') ?>"
                                                         data-func-type="<?= htmlspecialchars($data['function_type_name'] ?? '') ?>"
-                                                        data-event-date="<?= !empty($data['start_time']) ? date('d/m/Y', strtotime($data['start_time'])) : '' ?>"
-                                                        data-event-time="<?= !empty($data['start_time']) ? date('H:i', strtotime($data['start_time'])) : '' ?>"
+                                                        data-event-date="<?= $event_date_txt ?>"
+                                                        data-event-time="<?= $event_time_txt ?>"
                                                         data-room="<?= htmlspecialchars($data['room_name'] ?? '') ?>"
                                                         data-pax="<?= $data['pax'] ?? 0 ?>"
                                                         data-createdby="<?= htmlspecialchars($creator_name) ?>"
@@ -614,10 +769,14 @@ include "header.php";
                                                         <i class="bi bi-printer"></i>
                                                     </button>
                                                 <?php endif; ?>
-                                                <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
-                                                    data-id="<?= $f['id'] ?>">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                                <?php if ($quote_locked): ?>
+                                                    <i class="bi bi-lock text-muted" title="ใบเสนอราคาอนุมัติแล้ว แก้ไขไม่ได้"></i>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-link text-danger p-0 btn-delete-finance"
+                                                        data-id="<?= $f['id'] ?>">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <i class="bi bi-lock text-muted" title="อ่านอย่างเดียว"></i>
                                             <?php endif; ?>
@@ -705,14 +864,13 @@ include "header.php";
     <script>
         // Export to Excel
         function exportExcel() {
-            const id = <?= $id ?>;
-            window.location.href = 'api/export_finance_excel.php?id=' + id;
+            window.location.href = 'api/export_finance_excel.php?<?= $page_key ?>';
         }
     </script>
     <script>
         // ฟังก์ชันโหลดข้อมูลใหม่แบบ AJAX
         function refreshFinanceData() {
-            fetch(`finance.php?id=<?= $id ?>&ajax=1`)
+            fetch(`finance.php?<?= $page_key ?>&ajax=1`)
                 .then(res => res.text())
                 .then(html => {
                     const parser = new DOMParser();

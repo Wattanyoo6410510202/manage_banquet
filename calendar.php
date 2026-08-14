@@ -751,8 +751,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const editUrl = isQt ? 'edit_quotation.php?id=' : 'edit.php?id=';
             const viewUrl = isQt ? 'quotation_view.php?id=' : 'view.php?id=';
+            window.open(viewUrl + eventId, '_blank', 'width=1100,height=900');
+            return;
 
             document.getElementById('modalDetailBody').innerHTML = `
             <div class="animate__animated animate__fadeIn">

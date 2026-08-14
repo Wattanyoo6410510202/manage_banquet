@@ -2,20 +2,46 @@
 include "../config.php";
 
 $id = intval($_GET['id'] ?? 0);
-if (!$id) { die("Invalid ID"); }
+$quote_id = intval($_GET['quote_id'] ?? 0);
+// ไฟล์เดียวกันใช้ได้ทั้ง EO และใบเสนอราคาที่ยังไม่ถูกแปลงเป็น EO
+$is_quote = ($quote_id > 0 && $id === 0);
+if (!$id && !$quote_id) { die("Invalid ID"); }
 
-// ── ดึงข้อมูลงาน + ลูกค้า + บริษัท ──
-$sql = "SELECT f.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
-               ft.type_name as function_type_name, r.room_name
-        FROM functions f 
-        LEFT JOIN companies c ON f.company_id = c.id
-        LEFT JOIN customers cust ON f.customer_id = cust.id
-        LEFT JOIN function_types ft ON f.function_type_id = ft.id
-        LEFT JOIN meeting_rooms r ON f.room_id = r.id
-        WHERE f.id = $id";
-$res = $conn->query($sql);
-$data = $res->fetch_assoc();
-if (!$data) { die("Not found"); }
+if ($is_quote) {
+    $sql = "SELECT q.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email
+            FROM quotations q
+            LEFT JOIN companies c ON q.company_id = c.id
+            LEFT JOIN customers cust ON q.customer_id = cust.id
+            WHERE q.id = $quote_id";
+    $res = $conn->query($sql);
+    $data = $res->fetch_assoc();
+    if (!$data) { die("Not found"); }
+
+    // แปลงชื่อฟิลด์ให้ตรงกับฝั่ง EO เพื่อให้ส่วนสร้างไฟล์ด้านล่างใช้ร่วมกันได้
+    $data['function_name']      = $data['event_name'] ?? '';
+    $data['function_code']      = $data['quote_no'] ?? '';
+    $data['booking_name']       = $data['cust_name'] ?? '';
+    $data['phone']              = $data['cust_phone'] ?? '';
+    $data['function_type_name'] = '';
+    $data['room_name']          = '';
+    $data['pax']                = 0;
+    $data['total_amount']       = $data['grand_total'] ?? 0;
+    $data['start_time']         = !empty($data['event_date']) ? $data['event_date'] . ' 00:00:00' : null;
+    $data['end_time']           = null;
+} else {
+    // ── ดึงข้อมูลงาน + ลูกค้า + บริษัท ──
+    $sql = "SELECT f.*, c.company_name, cust.cust_name, cust.cust_tax_id, cust.cust_phone, cust.cust_email,
+                   ft.type_name as function_type_name, r.room_name
+            FROM functions f
+            LEFT JOIN companies c ON f.company_id = c.id
+            LEFT JOIN customers cust ON f.customer_id = cust.id
+            LEFT JOIN function_types ft ON f.function_type_id = ft.id
+            LEFT JOIN meeting_rooms r ON f.room_id = r.id
+            WHERE f.id = $id";
+    $res = $conn->query($sql);
+    $data = $res->fetch_assoc();
+    if (!$data) { die("Not found"); }
+}
 
 // ── ดึงข้อมูลการเงิน ──
 $finances = [];
@@ -23,7 +49,9 @@ $total_income = 0; $total_deposit = 0; $extra_cost = 0;
 $post_income = 0; $post_cost = 0;
 $pre_income = 0; $pre_cost_items = 0;
 
-$sql_fin = "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
+$sql_fin = $is_quote
+    ? "SELECT * FROM function_finance WHERE quotation_id = $quote_id ORDER BY transaction_date ASC, id ASC"
+    : "SELECT * FROM function_finance WHERE function_id = $id ORDER BY transaction_date ASC, id ASC";
 $res_fin = $conn->query($sql_fin);
 while ($f = $res_fin->fetch_assoc()) {
     if ($f['is_post_approval']) {
@@ -40,11 +68,19 @@ while ($f = $res_fin->fetch_assoc()) {
 }
 
 // ── ต้นทุนครัว Detail ──
+require_once __DIR__ . '/../includes/quote_cost.php';
+require_once __DIR__ . '/../includes/finance_stage.php';
+
 function getKitchenCostDetailed($conn, $function_id) {
     $main_list = []; $break_list = [];
     $sum_main = 0; $sum_main_cost = 0; $sum_break = 0; $sum_break_cost = 0;
 
-    $sql_m = "SELECT menu_detail, menu_qty, menu_price, menu_cost FROM function_menus WHERE function_id = $function_id";
+    $sql_m = "SELECT fm.menu_detail, fm.menu_qty, fm.menu_price, fm.menu_cost,
+                     mt.type_name, mc.category_name
+              FROM function_menus fm
+              LEFT JOIN master_menu_types mt ON fm.menu_set_id = mt.id
+              LEFT JOIN master_menu_categories mc ON mt.category_id = mc.id
+              WHERE fm.function_id = $function_id";
     $res_m = $conn->query($sql_m);
     while ($row = $res_m->fetch_assoc()) {
         $direct_price = (float)($row['menu_price'] ?? 0);
@@ -52,10 +88,27 @@ function getKitchenCostDetailed($conn, $function_id) {
         $qty = (float)$row['menu_qty'];
         $lines = preg_split('/\r\n|\r|\n/', $row['menu_detail']);
         if ($direct_price > 0) {
-            $name = trim(preg_replace('/^[0-9\.\-\s]+/', '', $lines[0] ?? ''));
+            // ราคาเหมา: แยกชื่อเมนูทุกบรรทัดออกมาแสดง แต่คิดเงินครั้งเดียวที่แถวหลัก
+            $names = [];
+            foreach ($lines as $l) {
+                $n = trim(preg_replace('/^[0-9\.\-\s]+/', '', $l));
+                if (!empty($n)) $names[] = $n;
+            }
+            // ทุน/หน่วย: ใช้ menu_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
+            // จับคู่ไม่ได้สักเมนูค่อยตกไปที่ราคาขาย (กติกาเดียวกับฝั่งใบเสนอราคา)
+            $unit_cost = $direct_cost;
+            if ($unit_cost <= 0) {
+                foreach ($names as $n) { $unit_cost += menuLineCostSplit($conn, $n); }
+            }
+            if ($unit_cost <= 0) $unit_cost = $direct_price;
+
+            // หัวแถวใช้ชื่อเซต (แค่ชื่อหมวด) ถ้าไม่มีเซตค่อยหยิบเมนูบรรทัดแรกมาเป็นหัว
+            $set_name = trim($row['category_name'] ?? '');
+            if ($set_name === '') $set_name = trim($row['type_name'] ?? '');
+            $name = $set_name !== '' ? $set_name : array_shift($names);
             $total = $direct_price * $qty;
-            $cost = $direct_cost > 0 ? $direct_cost * $qty : $total;
-            $main_list[] = ['name' => $name ?: 'ค่าอาหาร', 'qty' => $qty, 'price' => $direct_price, 'cost' => $direct_cost > 0 ? $direct_cost : $direct_price, 'total' => $total, 'cost_total' => $cost];
+            $cost = $unit_cost * $qty;
+            $main_list[] = ['name' => $name ?: 'ค่าอาหาร', 'sub' => buildSubItems($conn, $names), 'qty' => $qty, 'price' => $direct_price, 'cost' => $unit_cost, 'total' => $total, 'cost_total' => $cost];
             $sum_main += $total; $sum_main_cost += $cost;
         } else {
             foreach ($lines as $l) {
@@ -72,13 +125,32 @@ function getKitchenCostDetailed($conn, $function_id) {
         }
     }
 
-    $sql_k = "SELECT k_item, k_qty, k_price, k_cost FROM function_kitchens WHERE function_id = $function_id";
+    $sql_k = "SELECT fk.k_item, fk.k_qty, fk.k_price, fk.k_cost, bt.type_name
+              FROM function_kitchens fk
+              LEFT JOIN master_break_types bt ON fk.k_type_id = bt.id
+              WHERE fk.function_id = $function_id";
     $res_k = $conn->query($sql_k);
     while ($row = $res_k->fetch_assoc()) {
         $price = (float)($row['k_price'] ?? 0); $cost = (float)($row['k_cost'] ?? 0); $qty = (float)$row['k_qty'];
         if ($price > 0) {
-            $total = $price * $qty; $cost_total = $cost > 0 ? $cost * $qty : $total;
-            $break_list[] = ['name' => $row['k_item'], 'qty' => $qty, 'price' => $price, 'cost' => $cost > 0 ? $cost : $price, 'total' => $total, 'cost_total' => $cost_total];
+            // ราคาเหมา: แยกชื่อเบรกทุกบรรทัดออกมาแสดง แต่คิดเงินครั้งเดียวที่แถวหลัก
+            $k_names = [];
+            foreach (preg_split('/\r\n|\r|\n/', $row['k_item']) as $l) {
+                $n = trim(preg_replace('/^[0-9\.\-\s]+/', '', $l));
+                if (!empty($n)) $k_names[] = $n;
+            }
+            // ทุน/หน่วย: ใช้ k_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
+            $k_unit_cost = $cost;
+            if ($k_unit_cost <= 0) {
+                foreach ($k_names as $n) { $k_unit_cost += menuLineCostSplit($conn, $n); }
+            }
+            if ($k_unit_cost <= 0) $k_unit_cost = $price;
+
+            // หัวแถวใช้ชื่อประเภทเบรก ถ้าไม่มีค่อยหยิบเมนูบรรทัดแรกมาเป็นหัว
+            $k_set = trim($row['type_name'] ?? '');
+            $k_name = $k_set !== '' ? $k_set : array_shift($k_names);
+            $total = $price * $qty; $cost_total = $k_unit_cost * $qty;
+            $break_list[] = ['name' => $k_name ?: 'ค่าเบรก', 'sub' => buildSubItems($conn, $k_names), 'qty' => $qty, 'price' => $price, 'cost' => $k_unit_cost, 'total' => $total, 'cost_total' => $cost_total];
             $sum_break += $total; $sum_break_cost += $cost_total;
         } else {
             foreach (preg_split('/\r\n|\r|\n/', $row['k_item']) as $l) {
@@ -101,7 +173,7 @@ function getKitchenCostDetailed($conn, $function_id) {
     return compact('main_list', 'break_list', 'sum_main', 'sum_main_cost', 'sum_break', 'sum_break_cost');
 }
 
-$kitchen = getKitchenCostDetailed($conn, $id);
+$kitchen = $is_quote ? getQuoteCostDetailed($conn, $quote_id) : getKitchenCostDetailed($conn, $id);
 $kitchen_total = $kitchen['sum_main_cost'] + $kitchen['sum_break_cost'];
 $main_price = (float) ($data['total_amount'] ?? 0);
 $grand_total_income = $main_price + $total_income;
@@ -208,6 +280,14 @@ $fmtTime = function($val) {
         <td class="amount text-red"><?= number_format($r['cost_total'], 2) ?></td>
         <td class="amount" style="color:<?= ($r['total'] - $r['cost_total']) >= 0 ? '#006100' : '#c00000' ?>;"><?= number_format($r['total'] - $r['cost_total'], 2) ?></td>
     </tr>
+        <?php foreach ($r['sub'] ?? [] as $s): ?>
+        <tr>
+            <td style="padding-left:20px;color:#555;">↳ <?= htmlspecialchars($s['name']) ?></td>
+            <td></td><td></td>
+            <td class="amount" style="color:#c00000;"><?= $s['cost'] > 0 ? number_format($s['cost'], 2) : '' ?></td>
+            <td></td><td></td><td></td>
+        </tr>
+        <?php endforeach; ?>
     <?php endforeach; ?>
     <tr style="background:#f0f7ff;font-weight:bold;">
         <td colspan="4" style="text-align:right;">รวมอาหารหลัก</td>
@@ -241,6 +321,14 @@ $fmtTime = function($val) {
         <td class="amount text-red"><?= number_format($r['cost_total'], 2) ?></td>
         <td class="amount" style="color:<?= ($r['total'] - $r['cost_total']) >= 0 ? '#006100' : '#c00000' ?>;"><?= number_format($r['total'] - $r['cost_total'], 2) ?></td>
     </tr>
+        <?php foreach ($r['sub'] ?? [] as $s): ?>
+        <tr>
+            <td style="padding-left:20px;color:#555;">↳ <?= htmlspecialchars($s['name']) ?></td>
+            <td></td><td></td>
+            <td class="amount" style="color:#c00000;"><?= $s['cost'] > 0 ? number_format($s['cost'], 2) : '' ?></td>
+            <td></td><td></td><td></td>
+        </tr>
+        <?php endforeach; ?>
     <?php endforeach; ?>
     <tr style="background:#fff8f5;font-weight:bold;">
         <td colspan="4" style="text-align:right;">รวมเบรก/จัดเตรียม</td>
@@ -278,7 +366,7 @@ $fmtTime = function($val) {
             <td><?= htmlspecialchars($f['detail']) ?></td>
             <td style="text-align:center;">
                 <?= $f['type'] == 'deposit' ? 'มัดจำ' : 'รายรับ' ?>
-                <?= $f['is_post_approval'] ? ' (หลังอนุมัติ)' : '' ?>
+                <?= ' (' . financeStageLabel($f) . ')' ?>
             </td>
             <td class="amount"><?= $f['type'] == 'deposit' ? number_format($f['amount'], 2) : '-' ?></td>
             <td class="amount text-green"><?= $f['type'] == 'income' ? number_format($f['amount'], 2) : '-' ?></td>
@@ -318,7 +406,7 @@ $fmtTime = function($val) {
             <td class="amount text-red"><?= number_format($f['amount'], 2) ?></td>
             <td><?= htmlspecialchars($f['payment_method'] ?? '-') ?></td>
             <td><?= htmlspecialchars($f['created_by_name'] ?? '-') ?></td>
-            <td><?= $f['is_post_approval'] ? 'หลังอนุมัติ' : '' ?></td>
+            <td><?= financeStageLabel($f) ?></td>
             <td></td>
         </tr>
         <?php endforeach; ?>
