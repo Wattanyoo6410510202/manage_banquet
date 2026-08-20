@@ -359,13 +359,8 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             let grand = 0;
             let afterDiscount = 0;
 
-            if (vatType === 'exclude' || vatType === 'no') {
-                // แยกนอก / ไม่มี VAT → ยอดรายการเป็นราคาที่ยังไม่รวม VAT
-                subtotal = sumItems;
-            } else {
-                // รวมใน (Include VAT) → แยก VAT ออกก่อน 45,400 / 1.07 = 42,429.91
-                subtotal = sumItems / 1.07;
-            }
+            // Subtotal = ยอดรวมที่ดิบ ไม่ยุ่งกับ VAT
+            subtotal = sumItems;
 
             // ลดท้ายบิลก่อน แล้วค่อยคำนวณ VAT จากยอดหลังหักส่วนลด
             afterDiscount = subtotal + service - discount;
