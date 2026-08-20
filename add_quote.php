@@ -371,12 +371,16 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             afterDiscount = subtotal + service - discount;
             if (afterDiscount < 0) afterDiscount = 0;
 
-            if (vatType === 'exclude' || vatType === 'include') {
+            if (vatType === 'exclude') {
                 vat = afterDiscount * 0.07;
+                grand = afterDiscount + vat;
+            } else if (vatType === 'include') {
+                vat = afterDiscount * 7 / 107;
+                grand = afterDiscount;
             } else {
                 vat = 0;
+                grand = afterDiscount;
             }
-            grand = afterDiscount + vat;
 
             // แสดงผลลัพธ์
             $('#subtotal').val(subtotal.toFixed(2));
