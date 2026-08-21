@@ -275,6 +275,12 @@ function is_active($pages)
                         <i class="bi bi-calendar-event"></i> จัดเลี้ยง (Banquet)
                     </a>
                 </li>
+                <li>
+                    <a href="booking_list.php"
+                        class="<?php echo is_active(['booking_list.php', 'room_calendar.php']); ?>">
+                        <i class="bi bi-journal-bookmark"></i> รายการจองห้อง
+                    </a>
+                </li>
                 <?php endif; ?>
 
                 <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>

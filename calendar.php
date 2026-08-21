@@ -169,15 +169,6 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                 </div>
                 <div class="card-body p-2">
                     <div id='calendar'></div>
-                    <div class="d-flex flex-wrap gap-2 mt-2 px-1">
-                        <span class="badge" style="background:#ffc107;">รออนุมัติ</span>
-                        <span class="badge" style="background:#0dcaf0; color:#000;">อนุมัติแล้ว</span>
-                        <span class="badge" style="background:#0d6efd;">ดำเนินการ</span>
-                        <span class="badge" style="background:#198754;">จบงานแล้ว</span>
-                        <span class="badge" style="background:#dc3545;">ยกเลิก</span>
-                        <span class="badge" style="background:#6c757d;">อื่น ๆ</span>
-                        <span class="badge" style="background:#6f42c1;">จองห้องประชุม</span>
-                    </div>
                 </div>
             </div>
         </div>

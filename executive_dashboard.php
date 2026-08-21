@@ -1,4 +1,10 @@
 <?php
+/* php.ini ของ XAMPP ตั้ง date.timezone เป็น Europe/Berlin ซึ่งช้ากว่าไทย 5-6 ชม.
+   ถ้าไม่ตั้งตรงนี้ date('Y-m-d') จะยังเป็น "เมื่อวาน" ในช่วงเที่ยงคืน-ตี 6 ตามเวลาไทย
+   ทำให้การ์ด "รายได้วันนี้" และค่าเริ่มต้นของเดือน/ปี ดึงข้อมูลผิดช่วง
+   (ฝั่ง MySQL ใช้ NOW()/CURDATE() ซึ่งเป็นเวลาไทยอยู่แล้ว จึงต้องบังคับให้ PHP ตรงกัน) */
+date_default_timezone_set('Asia/Bangkok');
+
 include "config.php";
 include "header.php";
 
@@ -32,7 +38,9 @@ $today_filter = "AND DATE(f.start_time) = '$selected_date'";
 $mtd_filter = "AND DATE(f.start_time) BETWEEN '$month_start' AND '$month_end'";
 $yearly_filter = "AND YEAR(f.start_time) = $selected_year";
 
-$mtd_filter_q = "AND DATE(q.event_date) BETWEEN '$month_start' AND '$month_end'";
+/* ใบเสนอราคา "ออกเดือนนี้" = นับตามวันที่ออกใบ (created_at) ให้ตรงกับคำว่า "ออก"
+   และตรงฐานเดียวกับ q_today_total ที่ใช้ created_at อยู่แล้ว */
+$mtd_filter_q = "AND DATE(q.created_at) BETWEEN '$month_start' AND '$month_end'";
 
 /* ===== 1. TODAY REVENUE ===== */
 $today_total = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $today_filter $company_filter $staff_filter")->fetch_assoc()['t'];
@@ -41,6 +49,8 @@ $year_total = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM fun
 
 $today_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $today_filter $company_filter $staff_filter")->fetch_assoc()['c'];
 $mtd_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+$year_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $yearly_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+$year_avg_deal = $year_events > 0 ? round($year_total / $year_events) : 0;
 
 $today_pax = $conn->query("SELECT COALESCE(SUM(f.pax),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $today_filter $company_filter $staff_filter")->fetch_assoc()['t'];
 $mtd_pax = $conn->query("SELECT COALESCE(SUM(f.pax),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $mtd_filter $company_filter $staff_filter")->fetch_assoc()['t'];
@@ -70,11 +80,13 @@ $today_rooms_used = $conn->query("SELECT COUNT(DISTINCT f.room_id) as c FROM fun
 $mtd_rooms_used = $conn->query("SELECT COUNT(DISTINCT f.room_id) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND f.room_id IS NOT NULL AND f.room_id != 0 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
 
 /* ===== 5. MEETING ROOM UTILIZATION ===== */
-$room_stats = $conn->query("SELECT mr.room_name, COALESCE(COUNT(f.id),0) as total_bookings, COALESCE(SUM(CASE WHEN f.status NOT IN ('Cancelled','Completed') THEN 1 ELSE 0 END),0) as active_bookings FROM meeting_rooms mr LEFT JOIN functions f ON f.room_id=mr.id AND f.approve=1 $mtd_filter $company_filter $staff_filter WHERE mr.status='active' GROUP BY mr.id, mr.room_name ORDER BY total_bookings DESC");
+/* "จำนวนงานเดือนนี้" = งานที่อนุมัติแล้วและไม่ถูกยกเลิก (รวมงานที่จัดจบไปแล้วด้วย)
+   เดิมตัด 'Completed' ออก ทำให้เดือนที่ผ่านมาแล้วกราฟกลายเป็น 0 ทั้งแถบ */
+$room_stats = $conn->query("SELECT mr.room_name, COALESCE(SUM(CASE WHEN f.status NOT IN ('Cancelled') THEN 1 ELSE 0 END),0) as bookings FROM meeting_rooms mr LEFT JOIN functions f ON f.room_id=mr.id AND f.approve=1 $mtd_filter $company_filter $staff_filter WHERE mr.status='active' GROUP BY mr.id, mr.room_name ORDER BY bookings DESC");
 $room_labels = []; $room_bookings = [];
 while ($rs = $room_stats->fetch_assoc()) {
     $room_labels[] = $rs['room_name'];
-    $room_bookings[] = (int)$rs['active_bookings'];
+    $room_bookings[] = (int)$rs['bookings'];
 }
 
 /* ===== 6. FUTURE BOOKING PIPELINE ===== */
@@ -114,7 +126,7 @@ $top_events = $conn->query("SELECT f.function_name, ft.type_name, DATE(f.start_t
 
 /* ===== 11. SALES BY SEGMENT (Function Type) ===== */
 $seg_labels = []; $seg_values = [];
-$seg_data = $conn->query("SELECT ft.type_name, COALESCE(SUM(f.total_amount),0) as total FROM functions f JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $mtd_filter $company_filter $staff_filter GROUP BY ft.id, ft.type_name ORDER BY total DESC");
+$seg_data = $conn->query("SELECT COALESCE(ft.type_name,'ไม่ระบุประเภท') as type_name, COALESCE(SUM(f.total_amount),0) as total FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $mtd_filter $company_filter $staff_filter GROUP BY ft.id, type_name ORDER BY total DESC");
 while ($sd = $seg_data->fetch_assoc()) {
     $seg_labels[] = $sd['type_name'];
     $seg_values[] = (float)$sd['total'];
@@ -138,7 +150,7 @@ while ($pd = $pay_data->fetch_assoc()) {
 
 /* ===== 14. SALES BY PERSON ===== */
 $staff_data = [];
-$staff_q = $conn->query("SELECT u.id, u.name, COUNT(f.id) as total_events, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') THEN f.total_amount ELSE 0 END),0) as total_revenue, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled','Completed') THEN f.deposit ELSE 0 END),0) as total_deposit, COALESCE((SELECT SUM(st.target_amount) FROM sales_targets st WHERE st.user_id=u.id AND st.target_year=$selected_year AND st.target_month=$selected_month),0) as target_amount FROM users u LEFT JOIN functions f ON f.created_by_id=u.id $company_filter $mtd_filter WHERE u.role IN ('Staff','Admin','Sale','Manager','GM') $staff_filter_user GROUP BY u.id, u.name HAVING total_events > 0 OR target_amount > 0 ORDER BY total_revenue DESC");
+$staff_q = $conn->query("SELECT u.id, u.name, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') THEN 1 ELSE 0 END),0) as total_events, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') THEN f.total_amount ELSE 0 END),0) as total_revenue, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled','Completed') THEN f.deposit ELSE 0 END),0) as total_deposit, COALESCE((SELECT SUM(st.target_amount) FROM sales_targets st WHERE st.user_id=u.id AND st.target_year=$selected_year AND st.target_month=$selected_month),0) as target_amount FROM users u LEFT JOIN functions f ON f.created_by_id=u.id $company_filter $mtd_filter WHERE u.role IN ('Staff','Admin','Sale','Manager','GM') $staff_filter_user GROUP BY u.id, u.name HAVING total_events > 0 OR target_amount > 0 ORDER BY total_revenue DESC");
 while ($sq = $staff_q->fetch_assoc()) {
     $staff_data[] = $sq;
 }
@@ -150,7 +162,9 @@ $team_target_pct = $team_target > 0 ? round(($mtd_total / $team_target) * 100, 1
 $avg_deal = $mtd_events > 0 ? round($mtd_total / $mtd_events) : 0;
 
 /* ===== 16. CANCELLATION ===== */
-$cancelled_count = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status='Cancelled' $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+/* ต้องกรอง approve=1 ให้ตรงกับ $mtd_events ที่เป็นตัวส่วน ไม่งั้นอัตรายกเลิกจะเพี้ยน
+   (ตัวเศษนับงานที่ยังไม่อนุมัติด้วย แต่ตัวส่วนนับเฉพาะงานที่อนุมัติแล้ว) */
+$cancelled_count = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status='Cancelled' AND f.approve=1 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
 $cancel_rate = ($mtd_events + $cancelled_count) > 0 ? round(($cancelled_count / ($mtd_events + $cancelled_count)) * 100, 1) : 0;
 
 /* ===== 17. REPEAT CUSTOMER ===== */
@@ -166,21 +180,27 @@ $gop_forecast = $total_income_mtd - $total_cost_mtd;
 $gop_margin = $total_income_mtd > 0 ? round(($gop_forecast / $total_income_mtd) * 100, 1) : 0;
 
 /* ===== 19. EXECUTIVE ALERTS ===== */
-$alert_no_deposit = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed','Confirmed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter")->fetch_assoc()['c'];
+/* ห้ามตัด 'Confirmed' ออก — งานที่อนุมัติแล้วทุกใบมีสถานะ Confirmed ถ้าตัดออก alert จะเป็น 0 ตลอดกาล
+   และงาน Confirmed ที่ยังไม่วางมัดจำคือกลุ่มที่ต้องเร่งตามที่สุด */
+$alert_no_deposit = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter")->fetch_assoc()['c'];
 $alert_overdue = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Sent' AND q.expiry_date < CURDATE() $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$alert_room_conflict = $conn->query("SELECT COUNT(*) as c FROM (SELECT f.room_id, DATE(f.start_time) as dt, COUNT(*) as cnt FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL $company_filter $staff_filter GROUP BY f.room_id, DATE(f.start_time) HAVING cnt > 1) sub")->fetch_assoc()['c'];
+$alert_room_conflict = $conn->query("SELECT COUNT(*) as c FROM (SELECT f.room_id, DATE(f.start_time) as dt, COUNT(*) as cnt FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 $company_filter $staff_filter GROUP BY f.room_id, DATE(f.start_time) HAVING cnt > 1) sub")->fetch_assoc()['c'];
 $alert_pending_approval = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=0 AND f.status NOT IN ('Cancelled') $company_filter $staff_filter")->fetch_assoc()['c'];
 
 /* ===== 20. UPCOMING TODAY ===== */
 $today_events_list = $conn->query("SELECT f.id, f.function_name, f.start_time, f.end_time, c.company_name, r.room_name, u.name as staff_name, f.total_amount, f.pax, ft.type_name FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN meeting_rooms r ON f.room_id=r.id LEFT JOIN users u ON f.created_by_id=u.id LEFT JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND DATE(f.start_time)='$selected_date' $company_filter $staff_filter ORDER BY f.start_time ASC");
 
-/* ===== 21. MONTHLY TREND ===== */
+/* ===== 21. MONTHLY TREND =====
+   ยึดจากวันที่ 1 ของเดือนที่เลือกเสมอ — ถ้ายึดจากวันปัจจุบัน strtotime("-1 months")
+   ในวันที่ 29-31 จะเด้งข้ามเดือน (เช่น 31 มี.ค. ลบ 1 เดือน = 3 มี.ค.) ทำให้กราฟซ้ำเดือนและหายเดือน */
+$trend_anchor = strtotime($month_start);
 $monthly_trend = [];
 for ($i = 5; $i >= 0; $i--) {
-    $tm = date('m', strtotime("-$i months"));
-    $ty = date('Y', strtotime("-$i months"));
+    $ts = strtotime("-$i months", $trend_anchor);
+    $tm = (int)date('m', $ts);
+    $ty = (int)date('Y', $ts);
     $tr = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND MONTH(f.start_time)=$tm AND YEAR(f.start_time)=$ty $company_filter $staff_filter")->fetch_assoc();
-    $monthly_trend[] = ['label' => date('M', strtotime("-$i months")), 'total' => (float)$tr['t']];
+    $monthly_trend[] = ['label' => date('M y', $ts), 'total' => (float)$tr['t']];
 }
 
 /* ===== 22. PERIOD SPLIT (เช้า/บ่าย/เย็น) ===== */
@@ -193,7 +213,7 @@ while ($pd2 = $period_data->fetch_assoc()) {
 }
 
 /* ===== 23. QUOTATION EXPIRING ===== */
-$expiring_quotes = $conn->query("SELECT q.id, q.quote_no, q.event_name, q.expiry_date, q.grand_total, c.company_name FROM quotations q LEFT JOIN companies c ON q.company_id=c.id WHERE q.status='Sent' AND q.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) ORDER BY q.expiry_date ASC LIMIT 5");
+$expiring_quotes = $conn->query("SELECT q.id, q.quote_no, q.event_name, q.expiry_date, q.grand_total, c.company_name FROM quotations q LEFT JOIN companies c ON q.company_id=c.id WHERE q.status='Sent' AND q.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) " . ($selected_company > 0 ? "AND q.company_id = $selected_company " : "") . ($selected_staff > 0 ? "AND q.created_by = $selected_staff " : "") . "ORDER BY q.expiry_date ASC LIMIT 5");
 
 /* ===== 24. RECENT EVENTS LIST ===== */
 $upcoming_all = $conn->query("SELECT f.id, f.function_name, f.start_time, f.end_time, c.company_name, r.room_name, u.name as staff_name, f.total_amount, f.pax, ft.type_name, f.status FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN meeting_rooms r ON f.room_id=r.id LEFT JOIN users u ON f.created_by_id=u.id LEFT JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time >= NOW() $company_filter $staff_filter ORDER BY f.start_time ASC LIMIT 10");
@@ -234,9 +254,10 @@ while ($r = $dd_pipe->fetch_assoc()) $dd['pipeline'][] = $r;
 // 7) Events by Month (for trend)
 $dd_month = [];
 for ($i = 5; $i >= 0; $i--) {
-    $tm = date('m', strtotime("-$i months"));
-    $ty = date('Y', strtotime("-$i months"));
-    $ml = date('M', strtotime("-$i months"));
+    $ts = strtotime("-$i months", $trend_anchor);
+    $tm = (int)date('m', $ts);
+    $ty = (int)date('Y', $ts);
+    $ml = date('M y', $ts);
     $mr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, ft.type_name, c.company_name, u.name as staff_name FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND MONTH(f.start_time)=$tm AND YEAR(f.start_time)=$ty $company_filter $staff_filter ORDER BY f.start_time DESC");
     while ($r = $mr->fetch_assoc()) { $r['month_label'] = $ml; $dd_month[] = $r; }
 }
@@ -263,7 +284,7 @@ $dd['future'] = $dd_future;
 
 // 11) Alerts detail
 $dd['alert_no_deposit'] = [];
-$adr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name, u.name as staff_name FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed','Confirmed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter ORDER BY f.start_time ASC");
+$adr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name, u.name as staff_name FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter ORDER BY f.start_time ASC");
 while ($r = $adr->fetch_assoc()) $dd['alert_no_deposit'][] = $r;
 
 $dd['alert_overdue'] = [];
@@ -275,7 +296,7 @@ $apr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date
 while ($r = $apr->fetch_assoc()) $dd['alert_pending'][] = $r;
 
 $dd['alert_room_conflict'] = [];
-$rcr = $conn->query("SELECT f.id, f.function_name, mr.room_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name FROM functions f LEFT JOIN meeting_rooms mr ON f.room_id=mr.id LEFT JOIN companies c ON f.company_id=c.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND (f.room_id, DATE(f.start_time)) IN (SELECT f2.room_id, DATE(f2.start_time) FROM functions f2 WHERE f2.approve=1 AND f2.status NOT IN ('Cancelled','Completed') AND f2.room_id IS NOT NULL $company_filter $staff_filter GROUP BY f2.room_id, DATE(f2.start_time) HAVING COUNT(*)>1) $company_filter $staff_filter ORDER BY f.start_time ASC");
+$rcr = $conn->query("SELECT f.id, f.function_name, mr.room_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name FROM functions f LEFT JOIN meeting_rooms mr ON f.room_id=mr.id LEFT JOIN companies c ON f.company_id=c.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 AND (f.room_id, DATE(f.start_time)) IN (SELECT f2.room_id, DATE(f2.start_time) FROM functions f2 WHERE f2.approve=1 AND f2.status NOT IN ('Cancelled','Completed') AND f2.room_id IS NOT NULL AND f2.room_id != 0 $company_filter $staff_filter GROUP BY f2.room_id, DATE(f2.start_time) HAVING COUNT(*)>1) $company_filter $staff_filter ORDER BY f.start_time ASC");
 while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
 /* =========================================================
@@ -376,27 +397,29 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 
 /* ---------- Hero + filter ---------- */
 .exec-hero{
-    position:relative; overflow:hidden; border-radius:18px; padding:18px 20px; color:#fff;
-    background:linear-gradient(118deg,#15171c 0%,#24272f 58%,#2e313a 100%);
-    box-shadow:0 10px 30px rgba(16,24,40,.14);
+    position:relative; overflow:hidden; border-radius:18px; padding:16px 20px;
+    background:var(--surface); border:1px solid var(--line); color:var(--ink);
+    border-left:4px solid var(--gold);
 }
 .exec-hero::after{
     content:''; position:absolute; inset:0; pointer-events:none;
-    background:radial-gradient(560px 220px at 88% -30%, rgba(184,148,65,.42), transparent 68%);
+    background:radial-gradient(520px 200px at 92% -40%, rgba(184,148,65,.10), transparent 70%);
 }
 .exec-hero > *{position:relative; z-index:1}
-.exec-hero .section-title{font-size:1.05rem;font-weight:700;margin:0;letter-spacing:.2px}
-.exec-hero .hero-sub{font-size:.78rem;color:rgba(255,255,255,.62)}
-.exec-hero .form-control,.exec-hero .form-select{
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff;
-    font-size:.78rem; border-radius:9px; box-shadow:none;
+.exec-hero .section-title{font-size:1.05rem;font-weight:700;margin:0;letter-spacing:.2px;color:var(--ink)}
+.exec-hero .hero-sub{font-size:.78rem;color:var(--ink-2)}
+
+/* ---------- Filter bar (พื้นขาว แยกออกมาจากแถบหัวสีเข้ม) ---------- */
+.exec-filter{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 16px}
+.exec-filter .flt-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:3px;display:block}
+.exec-filter .form-control,.exec-filter .form-select{
+    background:#fff;border:1px solid var(--line);color:var(--ink);
+    font-size:.8rem;border-radius:9px;box-shadow:none;
 }
-.exec-hero .form-control:focus,.exec-hero .form-select:focus{
-    background:rgba(255,255,255,.14); border-color:var(--gold); color:#fff;
+.exec-filter .form-control:focus,.exec-filter .form-select:focus{
+    border-color:var(--gold);box-shadow:0 0 0 .18rem rgba(184,148,65,.15);
 }
-.exec-hero .form-select option{color:#111}
-.exec-hero .form-control::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
-.exec-hero .flt-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.5);margin-bottom:3px;display:block}
+.exec-filter .form-select:disabled{background:#f2f4f7;color:var(--muted)}
 .btn-gold{background:var(--gold);border:1px solid var(--gold);color:#fff;font-weight:600;font-size:.78rem;border-radius:9px;padding:6px 16px}
 .btn-gold:hover{background:#a5833a;border-color:#a5833a;color:#fff}
 
@@ -521,7 +544,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 
 <div class="exec-dash">
 
-    <!-- ===================== HERO + FILTER ===================== -->
+    <!-- ===================== HERO ===================== -->
     <div class="exec-hero mb-3">
         <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
             <div>
@@ -530,11 +553,16 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                     ข้อมูลวันที่ <?= date('d M Y', strtotime($selected_date)) ?>
                     · เดือน <?= date('F', mktime(0, 0, 0, $selected_month, 1)) ?> <?= $selected_year + 543 ?>
                     <?php if ($selected_company > 0 || $selected_staff > 0): ?>
-                        · <span style="color:var(--gold)">กรองข้อมูลอยู่</span>
+                        · <span style="color:#8a6c22;font-weight:600">กรองข้อมูลอยู่</span>
                     <?php endif; ?>
                 </div>
             </div>
-            <form method="GET" class="d-flex flex-wrap align-items-end gap-2 no-print" id="execFilter">
+        </div>
+    </div>
+
+    <!-- ===================== FILTER ===================== -->
+    <div class="exec-filter mb-3 no-print">
+        <form method="GET" class="d-flex flex-wrap align-items-end gap-2" id="execFilter">
                 <div>
                     <label class="flt-label">วันที่</label>
                     <input type="date" name="date" value="<?= $selected_date ?>" class="form-control form-control-sm" style="width:145px">
@@ -573,8 +601,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                     </select>
                 </div>
                 <button type="submit" class="btn btn-gold btn-sm"><i class="bi bi-funnel me-1"></i>ดูข้อมูล</button>
-            </form>
-        </div>
+        </form>
     </div>
 
     <!-- ===================== KPI TILES ===================== -->
@@ -615,7 +642,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                     <span class="tile-ico" style="background:#eaf7f1;color:#0d8a60"><i class="bi bi-calendar3"></i></span>
                 </div>
                 <div class="tile-value">฿<?= number_format($year_total) ?></div>
-                <div class="tile-sub">เฉลี่ยต่องาน ฿<?= number_format($avg_deal) ?></div>
+                <div class="tile-sub"><?= number_format($year_events) ?> งาน · เฉลี่ย ฿<?= number_format($year_avg_deal) ?>/งาน</div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-4 col-md-6">
@@ -631,11 +658,11 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
         <div class="col-xl-2 col-lg-4 col-md-6">
             <div class="tile is-click" id="tileDeposit">
                 <div class="tile-head">
-                    <span class="tile-label">เงินมัดจำ</span>
+                    <span class="tile-label">มัดจำคงค้าง (ตามสัญญา)</span>
                     <span class="tile-ico" style="background:#fdf4de;color:#9a6a06"><i class="bi bi-wallet2"></i></span>
                 </div>
                 <div class="tile-value">฿<?= number_format($total_deposit_balance) ?></div>
-                <div class="tile-sub">รับเดือนนี้ ฿<?= number_format($deposit_received_mtd) ?></div>
+                <div class="tile-sub">รับจริงเดือนนี้ ฿<?= number_format($deposit_received_mtd) ?></div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-4 col-md-6">
@@ -687,7 +714,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                             <span class="hint ms-auto">คลิกจุดบนกราฟเพื่อดูงานของเดือนนั้น</span>
                         </div>
                         <div class="pnl-desc"><i class="bi bi-info-circle"></i>
-                            <span>รายได้รวมย้อนหลัง 6 เดือนจนถึงเดือนปัจจุบัน (นับตามวันจัดงาน) ใช้ดูว่ายอดกำลังขึ้นหรือลง
+                            <span>รายได้รวมย้อนหลัง 6 เดือนจนถึงเดือนที่เลือกในตัวกรอง (นับตามวันจัดงาน) ใช้ดูว่ายอดกำลังขึ้นหรือลง
                                 และเดือนไหนเป็นไฮซีซัน — ตัวเลขที่กำกับไว้คือเดือนที่ทำได้สูงสุดและเดือนล่าสุด</span>
                         </div>
                         <div class="pnl-bd">
@@ -817,7 +844,8 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                     <div class="pnl">
                         <div class="pnl-hd"><h6><i class="bi bi-file-earmark-text me-1" style="color:var(--gold)"></i>ใบเสนอราคา</h6><span class="hint ms-auto">เดือนนี้</span></div>
                         <div class="pnl-desc"><i class="bi bi-info-circle"></i>
-                            <span>สถิติใบเสนอราคาของเดือนที่เลือก — Conversion คืออัตราปิดการขาย (ใบที่ลูกค้ายืนยัน ÷ ใบที่ออกทั้งหมด)
+                            <span>สถิติใบเสนอราคาที่ <b>ออกในเดือนที่เลือก</b> (นับตามวันที่ออกใบ) — Conversion คืออัตราปิดการขาย
+                                (ใบที่ลูกค้ายืนยัน ÷ ใบที่ออกทั้งหมด) · ช่อง <b>รอตอบ (ค้างสะสม)</b> เป็นยอดค้างปัจจุบันของทุกเดือนรวมกัน ไม่ใช่เฉพาะเดือนนี้
                                 ส่วนด้านล่างคือใบที่จะหมดอายุใน 7 วัน ควรรีบตามลูกค้าให้ตัดสินใจก่อนใบหมดอายุ</span>
                         </div>
                         <div class="pnl-bd">
@@ -825,7 +853,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                 <div class="col-4 col-lg-2"><div class="ministat"><div class="v num"><?= $q_total ?></div><div class="l">ออกทั้งหมด</div></div></div>
                                 <div class="col-4 col-lg-2"><div class="ministat"><div class="v num"><?= $q_today_total ?></div><div class="l">ออกวันนี้</div></div></div>
                                 <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:var(--ok)"><?= $q_approved ?></div><div class="l">ยืนยันแล้ว</div></div></div>
-                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:#9a6a06"><?= $q_pending ?></div><div class="l">รอลูกค้าตอบ</div></div></div>
+                                <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:#9a6a06"><?= $q_pending ?></div><div class="l">รอตอบ (ค้างสะสม)</div></div></div>
                                 <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:var(--crit)"><?= $q_cancelled ?></div><div class="l">ปิดไม่สำเร็จ</div></div></div>
                                 <div class="col-4 col-lg-2"><div class="ministat"><div class="v num" style="color:#2a78d6"><?= $conversion_rate ?>%</div><div class="l">Conversion</div></div></div>
                             </div>
@@ -902,9 +930,10 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                 </div>
                 <div class="col-xl-5">
                     <div class="pnl">
-                        <div class="pnl-hd"><h6><i class="bi bi-trophy me-1" style="color:var(--gold)"></i>งานมูลค่าสูงสุด</h6><span class="hint ms-auto">10 อันดับแรก</span></div>
+                        <div class="pnl-hd"><h6><i class="bi bi-trophy me-1" style="color:var(--gold)"></i>งานมูลค่าสูงสุด</h6><span class="hint ms-auto">10 อันดับแรก · ทุกช่วงเวลา</span></div>
                         <div class="pnl-desc"><i class="bi bi-info-circle"></i>
-                            <span>10 งานที่มีมูลค่าสูงที่สุด ใช้ดูว่างานใหญ่มาจากลูกค้าหรือประเภทงานแบบไหน เพื่อนำไปต่อยอดการขาย</span>
+                            <span>10 งานที่มีมูลค่าสูงที่สุด <b>นับทุกช่วงเวลา ไม่จำกัดเดือนที่เลือก</b> (แต่ยังกรองตามโรงแรม/เซลล์)
+                                ใช้ดูว่างานใหญ่มาจากลูกค้าหรือประเภทงานแบบไหน เพื่อนำไปต่อยอดการขาย</span>
                         </div>
                         <div class="table-responsive">
                             <table class="tbl">
@@ -1114,7 +1143,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                     <tr><td class="text-dim">กำไรขั้นต้น (GOP)</td><td class="text-end num fw-bold" style="color:<?= $gop_forecast >= 0 ? 'var(--ok)' : 'var(--crit)' ?>">฿<?= number_format($gop_forecast) ?></td></tr>
                                     <tr><td class="text-dim">มูลค่าเฉลี่ยต่องาน</td><td class="text-end num fw-bold">฿<?= number_format($avg_deal) ?></td></tr>
                                     <tr><td class="text-dim">อัตราการยกเลิกงาน</td><td class="text-end num fw-bold" style="color:<?= $cancel_rate > 10 ? 'var(--crit)' : 'var(--ok)' ?>"><?= $cancel_rate ?>% (<?= $cancelled_count ?> งาน)</td></tr>
-                                    <tr><td class="text-dim">ลูกค้าที่กลับมาใช้ซ้ำ</td><td class="text-end num fw-bold"><?= $repeat_pct ?>% (<?= $repeat_cust ?>/<?= $total_cust ?> ราย)</td></tr>
+                                    <tr><td class="text-dim">ลูกค้าที่กลับมาใช้ซ้ำ <span class="tag">สะสมทั้งหมด</span></td><td class="text-end num fw-bold"><?= $repeat_pct ?>% (<?= $repeat_cust ?>/<?= $total_cust ?> ราย)</td></tr>
                                     <tr><td class="text-dim">ห้องที่ถูกใช้งาน</td><td class="text-end num fw-bold"><?= $mtd_rooms_used ?> ห้อง</td></tr>
                                 </tbody>
                             </table>

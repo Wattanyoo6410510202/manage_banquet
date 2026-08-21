@@ -3,6 +3,17 @@ include "../config.php";
 
 header('Content-Type: application/json');
 
+// ปุ่ม "เลือกใช้งาน" เปิดให้เฉพาะ admin กับ staff — ต้องเช็คที่ฝั่งเซิร์ฟเวอร์ด้วย
+// เพราะการซ่อนปุ่มใน quotation_list.php กันได้แค่การคลิก ยิง URL ตรงยังผ่าน
+if (!isset($_SESSION['user'])) {
+    echo json_encode(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบก่อน'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+if (!in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'staff'])) {
+    echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์เลือกใบเสนอราคา'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if (!isset($_GET['id'])) {
     echo json_encode(['status' => 'error', 'message' => 'Missing ID']);
     exit;

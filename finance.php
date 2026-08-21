@@ -9,6 +9,14 @@ $quote_id = intval($_GET['quote_id'] ?? 0);
 // โหมดใบเสนอราคา: งานที่ยังไม่ถูกแปลงเป็น EO ยังไม่มีแถวใน functions
 // จึงผูกรายการบัญชีไว้กับ quotations ไปก่อน แล้วค่อยโอนเข้า EO ตอนแปลง
 $is_quote = ($quote_id > 0 && $id === 0);
+
+// โหมดใบเสนอราคา (เข้ามาจากปุ่มบัญชี/ROI ใน quotation_list.php) เปิดให้เฉพาะ admin กับ staff
+// หมายเหตุ: กันเฉพาะโหมดนี้ ไม่กระทบโหมด ?id= ที่หน้างานช่าง/แม่บ้าน/จัดเลี้ยงเรียกใช้อยู่
+if ($is_quote && !in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'staff'])) {
+    echo "<script>window.location.href='access_denied.php';</script>";
+    exit;
+}
+
 $eo_of_quote = null;
 $quote_locked = false;
 
