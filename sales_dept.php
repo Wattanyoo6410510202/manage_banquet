@@ -5,7 +5,7 @@ include "config.php";
 // เช็คสิทธิ์ (Admin หรือ Staff ที่เกี่ยวข้อง)
 $role = strtolower($_SESSION['role'] ?? '');
 if (!in_array($role, ['admin', 'staff', 'gm', 'sale'])) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
 

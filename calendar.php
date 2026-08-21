@@ -126,8 +126,9 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
         <div class="col-lg-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white border-0 pt-3 pb-0">
-                    <div class="row g-2 align-items-center mb-2">
+                    <div class="row g-2 align-items-end mb-2">
                         <div class="col-md-2">
+                            <label class="cal-filter-label">โรงแรม</label>
                             <select id="companyFilter" class="form-select form-select-sm" onchange="filterRooms()">
                                 <option value="all">ทุกโรงแรม</option>
                                 <?php while ($c = $companies->fetch_assoc()): ?>
@@ -136,11 +137,13 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="cal-filter-label">ห้องประชุม</label>
                             <select id="roomFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="all">ทุกห้องประชุม</option>
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="cal-filter-label">แหล่งข้อมูล</label>
                             <select id="dataSource" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="all" selected>ทั้งหมด (All)</option>
                                 <option value="eo">Function Order (EO)</option>
@@ -150,12 +153,14 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="cal-filter-label">สถานะอนุมัติ</label>
                             <select id="approveFilter" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="approved">เฉพาะที่อนุมัติแล้ว</option>
                                 <option value="all" selected>ทั้งหมด (รวมรออนุมัติ)</option>
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="cal-filter-label">โหมดเวลา</label>
                             <select id="timeMode" class="form-select form-select-sm" onchange="updateCalendarEvents()">
                                 <option value="general" selected>เวลาจองหลัก</option>
                                 <option value="schedule">กำหนดการ</option>
@@ -168,6 +173,22 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             </button>
                         </div>
                         <?php endif; ?>
+                    </div>
+                    <div class="cal-legend">
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#ffc107"></i>รออนุมัติ</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#0dcaf0"></i>อนุมัติแล้ว</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#0d6efd"></i>ดำเนินการ</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#198754"></i>จบงานแล้ว</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#fd7e14"></i>QT อนุมัติ</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#6c757d"></i>QT ฉบับร่าง</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#dc3545"></i>ยกเลิก / ต้องแก้ไข</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#6f42c1"></i>จองห้องประชุม</span>
+                    </div>
+                    <div class="cal-legend cal-legend-type">
+                        <span class="cal-legend-label">ความเข้มพื้นหลัง = ประเภท:</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-eo"></i>งานจัดเลี้ยง (EO)</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-qt"></i>ใบเสนอราคา (ตัวเอียง)</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-rb"></i>จองห้องประชุม</span>
                     </div>
                 </div>
                 <div class="card-body p-2">
@@ -265,6 +286,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                 <form id="roomBookingForm">
                     <input type="hidden" name="action" value="save">
                     <input type="hidden" name="id" value="0">
+                    <input type="hidden" name="customer_id" id="rb_customer_id" value="">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="small fw-bold text-secondary mb-1">โรงแรม <span class="text-danger">*</span></label>
@@ -299,17 +321,23 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             <label class="small fw-bold text-secondary mb-1">ชื่องาน <span class="text-danger">*</span></label>
                             <input type="text" name="event_name" class="form-control form-control-sm" required placeholder="เช่น ประชุมบอร์ด">
                         </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-secondary mb-1">ลูกค้า (เลือกจากระบบ ถ้ามี)</label>
+                            <select id="rb_customer" class="form-select form-select-sm" style="width:100%;">
+                                <option value="">-- ค้นหาลูกค้า หรือพิมพ์เองด้านล่าง --</option>
+                            </select>
+                        </div>
                         <div class="col-md-6">
                             <label class="small fw-bold text-secondary mb-1">ชื่อผู้จอง</label>
-                            <input type="text" name="booking_name" class="form-control form-control-sm" placeholder="ชื่อ-นามสกุล">
+                            <input type="text" name="booking_name" id="rb_booking_name" class="form-control form-control-sm" placeholder="ชื่อ-นามสกุล">
                         </div>
                         <div class="col-md-6">
                             <label class="small fw-bold text-secondary mb-1">เบอร์โทร</label>
-                            <input type="text" name="phone" class="form-control form-control-sm" placeholder="0xx-xxx-xxxx">
+                            <input type="text" name="phone" id="rb_phone" class="form-control form-control-sm" placeholder="0xx-xxx-xxxx">
                         </div>
                         <div class="col-12">
                             <label class="small fw-bold text-secondary mb-1">หน่วยงาน / องค์กร</label>
-                            <input type="text" name="organization" class="form-control form-control-sm" placeholder="ชื่อบริษัท">
+                            <input type="text" name="organization" id="rb_organization" class="form-control form-control-sm" placeholder="ชื่อบริษัท">
                         </div>
                         <div class="col-md-6">
                             <label class="small fw-bold text-secondary mb-1">เริ่ม <span class="text-danger">*</span></label>
@@ -387,26 +415,25 @@ document.addEventListener('DOMContentLoaded', function () {
             updateDayTimetable(null, info.start, info.end);
         },
         eventContent: function(arg) {
-            const props = arg.event.extendedProps;
             const hasTime = arg.event.startStr && arg.event.startStr.includes('T');
             const timeStr = hasTime ? arg.event.startStr.split('T')[1].substring(0, 5) : '';
-            const st = (props.status || '').toLowerCase();
-            const rawStatus = props.status || '';
-            let dotColor = '#0dcaf0';
-            if(st === 'pending') dotColor = '#ffc107';
-            else if(st === 'in progress' || st === 'อนุมัติแล้ว') dotColor = '#0d6efd';
-            else if(st === 'completed' || st === 'จบงานแล้ว') dotColor = '#198754';
-            else if(st === 'cancelled' || st === 'ยกเลิก') dotColor = '#dc3545';
-            else if(rawStatus === 'QT (อนุมัติ)') dotColor = '#fd7e14';
-            else if(rawStatus === 'QT (Draft)') dotColor = '#6c757d';
-            else if(rawStatus === 'กรุณาเปลี่ยนวันหรือกด Freeze') dotColor = '#dc3545';
-            else if(rawStatus === 'จองห้อง') dotColor = '#6f42c1';
+            // ใช้สีเดียวกับพื้นหลังของ event (มาจาก 'color' ที่ backend กำหนดไว้แล้ว) แทนการคำนวณซ้ำ
+            // เพื่อไม่ให้สีขอบเพี้ยนไปจากสีแถบ event จริง
+            const color = arg.event.backgroundColor || arg.event.extendedProps.color || '#0dcaf0';
+            const title = (arg.event.title || '').replace(/</g, '&lt;');
 
+            // แยก "ประเภท" ออกจาก "สถานะ" ด้วยคนละมิติ: สถานะ = สีขอบ (ตาม legend เดิม),
+            // ประเภท = ความเข้ม/หนาของพื้นหลัง — EO จางสุด, ใบเสนอราคากลาง, จองห้องเข้มสุด (เพราะล็อกห้องจริง)
+            let typeClass = 'cal-chip-eo';
+            if (arg.event.id.startsWith('rb_')) typeClass = 'cal-chip-rb';
+            else if (arg.event.id.startsWith('qt_')) typeClass = 'cal-chip-qt';
+
+            // สำคัญ: ต้องมี overflow:hidden ที่ตัว wrapper และ min-width:0 ที่ลูกใน flex
+            // ไม่งั้นข้อความยาวจะ "ล้น" ทะลุไปทับช่องวันถัดไปแทนที่จะถูกตัดด้วย ellipsis
             return {
-                html: `<div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;line-height:1.3;">
-                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};flex-shrink:0;"></span>
-                    ${timeStr ? `<span style="font-weight:600;flex-shrink:0;font-size:0.7rem;">${timeStr}</span>` : ''}
-                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${arg.event.title || ''}</span>
+                html: `<div class="cal-chip ${typeClass}" style="border-left-color:${color};">
+                    ${timeStr ? `<span class="cal-chip-time" style="color:${color};">${timeStr}</span>` : ''}
+                    <span class="cal-chip-title">${title}</span>
                 </div>`
             };
         },
@@ -1162,12 +1189,49 @@ function saveInline($td, eid, field, value) {
 <script>
 const rbRooms = <?= json_encode($rooms_json) ?>;
 
+function initRbCustomerSelect() {
+    var $sel = $('#rb_customer');
+    if (!$sel.length) return;
+    if (!$.fn.select2) { setTimeout(initRbCustomerSelect, 200); return; }
+    $sel.select2({
+        width: '100%',
+        placeholder: '-- ค้นหาลูกค้า หรือพิมพ์เองด้านล่าง --',
+        allowClear: true,
+        minimumInputLength: 0,
+        dropdownParent: $('#roomBookingModal'),
+        ajax: {
+            url: 'api/search_customers.php?t=' + new Date().getTime(),
+            dataType: 'json',
+            delay: 250,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) {
+                return { results: (data.results || []).map(function(item) {
+                    return { id: item.id, text: item.text, cust_name: item.cust_name, cust_phone: item.cust_phone };
+                })};
+            }
+        }
+    }).on('select2:select', function(e) {
+        var data = e.params.data;
+        document.getElementById('rb_customer_id').value = data.id || '';
+        document.getElementById('rb_booking_name').value = data.cust_name || data.text || '';
+        document.getElementById('rb_phone').value = data.cust_phone || '';
+        document.getElementById('rb_organization').value = data.cust_name || data.text || '';
+    }).on('select2:clear', function() {
+        document.getElementById('rb_customer_id').value = '';
+        document.getElementById('rb_booking_name').value = '';
+        document.getElementById('rb_phone').value = '';
+        document.getElementById('rb_organization').value = '';
+    });
+}
+initRbCustomerSelect();
+
 function openRoomBookingModal() {
     document.getElementById('roomBookingForm').reset();
     document.getElementById('rbConflictAlert').classList.add('d-none');
     document.getElementById('btnSubmitRb').disabled = false;
     document.getElementById('btnSubmitRb').innerHTML = '<i class="bi bi-check-lg me-1"></i> บันทึกการจอง';
     document.getElementById('rb_room').innerHTML = '<option value="">-- เลือกโรงแรมก่อน --</option>';
+    if ($.fn.select2) { $('#rb_customer').val(null).trigger('change'); }
     new bootstrap.Modal(document.getElementById('roomBookingModal')).show();
 }
 
@@ -1316,15 +1380,80 @@ function exportExcel() {
 </script>
 
 <style>
+    /* ===== ตัวกรอง: label เล็กเหนือ select ===== */
+    .cal-filter-label {
+        font-size: .68rem; text-transform: uppercase; letter-spacing: .5px;
+        color: #8a9099; font-weight: 700; margin-bottom: 3px; display: block;
+    }
+
+    /* ===== คำอธิบายสี (legend) ===== */
+    .cal-legend {
+        display: flex; flex-wrap: wrap; gap: 4px 14px;
+        padding: 8px 2px 10px; margin-top: 4px;
+        border-top: 1px dashed #eef0f2; font-size: .72rem; color: #6c757d;
+    }
+    .cal-legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .cal-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cal-legend-type { padding-top: 6px; padding-bottom: 8px; border-top: 1px dashed #eef0f2; margin-top: 0; }
+    .cal-legend-label { font-weight: 700; color: #5b6470; }
+    .cal-swatch {
+        display: inline-block; width: 20px; height: 12px; border-radius: 3px; flex-shrink: 0;
+        border-left: 3px solid #8a9099;
+    }
+
+    /* ===== ตัวปฏิทิน (FullCalendar) ===== */
     #calendar { font-size: 0.85rem; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
     .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold; color: #333; }
-    .fc-event { cursor: pointer; border: none !important; border-radius: 4px; padding: 1px 3px; font-size: 0.75rem; margin-bottom: 1px !important; }
-    .fc-daygrid-event { padding: 1px 3px; }
+    .fc .fc-daygrid-day-frame { min-height: 92px; }
+    .fc .fc-daygrid-day-top { padding: 3px 4px 0; }
+    .fc .fc-daygrid-day-number { font-size: 0.85rem; font-weight: 600; padding: 2px 4px; }
+    .fc .fc-col-header-cell-cushion { font-weight: 600; padding: 6px 4px; color: #5b6470; }
+    .fc .fc-day-today { background: rgba(184, 148, 65, 0.07) !important; }
+    .fc .fc-day-today .fc-daygrid-day-number {
+        background: var(--hotel-gold, #b89441); color: #fff; border-radius: 50%;
+        width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .fc .fc-day-sat .fc-daygrid-day-number, .fc .fc-day-sun .fc-daygrid-day-number { color: #c0392b; }
+    .fc-daygrid-day.fc-day-sat, .fc-daygrid-day.fc-day-sun { background: rgba(0,0,0,0.012); }
+
+    /* harness = กล่องที่ครองพื้นที่ของ event แต่ละอัน ต้องกันการล้นตรงนี้เป็นด่านแรก
+       ห้ามใส่ max-width ตรงนี้ — event หลายวัน (เช่น 20-22 ส.ค.) ใช้ left/right ลบเพื่อยืดแท่งข้ามหลายวัน
+       max-width:100% จะไปหักความกว้างนั้นทิ้ง ทำให้แท่งงานหลายวันถูกตัดเหลือแค่ 1 ช่องวัน */
+    .fc-daygrid-event-harness { overflow: hidden; }
+    .fc-event {
+        cursor: pointer; border: none !important; overflow: hidden;
+        border-radius: 4px; padding: 0; margin-bottom: 2px !important; background: transparent !important;
+    }
+    .fc-daygrid-event { padding: 0; }
     .fc-timegrid-event { padding: 2px 4px !important; }
-    .fc .fc-day-today { background: rgba(13, 110, 253, 0.05) !important; }
-    .fc .fc-daygrid-day-number { font-size: 0.85rem; font-weight: 500; padding: 4px 6px; }
-    .fc .fc-col-header-cell-cushion { font-weight: 600; padding: 6px 4px; }
-    .fc .fc-more-link { font-size: 0.7rem; }
+
+    /* กล่อง event แบบใหม่: แถบสีซ้าย(=สถานะ) + พื้นหลัง(=ประเภท) อ่านง่ายกว่าจุดเล็กๆ เดิม และตัดคำด้วย ellipsis เสมอ */
+    .cal-chip {
+        display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; box-sizing: border-box;
+        padding: 2px 6px 2px 7px; border-left: 3px solid #0dcaf0; border-radius: 3px;
+        line-height: 1.5; overflow: hidden; white-space: nowrap;
+    }
+    .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: .68rem; }
+    .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: .72rem; color: #2b2f36; }
+
+    /* 3 ประเภท แยกด้วย "ความเข้ม" ของพื้นหลัง ไม่ใช่สี (สีเก็บไว้บอกสถานะอย่างเดียว ไม่ให้ชนกัน) */
+    .cal-chip-eo { background: rgba(17, 19, 24, 0.045); }                    /* งานจัดเลี้ยง (EO) — จางสุด งานทั่วไป */
+    .cal-chip-eo:hover { background: rgba(17, 19, 24, 0.09); }
+    .cal-chip-qt { background: rgba(17, 19, 24, 0.11); font-style: italic; } /* ใบเสนอราคา — กลาง เอียงเล็กน้อยบอกว่ายังไม่ใช่งานจริง */
+    .cal-chip-qt:hover { background: rgba(17, 19, 24, 0.17); }
+    .cal-chip-qt .cal-chip-title { font-style: italic; }
+    .cal-chip-rb { background: rgba(111, 66, 193, 0.16); border-left-width: 5px; font-weight: 600; } /* จองห้อง — เข้มสุด+ขอบหนา เพราะล็อกห้องจริง */
+    .cal-chip-rb:hover { background: rgba(111, 66, 193, 0.26); }
+
+    /* "+N งาน" ให้ดูเป็นปุ่มเล็กๆ กดได้ชัดเจน แทนตัวหนังสือเปลือย */
+    .fc .fc-daygrid-more-link {
+        font-size: .68rem; font-weight: 700; color: #8a6c22; background: #f7f1e3;
+        border-radius: 3px; padding: 1px 6px; margin-top: 1px; display: inline-block;
+    }
+    .fc .fc-daygrid-more-link:hover { background: #efe3c4; }
+    .fc .fc-more-popover { border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+    .fc .fc-popover-header { background: #16181d; color: #fff; padding: 8px 10px; }
+
     .text-gold { color: #d4af37; }
     .bg-purple { background-color: #6f42c1 !important; }
     .bg-dark { background-color: #1a1a1a !important; }
@@ -1339,6 +1468,8 @@ function exportExcel() {
         #statsRow .card-body { padding: 0.5rem; }
         #statsRow .card-body i { font-size: 1rem !important; }
         #statsRow .card-body div div { font-size: 0.75rem; }
+        .fc .fc-daygrid-day-frame { min-height: 68px; }
+        .cal-legend { gap: 4px 10px; font-size: .68rem; }
     }
 </style>
 

@@ -20,7 +20,7 @@ function check_access($allowed_roles = []) {
     if (!empty($allowed)) {
         if (!in_array($current_role, $allowed)) {
             // ใช้ JavaScript ดีดออก เพื่อแก้ปัญหา Cannot modify header information
-            echo "<script>window.location.href='access_denied.php';</script>";
+            echo "<script>window.location.href='login.php?error=access_denied';</script>";
             exit();
         }
     }

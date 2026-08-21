@@ -6,7 +6,7 @@ $user_role = strtolower($_SESSION['role'] ?? '');
 
 // ป้องกันการเข้าถึงหากไม่ใช่ Role ที่เกี่ยวข้อง
 if (!in_array($user_role, ['admin', 'housekeeping'])) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
 

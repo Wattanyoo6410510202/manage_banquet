@@ -11,7 +11,7 @@ include "header.php";
 $role = strtolower($_SESSION['role'] ?? '');
 $allowed_roles = ['admin', 'staff', 'gm', 'sale', 'procurement', 'manager'];
 if (!in_array($role, $allowed_roles)) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
 

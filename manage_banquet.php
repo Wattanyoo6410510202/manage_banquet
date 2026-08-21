@@ -87,13 +87,15 @@ $functions_data = [];
 // 3d) query หนัก (f.* + subquery) ทำงานเฉพาะงานในหน้านี้เท่านั้น
 if (!empty($page_fids)) {
     $fid_in = implode(',', $page_fids);
-    $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name, cust.sales_name,
+    $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name, cust.sales_name, r.room_name, ft.type_name,
             (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
             (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
             FROM functions f
             LEFT JOIN companies c ON f.company_id = c.id
             LEFT JOIN customers cust ON f.customer_id = cust.id
             LEFT JOIN event_projects p ON f.project_id = p.id
+            LEFT JOIN meeting_rooms r ON f.room_id = r.id
+            LEFT JOIN function_types ft ON f.function_type_id = ft.id
             WHERE f.id IN ($fid_in)
             ORDER BY FIELD(f.status, 'Cancelled') ASC, f.modify DESC, f.id DESC";
 
@@ -373,6 +375,17 @@ if ($conflict_q) {
                         <th>สถานะ</th>
                         <th>Sales</th>
                         <th>ไฟล์</th>
+                        <!-- คอลัมน์รายละเอียดเต็ม (ซ่อนบนจอ แต่ออกไฟล์ Excel/Print) -->
+                        <th>บริษัท/โรงแรม</th>
+                        <th>ห้อง</th>
+                        <th>ประเภทงาน</th>
+                        <th>ชื่อ Function</th>
+                        <th>วัน-เวลาเริ่ม</th>
+                        <th>วัน-เวลาสิ้นสุด</th>
+                        <th>จำนวนคน (pax)</th>
+                        <th>เบอร์โทร</th>
+                        <th>ใบเสนอราคาที่เลือก</th>
+                        <th>เหตุผลยกเลิก</th>
                         <th class="text-center bg-light">จัดการ</th>
                     </tr>
                 </thead>
@@ -485,6 +498,17 @@ if ($conflict_q) {
                                     <?php endforeach; ?>
                                 </div>
                             </td>
+                            <!-- คอลัมน์รายละเอียดเต็ม (สำหรับ Export) -->
+                            <td class="export-detail"><?= htmlspecialchars($project['company_name'] ?? ''); ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($master['room_name'] ?? ''); ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($master['type_name'] ?? ''); ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($master['function_name'] ?? ''); ?></td>
+                            <td class="export-detail"><?= !empty($master['start_time']) ? date('d/m/Y H:i', strtotime($master['start_time'])) : ''; ?></td>
+                            <td class="export-detail"><?= !empty($master['end_time']) ? date('d/m/Y H:i', strtotime($master['end_time'])) : ''; ?></td>
+                            <td class="export-detail"><?= isset($master['pax']) && $master['pax'] !== '' && $master['pax'] !== null ? $master['pax'] + 0 : ''; ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($project['phone'] ?? ''); ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($selected_quote_no); ?></td>
+                            <td class="export-detail"><?= htmlspecialchars($master['cancel_reason'] ?? ''); ?></td>
                             <td class="text-center sticky-col">
                                 <div class="d-flex justify-content-center gap-1">
                                     <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
@@ -551,6 +575,8 @@ if ($conflict_q) {
                                 </td>
                                 <td><small class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/y H:i', strtotime($row['modify'])); ?></small></td>
                                 <td></td>
+                                <!-- ช่องคุมคอลัมน์ Export (แถว draft ไม่ถูก export แต่ต้องครบจำนวนคอลัมน์) -->
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                                 <td class="text-center">
                                     <div class="btn-group">
                                         <?php if (!$is_project_approved && in_array($user_role, ['admin', 'gm'])): ?>
@@ -1042,5 +1068,10 @@ if ($conflict_q) {
     const userRole = '<?php echo htmlspecialchars(strtolower($_SESSION['role'] ?? 'viewer')); ?>';
 </script>
 <script src="assets/delete_handler.js?v=2"></script>
+<?php
+// คอลัมน์รายละเอียดเต็ม (index 9-18) — ซ่อนบนจอ แต่ออกไฟล์ Excel/Print
+// DataTables ใน style/banquet_table.php อ่านค่านี้ตอน init
+echo "<script>window.exportOnlyCols = [9,10,11,12,13,14,15,16,17,18];</script>";
+?>
 <?php include "style/banquet_table.php"; ?>
 <?php include "footer.php"; ?>

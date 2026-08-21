@@ -41,6 +41,17 @@ if (isset($_POST['login'])) {
         $error = "ไม่พบชื่อผู้ใช้งานนี้ในระบบ";
     }
 }
+
+if (!isset($error)) {
+    $error_messages = [
+        'pls_login'      => 'กรุณาเข้าสู่ระบบก่อนใช้งาน',
+        'access_denied'  => 'คุณไม่มีสิทธิ์เข้าถึงหน้านั้น กรุณาเข้าสู่ระบบด้วยบัญชีที่มีสิทธิ์',
+    ];
+    $error_code = $_GET['error'] ?? '';
+    if (isset($error_messages[$error_code])) {
+        $error = $error_messages[$error_code];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">

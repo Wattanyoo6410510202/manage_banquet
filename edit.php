@@ -26,7 +26,7 @@ $is_owner = ($created_by === $current_user);
 
 // ตรรกะ: ถ้า "ไม่ใช่ Admin" และ "ไม่ใช่ GM" และ "ไม่ใช่ Staff" และ "ไม่ใช่เจ้าของงาน" และ "ไม่ใช่ Procurement" => ดีดออกทันที
 if (!$is_admin && !$is_gm && !$is_staff && !$is_owner && !$is_procurement) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit();
 }
 

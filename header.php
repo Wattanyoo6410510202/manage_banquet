@@ -29,7 +29,7 @@ function access_control($check)
 
     if (!in_array($role, array_map('strtolower', $allowed))) {
         // ใช้ JS ดีดออก หายห่วงเรื่อง Headers already sent
-        echo "<script>window.location.href='access_denied.php';</script>";
+        echo "<script>window.location.href='login.php?error=access_denied';</script>";
         exit;
     }
 }

@@ -10,7 +10,7 @@ if (isset($_POST['save'])) {
     if ($current_role === 'viewer') {
         echo "<script>
                 alert('ขออภัย! คุณมีสิทธิ์เข้าชมอย่างเดียว (Viewer) ไม่สามารถบันทึกข้อมูลได้');
-                window.location.href = 'access_denied.php'; 
+                window.location.href = 'login.php?error=access_denied';
               </script>";
         exit;
     }

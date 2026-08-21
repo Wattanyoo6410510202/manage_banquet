@@ -13,7 +13,7 @@ $is_quote = ($quote_id > 0 && $id === 0);
 // โหมดใบเสนอราคา (เข้ามาจากปุ่มบัญชี/ROI ใน quotation_list.php) เปิดให้เฉพาะ admin กับ staff
 // หมายเหตุ: กันเฉพาะโหมดนี้ ไม่กระทบโหมด ?id= ที่หน้างานช่าง/แม่บ้าน/จัดเลี้ยงเรียกใช้อยู่
 if ($is_quote && !in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'staff'])) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
 

@@ -204,7 +204,184 @@
 </style>
 <script>
     $(document).ready(function () {
-        if (typeof initDataTable !== 'function') {
+            // ── จัดสไตล์ไฟล์ Excel: หัวตาราง/ชื่อรายงาน ตัวหนา, แถบสีตามสถานะ, มูลค่าเป็นตัวเลข ฿ ──
+            // หมายเหตุ: buttons.html5 2.x ส่ง xlsx.xl.* เข้ามาเป็น XML Document (parse ด้วย $.parseXML แล้ว)
+            // จึงต้องแก้ไขผ่าน DOM API เท่านั้น ห้ามเขียนทับด้วย string
+            function styleBanquetExcel(xlsx) {
+                var SS_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+                var stylesDoc = xlsx.xl['styles.xml'];
+                var sheet = xlsx.xl.worksheets['sheet1.xml'];
+
+                var GOLD = 'FFB89441', DARK = 'FF212529';
+                var STATUS_STYLES = [
+                    { text: 'อนุมัติแล้ว', fg: 'FFD1E7DD', font: 'FF0A3622' },
+                    { text: 'ดำเนินการ',   fg: 'FFCFF4FC', font: 'FF055160' },
+                    { text: 'จบงานแล้ว',   fg: 'FFCFE2FF', font: 'FF084299' },
+                    { text: 'ยกเลิก',      fg: 'FFF8D7DA', font: 'FF842029' },
+                    { text: 'รออนุมัติ',    fg: 'FFFFF3CD', font: 'FF664D03' }
+                ];
+
+                /* ── 1) styles.xml: เพิ่ม numFmt เงินบาท ── */
+                var MONEY_FMT_ID = 176;
+                var numFmtsEl = stylesDoc.getElementsByTagName('numFmts')[0];
+                if (!numFmtsEl) {
+                    numFmtsEl = stylesDoc.createElementNS(SS_NS, 'numFmts');
+                    numFmtsEl.setAttribute('count', '0');
+                    stylesDoc.documentElement.insertBefore(numFmtsEl, stylesDoc.documentElement.firstChild);
+                }
+                var nf = stylesDoc.createElementNS(SS_NS, 'numFmt');
+                nf.setAttribute('numFmtId', MONEY_FMT_ID);
+                nf.setAttribute('formatCode', '"฿"#,##0.00');
+                numFmtsEl.appendChild(nf);
+                numFmtsEl.setAttribute('count', parseInt(numFmtsEl.getAttribute('count'), 10) + 1);
+
+                /* ── 2) styles.xml: เพิ่มฟอนต์ ── */
+                var fontsEl = stylesDoc.getElementsByTagName('fonts')[0];
+                var nextFont = parseInt(fontsEl.getAttribute('count'), 10);
+                function addFont(bold, size, color) {
+                    var f = stylesDoc.createElementNS(SS_NS, 'font');
+                    if (bold) f.appendChild(stylesDoc.createElementNS(SS_NS, 'b'));
+                    var sz = stylesDoc.createElementNS(SS_NS, 'sz'); sz.setAttribute('val', size); f.appendChild(sz);
+                    var cl = stylesDoc.createElementNS(SS_NS, 'color'); cl.setAttribute('rgb', color); f.appendChild(cl);
+                    var nm = stylesDoc.createElementNS(SS_NS, 'name'); nm.setAttribute('val', 'Calibri'); f.appendChild(nm);
+                    fontsEl.appendChild(f);
+                    return nextFont++;
+                }
+
+                /* ── 3) styles.xml: เพิ่มสีพื้นหลัง ── */
+                var fillsEl = stylesDoc.getElementsByTagName('fills')[0];
+                var nextFill = parseInt(fillsEl.getAttribute('count'), 10);
+                function addFill(rgb) {
+                    var fill = stylesDoc.createElementNS(SS_NS, 'fill');
+                    var pf = stylesDoc.createElementNS(SS_NS, 'patternFill');
+                    pf.setAttribute('patternType', 'solid');
+                    var fg = stylesDoc.createElementNS(SS_NS, 'fgColor'); fg.setAttribute('rgb', rgb); pf.appendChild(fg);
+                    var bg = stylesDoc.createElementNS(SS_NS, 'bgColor'); bg.setAttribute('indexed', '64'); pf.appendChild(bg);
+                    fill.appendChild(pf);
+                    fillsEl.appendChild(fill);
+                    return nextFill++;
+                }
+
+                var fontTitle = addFont(true, 16, GOLD);
+                var fontHeader = addFont(true, 11, 'FFFFFFFF');
+                var statusFonts = [];
+                STATUS_STYLES.forEach(function (st) { statusFonts.push(addFont(true, 11, st.font)); });
+
+                var fillHeader = addFill(DARK);
+                var statusFills = [];
+                STATUS_STYLES.forEach(function (st) { statusFills.push(addFill(st.fg)); });
+
+                // อัปเดต count ให้ตรงจำนวนจริง (Excel อ่าน count ตอน parse styles)
+                fontsEl.setAttribute('count', String(nextFont));
+                fillsEl.setAttribute('count', String(nextFill));
+
+                /* ── 4) styles.xml: เพิ่ม cellXfs (สูตร style ของ cell) ── */
+                var xfsEl = stylesDoc.getElementsByTagName('cellXfs')[0];
+                var nextXf = parseInt(xfsEl.getAttribute('count'), 10);
+                function addXf(fontId, fillId, numFmtId, align, wrap) {
+                    var xf = stylesDoc.createElementNS(SS_NS, 'xf');
+                    xf.setAttribute('numFmtId', numFmtId || 0);
+                    xf.setAttribute('fontId', fontId);
+                    xf.setAttribute('fillId', fillId);
+                    xf.setAttribute('borderId', '0');
+                    xf.setAttribute('xfId', '0');
+                    xf.setAttribute('applyFont', '1');
+                    if (fillId > 0) xf.setAttribute('applyFill', '1');
+                    if (numFmtId) xf.setAttribute('applyNumberFormat', '1');
+                    xf.setAttribute('applyAlignment', '1');
+                    var al = stylesDoc.createElementNS(SS_NS, 'alignment');
+                    al.setAttribute('horizontal', align || 'left');
+                    al.setAttribute('vertical', 'center');
+                    if (wrap) al.setAttribute('wrapText', '1');
+                    xf.appendChild(al);
+                    xfsEl.appendChild(xf);
+                    return nextXf++;
+                }
+
+                var S = { status: {} };
+                S.header = addXf(fontHeader, fillHeader, 0, 'center', true);
+                S.title = addXf(fontTitle, 0, 0, 'left', false);
+                STATUS_STYLES.forEach(function (st, i) {
+                    S.status[st.text] = addXf(statusFonts[i], statusFills[i], 0, 'center', false);
+                });
+                S.money = addXf(fontHeader, 0, MONEY_FMT_ID, 'right', false);
+                xfsEl.setAttribute('count', String(nextXf));
+
+                /* ── 5) sheet1.xml: แปะ style ลง cell ── */
+                function cellText(c) {
+                    var t = c.getElementsByTagName('t')[0];
+                    if (t && t.textContent) return t.textContent.trim();
+                    var v = c.getElementsByTagName('v')[0];
+                    return v ? String(v.textContent).trim() : '';
+                }
+
+                var rows = sheet.getElementsByTagName('row');
+
+                // ชื่อรายงาน (แถวแรก)
+                if (rows.length) {
+                    var tc = rows[0].getElementsByTagName('c');
+                    for (var i = 0; i < tc.length; i++) tc[i].setAttribute('s', S.title);
+                }
+
+                // Excel เว้น cell ว่างไม่เขียนลง XML เลย ตำแหน่ง index ใน cs[] จึงไม่ตรงกับคอลัมน์จริง
+                // ต้องอ้างอิงด้วย "ตัวอักษรคอลัมน์" จาก attribute r (เช่น "F3" -> "F") แทน index
+                function colLetter(cellEl) {
+                    var r = cellEl.getAttribute('r') || '';
+                    var m = r.match(/^[A-Z]+/);
+                    return m ? m[0] : '';
+                }
+
+                // หาแถวหัวตาราง + ตัวอักษรคอลัมน์ "สถานะ" / "มูลค่า"
+                var headerRow = null, statusColLetter = '', moneyColLetter = '';
+                for (var r = 0; r < rows.length && !headerRow; r++) {
+                    var cells = rows[r].getElementsByTagName('c');
+                    for (var ci = 0; ci < cells.length; ci++) {
+                        var txt = cellText(cells[ci]);
+                        if (txt === 'สถานะ') { statusColLetter = colLetter(cells[ci]); headerRow = rows[r]; }
+                        else if (txt === 'มูลค่า') moneyColLetter = colLetter(cells[ci]);
+                    }
+                }
+
+                if (headerRow) {
+                    var hc = headerRow.getElementsByTagName('c');
+                    for (i = 0; i < hc.length; i++) hc[i].setAttribute('s', S.header);
+
+                    for (r = 0; r < rows.length; r++) {
+                        if (rows[r] === headerRow || r === 0) continue;
+                        var cs = rows[r].getElementsByTagName('c');
+
+                        for (var ci2 = 0; ci2 < cs.length; ci2++) {
+                            var cell = cs[ci2];
+                            var letter = colLetter(cell);
+
+                            // สถานะ -> ใส่สีพื้น/สีตัวอักษรตามสถานะ
+                            if (statusColLetter && letter === statusColLetter) {
+                                var stTxt = cellText(cell);
+                                if (S.status[stTxt]) cell.setAttribute('s', S.status[stTxt]);
+                            }
+
+                            // มูลค่า -> แปลงเป็นตัวเลขจริง + รูปแบบ ฿#,##0.00
+                            // ตัดเฉพาะตัวเลขรูปแบบเงิน (เช่น "16,650.00") ออกมา อย่าลบอักขระทั้งก้อน
+                            // เพราะข้อความต่อท้าย (เช่น "Draft V2") มีตัวเลขปนอยู่ด้วย
+                            if (moneyColLetter && letter === moneyColLetter) {
+                                var raw = cellText(cell);
+                                var mnum = raw.match(/[\d,]*\d\.\d{2}/);
+                                var num = mnum ? parseFloat(mnum[0].replace(/,/g, '')) : NaN;
+                                if (!isNaN(num)) {
+                                    while (cell.firstChild) cell.removeChild(cell.firstChild);
+                                    cell.removeAttribute('t');
+                                    cell.setAttribute('s', S.money);
+                                    var v = sheet.createElementNS(SS_NS, 'v');
+                                    v.textContent = String(num);
+                                    cell.appendChild(v);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (typeof initDataTable !== 'function') {
             window.initDataTable = function() {
                 // คำนวณความสูงตาราง
                 var dynamicHeight = 'calc(100vh - 240px)';
@@ -222,12 +399,20 @@
                     "paging": true,
                     "dom": '<"p-3 d-flex justify-content-between align-items-center"lf>rt<"p-3 d-flex justify-content-between align-items-center"ip>',
                     "buttons": [
-                        { extend: 'excelHtml5', title: 'Banquet_Event_List', exportOptions: { columns: ':not(:first-child):not(:last-child)', rows: function(idx, data, node) { return !$(node).hasClass('draft-sub-row'); } }, title: 'รายการจัดเลี้ยง'},
+                        {
+                            extend: 'excelHtml5',
+                            title: 'รายการจัดเลี้ยง',
+                            exportOptions: { columns: ':not(:first-child):not(:last-child)', rows: function(idx, data, node) { return !$(node).hasClass('draft-sub-row'); } },
+                            customize: function (xlsx) {
+                                try { styleBanquetExcel(xlsx); } catch (e) { console.error('Excel style error', e); }
+                            }
+                        },
                         { extend: 'print', exportOptions: { columns: ':not(:first-child):not(:last-child)', rows: function(idx, data, node) { return !$(node).hasClass('draft-sub-row'); } }, title: 'รายการจัดเลี้ยง' }
                     ],
                     "columnDefs": [
-                        { "orderable": false, "targets": [0, -1] }
-                        
+                        { "orderable": false, "targets": [0, -1] },
+                        // คอลัมน์รายละเอียดสำหรับ Export (หน้าไหนไม่กำหนด window.exportOnlyCols = ไม่ซ่อนอะไร)
+                        { "visible": false, "targets": (window.exportOnlyCols || []), "searchable": false }
                     ],
                     "initComplete": function () {
                         $(window).on('resize', function () {

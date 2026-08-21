@@ -18,6 +18,8 @@ if (isset($_POST['action'])) {
         $id = intval($_POST['id'] ?? 0);
         $room_id = intval($_POST['room_id'] ?? 0);
         $company_id = intval($_POST['company_id'] ?? 0);
+        $customer_id = intval($_POST['customer_id'] ?? 0);
+        $customer_id_sql = $customer_id > 0 ? $customer_id : 'NULL';
         $function_type_id = intval($_POST['function_type_id'] ?? 1);
         $event_name = $conn->real_escape_string($_POST['event_name'] ?? '');
         $booking_name = $conn->real_escape_string($_POST['booking_name'] ?? '');
@@ -45,7 +47,7 @@ if (isset($_POST['action'])) {
         $created_by_id = intval($_SESSION['user_id'] ?? 0);
 
         if ($id > 0) {
-            $sql = "UPDATE room_bookings SET room_id=$room_id, company_id=$company_id, function_type_id=$function_type_id,
+            $sql = "UPDATE room_bookings SET room_id=$room_id, company_id=$company_id, customer_id=$customer_id_sql, function_type_id=$function_type_id,
                 event_name='$event_name', booking_name='$booking_name', phone='$phone', organization='$organization',
                 pax=$pax, start_time='$start_time', end_time='$end_time', remark='$remark', updated_at=NOW() WHERE id=$id";
             $conn->query($sql);
@@ -59,9 +61,9 @@ if (isset($_POST['action'])) {
             $seq = intval($seq_res->fetch_assoc()['cnt'] ?? 0) + 1;
             $booking_code = $prefix . $date_str . str_pad($seq, 3, '0', STR_PAD_LEFT);
 
-            $sql = "INSERT INTO room_bookings (room_id, company_id, function_type_id, booking_code, event_name,
+            $sql = "INSERT INTO room_bookings (room_id, company_id, customer_id, function_type_id, booking_code, event_name,
                 booking_name, phone, organization, pax, start_time, end_time, remark, created_by, created_by_id)
-                VALUES ($room_id, $company_id, $function_type_id, '$booking_code', '$event_name',
+                VALUES ($room_id, $company_id, $customer_id_sql, $function_type_id, '$booking_code', '$event_name',
                 '$booking_name', '$phone', '$organization', $pax, '$start_time', '$end_time', '$remark', '$created_by', $created_by_id)";
             $conn->query($sql);
             echo json_encode(['status' => 'inserted', 'id' => $conn->insert_id, 'booking_code' => $booking_code]);

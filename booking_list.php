@@ -19,7 +19,7 @@ if (!isset($_SESSION['user'])) {
 }
 $role = strtolower($_SESSION['role'] ?? '');
 if (!in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement', 'manager'])) {
-    echo "<script>window.location.href='access_denied.php';</script>";
+    echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
 $can_cancel = in_array($role, ['admin', 'gm']); // ให้ตรงกับสิทธิ์ลบใน room_calendar.php
@@ -68,6 +68,8 @@ $sort_map = [
     'pax'          => 'rb.pax',
     'status'       => 'rb.status',
     'created_at'   => 'rb.created_at',
+    'type_name'    => 'ft.type_name',
+    'organization' => 'rb.organization',
 ];
 $sort = array_key_exists($_GET['sort'] ?? '', $sort_map) ? $_GET['sort'] : 'start_time';
 $dir  = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
@@ -93,11 +95,12 @@ if ($date_to !== '')     { $where[] = "rb.start_time < DATE_ADD(?, INTERVAL 1 DA
 
 $where_sql = implode(' AND ', $where);
 
-$base_sql = "SELECT rb.*, mr.room_name, c.company_name, ft.type_name
+$base_sql = "SELECT rb.*, mr.room_name, c.company_name, ft.type_name, cust.cust_name AS system_cust_name
              FROM room_bookings rb
              LEFT JOIN meeting_rooms mr ON rb.room_id = mr.id
              LEFT JOIN companies c      ON rb.company_id = c.id
              LEFT JOIN function_types ft ON rb.function_type_id = ft.id
+             LEFT JOIN customers cust   ON rb.customer_id = cust.id
              WHERE $where_sql
              ORDER BY {$sort_map[$sort]} $dir, rb.id DESC";
 
@@ -160,6 +163,27 @@ if (!function_exists('thai_dt')) {
         if (!$ts) return '-';
         $s = date('j', $ts) . ' ' . $months[(int)date('n', $ts) - 1] . ' ' . (date('Y', $ts) + 543);
         return $with_time ? $s . ' ' . date('H:i', $ts) : $s;
+    }
+}
+
+if (!function_exists('thai_dow')) {
+    function thai_dow($dt)
+    {
+        static $days = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+        if (!$dt || $dt === '0000-00-00 00:00:00') return '-';
+        $ts = strtotime($dt);
+        if (!$ts) return '-';
+        return $days[(int)date('w', $ts)];
+    }
+}
+
+if (!function_exists('thai_time_range')) {
+    function thai_time_range($start, $end)
+    {
+        $ts1 = $start ? strtotime($start) : false;
+        $ts2 = $end ? strtotime($end) : false;
+        if (!$ts1) return '-';
+        return $ts2 ? date('H:i', $ts1) . '-' . date('H:i', $ts2) : date('H:i', $ts1);
     }
 }
 
@@ -354,51 +378,53 @@ require_once "header.php";
                 <table class="bk-tbl">
                     <thead>
                         <tr>
-                            <th><a href="<?= $h(sort_link('booking_code', $sort, $dir)) ?>">รหัสจอง <?= sort_icon('booking_code', $sort, $dir) ?></a></th>
-                            <th><a href="<?= $h(sort_link('event_name', $sort, $dir)) ?>">ชื่องาน <?= sort_icon('event_name', $sort, $dir) ?></a></th>
-                            <th><a href="<?= $h(sort_link('room_name', $sort, $dir)) ?>">ห้อง <?= sort_icon('room_name', $sort, $dir) ?></a></th>
-                            <th><a href="<?= $h(sort_link('start_time', $sort, $dir)) ?>">วันเวลาจัดงาน <?= sort_icon('start_time', $sort, $dir) ?></a></th>
-                            <th class="text-center"><a href="<?= $h(sort_link('pax', $sort, $dir)) ?>">คน <?= sort_icon('pax', $sort, $dir) ?></a></th>
-                            <th>ผู้จอง</th>
-                            <th><a href="<?= $h(sort_link('status', $sort, $dir)) ?>">สถานะ <?= sort_icon('status', $sort, $dir) ?></a></th>
+                            <th>วัน</th>
+                            <th><a href="<?= $h(sort_link('start_time', $sort, $dir)) ?>">วันที่ <?= sort_icon('start_time', $sort, $dir) ?></a></th>
+                            <th><a href="<?= $h(sort_link('organization', $sort, $dir)) ?>">หน่วยงาน / ผู้ติดต่อ <?= sort_icon('organization', $sort, $dir) ?></a></th>
+                            <th>เบอร์โทร</th>
+                            <th><a href="<?= $h(sort_link('room_name', $sort, $dir)) ?>">ห้องประชุม <?= sort_icon('room_name', $sort, $dir) ?></a></th>
+                            <th>เวลา</th>
+                            <th><a href="<?= $h(sort_link('type_name', $sort, $dir)) ?>">ประเภทงาน <?= sort_icon('type_name', $sort, $dir) ?></a></th>
+                            <th class="text-center"><a href="<?= $h(sort_link('pax', $sort, $dir)) ?>">จำนวน <?= sort_icon('pax', $sort, $dir) ?></a></th>
+                            <th>เบรก</th>
+                            <th>ประเภทอาหาร</th>
+                            <th>ห้องพัก</th>
+                            <th><a href="<?= $h(sort_link('created_at', $sort, $dir)) ?>">วันที่จอง <?= sort_icon('created_at', $sort, $dir) ?></a></th>
+                            <th>ผู้รับงาน</th>
+                            <th class="text-end">ราคาขาย</th>
                             <th class="text-end">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($rows as $r):
                             $is_cancelled = $r['status'] !== 'active';
-                            $is_past = strtotime($r['start_time']) < $now_ts;
                         ?>
                             <tr class="<?= $is_cancelled ? 'is-cancelled' : '' ?>" data-id="<?= $r['id'] ?>">
-                                <td><span class="bk-code"><?= $h($r['booking_code'] ?: '-') ?></span></td>
-                                <td>
-                                    <div class="bk-name text-truncate" style="max-width:220px"><?= $h($r['event_name'] ?: '(ไม่ระบุชื่องาน)') ?></div>
-                                    <span class="tag"><?= $h($r['type_name'] ?: 'ไม่ระบุประเภท') ?></span>
+                                <td><?= thai_dow($r['start_time']) ?></td>
+                                <td class="num"><?= thai_dt($r['start_time'], false) ?></td>
+                                <td class="text-truncate" style="max-width:200px" title="<?= $h($r['organization'] ?: '') ?>">
+                                    <div class="fw-medium"><?= $h($r['organization'] ?: '-') ?></div>
+                                    <div style="font-size:.72rem;color:#8a9099">
+                                        <?= $h($r['booking_name'] ?: '-') ?>
+                                        <?php if (!empty($r['customer_id'])): ?>
+                                            <i class="bi bi-link-45deg text-gold" title="ผูกกับลูกค้าในระบบ: <?= $h($r['system_cust_name'] ?: '') ?>"></i>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
+                                <td><?= $h($r['phone'] ?: '-') ?></td>
                                 <td>
                                     <div><?= $h($r['room_name'] ?: '-') ?></div>
                                     <div style="font-size:.72rem;color:#8a9099"><?= $h($r['company_name'] ?: '-') ?></div>
                                 </td>
-                                <td class="num">
-                                    <div><?= thai_dt($r['start_time']) ?></div>
-                                    <div style="font-size:.72rem;color:#8a9099">ถึง <?= thai_dt($r['end_time']) ?></div>
-                                </td>
+                                <td class="num"><?= thai_time_range($r['start_time'], $r['end_time']) ?></td>
+                                <td><span class="tag"><?= $h($r['type_name'] ?: 'ไม่ระบุประเภท') ?></span></td>
                                 <td class="text-center num"><?= $r['pax'] > 0 ? number_format($r['pax']) : '-' ?></td>
-                                <td>
-                                    <div><?= $h($r['booking_name'] ?: '-') ?></div>
-                                    <?php if (!empty($r['phone'])): ?>
-                                        <div style="font-size:.72rem;color:#8a9099"><i class="bi bi-telephone me-1"></i><?= $h($r['phone']) ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($is_cancelled): ?>
-                                        <span class="pill off"><i class="bi bi-x-circle-fill"></i>ยกเลิก</span>
-                                    <?php elseif ($is_past): ?>
-                                        <span class="pill done"><i class="bi bi-check2"></i>ผ่านไปแล้ว</span>
-                                    <?php else: ?>
-                                        <span class="pill on"><i class="bi bi-check-circle-fill"></i>ใช้งานอยู่</span>
-                                    <?php endif; ?>
-                                </td>
+                                <td class="text-muted">-</td>
+                                <td class="text-muted">-</td>
+                                <td class="text-muted">-</td>
+                                <td class="num"><?= thai_dt($r['created_at']) ?></td>
+                                <td><?= $h($r['created_by'] ?: '-') ?></td>
+                                <td class="text-end text-muted">-</td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-detail"
                                             data-id="<?= $r['id'] ?>" title="ดูรายละเอียด">
@@ -503,6 +529,7 @@ document.querySelectorAll('.btn-detail').forEach(btn => {
                 ${field('ประเภทงาน', r.type_name)}
                 ${field('จำนวนคน', r.pax > 0 ? Number(r.pax).toLocaleString('th-TH') + ' คน' : '')}
                 ${field('ผู้จอง', r.booking_name)}
+                ${field('ลูกค้าในระบบ', r.customer_id ? (r.system_cust_name || '(ลูกค้า #' + r.customer_id + ')') : '')}
                 ${field('เบอร์โทร', r.phone)}
                 ${field('หน่วยงาน', r.organization, true)}
                 ${field('หมายเหตุ', r.remark, true)}
