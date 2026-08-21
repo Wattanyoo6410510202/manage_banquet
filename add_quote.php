@@ -30,6 +30,11 @@ if ($function_id) {
         $event_date = $row['event_date'];
         $project_id = $row['project_id']; // ดึง project_id มาด้วย
     }
+} else {
+    // เติมข้อมูลล่วงหน้าจากลิงก์ "ส่งไปใบเสนอราคา" ของหน้าอื่น (เช่น booking_list.php) ที่ไม่มี function_id ให้ผูก
+    if (!empty($_GET['customer_id'])) $selected_customer_id = intval($_GET['customer_id']);
+    if (!empty($_GET['event_name'])) $event_name = $_GET['event_name'];
+    if (!empty($_GET['event_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['event_date'])) $event_date = $_GET['event_date'];
 }
 
 $menu_types_with_cat = $conn->query("SELECT mmt.id, mmt.type_name, mmt.category_id, mmc.category_name, mmc.set_price 
@@ -69,7 +74,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                     <select name="company_id" class="form-select form-select-sm" required>
                         <option value="">-- เลือกบริษัท --</option>
                         <?php
-                        $company_id = $row['company_id'] ?? '';
+                        $company_id = $row['company_id'] ?? ($_GET['company_id'] ?? '');
                         $company_sql = "SELECT id, company_name FROM companies ORDER BY company_name ASC";
                         $company_res = $conn->query($company_sql);
                         while ($comp = $company_res->fetch_assoc()):
@@ -135,7 +140,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <label class="form-label fw-bold small mb-1">ชื่อโครงการ/งาน</label>
-                    <input type="text" name="event_name" class="form-control form-control-sm" value="<?= $event_name ?>" placeholder="ระบุชื่องาน">
+                    <input type="text" name="event_name" class="form-control form-control-sm" value="<?= htmlspecialchars($event_name) ?>" placeholder="ระบุชื่องาน">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1">วันที่จัดงาน</label>

@@ -30,6 +30,15 @@ if (isset($_POST['action'])) {
         $end_time = $conn->real_escape_string($_POST['end_time'] ?? '');
         $remark = $conn->real_escape_string($_POST['remark'] ?? '');
 
+        $break_type_id = intval($_POST['break_type_id'] ?? 0);
+        $break_type_id_sql = $break_type_id > 0 ? $break_type_id : 'NULL';
+        $menu_type_id = intval($_POST['menu_type_id'] ?? 0);
+        $menu_type_id_sql = $menu_type_id > 0 ? $menu_type_id : 'NULL';
+        $room_stay = $conn->real_escape_string($_POST['room_stay'] ?? '');
+        $room_stay_sql = $room_stay !== '' ? "'$room_stay'" : 'NULL';
+        $selling_price = trim($_POST['selling_price'] ?? '');
+        $selling_price_sql = $selling_price !== '' ? floatval($selling_price) : 'NULL';
+
         if (!$room_id || !$start_time || !$end_time || !$event_name) {
             echo json_encode(['status' => 'error', 'message' => 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน']);
             exit;
@@ -49,7 +58,9 @@ if (isset($_POST['action'])) {
         if ($id > 0) {
             $sql = "UPDATE room_bookings SET room_id=$room_id, company_id=$company_id, customer_id=$customer_id_sql, function_type_id=$function_type_id,
                 event_name='$event_name', booking_name='$booking_name', phone='$phone', organization='$organization',
-                pax=$pax, start_time='$start_time', end_time='$end_time', remark='$remark', updated_at=NOW() WHERE id=$id";
+                pax=$pax, start_time='$start_time', end_time='$end_time', remark='$remark',
+                break_type_id=$break_type_id_sql, menu_type_id=$menu_type_id_sql, room_stay=$room_stay_sql, selling_price=$selling_price_sql,
+                updated_at=NOW() WHERE id=$id";
             $conn->query($sql);
             echo json_encode(['status' => 'updated', 'id' => $id]);
         } else {
@@ -62,9 +73,11 @@ if (isset($_POST['action'])) {
             $booking_code = $prefix . $date_str . str_pad($seq, 3, '0', STR_PAD_LEFT);
 
             $sql = "INSERT INTO room_bookings (room_id, company_id, customer_id, function_type_id, booking_code, event_name,
-                booking_name, phone, organization, pax, start_time, end_time, remark, created_by, created_by_id)
+                booking_name, phone, organization, pax, start_time, end_time, remark,
+                break_type_id, menu_type_id, room_stay, selling_price, created_by, created_by_id)
                 VALUES ($room_id, $company_id, $customer_id_sql, $function_type_id, '$booking_code', '$event_name',
-                '$booking_name', '$phone', '$organization', $pax, '$start_time', '$end_time', '$remark', '$created_by', $created_by_id)";
+                '$booking_name', '$phone', '$organization', $pax, '$start_time', '$end_time', '$remark',
+                $break_type_id_sql, $menu_type_id_sql, $room_stay_sql, $selling_price_sql, '$created_by', $created_by_id)";
             $conn->query($sql);
             echo json_encode(['status' => 'inserted', 'id' => $conn->insert_id, 'booking_code' => $booking_code]);
         }
@@ -96,11 +109,22 @@ while ($ft = $function_types->fetch_assoc()) $ft_list[] = $ft;
 $rooms_data = $conn->query("SELECT mr.id AS rid, mr.room_name, mr.company_id, c.company_name
     FROM meeting_rooms mr LEFT JOIN companies c ON mr.company_id = c.id ORDER BY c.company_name, mr.room_name");
 
-$bookings = $conn->query("SELECT rb.*, mr.room_name, c.company_name, ft.type_name
+$break_types = $conn->query("SELECT id, type_name FROM master_break_types ORDER BY id ASC");
+$break_type_list = [];
+while ($bt = $break_types->fetch_assoc()) $break_type_list[] = $bt;
+
+$menu_types = $conn->query("SELECT id, type_name FROM master_menu_types ORDER BY id ASC");
+$menu_type_list = [];
+while ($mt = $menu_types->fetch_assoc()) $menu_type_list[] = $mt;
+
+$bookings = $conn->query("SELECT rb.*, mr.room_name, c.company_name, ft.type_name,
+        bt.type_name AS break_type_name, mt.type_name AS menu_type_name
     FROM room_bookings rb
     LEFT JOIN meeting_rooms mr ON rb.room_id = mr.id
     LEFT JOIN companies c ON rb.company_id = c.id
     LEFT JOIN function_types ft ON rb.function_type_id = ft.id
+    LEFT JOIN master_break_types bt ON rb.break_type_id = bt.id
+    LEFT JOIN master_menu_types mt ON rb.menu_type_id = mt.id
     WHERE rb.status = 'active'
     ORDER BY rb.start_time DESC");
 
@@ -172,6 +196,41 @@ require_once "header.php";
                             <input type="number" name="pax" class="form-control form-control-sm" value="0" min="0">
                         </div>
 
+                        <hr class="my-2">
+                        <div class="small fw-bold text-muted mb-2">รายละเอียดสำหรับ Sales (ไม่บังคับ)</div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="small fw-bold mb-1">เบรก</label>
+                                <select name="break_type_id" class="form-select form-select-sm">
+                                    <option value="">-- ไม่ระบุ --</option>
+                                    <?php foreach ($break_type_list as $bt): ?>
+                                        <option value="<?= $bt['id'] ?>"><?= htmlspecialchars($bt['type_name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="small fw-bold mb-1">ประเภทอาหาร</label>
+                                <select name="menu_type_id" class="form-select form-select-sm">
+                                    <option value="">-- ไม่ระบุ --</option>
+                                    <?php foreach ($menu_type_list as $mt): ?>
+                                        <option value="<?= $mt['id'] ?>"><?= htmlspecialchars($mt['type_name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="small fw-bold mb-1">ห้องพัก</label>
+                                <input type="text" name="room_stay" class="form-control form-control-sm" placeholder="เช่น Standard Twin x2 คืน">
+                            </div>
+                            <div class="col-6">
+                                <label class="small fw-bold mb-1">ราคาขาย (บาท)</label>
+                                <input type="number" name="selling_price" class="form-control form-control-sm" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="small fw-bold mb-1">เริ่ม <span class="text-danger">*</span></label>
@@ -230,6 +289,8 @@ require_once "header.php";
                                     <th>เวลา</th>
                                     <th>ผู้จอง</th>
                                     <th>PAX</th>
+                                    <th>เบรก / อาหาร / ห้องพัก</th>
+                                    <th class="text-end">ราคาขาย</th>
                                     <th>จัดการ</th>
                                 </tr>
                             </thead>
@@ -253,6 +314,13 @@ require_once "header.php";
                                     </td>
                                     <td><?= htmlspecialchars($b['booking_name'] ?: '-') ?></td>
                                     <td class="text-center"><?= $b['pax'] ?></td>
+                                    <td style="font-size:0.78rem">
+                                        <?php if ($b['break_type_name']): ?><div><?= htmlspecialchars($b['break_type_name']) ?></div><?php endif; ?>
+                                        <?php if ($b['menu_type_name']): ?><div><?= htmlspecialchars($b['menu_type_name']) ?></div><?php endif; ?>
+                                        <?php if ($b['room_stay']): ?><div class="text-muted"><?= htmlspecialchars($b['room_stay']) ?></div><?php endif; ?>
+                                        <?php if (!$b['break_type_name'] && !$b['menu_type_name'] && !$b['room_stay']): ?><span class="text-muted">-</span><?php endif; ?>
+                                    </td>
+                                    <td class="text-end fw-bold"><?= $b['selling_price'] !== null ? number_format($b['selling_price'], 2) : '-' ?></td>
                                     <td>
                                         <div class="btn-group">
                                             <button class="btn btn-sm text-primary border-0" onclick='editBooking(<?= json_encode($b) ?>)'><i class="bi bi-pencil-square"></i></button>
@@ -286,7 +354,8 @@ $(document).ready(function() {
         pageLength: 15,
         columnDefs: [
             { targets: [6], className: 'text-center' },
-            { targets: [7], orderable: false }
+            { targets: [8], className: 'text-end' },
+            { targets: [9], orderable: false }
         ]
     });
 
@@ -330,6 +399,10 @@ function editBooking(data) {
     $('input[name="phone"]').val(data.phone);
     $('input[name="organization"]').val(data.organization);
     $('input[name="pax"]').val(data.pax);
+    $('select[name="break_type_id"]').val(data.break_type_id || '');
+    $('select[name="menu_type_id"]').val(data.menu_type_id || '');
+    $('input[name="room_stay"]').val(data.room_stay || '');
+    $('input[name="selling_price"]').val(data.selling_price || '');
     $('input[name="start_time"]').val(data.start_time.replace(' ', 'T').substring(0, 16));
     $('input[name="end_time"]').val(data.end_time.replace(' ', 'T').substring(0, 16));
     $('input[name="remark"]').val(data.remark);

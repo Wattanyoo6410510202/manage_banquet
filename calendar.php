@@ -10,6 +10,12 @@ while($r = $rooms->fetch_assoc()) { $rooms_json[] = $r; }
 $function_types = $conn->query("SELECT id, type_name, prefix FROM function_types ORDER BY id ASC");
 $ft_list = [];
 while ($ft = $function_types->fetch_assoc()) $ft_list[] = $ft;
+$break_types = $conn->query("SELECT id, type_name FROM master_break_types ORDER BY id ASC");
+$break_type_list = [];
+while ($bt = $break_types->fetch_assoc()) $break_type_list[] = $bt;
+$menu_types = $conn->query("SELECT id, type_name FROM master_menu_types ORDER BY id ASC");
+$menu_type_list = [];
+while ($mt = $menu_types->fetch_assoc()) $menu_type_list[] = $mt;
 $can_manage = in_array($user_role, ['admin', 'staff', 'gm', 'sale']);
 $users = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff','Admin','Sale','Manager','GM') ORDER BY name ASC");
 $user_list = [];
@@ -185,10 +191,10 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#6f42c1"></i>จองห้องประชุม</span>
                     </div>
                     <div class="cal-legend cal-legend-type">
-                        <span class="cal-legend-label">ความเข้มพื้นหลัง = ประเภท:</span>
-                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-eo"></i>งานจัดเลี้ยง (EO)</span>
-                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-qt"></i>ใบเสนอราคา (ตัวเอียง)</span>
-                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-rb"></i>จองห้องประชุม</span>
+                        <span class="cal-legend-label">ไอคอน/ความเข้มพื้นหลัง = ประเภท:</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-eo"></i><i class="bi bi-journal-bookmark-fill me-1"></i>งานจัดเลี้ยง (EO)</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-qt"></i><i class="bi bi-file-earmark-text-fill me-1"></i>ใบเสนอราคา (ตัวเอียง)</span>
+                        <span class="cal-legend-item"><i class="cal-swatch cal-chip-rb"></i><i class="bi bi-door-closed-fill me-1"></i>จองห้องประชุม</span>
                     </div>
                 </div>
                 <div class="card-body p-2">
@@ -339,6 +345,34 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             <label class="small fw-bold text-secondary mb-1">หน่วยงาน / องค์กร</label>
                             <input type="text" name="organization" id="rb_organization" class="form-control form-control-sm" placeholder="ชื่อบริษัท">
                         </div>
+                        <div class="col-12"><hr class="my-1"></div>
+                        <div class="col-12 small fw-bold text-muted">รายละเอียดสำหรับ Sales (ไม่บังคับ)</div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">เบรก</label>
+                            <select name="break_type_id" class="form-select form-select-sm">
+                                <option value="">-- ไม่ระบุ --</option>
+                                <?php foreach ($break_type_list as $bt): ?>
+                                    <option value="<?= $bt['id'] ?>"><?= htmlspecialchars($bt['type_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ประเภทอาหาร</label>
+                            <select name="menu_type_id" class="form-select form-select-sm">
+                                <option value="">-- ไม่ระบุ --</option>
+                                <?php foreach ($menu_type_list as $mt): ?>
+                                    <option value="<?= $mt['id'] ?>"><?= htmlspecialchars($mt['type_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ห้องพัก</label>
+                            <input type="text" name="room_stay" class="form-control form-control-sm" placeholder="เช่น Standard Twin x2 คืน">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-secondary mb-1">ราคาขาย (บาท)</label>
+                            <input type="number" name="selling_price" class="form-control form-control-sm" step="0.01" min="0" placeholder="0.00">
+                        </div>
                         <div class="col-md-6">
                             <label class="small fw-bold text-secondary mb-1">เริ่ม <span class="text-danger">*</span></label>
                             <input type="datetime-local" name="start_time" id="rb_start" class="form-control form-control-sm" required>
@@ -425,13 +459,15 @@ document.addEventListener('DOMContentLoaded', function () {
             // แยก "ประเภท" ออกจาก "สถานะ" ด้วยคนละมิติ: สถานะ = สีขอบ (ตาม legend เดิม),
             // ประเภท = ความเข้ม/หนาของพื้นหลัง — EO จางสุด, ใบเสนอราคากลาง, จองห้องเข้มสุด (เพราะล็อกห้องจริง)
             let typeClass = 'cal-chip-eo';
-            if (arg.event.id.startsWith('rb_')) typeClass = 'cal-chip-rb';
-            else if (arg.event.id.startsWith('qt_')) typeClass = 'cal-chip-qt';
+            let typeIcon = 'bi-journal-bookmark-fill';
+            if (arg.event.id.startsWith('rb_')) { typeClass = 'cal-chip-rb'; typeIcon = 'bi-door-closed-fill'; }
+            else if (arg.event.id.startsWith('qt_')) { typeClass = 'cal-chip-qt'; typeIcon = 'bi-file-earmark-text-fill'; }
 
             // สำคัญ: ต้องมี overflow:hidden ที่ตัว wrapper และ min-width:0 ที่ลูกใน flex
             // ไม่งั้นข้อความยาวจะ "ล้น" ทะลุไปทับช่องวันถัดไปแทนที่จะถูกตัดด้วย ellipsis
             return {
                 html: `<div class="cal-chip ${typeClass}" style="border-left-color:${color};">
+                    <i class="bi ${typeIcon} cal-chip-icon" style="color:${color};"></i>
                     ${timeStr ? `<span class="cal-chip-time" style="color:${color};">${timeStr}</span>` : ''}
                     <span class="cal-chip-title">${title}</span>
                 </div>`
@@ -1433,6 +1469,7 @@ function exportExcel() {
         padding: 2px 6px 2px 7px; border-left: 3px solid #0dcaf0; border-radius: 3px;
         line-height: 1.5; overflow: hidden; white-space: nowrap;
     }
+    .cal-chip-icon { flex-shrink: 0; font-size: .62rem; opacity: .8; }
     .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: .68rem; }
     .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: .72rem; color: #2b2f36; }
 

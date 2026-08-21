@@ -77,13 +77,14 @@ try {
     include_once __DIR__ . "/../line_helper.php";
     $origin = $_SERVER['HTTP_ORIGIN'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     $draftFlex = buildDraftFlex($original['function_name'], $new_draft_name, $origin);
-    $lineSent = 0;
-    $lineFailed = 0;
-    foreach (['admin', 'gm'] as $role) {
-        $result = sendLineFlexToRole($conn, $role, $draftFlex, '📝 มี Draft ใหม่: ' . $new_draft_name);
-        $lineSent += $result['sent'];
-        $lineFailed += $result['failed'];
-    }
+    $result = sendLineFlexToRoles(
+        $conn,
+        ['banquet_staff', 'technician', 'housekeeping', 'admin', 'procurement', 'gm'],
+        $draftFlex,
+        '📝 มี Draft ใหม่: ' . $new_draft_name
+    );
+    $lineSent = $result['sent'];
+    $lineFailed = $result['failed'];
 
     echo json_encode(['status' => 'success', 'new_id' => $new_id, 'line_sent' => $lineSent, 'line_failed' => $lineFailed]);
 

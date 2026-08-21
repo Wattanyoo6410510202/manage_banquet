@@ -18,6 +18,9 @@ if (!isset($_GET['my'])) {
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
 
+// แท็บกรอง "รออนุมัติ / อนุมัติแล้ว" — โชว์ทีละแท็บ แทนที่จะแสดงทั้ง 2 สถานะซ้อนกันยาวๆ
+$active_tab = ($_GET['tab'] ?? 'pending') === 'approved' ? 'approved' : 'pending';
+
 // Query หลัก — แบ่งหน้า "ต่อกลุ่มโปรเจกต์" (20 กลุ่ม/หน้า แยกแต่ละส่วน)
 // 1) query เบา: เรียง/จัดกลุ่ม/นับโดยไม่ดึงคอลัมน์หนักทั้งหมด
 $light_sql = "SELECT q.id, q.project_id, q.status FROM quotations q $filter_clause ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
@@ -71,19 +74,26 @@ function ql_slice_page(array $units, string $pageKey, int $perPage): array
     return [$page, $total_pages, array_slice($units, ($page - 1) * $perPage, $perPage)];
 }
 
-$pending_units = ql_build_units(array_values(array_filter($light_rows, fn($r) => $r['status'] !== 'Approved')));
-$approved_units = ql_build_units(array_values(array_filter($light_rows, fn($r) => $r['status'] === 'Approved')));
-[$p_page, $p_pages, $p_page_units] = ql_slice_page($pending_units, 'pp', $q_per_page);
-[$a_page, $a_pages, $a_page_units] = ql_slice_page($approved_units, 'pa', $q_per_page);
+// นับจากทุกใบ (light rows) ไม่ใช่เฉพาะหน้าปัจจุบัน — ใช้ทำ badge ตัวเลขบนปุ่มแท็บทั้งสองอัน ไม่ว่าจะเปิดแท็บไหนอยู่
+$total_pending = count(array_filter($light_rows, fn($r) => $r['status'] !== 'Approved'));
+$total_approved = count(array_filter($light_rows, fn($r) => $r['status'] === 'Approved'));
 
-// 3) ดึงข้อมูลเต็มเฉพาะใบที่อยู่ในหน้าปัจจุบัน
+// โหลด/แบ่งหน้าเฉพาะแท็บที่กำลังเปิดอยู่เท่านั้น (เดิมโหลดทั้ง 2 สถานะพร้อมกันเสมอ)
+$active_units = ql_build_units(array_values(array_filter(
+    $light_rows,
+    fn($r) => $active_tab === 'approved' ? $r['status'] === 'Approved' : $r['status'] !== 'Approved'
+)));
+$page_key = $active_tab === 'approved' ? 'pa' : 'pp';
+[$active_page, $active_pages, $active_page_units] = ql_slice_page($active_units, $page_key, $q_per_page);
+
+// 3) ดึงข้อมูลเต็มเฉพาะใบที่อยู่ในหน้าปัจจุบันของแท็บที่เปิดอยู่
 $page_ids = [];
-foreach (array_merge($p_page_units, $a_page_units) as $u) {
+foreach ($active_page_units as $u) {
     foreach ($u['ids'] as $id) $page_ids[] = $id;
 }
 $quotes = [];
 if (!empty($page_ids)) {
-    $sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, c.sales_name, p.project_name 
+    $sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, c.sales_name, p.project_name
             FROM quotations q
             LEFT JOIN functions f ON q.function_id = f.id
             LEFT JOIN customers c ON q.customer_id = c.id
@@ -117,19 +127,11 @@ function groupByProject($list)
     return ['by_project' => $by_project, 'ungrouped' => $ungrouped];
 }
 
-$pending_quotes = array_values(array_filter($quotes, fn($q) => $q['status'] !== 'Approved'));
-$approved_quotes = array_values(array_filter($quotes, fn($q) => $q['status'] === 'Approved'));
+$active_grouped = groupByProject($quotes);
 
-$pending_grouped = groupByProject($pending_quotes);
-$approved_grouped = groupByProject($approved_quotes);
-
-// นับจากทุกใบ (light rows) ไม่ใช่เฉพาะหน้าปัจจุบัน
-$total_pending = count(array_filter($light_rows, fn($r) => $r['status'] !== 'Approved'));
-$total_approved = count(array_filter($light_rows, fn($r) => $r['status'] === 'Approved'));
-
-$sections = [
-    ['key' => 'pending', 'title' => 'รออนุมัติ', 'icon' => 'bi-hourglass-split', 'header_class' => 'bg-warning-subtle', 'badge_class' => 'bg-warning text-dark', 'data' => $pending_grouped, 'count' => $total_pending, 'page' => $p_page, 'pages' => $p_pages, 'page_key' => 'pp'],
-    ['key' => 'approved', 'title' => 'อนุมัติแล้ว', 'icon' => 'bi-check-circle-fill', 'header_class' => 'bg-success-subtle', 'badge_class' => 'bg-success', 'data' => $approved_grouped, 'count' => $total_approved, 'page' => $a_page, 'pages' => $a_pages, 'page_key' => 'pa'],
+$sections = [$active_tab === 'approved'
+    ? ['key' => 'approved', 'title' => 'อนุมัติแล้ว', 'icon' => 'bi-check-circle-fill', 'header_class' => 'bg-success-subtle', 'badge_class' => 'bg-success', 'data' => $active_grouped, 'count' => $total_approved, 'page' => $active_page, 'pages' => $active_pages, 'page_key' => 'pa']
+    : ['key' => 'pending', 'title' => 'รออนุมัติ', 'icon' => 'bi-hourglass-split', 'header_class' => 'bg-warning-subtle', 'badge_class' => 'bg-warning text-dark', 'data' => $active_grouped, 'count' => $total_pending, 'page' => $active_page, 'pages' => $active_pages, 'page_key' => 'pp']
 ];
 
 $status_map = [
@@ -144,25 +146,72 @@ $status_map = [
     <?php include "assets/alert.php"; ?>
 </div>
 <div class="container-fluid p-0">
-    <div class="row mb-4 align-items-center">
-        <div class="col-md">
-            <h4 class="fw-bold text-dark mb-0">
-                <i class="bi bi-file-earmark-text me-2 text-gold"></i>
-                รายการใบเสนอราคา<?= $my_only ? ' (ของฉัน)' : ' (ทั้งหมด)' ?>
-            </h4>
-            <p class="text-muted small mb-0">อนุมัติและใช้งาน</p>
-        </div>
-        <div class="col-md-auto d-flex align-items-center gap-2 mt-3 mt-md-0">
-            <select class="form-select form-select-sm" style="width:auto"
-                onchange="location.href='quotation_list.php?my='+this.value">
-                <option value="0" <?= !$my_only ? 'selected' : '' ?>>ทั้งหมด</option>
-                <option value="1" <?= $my_only ? 'selected' : '' ?>>เฉพาะของฉัน</option>
-            </select>
-            <a href="add_quote.php" class="btn btn-dark btn-create">
-                <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
-            </a>
+    <div class="ql-hero mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-file-earmark-text me-2 text-gold"></i>รายการใบเสนอราคา<?= $my_only ? ' (ของฉัน)' : ' (ทั้งหมด)' ?></h5>
+                <div class="hero-sub">อนุมัติและใช้งาน</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width:auto"
+                    onchange="location.href='quotation_list.php?my='+this.value">
+                    <option value="0" <?= !$my_only ? 'selected' : '' ?>>ทั้งหมด</option>
+                    <option value="1" <?= $my_only ? 'selected' : '' ?>>เฉพาะของฉัน</option>
+                </select>
+                <a href="add_quote.php" class="btn btn-dark btn-create">
+                    <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
+                </a>
+            </div>
         </div>
     </div>
+
+    <!-- ===== แท็บกรอง รออนุมัติ / อนุมัติแล้ว (ปุ่มใหญ่) ===== -->
+    <div class="d-flex gap-3 mb-4 w-100">
+        <?php $tab_qs = $_GET; $tab_qs['tab'] = 'pending'; ?>
+        <a href="?<?= htmlspecialchars(http_build_query($tab_qs)) ?>"
+           class="ql-tab-btn <?= $active_tab === 'pending' ? 'active' : '' ?>"
+           style="--tab-color:#ffc107;--tab-color-text:#664d03;">
+            <i class="bi bi-hourglass-split"></i>
+            <div>
+                <div class="ql-tab-label">รออนุมัติ</div>
+                <div class="ql-tab-count"><?= number_format($total_pending) ?></div>
+            </div>
+        </a>
+        <?php $tab_qs['tab'] = 'approved'; ?>
+        <a href="?<?= htmlspecialchars(http_build_query($tab_qs)) ?>"
+           class="ql-tab-btn <?= $active_tab === 'approved' ? 'active' : '' ?>"
+           style="--tab-color:#198754;--tab-color-text:#ffffff;">
+            <i class="bi bi-check-circle-fill"></i>
+            <div>
+                <div class="ql-tab-label">อนุมัติแล้ว</div>
+                <div class="ql-tab-count"><?= number_format($total_approved) ?></div>
+            </div>
+        </a>
+    </div>
+
+    <style>
+        .ql-hero{--gold:#b89441;--line:#e8eaee;--ink2:#5b6470;border-radius:16px;padding:15px 20px;
+            background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);position:relative;overflow:hidden}
+        .ql-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
+            background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
+        .ql-hero>*{position:relative;z-index:1}
+        .ql-hero .hero-sub{font-size:.78rem;color:var(--ink2)}
+        .ql-tab-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; border-radius: 12px;
+            border: 2px solid #e8eaee; background: #fff; text-decoration: none; color: #111318;
+            flex: 1 1 0; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+            box-shadow: 0 1px 2px rgba(16,24,40,.04);
+        }
+        .ql-tab-btn:hover { border-color: var(--tab-color); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,.08); }
+        .ql-tab-btn i { font-size: 1.4rem; color: var(--tab-color); flex-shrink: 0; }
+        .ql-tab-btn .ql-tab-label { font-size: .75rem; font-weight: 700; color: #5b6470; text-transform: uppercase; letter-spacing: .4px; }
+        .ql-tab-btn .ql-tab-count { font-size: 1.3rem; font-weight: 800; line-height: 1.2; color: #111318; }
+        .ql-tab-btn.active { border-color: var(--tab-color); background: var(--tab-color); }
+        .ql-tab-btn.active i,
+        .ql-tab-btn.active .ql-tab-label,
+        .ql-tab-btn.active .ql-tab-count { color: var(--tab-color-text); }
+        @media (max-width: 575px) { .ql-tab-btn { padding: 10px 12px; gap: 8px; } .ql-tab-btn i { font-size: 1.2rem; } .ql-tab-btn .ql-tab-count { font-size: 1.1rem; } }
+    </style>
 
     <div class="card p-0 border-0 shadow-sm">
         <!-- Desktop Table -->

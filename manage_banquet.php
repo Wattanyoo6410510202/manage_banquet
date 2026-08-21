@@ -25,20 +25,39 @@ $current_user = $_SESSION['user_name'] ?? '';
 $current_user_id = intval($_SESSION['user_id'] ?? 0);
 $can_manage = in_array($user_role, ['admin', 'gm', 'manager', 'procurement', 'staff']); // กำหนดสิทธิ์จัดการ
 
-// 2. เตรียม WHERE Clause
-$where_clause = "";
-if (in_array($user_role, ['admin', 'gm', 'manager', 'procurement'])) {
-    $where_clause = ""; // เห็นทั้งหมด
-} elseif ($user_role === 'staff') {
-    $where_clause = "WHERE f.created_by_id = $current_user_id";
-} else {
-    $where_clause = "";
+// 2. เตรียม WHERE Clause (สิทธิ์ตาม role + ตัวกรองจากผู้ใช้)
+$where_parts = [];
+if ($user_role === 'staff') {
+    $where_parts[] = "f.created_by_id = $current_user_id";
 }
+
+// --- ตัวกรอง (คงค่าไว้ผ่าน query string ตอน paginate ด้วย) ---
+$valid_statuses = ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+$f_status    = in_array($_GET['status'] ?? '', $valid_statuses) ? $_GET['status'] : '';
+$f_company   = intval($_GET['company_id'] ?? 0);
+$f_sales     = trim($_GET['sales'] ?? '');
+$f_date_from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date_from'] ?? '') ? $_GET['date_from'] : '';
+$f_date_to   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date_to'] ?? '') ? $_GET['date_to'] : '';
+
+if ($f_status !== '')    $where_parts[] = "f.status = '" . $conn->real_escape_string($f_status) . "'";
+if ($f_company > 0)      $where_parts[] = "f.company_id = $f_company";
+if ($f_sales !== '')     $where_parts[] = "cust.sales_name = '" . $conn->real_escape_string($f_sales) . "'";
+if ($f_date_from !== '') $where_parts[] = "f.created_at >= '" . $conn->real_escape_string($f_date_from) . "'";
+if ($f_date_to !== '')   $where_parts[] = "f.created_at < DATE_ADD('" . $conn->real_escape_string($f_date_to) . "', INTERVAL 1 DAY)";
+
+$where_clause = !empty($where_parts) ? "WHERE " . implode(' AND ', $where_parts) : "";
+$has_filters = ($f_status !== '' || $f_company > 0 || $f_sales !== '' || $f_date_from !== '' || $f_date_to !== '');
+
+// ตัวเลือก dropdown สำหรับแถบตัวกรอง
+$mb_companies_opt = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
+$mb_sales_opt = $conn->query("SELECT DISTINCT sales_name FROM customers WHERE sales_name IS NOT NULL AND sales_name != '' ORDER BY sales_name ASC");
 
 // 3. SQL Query — แบ่งหน้า "ต่อโปรเจกต์" (20 กลุ่ม/หน้า)
 //    3a) query เบา: อ่านเฉพาะคอลัมน์ที่ใช้เรียง/จัดกลุ่ม ไม่ดึง f.* ทั้งหมด
+//    join customers ไว้เผื่อกรองตาม sales_name (ตัวกรองด้านบน)
 $light_sql = "SELECT f.id, f.project_id, f.status, f.is_approved, f.modify
         FROM functions f
+        LEFT JOIN customers cust ON f.customer_id = cust.id
         $where_clause
         ORDER BY FIELD(f.status, 'Cancelled') ASC, f.modify DESC, f.id DESC";
 $lq = mysqli_query($conn, $light_sql);
@@ -61,6 +80,7 @@ foreach ($light_groups as $pid => $drafts) {
         'modify' => strtotime($master['modify'] ?? 'now'),
     ];
 }
+$stat_total = count($light_groups);
 uasort($proj_meta, function ($a, $b) {
     if ($a['cancelled'] !== $b['cancelled']) return $a['cancelled'] - $b['cancelled'];
     return $b['modify'] - $a['modify'];
@@ -227,67 +247,83 @@ foreach ($all_qts as $qt) {
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
 
-<div class="row mb-4 align-items-center">
-    <div class="col">
-        <h4 class="fw-bold text-dark mb-0">
-            <i class="bi bi-journal-text me-2 text-gold"></i> Banquet Event List
-        </h4>
-        <p class="text-muted small mb-0">จัดการรายการจัดเลี้ยงทั้งหมดในระบบ</p>
-    </div>
-    <div class="col-auto">
-        <div class="d-flex align-items-center justify-content-between bg-white border rounded p-1 px-2 ">
+<div class="mb-page">
 
-            <div class="d-flex align-items-center gap-1">
-                <div class="btn-group border-end pe-2 me-1">
-                    <button type="button" id="btnExportExcel"
-                        class="btn btn-link btn-sm text-success text-decoration-none p-1">
-                        <i class="bi bi-file-earmark-excel fs-5"></i>
-                        <span class="d-none d-md-inline small ms-1">Excel</span>
+    <!-- ===== HERO + FILTER (บรรทัดเดียวกับชื่อหัวข้อ) ===== -->
+    <div class="mb-hero mb-3">
+        <div class="mb-hero-line">
+            <h5 class="mb-hero-title">
+                <i class="bi bi-journal-text me-1 text-gold"></i>Banquet Event List
+                <span class="badge bg-light text-dark border fw-normal ms-1"><?= number_format($stat_total) ?></span>
+            </h5>
+
+            <select name="status" form="mbFilterForm" class="form-select form-select-sm mb-hero-select">
+                <option value="">ทุกสถานะ</option>
+                <?php
+                $status_opts = ['Pending' => 'รออนุมัติ', 'Confirmed' => 'อนุมัติแล้ว', 'In Progress' => 'ดำเนินการ', 'Completed' => 'จบงานแล้ว', 'Cancelled' => 'ยกเลิก'];
+                foreach ($status_opts as $sv => $sl): ?>
+                    <option value="<?= $sv ?>" <?= $f_status === $sv ? 'selected' : '' ?>><?= $sl ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <select name="company_id" form="mbFilterForm" class="form-select form-select-sm mb-hero-select">
+                <option value="0">ทุกโรงแรม</option>
+                <?php while ($c = $mb_companies_opt->fetch_assoc()): ?>
+                    <option value="<?= $c['id'] ?>" <?= $f_company == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['company_name']) ?></option>
+                <?php endwhile; ?>
+            </select>
+
+            <select name="sales" form="mbFilterForm" class="form-select form-select-sm mb-hero-select">
+                <option value="">Sales ทั้งหมด</option>
+                <?php while ($s = $mb_sales_opt->fetch_assoc()): ?>
+                    <option value="<?= htmlspecialchars($s['sales_name']) ?>" <?= $f_sales === $s['sales_name'] ? 'selected' : '' ?>><?= htmlspecialchars($s['sales_name']) ?></option>
+                <?php endwhile; ?>
+            </select>
+
+            <input type="date" name="date_from" form="mbFilterForm" value="<?= htmlspecialchars($f_date_from) ?>" class="form-control form-control-sm mb-hero-date" title="วันที่สร้างงาน (จาก)">
+            <span class="text-muted small">–</span>
+            <input type="date" name="date_to" form="mbFilterForm" value="<?= htmlspecialchars($f_date_to) ?>" class="form-control form-control-sm mb-hero-date" title="วันที่สร้างงาน (ถึง)">
+
+            <button type="submit" form="mbFilterForm" class="btn btn-gold btn-sm" title="กรองข้อมูล"><i class="bi bi-funnel"></i></button>
+            <?php if ($has_filters): ?>
+                <a href="manage_banquet.php" class="btn btn-mb-tool btn-sm" title="ล้างตัวกรอง"><i class="bi bi-x-lg"></i></a>
+            <?php endif; ?>
+
+            <div class="mb-hero-actions">
+                <div class="btn-group">
+                    <button type="button" id="btnExportExcel" class="btn btn-mb-tool btn-sm">
+                        <i class="bi bi-file-earmark-excel"></i><span class="d-none d-xl-inline ms-1">Excel</span>
                     </button>
-                    <button type="button" id="btnExportPrint"
-                        class="btn btn-link btn-sm text-secondary text-decoration-none p-1">
-                        <i class="bi bi-printer fs-5"></i>
-                        <span class="d-none d-md-inline small ms-1">พิมพ์</span>
+                    <button type="button" id="btnExportPrint" class="btn btn-mb-tool btn-sm">
+                        <i class="bi bi-printer"></i><span class="d-none d-xl-inline ms-1">พิมพ์</span>
                     </button>
                 </div>
 
-                <?php
-                if (strtolower($user_role) === 'admin'):
-                    ?>
-                    <button id="deleteSelected" class="btn btn-danger btn-sm py-1 px-2 shadow-sm"
-                        style="display:none; font-size: 0.75rem;">
-                        <i class="bi bi-trash3-fill"></i>
-                        <span class="ms-1">ลบ (<span id="selectCount">0</span>)</span>
+                <?php if (strtolower($user_role) === 'admin'): ?>
+                    <button id="deleteSelected" class="btn btn-danger btn-sm" style="display:none;">
+                        <i class="bi bi-trash3-fill me-1"></i>ลบ (<span id="selectCount">0</span>)
                     </button>
-                    <?php
-                else:
-                    ?>
-                    <button class="btn btn-secondary btn-sm py-1 px-2 shadow-sm disabled"
-                        style="font-size: 0.75rem; cursor: not-allowed;">
-                        <i class="bi bi-eye-fill"></i>
-                        <span class="ms-1">โหมดดูข้อมูลเท่านั้น</span>
-                    </button>
+                <?php else: ?>
+                    <span class="btn btn-mb-tool btn-sm disabled" style="cursor:not-allowed;">
+                        <i class="bi bi-eye-fill me-1"></i>โหมดดูข้อมูลเท่านั้น
+                    </span>
                 <?php endif; ?>
-            </div>
 
-            <div class="d-flex align-items-center gap-2">
-                <a href="calendar.php" class="btn btn-outline-hotel btn-sm border-0 py-1">
-                    <i class="bi bi-calendar3"></i>
-                    <span class="d-none d-sm-inline ms-1 small">ปฏิทิน</span>
+                <a href="calendar.php" class="btn btn-outline-secondary btn-sm" style="border-radius:9px">
+                    <i class="bi bi-calendar3"></i><span class="d-none d-xl-inline ms-1">ปฏิทิน</span>
                 </a>
                 <?php
                 $allowed_roles = ['admin', 'staff', 'gm', 'viewer'];
                 if (in_array($user_role, $allowed_roles)):
-                    ?>
-                    <a href="add_event.php" class="btn btn-dark btn-sm px-3 py-1 rounded-pill shadow-sm"
-                        style="font-size: 0.8rem;">
-                        <i class="bi bi-plus-lg"></i>
-                        <span class="ms-1">เพิ่มงานใหม่</span>
+                ?>
+                    <a href="add_event.php" class="btn btn-gold btn-sm">
+                        <i class="bi bi-plus-lg"></i><span class="ms-1 d-none d-xl-inline">เพิ่มงานใหม่</span>
                     </a>
                 <?php endif; ?>
             </div>
         </div>
     </div>
+    <form id="mbFilterForm" method="GET" class="d-none"></form>
 </div>
 
 <?php
@@ -509,35 +545,47 @@ if ($conflict_q) {
                             <td class="export-detail"><?= htmlspecialchars($project['phone'] ?? ''); ?></td>
                             <td class="export-detail"><?= htmlspecialchars($selected_quote_no); ?></td>
                             <td class="export-detail"><?= htmlspecialchars($master['cancel_reason'] ?? ''); ?></td>
+                            <?php
+                                // รวมปุ่มรองๆ (การเงิน/แก้ไข/ยกเลิก) ไว้ใน dropdown เดียว ลดจำนวนปุ่มเปลือยต่อแถว
+                                $can_workflow = $user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement']);
+                                $show_finance_edit = !in_array($user_role, ['technician', 'housekeeping']);
+                                $show_cancel = $can_workflow && !in_array($master['status'], ['Completed', 'Cancelled']);
+                                $show_more_menu = $show_finance_edit || $show_cancel;
+                            ?>
                             <td class="text-center sticky-col">
-                                <div class="d-flex justify-content-center gap-1">
-                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
+                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                    <?php if ($can_workflow): ?>
                                         <?php if ($master['approve'] == 0 && in_array($user_role, ['admin', 'gm'])): ?>
                                             <button type="button" class="btn btn-sm btn-success btn-approve-draft" data-id="<?= $master['id']; ?>">
                                                 <i class="bi bi-check-lg"></i> อนุมัติ
                                             </button>
                                         <?php endif; ?>
                                         <?php if ($master['approve'] == 1 && $master['status'] == 'Confirmed'): ?>
-                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $master['id']; ?>" data-status="In Progress"><i class="bi bi-play-fill"></i></button>
+                                            <button type="button" class="btn btn-sm btn-info text-white btn-status-change" data-id="<?= $master['id']; ?>" data-status="In Progress" title="เริ่มดำเนินการ"><i class="bi bi-play-fill"></i></button>
                                         <?php endif; ?>
                                         <?php if ($master['status'] == 'In Progress'): ?>
-                                            <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $master['id']; ?>" data-status="Completed"><i class="bi bi-flag-fill"></i></button>
+                                            <button type="button" class="btn btn-sm btn-primary btn-status-change" data-id="<?= $master['id']; ?>" data-status="Completed" title="จบงาน"><i class="bi bi-flag-fill"></i></button>
                                         <?php endif; ?>
-                                        <div class="vr mx-1"></div>
                                     <?php endif; ?>
-                                    
+
                                     <a href="view.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-primary" title="ดูรายละเอียด"><i class="bi bi-eye"></i></a>
-                                    
-                                    <?php if (!in_array($user_role, ['technician', 'housekeeping'])): ?>
-                                        <a href="finance.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-warning" title="จัดการบัญชี/ROI">
-                                            <i class="bi bi-cash-coin"></i>
-                                        </a>
-                                        <a href="edit.php?id=<?= $master['id']; ?>" class="btn btn-sm btn-outline-dark" title="แก้ไขงานหลัก"><i class="bi bi-pencil-square"></i></a>
-                                    <?php endif; ?>
-                                    <?php if ($user_role !== 'viewer' && !in_array($user_role, ['technician', 'housekeeping', 'procurement'])): ?>
-                                        <?php if (!in_array($master['status'], ['Completed', 'Cancelled'])): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-status-change" data-id="<?= $master['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg"></i></button>
-                                        <?php endif; ?>
+
+                                    <?php if ($show_more_menu): ?>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="เพิ่มเติม">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                <?php if ($show_finance_edit): ?>
+                                                    <li><a class="dropdown-item" href="finance.php?id=<?= $master['id']; ?>"><i class="bi bi-cash-coin me-2 text-warning"></i>จัดการบัญชี/ROI</a></li>
+                                                    <li><a class="dropdown-item" href="edit.php?id=<?= $master['id']; ?>"><i class="bi bi-pencil-square me-2"></i>แก้ไขงานหลัก</a></li>
+                                                <?php endif; ?>
+                                                <?php if ($show_cancel): ?>
+                                                    <?php if ($show_finance_edit): ?><li><hr class="dropdown-divider"></li><?php endif; ?>
+                                                    <li><button type="button" class="dropdown-item text-danger btn-status-change" data-id="<?= $master['id']; ?>" data-status="Cancelled"><i class="bi bi-x-lg me-2"></i>ยกเลิกงาน</button></li>
+                                                <?php endif; ?>
+                                            </ul>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -768,6 +816,41 @@ if ($conflict_q) {
     .btn-success { background: #198754; border-radius: 0.5rem; transition: transform 0.2s; }
     .btn-success:hover { transform: translateY(-2px); }
     .hr-line { border-top: 2px solid #e9ecef; margin: 1.5rem 0; }
+
+    /* ===== Hero + Stat (redesign ของหน้า Banquet Event List) ===== */
+    .mb-page { font-family: 'Sarabun', 'Inter', sans-serif; }
+    .mb-hero {
+        border-radius: 16px; padding: 15px 20px; position: relative; overflow: hidden;
+        background: #fff; border: 1px solid #e8eaee; border-left: 4px solid var(--hotel-gold, #b89441);
+    }
+    .mb-hero::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(520px 200px at 92% -40%, rgba(184,148,65,.10), transparent 70%);
+    }
+    .mb-hero > * { position: relative; z-index: 1; }
+    .btn-mb-tool {
+        background: #fff; border: 1px solid #e8eaee; color: #5b6470; border-radius: 9px; font-weight: 600;
+    }
+    .btn-mb-tool:hover { background: #f7f1e3; color: #8a6c22; border-color: #e3d6b3; }
+    .btn-gold { background: var(--hotel-gold, #b89441); border: 1px solid var(--hotel-gold, #b89441); color: #fff; font-weight: 600; border-radius: 9px; }
+    .btn-gold:hover { background: #a5833a; border-color: #a5833a; color: #fff; }
+
+    /* หัวข้อ + ตัวกรอง + ปุ่มเครื่องมือ อยู่บรรทัดเดียวกันทั้งหมด (เลื่อนลงเป็นหลายบรรทัดเฉพาะจอแคบ) */
+    .mb-hero-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .mb-hero-title { flex-shrink: 0; margin: 0; font-weight: 700; white-space: nowrap; }
+    .mb-hero-select { width: auto; min-width: 100px; flex: 0 1 auto; }
+    .mb-hero-date { width: 128px; flex: 0 0 auto; }
+    .mb-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+    @media (max-width: 991px) { .mb-hero-actions { margin-left: 0; } }
+
+    /* ===== ตาราง: แถวโปรเจกต์หลัก vs แถว draft ย่อย ให้แยกกันชัดขึ้น ===== */
+    #banquetTable > tbody > tr.project-header-row { border-top: 1px solid #f0f2f5; }
+    #banquetTable > tbody > tr.project-header-row:hover > * { background-color: rgba(184, 148, 65, 0.05); }
+    #banquetTable > tbody > tr.draft-sub-row > * { background-color: #fafbfc !important; }
+    .hotel-logo-container {
+        width: 34px; height: 34px; border-radius: 8px; overflow: hidden; background: #f4f5f7;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
 </style>
 
 <div class="modal fade" id="eventDetailModal" tabindex="-1">
@@ -1074,4 +1157,13 @@ if ($conflict_q) {
 echo "<script>window.exportOnlyCols = [9,10,11,12,13,14,15,16,17,18];</script>";
 ?>
 <?php include "style/banquet_table.php"; ?>
+<script>
+    // ปุ่ม "..." ในตารางอยู่ในกล่อง overflow:hidden หลายชั้น (card/dataTables scroll wrapper)
+    // ถ้าไม่บังคับ position:fixed เมนู dropdown จะโดนตัดขอบมองไม่เห็น — รอให้ DataTable init เสร็จก่อนค่อยผูก
+    $(document).ready(function () {
+        document.querySelectorAll('#banquetTable [data-bs-toggle="dropdown"]').forEach(function (el) {
+            new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } });
+        });
+    });
+</script>
 <?php include "footer.php"; ?>
