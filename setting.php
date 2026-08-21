@@ -469,6 +469,12 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                                                 <span class="small text-muted" title="<?= htmlspecialchars($u['line_user_id']) ?>">
                                                     <i class="bi bi-line text-success"></i> ผูกแล้ว
                                                 </span>
+                                                <button type="button" class="btn btn-sm btn-outline-success ms-1 py-0 px-1"
+                                                    style="font-size: 0.7rem;"
+                                                    onclick="testLine(<?php echo $u['id']; ?>, this)"
+                                                    title="ส่งข้อความทดสอบหาผู้ใช้นี้ทาง LINE">
+                                                    <i class="bi bi-send"></i> ทดสอบ
+                                                </button>
                                             <?php else: ?>
                                                 <span class="small text-muted"><i class="bi bi-dash"></i></span>
                                             <?php endif; ?>
@@ -590,6 +596,25 @@ function togglePass() {
 function confirmDelete(url, msg) {
     if (confirm(msg)) {
         window.location.href = url;
+    }
+}
+
+// --- ทดสอบส่ง LINE หาผู้ใช้รายคน ---
+async function testLine(userId, btn) {
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        const res = await fetch('api/test_line.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        alert((data.ok ? '✅ ' : '❌ ') + data.message);
+    } catch (e) {
+        alert('❌ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
     }
 }
 

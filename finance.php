@@ -396,9 +396,9 @@ function getKitchenCost($conn, $function_id)
                     continue;
 
                 $name_esc = $conn->real_escape_string($name);
-                $q_p = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$name_esc%' LIMIT 1");
-                if ($p = $q_p->fetch_assoc()) {
-                    $total_cost += ((float) $p['price_per_pax'] * $qty);
+                $q_p = menuDetailPriceCached($conn, $name);
+                if ($q_p > 0) {
+                    $total_cost += ($q_p * $qty);
                 }
             }
         }
@@ -440,16 +440,7 @@ function getKitchenCost($conn, $function_id)
                     continue;
 
                 $k_name_esc = $conn->real_escape_string($k_name);
-                $unit_price = 0;
-                $q_b = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$k_name_esc%' LIMIT 1");
-                if ($b = $q_b->fetch_assoc()) {
-                    $unit_price = (float) $b['break_price'];
-                } else {
-                    $q_d = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$k_name_esc%' LIMIT 1");
-                    if ($d = $q_d->fetch_assoc()) {
-                        $unit_price = (float) $d['price_per_pax'];
-                    }
-                }
+                $unit_price = breakOrMenuPriceCached($conn, $k_name);
                 $total_cost += ($unit_price * $k_qty);
             }
         }

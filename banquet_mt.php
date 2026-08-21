@@ -38,6 +38,11 @@ if ($user_role === 'staff') {
     $where_clause = " WHERE f.created_by = '$safe_user' ";
 }
 
+// จำกัดช่วงวันที่จัดงาน (-1 เดือน ~ +6 เดือน) เพื่อไม่ให้สแกนทั้งตารางทุกครั้ง
+// งานที่ยังไม่มี start_time (ร่างที่ยังไม่ล็อกวัน) ยังแสดงตลอด
+$_date_bound = "(f.start_time IS NULL OR (f.start_time >= '" . date('Y-m-d', strtotime('-1 month')) . "' AND f.start_time < '" . date('Y-m-d', strtotime('+7 months')) . "'))";
+$where_clause .= ($where_clause === "" ? " WHERE " : " AND ") . "$_date_bound ";
+
 // 3. SQL Query
 $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name,
         (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date 

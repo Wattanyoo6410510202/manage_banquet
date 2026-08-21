@@ -35,24 +35,73 @@ if (in_array($user_role, ['admin', 'gm', 'manager', 'procurement'])) {
     $where_clause = "";
 }
 
-// 3. SQL Query
-$sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name, cust.sales_name,
-        (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
-        (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
-        FROM functions f 
-        LEFT JOIN companies c ON f.company_id = c.id
-        LEFT JOIN customers cust ON f.customer_id = cust.id
-        LEFT JOIN event_projects p ON f.project_id = p.id
+// 3. SQL Query — แบ่งหน้า "ต่อโปรเจกต์" (20 กลุ่ม/หน้า)
+//    3a) query เบา: อ่านเฉพาะคอลัมน์ที่ใช้เรียง/จัดกลุ่ม ไม่ดึง f.* ทั้งหมด
+$light_sql = "SELECT f.id, f.project_id, f.status, f.is_approved, f.modify
+        FROM functions f
         $where_clause
         ORDER BY FIELD(f.status, 'Cancelled') ASC, f.modify DESC, f.id DESC";
+$lq = mysqli_query($conn, $light_sql);
+$light_groups = [];
+if ($lq) {
+    while ($r = mysqli_fetch_assoc($lq)) {
+        $pid = $r['project_id'] ?: 'single_' . $r['id'];
+        $light_groups[$pid][] = $r;
+    }
+}
 
-$q = mysqli_query($conn, $sql);
+// 3b) เรียงลำดับโปรเจกต์ด้วยกฎเดิม: ยกเลิกไว้ล่างสุด, master (is_approved=1 หรือตัวแรก) modify ล่าสุดก่อน
+$proj_meta = [];
+foreach ($light_groups as $pid => $drafts) {
+    $master = null;
+    foreach ($drafts as $d) { if ($d['is_approved'] == 1) { $master = $d; break; } }
+    if (!$master) $master = $drafts[0];
+    $proj_meta[$pid] = [
+        'cancelled' => (($master['status'] ?? '') === 'Cancelled') ? 1 : 0,
+        'modify' => strtotime($master['modify'] ?? 'now'),
+    ];
+}
+uasort($proj_meta, function ($a, $b) {
+    if ($a['cancelled'] !== $b['cancelled']) return $a['cancelled'] - $b['cancelled'];
+    return $b['modify'] - $a['modify'];
+});
+$ordered_pids = array_keys($proj_meta);
+
+// 3c) ตัดเฉพาะโปรเจกต์ของหน้าปัจจุบัน
+$page = max(1, intval($_GET['page'] ?? 1));
+$per_page = 20;
+$total_projects = count($ordered_pids);
+$total_pages = max(1, (int)ceil($total_projects / $per_page));
+$page = min($page, $total_pages);
+$page_pids = array_slice($ordered_pids, ($page - 1) * $per_page, $per_page);
+
+$page_fids = [];
+foreach ($page_pids as $pid) {
+    foreach ($light_groups[$pid] as $d) $page_fids[] = intval($d['id']);
+}
+$fid_in = !empty($page_fids) ? implode(',', $page_fids) : '0';
+
 $projects_data = [];
 $functions_data = [];
 
-// 4. วนลูปเก็บข้อมูลลง Array และจัดการกลุ่ม Draft
-if ($q && mysqli_num_rows($q) > 0) {
-    while ($row = mysqli_fetch_assoc($q)) {
+// 3d) query หนัก (f.* + subquery) ทำงานเฉพาะงานในหน้านี้เท่านั้น
+if (!empty($page_fids)) {
+    $fid_in = implode(',', $page_fids);
+    $sql = "SELECT f.*, c.company_name, c.logo_path, p.project_name as main_project_name, cust.sales_name,
+            (SELECT MIN(schedule_date) FROM function_schedules WHERE function_id = f.id) as event_date,
+            (SELECT GROUP_CONCAT(CONCAT(id, ':', quote_no, ':', is_selected) SEPARATOR '|') FROM quotations WHERE project_id = f.project_id) as all_quotes
+            FROM functions f
+            LEFT JOIN companies c ON f.company_id = c.id
+            LEFT JOIN customers cust ON f.customer_id = cust.id
+            LEFT JOIN event_projects p ON f.project_id = p.id
+            WHERE f.id IN ($fid_in)
+            ORDER BY FIELD(f.status, 'Cancelled') ASC, f.modify DESC, f.id DESC";
+
+    $q = mysqli_query($conn, $sql);
+
+    // 4. วนลูปเก็บข้อมูลลง Array และจัดการกลุ่ม Draft
+    if ($q && mysqli_num_rows($q) > 0) {
+        while ($row = mysqli_fetch_assoc($q)) {
         // จัดการเรื่องวันที่
         $display_date = !empty($row['event_date']) ? $row['event_date'] : $row['created_at'];
         $row['formatted_date'] = thaiDate($display_date);
@@ -94,6 +143,7 @@ if ($q && mysqli_num_rows($q) > 0) {
         }
         $projects_data[$pid]['drafts'][] = $row;
     }
+    }
 }
 
 // เรียงรายการที่สถานะยกเลิกลงล่างสุด
@@ -110,12 +160,18 @@ uasort($projects_data, function($a, $b) {
     return strtotime($bMaster['modify'] ?? 'now') - strtotime($aMaster['modify'] ?? 'now');
 });
 
-// 5. ดึงข้อมูลใบเสนอราคาทั้งหมด จัดกลุ่มตาม project_id หรือ function_id (กรณีไม่มี project)
+// 5. ดึงข้อมูลใบเสนอราคา — เฉพาะโปรเจกต์/งานที่แสดงในหน้านี้ (เดิมดึงทุกใบในระบบทุกครั้ง)
 $quotations_by_project = [];
+$page_project_ids = array_values(array_filter($page_pids, 'is_numeric'));
+$qp_parts = [];
+if (!empty($page_project_ids)) $qp_parts[] = "q.project_id IN (" . implode(',', array_map('intval', $page_project_ids)) . ")";
+if (!empty($page_fids)) $qp_parts[] = "q.function_id IN ($fid_in)";
+$q_where = !empty($qp_parts) ? "WHERE (" . implode(' OR ', $qp_parts) . ")" : "WHERE 0";
 $q_quotes = $conn->query("
     SELECT q.*, c.cust_name, c.sales_name
     FROM quotations q 
     LEFT JOIN customers c ON q.customer_id = c.id 
+    $q_where
     ORDER BY q.id DESC
 ");
 
@@ -234,6 +290,9 @@ foreach ($all_qts as $qt) {
 
 <?php
 // ── ตรวจสอบการทับซ้อนของห้อง (เฉพาะงานที่ approve แล้ว) ──
+// จำกัดช่วง -1 เดือน ~ +6 เดือน เพื่อไม่ให้สแกนทั้งตารางทุกครั้งที่เปิดหน้า
+$_conf_from = date('Y-m-d', strtotime('-1 month'));
+$_conf_to = date('Y-m-d', strtotime('+6 months'));
 $conflict_sql = "SELECT 
     f1.id AS id1, f1.function_name AS name1, f1.start_time AS start1, f1.end_time AS end1,
     f2.id AS id2, f2.function_name AS name2, f2.start_time AS start2, f2.end_time AS end2,
@@ -252,6 +311,8 @@ INNER JOIN meeting_rooms mr ON f1.room_id = mr.id
 WHERE ((f1.approve = 1 AND f2.approve = 0) OR (f1.approve = 0 AND f2.approve = 1))
     AND f1.status NOT IN ('Cancelled', 'Completed')
     AND f2.status NOT IN ('Cancelled', 'Completed')
+    AND f1.start_time >= '$_conf_from' AND f1.start_time < DATE_ADD('$_conf_to', INTERVAL 1 DAY)
+    AND f2.start_time >= '$_conf_from' AND f2.start_time < DATE_ADD('$_conf_to', INTERVAL 1 DAY)
 ORDER BY f1.start_time ASC";
 $conflict_q = mysqli_query($conn, $conflict_sql);
 $conflict_map = [];
@@ -270,6 +331,31 @@ if ($conflict_q) {
     }
 }
 ?>
+
+<!-- Pagination ต่อโปรเจกต์ -->
+<?php if ($total_pages > 1): ?>
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <span class="text-muted small">โปรเจกต์ <?= (($page - 1) * $per_page) + 1 ?>-<?= min($page * $per_page, $total_projects) ?> จาก <?= $total_projects ?> กลุ่ม</span>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => max(1, $page - 1)])) ?>">&laquo;</a>
+            </li>
+            <?php
+            $_start = max(1, $page - 2);
+            $_end = min($total_pages, $page + 2);
+            for ($p = $_start; $p <= $_end; $p++): ?>
+                <li class="page-item <?= $p === $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $p])) ?>"><?= $p ?></a>
+                </li>
+            <?php endfor; ?>
+            <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => min($total_pages, $page + 1)])) ?>">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+<?php endif; ?>
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">

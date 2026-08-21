@@ -88,8 +88,8 @@ if ($f_room > 0)    { $where[] = "rb.room_id = ?";          $types .= 'i'; $para
 if ($f_company > 0) { $where[] = "rb.company_id = ?";       $types .= 'i'; $params[] = $f_company; }
 if ($f_type > 0)    { $where[] = "rb.function_type_id = ?"; $types .= 'i'; $params[] = $f_type; }
 if ($f_status !== 'all') { $where[] = "rb.status = ?";      $types .= 's'; $params[] = $f_status; }
-if ($date_from !== '')   { $where[] = "DATE(rb.start_time) >= ?"; $types .= 's'; $params[] = $date_from; }
-if ($date_to !== '')     { $where[] = "DATE(rb.start_time) <= ?"; $types .= 's'; $params[] = $date_to; }
+if ($date_from !== '')   { $where[] = "rb.start_time >= ?"; $types .= 's'; $params[] = $date_from; }
+if ($date_to !== '')     { $where[] = "rb.start_time < DATE_ADD(?, INTERVAL 1 DAY)"; $types .= 's'; $params[] = $date_to; }
 
 $where_sql = implode(' AND ', $where);
 

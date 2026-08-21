@@ -23,14 +23,15 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
 
     <!-- Room Conflict Card -->
     <?php
-    $conflict_sql = "SELECT 
+    /* จำกัดช่วงเวลา อดีต 1 เดือน ~ อนาคต 6 เดือน — เดิมเทียบทุกแถวกับทุกแถวทั้งประวัติศาสตร์ (O(n²)) ข้อมูลเยอะจะค้าง */
+    $conflict_sql = "SELECT
         f1.id AS id1, f1.function_name AS name1, f1.start_time AS start1, f1.end_time AS end1,
         f2.id AS id2, f2.function_name AS name2, f2.start_time AS start2, f2.end_time AS end2,
         f1.room_id, mr.room_name,
         COALESCE(f1.approve, 0) AS approve1, COALESCE(f2.approve, 0) AS approve2,
         f1.status AS status1, f2.status AS status2
     FROM functions f1
-    INNER JOIN functions f2 ON f1.id < f2.id 
+    INNER JOIN functions f2 ON f1.id < f2.id
         AND f1.room_id IS NOT NULL AND f2.room_id IS NOT NULL
         AND f1.start_time IS NOT NULL AND f2.start_time IS NOT NULL
         AND f1.end_time IS NOT NULL AND f2.end_time IS NOT NULL
@@ -41,6 +42,8 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
     WHERE (f1.approve = 1 OR f2.approve = 1)
         AND f1.status NOT IN ('Cancelled', 'Completed')
         AND f2.status NOT IN ('Cancelled', 'Completed')
+        AND f1.start_time >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+        AND f1.start_time < DATE_ADD(CURDATE(), INTERVAL 6 MONTH)
     ORDER BY f1.start_time ASC";
     $conflict_q = mysqli_query($conn, $conflict_sql);
     $conflicts = [];
@@ -407,283 +410,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`
             };
         },
-        events: <?php
-            // สร้าง events array แล้ว json_encode ทีเดียว — escape ทุกอักขระอัตโนมัติ
-            $events = [];
-
-            // 1. งานจากตาราง functions (General Mode)
-            $sql_f = "SELECT f.*, r.room_name, c.cust_name, c.cust_phone, u.name as creator_name
-                      FROM functions f 
-                      LEFT JOIN meeting_rooms r ON f.room_id = r.id
-                      LEFT JOIN customers c ON f.customer_id = c.id
-                      LEFT JOIN users u ON f.created_by_id = u.id
-                      WHERE f.status != 'Cancelled'
-                      ORDER BY f.id ASC"; 
-            
-            $q_f = mysqli_query($conn, $sql_f);
-            if (!$q_f) {
-                $sql_f = "SELECT * FROM functions ORDER BY id ASC";
-                $q_f = mysqli_query($conn, $sql_f);
-            }
-
-            if ($q_f) {
-                while ($row = mysqli_fetch_assoc($q_f)) {
-                    $st = strtolower(trim($row['status'] ?? ''));
-                    if($st === 'pending') $color = '#ffc107';
-                    elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
-                    elseif($st === 'in progress') $color = '#0d6efd';
-                    elseif($st === 'completed') $color = '#198754';
-                    elseif($st === 'cancelled') $color = '#dc3545';
-                    else $color = '#6c757d';
-
-                    $events[] = [
-                        'id' => 'gen_' . $row['id'],
-                        'ref_id' => (string) $row['id'],
-                        'title' => (string) ($row['function_name'] ?? ''),
-                        'start' => (string) ($row['start_time'] ?? ''),
-                        'end' => (string) ($row['end_time'] ?? ''),
-                        'color' => $color,
-                        'mode' => 'general',
-                        'extendedProps' => [
-                            'mainTitle' => (string) ($row['function_name'] ?? ''),
-                            'status' => (string) ($row['status'] ?? 'Pending'),
-                            'room' => (string) ($row['room_name'] ?? $row['room_id'] ?? ''),
-                            'customer' => (string) ($row['cust_name'] ?? ''),
-                            'phone' => (string) ($row['cust_phone'] ?? ''),
-                            'pax' => (string) ($row['pax'] ?? '0'),
-                            'deposit' => number_format($row['deposit'] ?? 0, 2),
-                            'total' => number_format($row['total_amount'] ?? 0, 2),
-                            'remark' => (string) ($row['remark'] ?? ''),
-                            'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
-                            'approved' => intval($row['approve'] ?? 0),
-                            'doc_no' => (string) ($row['function_code'] ?? $row['id'] ?? ''),
-                        ]
-                    ];
-                }
-            }
-            
-            // 2. งานจากตาราง schedules (Schedule Mode)
-            $sql_s = "SELECT s.*, f.function_name, f.status, r.room_name, c.cust_name, c.cust_phone, f.pax, f.deposit, f.total_amount,
-                             f.lead_source, f.result, f.inspection_date, f.follow_up_date, f.created_at, f.approve_date, u.name as creator_name, f.created_by
-                      FROM function_schedules s 
-                      JOIN functions f ON s.function_id = f.id
-                      LEFT JOIN meeting_rooms r ON f.room_id = r.id
-                      LEFT JOIN customers c ON f.customer_id = c.id
-                      LEFT JOIN users u ON f.created_by_id = u.id
-                      WHERE f.status != 'Cancelled'";
-            $q_s = mysqli_query($conn, $sql_s);
-            if (!$q_s) {
-                $sql_s = "SELECT s.*, f.function_name, f.status, f.created_by 
-                          FROM function_schedules s 
-                          JOIN functions f ON s.function_id = f.id";
-                $q_s = mysqli_query($conn, $sql_s);
-            }
-
-            if ($q_s) {
-                while ($row = mysqli_fetch_assoc($q_s)) {
-                    $st = strtolower(trim($row['status'] ?? ''));
-                    if($st === 'pending') $color = '#ffc107';
-                    elseif($st === 'confirmed' || $st === 'approved') $color = '#0dcaf0';
-                    elseif($st === 'in progress') $color = '#0d6efd';
-                    elseif($st === 'completed') $color = '#198754';
-                    elseif($st === 'cancelled') $color = '#dc3545';
-                    else $color = '#6c757d';
-
-                    $sched_title = "[" . ($row['schedule_hour'] ?? '') . "] " . ($row['schedule_function'] ?? '');
-
-                    $events[] = [
-                        'id' => 'sched_' . $row['id'],
-                        'ref_id' => (string) $row['function_id'],
-                        'title' => $sched_title,
-                        'start' => (string) ($row['schedule_date'] ?? ''),
-                        'color' => $color,
-                        'mode' => 'schedule',
-                        'extendedProps' => [
-                            'mainTitle' => (string) ($row['function_name'] ?? ''),
-                            'status' => (string) ($row['status'] ?? 'Pending'),
-                            'room' => (string) ($row['room_name'] ?? ''),
-                            'customer' => (string) ($row['cust_name'] ?? ''),
-                            'total' => number_format($row['total_amount'] ?? 0, 2),
-                            'remark' => (string) ($row['schedule_function'] ?? ''),
-                            'created_by_name' => (string) ($row['creator_name'] ?? $row['created_by'] ?? ''),
-                            'doc_no' => (string) ($row['id'] ?? ''),
-                        ]
-                    ];
-                }
-            }
-
-            // 3. ใบเสนอราคา (Quotations)
-            $sql_q = "SELECT q.*, c.cust_name, c.cust_phone, u.name as creator_name,
-                             ft.type_name as func_type_name, mr.room_name as func_room_name,
-                             f.pax as func_pax, f.deposit as func_deposit, f.total_amount as func_total_amount,
-                             (SELECT COUNT(*) FROM functions WHERE quotation_id = q.id AND status != 'Cancelled') as beo_count
-                      FROM quotations q 
-                      LEFT JOIN customers c ON q.customer_id = c.id
-                      LEFT JOIN users u ON q.created_by = u.id
-                      LEFT JOIN functions f ON f.id = (
-                          SELECT f2.id FROM functions f2 
-                          WHERE f2.quotation_id = q.id AND f2.status != 'Cancelled' 
-                          ORDER BY f2.id DESC LIMIT 1
-                      )
-                      LEFT JOIN function_types ft ON f.function_type_id = ft.id
-                      LEFT JOIN meeting_rooms mr ON f.room_id = mr.id
-                      WHERE q.status NOT IN ('Cancelled')
-                      ORDER BY q.id DESC";
-            $q_q = mysqli_query($conn, $sql_q);
-            if (!$q_q) {
-                $sql_q = "SELECT * FROM quotations WHERE status NOT IN ('Cancelled') ORDER BY id DESC";
-                $q_q = mysqli_query($conn, $sql_q);
-            }
-
-            $qt_rows = [];
-            if ($q_q) {
-                while ($row = mysqli_fetch_assoc($q_q)) {
-                    $qt_rows[] = $row;
-                }
-            }
-
-            // ตรวจจับ: มี QT อนุมัติแล้ว + ไม่อนุมัติในวันเดียวกัน → auto freeze ใบที่ไม่อนุมัติ
-            $date_approved_map = [];
-            foreach ($qt_rows as $row) {
-                $d = $row['event_date'] ?? '';
-                if (!$d) continue;
-                $is_approved = strtolower(trim($row['status'] ?? '')) === 'approved';
-                if ($is_approved) {
-                    $date_approved_map[$d] = true;
-                }
-            }
-            foreach ($qt_rows as &$row) {
-                $d = $row['event_date'] ?? '';
-                if (!$d) continue;
-                $is_approved = strtolower(trim($row['status'] ?? '')) === 'approved';
-                if (!$is_approved && isset($date_approved_map[$d])) {
-                    // อัปเดต workflow_status เป็น Freeze ใน DB
-                    $update_sql = "UPDATE quotations SET workflow_status = 'Freeze' WHERE id = " . intval($row['id']) . " AND (workflow_status IS NULL OR workflow_status = '' OR workflow_status = 'Draft')";
-                    @mysqli_query($conn, $update_sql);
-                    $row['workflow_status'] = 'Freeze';
-                }
-            }
-            unset($row);
-
-            foreach ($qt_rows as $row) {
-                $st = strtolower(trim($row['status'] ?? ''));
-                if($st === 'draft' || $st === 'pending') {
-                    $color = '#6c757d';
-                    $status_text = 'QT (Draft)';
-                } else {
-                    $color = '#fd7e14';
-                    $status_text = 'QT (อนุมัติ)';
-                }
-                
-                $is_freeze = ($row['workflow_status'] ?? '') === 'Freeze';
-                if ($is_freeze) {
-                    $color = '#dc3545';
-                    $status_text = 'กรุณาเปลี่ยนวันหรือกด Freeze';
-                }
-
-                $ev_date = $row['event_date'] ?? '';
-                $ex_date = !empty($row['expiry_date']) ? $row['expiry_date'] : '';
-                $end_date = '';
-                if ($ex_date && $ex_date !== $ev_date) {
-                    $end_date = date('Y-m-d', strtotime($ex_date . ' +1 day'));
-                }
-
-                $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
-                if ($is_freeze) {
-                    $qt_title = "❌ " . $qt_title;
-                }
-
-                $wf_status = $row['workflow_status'] ?? '';
-                $ev = [
-                    'id' => 'qt_' . $row['id'],
-                    'ref_id' => (string) $row['id'],
-                    'title' => $qt_title,
-                    'start' => $ev_date,
-                    'color' => $color,
-                    'mode' => 'general',
-                    'extendedProps' => [
-                        'mainTitle' => (string) ($row['event_name'] ?? ''),
-                        'status' => $status_text,
-                        'customer' => (string) ($row['cust_name'] ?? ''),
-                        'phone' => (string) ($row['cust_phone'] ?? ''),
-                        'total' => number_format($row['grand_total'] ?? 0, 2),
-                        'created_by_name' => (string) ($row['creator_name'] ?? ''),
-                        'lead_source' => (string) ($row['lead_source'] ?? ''),
-                        'result' => (string) ($row['result'] ?? ''),
-                        'created_at' => (string) ($row['created_at'] ?? ''),
-                        'raw_status' => (string) ($row['status'] ?? ''),
-                        'inspection_date' => (string) ($row['inspection_date'] ?? ''),
-                        'follow_up_date' => (string) ($row['follow_up_date'] ?? ''),
-                        'confirmed_date' => (string) ($row['approved_at'] ?? ''),
-                        'doc_no' => (string) ($row['quote_no'] ?? ''),
-                        'approved' => 0,
-                        'is_qt' => true,
-                        'quote_no' => (string) ($row['quote_no'] ?? ''),
-                        'event_date' => (string) ($row['event_date'] ?? ''),
-                        'func_type_name' => (string) ($row['func_type_name'] ?? ''),
-                        'room' => (string) ($row['func_room_name'] ?? ''),
-                        'pax' => (string) ($row['func_pax'] ?? $row['pax'] ?? '0'),
-                        'func_room_name' => (string) ($row['func_room_name'] ?? ''),
-                        'func_pax' => (string) ($row['func_pax'] ?? $row['pax'] ?? '0'),
-                        'func_deposit' => number_format($row['func_deposit'] ?? 0, 2),
-                        'func_total_amount' => number_format($row['func_total_amount'] ?? 0, 2),
-                        'workflow_status' => (string) $wf_status,
-                        'customer_signed' => (string) ($row['customer_signature'] ?? ''),
-                        'has_beo' => intval($row['beo_count'] ?? 0) > 0 ? '✓' : '-',
-                    ]
-                ];
-                if ($end_date) {
-                    $ev['end'] = $end_date;
-                }
-                $events[] = $ev;
-            }
-
-            // 4. จองห้องประชุม (Room Bookings)
-            $sql_rb = "SELECT rb.*, mr.room_name, c.company_name, ft.type_name
-                FROM room_bookings rb
-                LEFT JOIN meeting_rooms mr ON rb.room_id = mr.id
-                LEFT JOIN companies c ON rb.company_id = c.id
-                LEFT JOIN function_types ft ON rb.function_type_id = ft.id
-                WHERE rb.status = 'active'
-                ORDER BY rb.id ASC";
-            $q_rb = @mysqli_query($conn, $sql_rb);
-
-            if ($q_rb) {
-                while ($row = mysqli_fetch_assoc($q_rb)) {
-                    $ev_start = $row['start_time'] ?? '';
-                    $ev_end = $row['end_time'] ?? '';
-                    $booking_name = $row['booking_name'] ?: ($row['created_by'] ?? '');
-                    $room_label = $row['room_name'] ?? '';
-                    $created_by = $row['created_by'] ?? '';
-                    $rb_title = "📌 " . $created_by . " จอง " . ($row['event_name'] ?? '') . " — " . $room_label;
-
-                    $events[] = [
-                        'id' => 'rb_' . $row['id'],
-                        'ref_id' => (string) $row['id'],
-                        'title' => $rb_title,
-                        'start' => $ev_start,
-                        'end' => $ev_end,
-                        'color' => '#6f42c1',
-                        'mode' => 'general',
-                        'extendedProps' => [
-                            'mainTitle' => (string) ($row['event_name'] ?? ''),
-                            'status' => 'จองห้อง',
-                            'room' => (string) $room_label,
-                            'customer' => (string) $booking_name,
-                            'phone' => (string) ($row['phone'] ?? ''),
-                            'pax' => (string) ($row['pax'] ?? '0'),
-                            'remark' => (string) ($row['remark'] ?? ''),
-                            'created_by_name' => (string) ($row['created_by'] ?? ''),
-                            'booking_code' => (string) ($row['booking_code'] ?? ''),
-                            'organization' => (string) ($row['organization'] ?? ''),
-                            'doc_no' => (string) ($row['booking_code'] ?? ''),
-                        ]
-                    ];
-                }
-            }
-
-            echo json_encode($events, JSON_UNESCAPED_UNICODE);
-            ?>,
+        events: {
+            url: 'api/calendar_events.php',
+            method: 'GET',
+            extraParams: function () { return { _: Date.now() }; },
+            failure: function () { alert('\u0e42\u0e2b\u0e25\u0e14\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e07\u0e32\u0e19\u0e43\u0e19\u0e1b\u0e0f\u0e34\u0e17\u0e34\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'); }
+        },
 
         eventClick: function (info) {
             const props = info.event.extendedProps;

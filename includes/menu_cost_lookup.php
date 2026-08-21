@@ -15,31 +15,84 @@ function menuCostLookupKey($name)
     return trim(preg_replace('/^(เบรก|เบรค|break)\s*[:：\-]?\s*/iu', '', (string) $name));
 }
 
-/** ราคาทุนของชื่อเมนูตรงๆ (0 = จับคู่ไม่ได้) */
+/** ราคาทุนของชื่อเมนูตรงๆ (0 = จับคู่ไม่ได้) — cache ผลต่อ request เพื่อไม่ยิง LIKE ซ้ำในลูป */
 function menuLineCost($conn, $name)
 {
+    static $cache = [];
     $key = menuCostLookupKey($name);
     if ($key === '') {
         return 0.0;
     }
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
 
     $esc = $conn->real_escape_string($key);
+    $result = 0.0;
 
     $q = $conn->query("SELECT price_per_pax, cost_per_pax FROM function_menu_details
                        WHERE menu_items LIKE '%$esc%' LIMIT 1");
     if ($q && $r = $q->fetch_assoc()) {
         $cost = (float) ($r['cost_per_pax'] ?? 0);
-        return $cost > 0 ? $cost : (float) $r['price_per_pax'];
+        $result = $cost > 0 ? $cost : (float) $r['price_per_pax'];
+    } else {
+        $q = $conn->query("SELECT break_price, break_cost FROM function_breaks
+                           WHERE break_menu LIKE '%$esc%' LIMIT 1");
+        if ($q && $r = $q->fetch_assoc()) {
+            $cost = (float) ($r['break_cost'] ?? 0);
+            $result = $cost > 0 ? $cost : (float) $r['break_price'];
+        }
     }
 
-    $q = $conn->query("SELECT break_price, break_cost FROM function_breaks
-                       WHERE break_menu LIKE '%$esc%' LIMIT 1");
+    $cache[$key] = $result;
+    return $result;
+}
+
+/** ราคาขาย/หน่วยจาก function_menu_details (cache ต่อ request) — ใช้ใน finance.php */
+function menuDetailPriceCached($conn, $name)
+{
+    static $cache = [];
+    $key = trim((string) $name);
+    if ($key === '') {
+        return 0.0;
+    }
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $esc = $conn->real_escape_string($key);
+    $val = 0.0;
+    $q = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$esc%' LIMIT 1");
     if ($q && $r = $q->fetch_assoc()) {
-        $cost = (float) ($r['break_cost'] ?? 0);
-        return $cost > 0 ? $cost : (float) $r['break_price'];
+        $val = (float) $r['price_per_pax'];
     }
+    $cache[$key] = $val;
+    return $val;
+}
 
-    return 0.0;
+/** ราคาเบรกก่อน ไม่มีค่อยใช้ราคาเมนูหลัก (ตามลำดับเดิมใน finance.php) — cache ต่อ request */
+function breakOrMenuPriceCached($conn, $name)
+{
+    static $cache = [];
+    $key = trim((string) $name);
+    if ($key === '') {
+        return 0.0;
+    }
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $esc = $conn->real_escape_string($key);
+    $val = 0.0;
+    $q = $conn->query("SELECT break_price FROM function_breaks WHERE break_menu LIKE '%$esc%' LIMIT 1");
+    if ($q && $r = $q->fetch_assoc()) {
+        $val = (float) $r['break_price'];
+    } else {
+        $q = $conn->query("SELECT price_per_pax FROM function_menu_details WHERE menu_items LIKE '%$esc%' LIMIT 1");
+        if ($q && $r = $q->fetch_assoc()) {
+            $val = (float) $r['price_per_pax'];
+        }
+    }
+    $cache[$key] = $val;
+    return $val;
 }
 
 /**

@@ -34,30 +34,57 @@ $month_end = date('Y-m-t', strtotime($month_start));
 $companies = $conn->query("SELECT id, company_name FROM companies ORDER BY company_name ASC");
 $staff_list = $conn->query("SELECT id, name FROM users WHERE role IN ('Staff','Admin','Sale','Manager','GM') ORDER BY name ASC");
 
-$today_filter = "AND DATE(f.start_time) = '$selected_date'";
-$mtd_filter = "AND DATE(f.start_time) BETWEEN '$month_start' AND '$month_end'";
-$yearly_filter = "AND YEAR(f.start_time) = $selected_year";
+/* เขียนแบบ range (>= x AND < x+1day) แทน DATE(col)=x เพื่อให้ MySQL ใช้ index ได้ */
+$mtd_filter = "AND f.start_time >= '$month_start' AND f.start_time < DATE_ADD('$month_end', INTERVAL 1 DAY)";
 
 /* ใบเสนอราคา "ออกเดือนนี้" = นับตามวันที่ออกใบ (created_at) ให้ตรงกับคำว่า "ออก"
    และตรงฐานเดียวกับ q_today_total ที่ใช้ created_at อยู่แล้ว */
-$mtd_filter_q = "AND DATE(q.created_at) BETWEEN '$month_start' AND '$month_end'";
+$mtd_filter_q = "AND q.created_at >= '$month_start' AND q.created_at < DATE_ADD('$month_end', INTERVAL 1 DAY)";
 
-/* ===== 1. TODAY REVENUE ===== */
-$today_total = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $today_filter $company_filter $staff_filter")->fetch_assoc()['t'];
-$mtd_total = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $mtd_filter $company_filter $staff_filter")->fetch_assoc()['t'];
-$year_total = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $yearly_filter $company_filter $staff_filter")->fetch_assoc()['t'];
-
-$today_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $today_filter $company_filter $staff_filter")->fetch_assoc()['c'];
-$mtd_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
-$year_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status NOT IN ('Cancelled') AND f.approve=1 $yearly_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+/* ===== 1. CORE STATS — รวมทุกตัวเลขของตาราง functions ให้เป็น QUERY เดียว =====
+   เดิมยิงแยกทีละตัวเลข ~15 queries/การโหลด 1 ครั้ง ทำให้หน้าช้าเมื่อข้อมูลเยอะ */
+$cond_today = "f.start_time >= '$selected_date' AND f.start_time < DATE_ADD('$selected_date', INTERVAL 1 DAY)";
+$cond_mtd   = "f.start_time >= '$month_start' AND f.start_time < DATE_ADD('$month_end', INTERVAL 1 DAY)";
+$cond_year  = "f.start_time >= '$selected_year-01-01' AND f.start_time < DATE_ADD('$selected_year-01-01', INTERVAL 1 YEAR)";
+$ok         = "f.approve=1 AND f.status NOT IN ('Cancelled')";
+$ok_active  = "f.approve=1 AND f.status NOT IN ('Cancelled','Completed')";
+$core = $conn->query("SELECT
+    COALESCE(SUM(CASE WHEN $ok AND ($cond_today) THEN f.total_amount ELSE 0 END),0) AS today_rev,
+    COUNT(CASE WHEN $ok AND ($cond_today) THEN 1 END) AS today_ev,
+    COALESCE(SUM(CASE WHEN $ok AND ($cond_today) THEN f.pax ELSE 0 END),0) AS today_pax,
+    COUNT(DISTINCT CASE WHEN $ok AND ($cond_today) AND f.room_id IS NOT NULL AND f.room_id != 0 THEN f.room_id END) AS today_rooms,
+    COALESCE(SUM(CASE WHEN $ok AND ($cond_mtd) THEN f.total_amount ELSE 0 END),0) AS mtd_rev,
+    COUNT(CASE WHEN $ok AND ($cond_mtd) THEN 1 END) AS mtd_ev,
+    COALESCE(SUM(CASE WHEN $ok AND ($cond_mtd) THEN f.pax ELSE 0 END),0) AS mtd_pax,
+    COUNT(DISTINCT CASE WHEN $ok AND ($cond_mtd) AND f.room_id IS NOT NULL AND f.room_id != 0 THEN f.room_id END) AS mtd_rooms,
+    COALESCE(SUM(CASE WHEN $ok AND ($cond_year) THEN f.total_amount ELSE 0 END),0) AS year_rev,
+    COUNT(CASE WHEN $ok AND ($cond_year) THEN 1 END) AS year_ev,
+    COALESCE(SUM(CASE WHEN $ok_active THEN f.deposit ELSE 0 END),0) AS deposit_balance,
+    COUNT(CASE WHEN $ok_active AND (f.deposit IS NULL OR f.deposit=0) THEN 1 END) AS deposit_pending,
+    COUNT(CASE WHEN f.approve=1 AND f.status='Cancelled' AND ($cond_mtd) THEN 1 END) AS cancelled_mtd,
+    COUNT(CASE WHEN $ok_active AND f.start_time >= NOW() AND f.start_time <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) THEN 1 END) AS alert_no_deposit,
+    COUNT(CASE WHEN f.approve=0 AND f.status NOT IN ('Cancelled') THEN 1 END) AS alert_pending
+    FROM functions f WHERE 1=1 $company_filter $staff_filter")->fetch_assoc();
+$today_total = $core['today_rev'];
+$today_events = $core['today_ev'];
+$today_pax = $core['today_pax'];
+$today_rooms_used = $core['today_rooms'];
+$mtd_total = $core['mtd_rev'];
+$mtd_events = $core['mtd_ev'];
+$mtd_pax = $core['mtd_pax'];
+$mtd_rooms_used = $core['mtd_rooms'];
+$year_total = $core['year_rev'];
+$year_events = $core['year_ev'];
 $year_avg_deal = $year_events > 0 ? round($year_total / $year_events) : 0;
-
-$today_pax = $conn->query("SELECT COALESCE(SUM(f.pax),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $today_filter $company_filter $staff_filter")->fetch_assoc()['t'];
-$mtd_pax = $conn->query("SELECT COALESCE(SUM(f.pax),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $mtd_filter $company_filter $staff_filter")->fetch_assoc()['t'];
+$total_deposit_balance = $core['deposit_balance'];
+$deposit_pending_events = $core['deposit_pending'];
+$cancelled_count = $core['cancelled_mtd'];
+$alert_no_deposit = $core['alert_no_deposit'];
+$alert_pending_approval = $core['alert_pending'];
 
 /* ===== 2. REVENUE BY TYPE ===== */
 $type_names = []; $type_today = []; $type_mtd = [];
-$rev_types = $conn->query("SELECT ft.type_name, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND DATE(f.start_time)='$selected_date' THEN f.total_amount ELSE 0 END),0) as today_rev, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND DATE(f.start_time) BETWEEN '$month_start' AND '$month_end' THEN f.total_amount ELSE 0 END),0) as mtd_rev FROM function_types ft LEFT JOIN functions f ON f.function_type_id=ft.id $company_filter $staff_filter GROUP BY ft.id, ft.type_name ORDER BY mtd_rev DESC");
+$rev_types = $conn->query("SELECT ft.type_name, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND f.start_time >= '$selected_date' AND f.start_time < DATE_ADD('$selected_date', INTERVAL 1 DAY) THEN f.total_amount ELSE 0 END),0) as today_rev, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND f.start_time >= '$month_start' AND f.start_time < DATE_ADD('$month_end', INTERVAL 1 DAY) THEN f.total_amount ELSE 0 END),0) as mtd_rev FROM function_types ft LEFT JOIN functions f ON f.function_type_id=ft.id $company_filter $staff_filter GROUP BY ft.id, ft.type_name ORDER BY mtd_rev DESC");
 while ($rt = $rev_types->fetch_assoc()) {
     $type_names[] = $rt['type_name'];
     $type_today[] = (float)$rt['today_rev'];
@@ -66,7 +93,7 @@ while ($rt = $rev_types->fetch_assoc()) {
 
 /* ===== 3. REVENUE BY COMPANY ===== */
 $comp_names = []; $comp_today = []; $comp_mtd = [];
-$rev_comps = $conn->query("SELECT c.company_name, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND DATE(f.start_time)='$selected_date' THEN f.total_amount ELSE 0 END),0) as today_rev, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND DATE(f.start_time) BETWEEN '$month_start' AND '$month_end' THEN f.total_amount ELSE 0 END),0) as mtd_rev FROM companies c LEFT JOIN functions f ON f.company_id=c.id $staff_filter GROUP BY c.id, c.company_name ORDER BY mtd_rev DESC");
+$rev_comps = $conn->query("SELECT c.company_name, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND f.start_time >= '$selected_date' AND f.start_time < DATE_ADD('$selected_date', INTERVAL 1 DAY) THEN f.total_amount ELSE 0 END),0) as today_rev, COALESCE(SUM(CASE WHEN f.approve=1 AND f.status NOT IN ('Cancelled') AND f.start_time >= '$month_start' AND f.start_time < DATE_ADD('$month_end', INTERVAL 1 DAY) THEN f.total_amount ELSE 0 END),0) as mtd_rev FROM companies c LEFT JOIN functions f ON f.company_id=c.id $staff_filter GROUP BY c.id, c.company_name ORDER BY mtd_rev DESC");
 while ($rc = $rev_comps->fetch_assoc()) {
     $comp_names[] = $rc['company_name'];
     $comp_today[] = (float)$rc['today_rev'];
@@ -76,8 +103,7 @@ while ($rc = $rev_comps->fetch_assoc()) {
 /* ===== 4. BANQUET & MEETING PERFORMANCE ===== */
 $today_avg_revenue = $today_events > 0 ? round($today_total / $today_events) : 0;
 $mtd_avg_revenue = $mtd_events > 0 ? round($mtd_total / $mtd_events) : 0;
-$today_rooms_used = $conn->query("SELECT COUNT(DISTINCT f.room_id) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND f.room_id IS NOT NULL AND f.room_id != 0 $today_filter $company_filter $staff_filter")->fetch_assoc()['c'];
-$mtd_rooms_used = $conn->query("SELECT COUNT(DISTINCT f.room_id) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND f.room_id IS NOT NULL AND f.room_id != 0 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+/* today_rooms_used / mtd_rooms_used มาจาก $core ด้านบนแล้ว */
 
 /* ===== 5. MEETING ROOM UTILIZATION ===== */
 /* "จำนวนงานเดือนนี้" = งานที่อนุมัติแล้วและไม่ถูกยกเลิก (รวมงานที่จัดจบไปแล้วด้วย)
@@ -89,37 +115,75 @@ while ($rs = $room_stats->fetch_assoc()) {
     $room_bookings[] = (int)$rs['bookings'];
 }
 
-/* ===== 6. FUTURE BOOKING PIPELINE ===== */
-$pipe_7d = $conn->query("SELECT COUNT(*) as c, COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) $company_filter $staff_filter")->fetch_assoc();
-$pipe_30d = $conn->query("SELECT COUNT(*) as c, COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 DAY) $company_filter $staff_filter")->fetch_assoc();
-$pipe_90d = $conn->query("SELECT COUNT(*) as c, COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 90 DAY) $company_filter $staff_filter")->fetch_assoc();
-$pipe_180d = $conn->query("SELECT COUNT(*) as c, COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 180 DAY) $company_filter $staff_filter")->fetch_assoc();
+/* ===== 6. FUTURE BOOKING PIPELINE — query เดียวแบ่ง bucket 7/30/90/180 วัน ===== */
+$_now = date('Y-m-d H:i:s');
+$pipe = $conn->query("SELECT
+    COUNT(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 7 DAY) THEN 1 END) AS c7,
+    COALESCE(SUM(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 7 DAY) THEN f.total_amount ELSE 0 END),0) AS t7,
+    COUNT(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 30 DAY) THEN 1 END) AS c30,
+    COALESCE(SUM(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 30 DAY) THEN f.total_amount ELSE 0 END),0) AS t30,
+    COUNT(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 90 DAY) THEN 1 END) AS c90,
+    COALESCE(SUM(CASE WHEN f.start_time <= DATE_ADD('$_now', INTERVAL 90 DAY) THEN f.total_amount ELSE 0 END),0) AS t90,
+    COUNT(*) AS c180,
+    COALESCE(SUM(f.total_amount),0) AS t180
+    FROM functions f WHERE $ok_active AND f.start_time >= '$_now' AND f.start_time <= DATE_ADD('$_now', INTERVAL 180 DAY) $company_filter $staff_filter")->fetch_assoc();
+$pipe_7d = ['c' => $pipe['c7'], 't' => $pipe['t7']];
+$pipe_30d = ['c' => $pipe['c30'], 't' => $pipe['t30']];
+$pipe_90d = ['c' => $pipe['c90'], 't' => $pipe['t90']];
+$pipe_180d = ['c' => $pipe['c180'], 't' => $pipe['t180']];
 
-/* ===== 7. QUOTATION & CONVERSION ===== */
-$q_total = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE 1=1 $mtd_filter_q $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$q_approved = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Approved' $mtd_filter_q $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$q_cancelled = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Cancelled' $mtd_filter_q $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$q_pending = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Sent' AND q.expiry_date >= CURDATE() $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
+/* ===== 7. QUOTATION & CONVERSION — รวมทุกตัวเลขของ quotations เป็น QUERY เดียว =====
+   (รวม funnel สถานะ Draft/Sent/Approved/Cancelled และ alert_overdue ที่เคยยิงแยก 14 queries) */
+$_qstaff = $selected_staff > 0 ? " AND q.created_by=$selected_staff" : "";
+$cond_mtd_q = "q.created_at >= '$month_start' AND q.created_at < DATE_ADD('$month_end', INTERVAL 1 DAY)";
+$cond_today_q = "q.created_at >= '$selected_date' AND q.created_at < DATE_ADD('$selected_date', INTERVAL 1 DAY)";
+$qc = $conn->query("SELECT
+    COUNT(CASE WHEN ($cond_mtd_q) THEN 1 END) AS q_total,
+    COUNT(CASE WHEN q.status='Approved' AND ($cond_mtd_q) THEN 1 END) AS q_approved,
+    COUNT(CASE WHEN q.status='Cancelled' AND ($cond_mtd_q) THEN 1 END) AS q_cancelled,
+    COUNT(CASE WHEN q.status='Sent' AND q.expiry_date >= CURDATE() THEN 1 END) AS q_pending,
+    COUNT(CASE WHEN ($cond_today_q) THEN 1 END) AS q_today,
+    SUM(CASE WHEN q.status='Draft' THEN 1 ELSE 0 END) AS pipe_prospect,
+    COALESCE(SUM(CASE WHEN q.status='Draft' THEN q.grand_total ELSE 0 END),0) AS pipe_prospect_val,
+    SUM(CASE WHEN q.status='Sent' THEN 1 ELSE 0 END) AS pipe_quotation,
+    COALESCE(SUM(CASE WHEN q.status='Sent' THEN q.grand_total ELSE 0 END),0) AS pipe_quotation_val,
+    SUM(CASE WHEN q.status='Approved' THEN 1 ELSE 0 END) AS pipe_confirmed,
+    COALESCE(SUM(CASE WHEN q.status='Approved' THEN q.grand_total ELSE 0 END),0) AS pipe_confirmed_val,
+    SUM(CASE WHEN q.status='Cancelled' THEN 1 ELSE 0 END) AS pipe_lost,
+    COALESCE(SUM(CASE WHEN q.status='Cancelled' THEN q.grand_total ELSE 0 END),0) AS pipe_lost_val,
+    COUNT(CASE WHEN q.status='Sent' AND q.expiry_date < CURDATE() THEN 1 END) AS alert_overdue
+    FROM quotations q WHERE 1=1 $company_filter_plain $_qstaff")->fetch_assoc();
+$q_total = $qc['q_total'];
+$q_approved = $qc['q_approved'];
+$q_cancelled = $qc['q_cancelled'];
+$q_pending = $qc['q_pending'];
 $conversion_rate = $q_total > 0 ? round(($q_approved / $q_total) * 100, 1) : 0;
 
-$q_today_total = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE DATE(q.created_at)='$selected_date' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
+$q_today_total = $qc['q_today'];
+$pipe_prospect = (int)$qc['pipe_prospect'];
+$pipe_quotation = (int)$qc['pipe_quotation'];
+$pipe_confirmed = (int)$qc['pipe_confirmed'];
+$pipe_lost = (int)$qc['pipe_lost'];
+$pipe_prospect_val = (float)$qc['pipe_prospect_val'];
+$pipe_quotation_val = (float)$qc['pipe_quotation_val'];
+$pipe_confirmed_val = (float)$qc['pipe_confirmed_val'];
+$pipe_lost_val = (float)$qc['pipe_lost_val'];
+$alert_overdue = (int)$qc['alert_overdue'];
 
-/* ===== 8. DEPOSIT DASHBOARD ===== */
-$deposit_received = $conn->query("SELECT COALESCE(SUM(ff.amount),0) as t FROM function_finance ff JOIN functions f ON ff.function_id=f.id WHERE ff.type='deposit' AND ff.is_post_approval=1 AND DATE(ff.transaction_date)='$selected_date' $company_filter $staff_filter")->fetch_assoc()['t'];
-$deposit_received_mtd = $conn->query("SELECT COALESCE(SUM(ff.amount),0) as t FROM function_finance ff JOIN functions f ON ff.function_id=f.id WHERE ff.type='deposit' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' $company_filter $staff_filter")->fetch_assoc()['t'];
-$total_deposit_balance = $conn->query("SELECT COALESCE(SUM(f.deposit),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') $company_filter $staff_filter")->fetch_assoc()['t'];
-$deposit_pending_events = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter")->fetch_assoc()['c'];
+/* ===== 8. DEPOSIT DASHBOARD — รวม finance ทั้งหมดเป็น QUERY เดียว (มัดจำ + รายได้/ต้นทุนเพื่อคำนวณ GOP) ===== */
+$fin = $conn->query("SELECT
+    COALESCE(SUM(CASE WHEN ff.type='deposit' AND ff.is_post_approval=1 AND ff.transaction_date >= '$selected_date' AND ff.transaction_date < DATE_ADD('$selected_date', INTERVAL 1 DAY) THEN ff.amount ELSE 0 END),0) AS dep_today,
+    COALESCE(SUM(CASE WHEN ff.type='deposit' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' THEN ff.amount ELSE 0 END),0) AS dep_mtd,
+    COALESCE(SUM(CASE WHEN ff.type='income' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' THEN ff.amount ELSE 0 END),0) AS inc_mtd,
+    COALESCE(SUM(CASE WHEN ff.type='cost' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' THEN ff.amount ELSE 0 END),0) AS cost_mtd
+    FROM function_finance ff JOIN functions f ON ff.function_id=f.id WHERE 1=1 $company_filter $staff_filter")->fetch_assoc();
+$deposit_received = $fin['dep_today'];
+$deposit_received_mtd = $fin['dep_mtd'];
+$total_income_mtd = $fin['inc_mtd'];
+$total_cost_mtd = $fin['cost_mtd'];
+/* total_deposit_balance / deposit_pending_events มาจาก $core ด้านบนแล้ว */
 
-/* ===== 9. SALES PIPELINE (Funnel) ===== */
-$pipe_prospect = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Draft' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$pipe_quotation = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Sent' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$pipe_confirmed = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Approved' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$pipe_lost = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Cancelled' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-
-$pipe_prospect_val = $conn->query("SELECT COALESCE(SUM(q.grand_total),0) as t FROM quotations q WHERE q.status='Draft' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['t'];
-$pipe_quotation_val = $conn->query("SELECT COALESCE(SUM(q.grand_total),0) as t FROM quotations q WHERE q.status='Sent' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['t'];
-$pipe_confirmed_val = $conn->query("SELECT COALESCE(SUM(q.grand_total),0) as t FROM quotations q WHERE q.status='Approved' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['t'];
-$pipe_lost_val = $conn->query("SELECT COALESCE(SUM(q.grand_total),0) as t FROM quotations q WHERE q.status='Cancelled' $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['t'];
+/* ===== 9. SALES PIPELINE (Funnel) — ตัวเลขมาจาก $qc ด้านบนแล้ว ===== */
 
 /* ===== 10. TOP 10 EVENTS ===== */
 $top_events = $conn->query("SELECT f.function_name, ft.type_name, DATE(f.start_time) as event_date, f.total_amount, c.company_name, u.name as staff_name FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled') $company_filter $staff_filter ORDER BY f.total_amount DESC LIMIT 10");
@@ -163,8 +227,8 @@ $avg_deal = $mtd_events > 0 ? round($mtd_total / $mtd_events) : 0;
 
 /* ===== 16. CANCELLATION ===== */
 /* ต้องกรอง approve=1 ให้ตรงกับ $mtd_events ที่เป็นตัวส่วน ไม่งั้นอัตรายกเลิกจะเพี้ยน
-   (ตัวเศษนับงานที่ยังไม่อนุมัติด้วย แต่ตัวส่วนนับเฉพาะงานที่อนุมัติแล้ว) */
-$cancelled_count = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.status='Cancelled' AND f.approve=1 $mtd_filter $company_filter $staff_filter")->fetch_assoc()['c'];
+   (ตัวเศษนับงานที่ยังไม่อนุมัติด้วย แต่ตัวส่วนนับเฉพาะงานที่อนุมัติแล้ว)
+   $cancelled_count มาจาก $core ด้านบนแล้ว */
 $cancel_rate = ($mtd_events + $cancelled_count) > 0 ? round(($cancelled_count / ($mtd_events + $cancelled_count)) * 100, 1) : 0;
 
 /* ===== 17. REPEAT CUSTOMER ===== */
@@ -173,34 +237,33 @@ $total_cust = (int)($repeat_data['total_cust'] ?? 0);
 $repeat_cust = (int)($repeat_data['repeat_cust'] ?? 0);
 $repeat_pct = $total_cust > 0 ? round(($repeat_cust / $total_cust) * 100, 1) : 0;
 
-/* ===== 18. GOP FORECAST ===== */
-$total_income_mtd = $conn->query("SELECT COALESCE(SUM(ff.amount),0) as t FROM function_finance ff JOIN functions f ON ff.function_id=f.id WHERE ff.type='income' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' $company_filter $staff_filter")->fetch_assoc()['t'];
-$total_cost_mtd = $conn->query("SELECT COALESCE(SUM(ff.amount),0) as t FROM function_finance ff JOIN functions f ON ff.function_id=f.id WHERE ff.type='cost' AND ff.is_post_approval=1 AND ff.transaction_date BETWEEN '$month_start' AND '$month_end' $company_filter $staff_filter")->fetch_assoc()['t'];
+/* ===== 18. GOP FORECAST — income/cost มาจาก $fin ด้านบนแล้ว ===== */
 $gop_forecast = $total_income_mtd - $total_cost_mtd;
 $gop_margin = $total_income_mtd > 0 ? round(($gop_forecast / $total_income_mtd) * 100, 1) : 0;
 
-/* ===== 19. EXECUTIVE ALERTS ===== */
-/* ห้ามตัด 'Confirmed' ออก — งานที่อนุมัติแล้วทุกใบมีสถานะ Confirmed ถ้าตัดออก alert จะเป็น 0 ตลอดกาล
-   และงาน Confirmed ที่ยังไม่วางมัดจำคือกลุ่มที่ต้องเร่งตามที่สุด */
-$alert_no_deposit = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND (f.deposit IS NULL OR f.deposit=0) $company_filter $staff_filter")->fetch_assoc()['c'];
-$alert_overdue = $conn->query("SELECT COUNT(*) as c FROM quotations q WHERE q.status='Sent' AND q.expiry_date < CURDATE() $company_filter_plain" . ($selected_staff > 0 ? " AND q.created_by=$selected_staff" : ""))->fetch_assoc()['c'];
-$alert_room_conflict = $conn->query("SELECT COUNT(*) as c FROM (SELECT f.room_id, DATE(f.start_time) as dt, COUNT(*) as cnt FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 $company_filter $staff_filter GROUP BY f.room_id, DATE(f.start_time) HAVING cnt > 1) sub")->fetch_assoc()['c'];
-$alert_pending_approval = $conn->query("SELECT COUNT(*) as c FROM functions f WHERE f.approve=0 AND f.status NOT IN ('Cancelled') $company_filter $staff_filter")->fetch_assoc()['c'];
+/* ===== 19. EXECUTIVE ALERTS =====
+   ห้ามตัด 'Confirmed' ออก — งานที่อนุมัติแล้วทุกใบมีสถานะ Confirmed ถ้าตัดออก alert จะเป็น 0 ตลอดกาล
+   และงาน Confirmed ที่ยังไม่วางมัดจำคือกลุ่มที่ต้องเร่งตามที่สุด
+   ตัวเลข alert_no_deposit / alert_overdue / alert_pending_approval มาจาก $core และ $qc แล้ว */
+$alert_room_conflict = $conn->query("SELECT COUNT(*) as c FROM (SELECT f.room_id, DATE(f.start_time) as dt, COUNT(*) as cnt FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 AND f.start_time >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND f.start_time < DATE_ADD(CURDATE(), INTERVAL 6 MONTH) $company_filter $staff_filter GROUP BY f.room_id, DATE(f.start_time) HAVING cnt > 1) sub")->fetch_assoc()['c'];
 
 /* ===== 20. UPCOMING TODAY ===== */
-$today_events_list = $conn->query("SELECT f.id, f.function_name, f.start_time, f.end_time, c.company_name, r.room_name, u.name as staff_name, f.total_amount, f.pax, ft.type_name FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN meeting_rooms r ON f.room_id=r.id LEFT JOIN users u ON f.created_by_id=u.id LEFT JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND DATE(f.start_time)='$selected_date' $company_filter $staff_filter ORDER BY f.start_time ASC");
+$today_events_list = $conn->query("SELECT f.id, f.function_name, f.start_time, f.end_time, c.company_name, r.room_name, u.name as staff_name, f.total_amount, f.pax, ft.type_name FROM functions f LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN meeting_rooms r ON f.room_id=r.id LEFT JOIN users u ON f.created_by_id=u.id LEFT JOIN function_types ft ON f.function_type_id=ft.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND $cond_today $company_filter $staff_filter ORDER BY f.start_time ASC");
 
 /* ===== 21. MONTHLY TREND =====
    ยึดจากวันที่ 1 ของเดือนที่เลือกเสมอ — ถ้ายึดจากวันปัจจุบัน strtotime("-1 months")
    ในวันที่ 29-31 จะเด้งข้ามเดือน (เช่น 31 มี.ค. ลบ 1 เดือน = 3 มี.ค.) ทำให้กราฟซ้ำเดือนและหายเดือน */
 $trend_anchor = strtotime($month_start);
+$trend_from = date('Y-m-01', strtotime('-5 months', $trend_anchor));
+$trend_to_excl = date('Y-m-01', strtotime('+1 month', $trend_anchor));
+/* query เดียว GROUP BY เดือน — เดิม loop 6 queries ที่ใช้ MONTH()/YEAR() ไม่สามารถใช้ index ได้ */
+$monthly_trend_map = [];
+$tr = $conn->query("SELECT DATE_FORMAT(f.start_time,'%Y-%m') as ym, COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE $ok AND f.start_time >= '$trend_from' AND f.start_time < '$trend_to_excl' $company_filter $staff_filter GROUP BY ym");
+while ($row = $tr->fetch_assoc()) { $monthly_trend_map[$row['ym']] = (float)$row['t']; }
 $monthly_trend = [];
 for ($i = 5; $i >= 0; $i--) {
     $ts = strtotime("-$i months", $trend_anchor);
-    $tm = (int)date('m', $ts);
-    $ty = (int)date('Y', $ts);
-    $tr = $conn->query("SELECT COALESCE(SUM(f.total_amount),0) as t FROM functions f WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND MONTH(f.start_time)=$tm AND YEAR(f.start_time)=$ty $company_filter $staff_filter")->fetch_assoc();
-    $monthly_trend[] = ['label' => date('M y', $ts), 'total' => (float)$tr['t']];
+    $monthly_trend[] = ['label' => date('M y', $ts), 'total' => $monthly_trend_map[date('Y-m', $ts)] ?? 0.0];
 }
 
 /* ===== 22. PERIOD SPLIT (เช้า/บ่าย/เย็น) ===== */
@@ -251,15 +314,18 @@ $dd_pipe = $conn->query("SELECT q.id, q.quote_no, q.event_name, q.status, q.gran
 $dd['pipeline'] = [];
 while ($r = $dd_pipe->fetch_assoc()) $dd['pipeline'][] = $r;
 
-// 7) Events by Month (for trend)
+// 7) Events by Month (for trend) — query เดียวทั้งช่วง 6 เดือน แล้วจัดกลุ่มใน PHP
 $dd_month = [];
+$_month_labels = [];
 for ($i = 5; $i >= 0; $i--) {
     $ts = strtotime("-$i months", $trend_anchor);
-    $tm = (int)date('m', $ts);
-    $ty = (int)date('Y', $ts);
-    $ml = date('M y', $ts);
-    $mr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, ft.type_name, c.company_name, u.name as staff_name FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled') AND MONTH(f.start_time)=$tm AND YEAR(f.start_time)=$ty $company_filter $staff_filter ORDER BY f.start_time DESC");
-    while ($r = $mr->fetch_assoc()) { $r['month_label'] = $ml; $dd_month[] = $r; }
+    $_month_labels[date('Y-m', $ts)] = date('M y', $ts);
+}
+$mr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, ft.type_name, c.company_name, u.name as staff_name, DATE_FORMAT(f.start_time,'%Y-%m') as ym FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE $ok AND f.start_time >= '$trend_from' AND f.start_time < '$trend_to_excl' $company_filter $staff_filter ORDER BY f.start_time DESC");
+$_grouped = [];
+while ($r = $mr->fetch_assoc()) { $_grouped[$r['ym']][] = $r; }
+foreach ($_month_labels as $ym => $ml) {
+    foreach ($_grouped[$ym] ?? [] as $r) { $r['month_label'] = $ml; $dd_month[] = $r; }
 }
 $dd['month'] = $dd_month;
 
@@ -273,12 +339,16 @@ $dd_pay = $conn->query("SELECT ff.id, ff.detail, ff.amount, COALESCE(ff.payment_
 $dd['payment'] = [];
 while ($r = $dd_pay->fetch_assoc()) $dd['payment'][] = $r;
 
-// 10) Future booking details
-$dd_future = [];
-foreach (['7'=>7, '30'=>30, '90'=>90, '180'=>180] as $key => $days) {
-    $fr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, ft.type_name, c.company_name, u.name as staff_name, f.pax FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL $days DAY) $company_filter $staff_filter ORDER BY f.start_time ASC");
-    $dd_future[$key] = [];
-    while ($r = $fr->fetch_assoc()) $dd_future[$key][] = $r;
+// 10) Future booking details — query เดียวถึง 180 วัน แล้วแบ่ง bucket ใน PHP
+$_now_ts = strtotime($_now);
+$dd_future = ['7' => [], '30' => [], '90' => [], '180' => []];
+$fr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date, f.total_amount, ft.type_name, c.company_name, u.name as staff_name, f.pax, UNIX_TIMESTAMP(f.start_time) as ts FROM functions f LEFT JOIN function_types ft ON f.function_type_id=ft.id LEFT JOIN companies c ON f.company_id=c.id LEFT JOIN users u ON f.created_by_id=u.id WHERE $ok_active AND f.start_time >= '$_now' AND f.start_time <= DATE_ADD('$_now', INTERVAL 180 DAY) $company_filter $staff_filter ORDER BY f.start_time ASC");
+while ($r = $fr->fetch_assoc()) {
+    $ts = (int)$r['ts'];
+    unset($r['ts']);
+    foreach ([7, 30, 90, 180] as $days) {
+        if ($ts <= $_now_ts + $days * 86400) { $dd_future[(string)$days][] = $r; }
+    }
 }
 $dd['future'] = $dd_future;
 
@@ -296,7 +366,7 @@ $apr = $conn->query("SELECT f.id, f.function_name, DATE(f.start_time) as ev_date
 while ($r = $apr->fetch_assoc()) $dd['alert_pending'][] = $r;
 
 $dd['alert_room_conflict'] = [];
-$rcr = $conn->query("SELECT f.id, f.function_name, mr.room_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name FROM functions f LEFT JOIN meeting_rooms mr ON f.room_id=mr.id LEFT JOIN companies c ON f.company_id=c.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 AND (f.room_id, DATE(f.start_time)) IN (SELECT f2.room_id, DATE(f2.start_time) FROM functions f2 WHERE f2.approve=1 AND f2.status NOT IN ('Cancelled','Completed') AND f2.room_id IS NOT NULL AND f2.room_id != 0 $company_filter $staff_filter GROUP BY f2.room_id, DATE(f2.start_time) HAVING COUNT(*)>1) $company_filter $staff_filter ORDER BY f.start_time ASC");
+$rcr = $conn->query("SELECT f.id, f.function_name, mr.room_name, DATE(f.start_time) as ev_date, f.total_amount, c.company_name FROM functions f LEFT JOIN meeting_rooms mr ON f.room_id=mr.id LEFT JOIN companies c ON f.company_id=c.id WHERE f.approve=1 AND f.status NOT IN ('Cancelled','Completed') AND f.room_id IS NOT NULL AND f.room_id != 0 AND f.start_time >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND f.start_time < DATE_ADD(CURDATE(), INTERVAL 6 MONTH) AND (f.room_id, DATE(f.start_time)) IN (SELECT f2.room_id, DATE(f2.start_time) FROM functions f2 WHERE f2.approve=1 AND f2.status NOT IN ('Cancelled','Completed') AND f2.room_id IS NOT NULL AND f2.room_id != 0 AND f2.start_time >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) AND f2.start_time < DATE_ADD(CURDATE(), INTERVAL 6 MONTH) $company_filter $staff_filter GROUP BY f2.room_id, DATE(f2.start_time) HAVING COUNT(*)>1) $company_filter $staff_filter ORDER BY f.start_time ASC");
 while ($r = $rcr->fetch_assoc()) $dd['alert_room_conflict'][] = $r;
 
 /* =========================================================

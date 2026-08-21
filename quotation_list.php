@@ -18,13 +18,13 @@ if (!isset($_GET['my'])) {
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
 
-$sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, c.sales_name, p.project_name 
-        FROM quotations q
-        LEFT JOIN functions f ON q.function_id = f.id
-        LEFT JOIN customers c ON q.customer_id = c.id
-        LEFT JOIN event_projects p ON q.project_id = p.id
-        $filter_clause
-        ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
+// Query หลัก — แบ่งหน้า "ต่อกลุ่มโปรเจกต์" (20 กลุ่ม/หน้า แยกแต่ละส่วน)
+// 1) query เบา: เรียง/จัดกลุ่ม/นับโดยไม่ดึงคอลัมน์หนักทั้งหมด
+$light_sql = "SELECT q.id, q.project_id, q.status FROM quotations q $filter_clause ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
+$light_res = $conn->query($light_sql);
+$light_rows = [];
+if ($light_res) while ($r = $light_res->fetch_assoc()) $light_rows[] = $r;
+$q_per_page = 20;
 
 // สถานะ Workflow (Pipeline/Follow-up)
 $workflow_statuses = [
@@ -44,10 +44,55 @@ $workflow_statuses = [
     'Freeze' => ['class' => 'bg-secondary-subtle text-secondary', 'icon' => 'bi-snow2'],
 ];
 
-$result = $conn->query($sql);
+// 2) จัดหน่วยกลุ่ม (โปรเจกต์ = 1 หน่วย, ใบเดี่ยว = 1 หน่วย) แล้วตัดเฉพาะหน้าปัจจุบัน
+function ql_build_units(array $rows): array
+{
+    $units = [];
+    $pos = [];
+    foreach ($rows as $r) {
+        if ($r['project_id']) {
+            $pid = $r['project_id'];
+            if (!isset($pos[$pid])) {
+                $pos[$pid] = count($units);
+                $units[] = ['pid' => $pid, 'ids' => []];
+            }
+            $units[$pos[$pid]]['ids'][] = (int)$r['id'];
+        } else {
+            $units[] = ['pid' => null, 'ids' => [(int)$r['id']]];
+        }
+    }
+    return $units;
+}
+
+function ql_slice_page(array $units, string $pageKey, int $perPage): array
+{
+    $total_pages = max(1, (int)ceil(count($units) / $perPage));
+    $page = min(max(1, intval($_GET[$pageKey] ?? 1)), $total_pages);
+    return [$page, $total_pages, array_slice($units, ($page - 1) * $perPage, $perPage)];
+}
+
+$pending_units = ql_build_units(array_values(array_filter($light_rows, fn($r) => $r['status'] !== 'Approved')));
+$approved_units = ql_build_units(array_values(array_filter($light_rows, fn($r) => $r['status'] === 'Approved')));
+[$p_page, $p_pages, $p_page_units] = ql_slice_page($pending_units, 'pp', $q_per_page);
+[$a_page, $a_pages, $a_page_units] = ql_slice_page($approved_units, 'pa', $q_per_page);
+
+// 3) ดึงข้อมูลเต็มเฉพาะใบที่อยู่ในหน้าปัจจุบัน
+$page_ids = [];
+foreach (array_merge($p_page_units, $a_page_units) as $u) {
+    foreach ($u['ids'] as $id) $page_ids[] = $id;
+}
 $quotes = [];
-while ($row = $result->fetch_assoc()) {
-    $quotes[] = $row;
+if (!empty($page_ids)) {
+    $sql = "SELECT q.*, f.function_name, c.cust_name, c.cust_contact_name, c.sales_name, p.project_name 
+            FROM quotations q
+            LEFT JOIN functions f ON q.function_id = f.id
+            LEFT JOIN customers c ON q.customer_id = c.id
+            LEFT JOIN event_projects p ON q.project_id = p.id
+            WHERE q.id IN (" . implode(',', $page_ids) . ")";
+    $res = $conn->query($sql);
+    $byId = [];
+    while ($row = $res->fetch_assoc()) $byId[$row['id']] = $row;
+    foreach ($page_ids as $id) if (isset($byId[$id])) $quotes[] = $byId[$id]; // คงลำดับเดิมจาก query เบา
 }
 
 function groupByProject($list)
@@ -78,9 +123,13 @@ $approved_quotes = array_values(array_filter($quotes, fn($q) => $q['status'] ===
 $pending_grouped = groupByProject($pending_quotes);
 $approved_grouped = groupByProject($approved_quotes);
 
+// นับจากทุกใบ (light rows) ไม่ใช่เฉพาะหน้าปัจจุบัน
+$total_pending = count(array_filter($light_rows, fn($r) => $r['status'] !== 'Approved'));
+$total_approved = count(array_filter($light_rows, fn($r) => $r['status'] === 'Approved'));
+
 $sections = [
-    ['key' => 'pending', 'title' => 'รออนุมัติ', 'icon' => 'bi-hourglass-split', 'header_class' => 'bg-warning-subtle', 'badge_class' => 'bg-warning text-dark', 'data' => $pending_grouped, 'count' => count($pending_quotes)],
-    ['key' => 'approved', 'title' => 'อนุมัติแล้ว', 'icon' => 'bi-check-circle-fill', 'header_class' => 'bg-success-subtle', 'badge_class' => 'bg-success', 'data' => $approved_grouped, 'count' => count($approved_quotes)],
+    ['key' => 'pending', 'title' => 'รออนุมัติ', 'icon' => 'bi-hourglass-split', 'header_class' => 'bg-warning-subtle', 'badge_class' => 'bg-warning text-dark', 'data' => $pending_grouped, 'count' => $total_pending, 'page' => $p_page, 'pages' => $p_pages, 'page_key' => 'pp'],
+    ['key' => 'approved', 'title' => 'อนุมัติแล้ว', 'icon' => 'bi-check-circle-fill', 'header_class' => 'bg-success-subtle', 'badge_class' => 'bg-success', 'data' => $approved_grouped, 'count' => $total_approved, 'page' => $a_page, 'pages' => $a_pages, 'page_key' => 'pa'],
 ];
 
 $status_map = [
@@ -147,6 +196,26 @@ $status_map = [
                                     <span><?= $sec['title'] ?></span>
                                     <span class="badge <?= $sec['badge_class'] ?> rounded-pill"
                                         style="font-size: 0.7rem;"><?= $sec['count'] ?> ใบ</span>
+                                    <?php if ($sec['pages'] > 1): ?>
+                                        <nav class="ms-auto">
+                                            <ul class="pagination pagination-sm mb-0">
+                                                <?php
+                                                $_ps = max(1, $sec['page'] - 2);
+                                                $_pe = min($sec['pages'], $sec['page'] + 2);
+                                                if ($_ps > 1): ?>
+                                                    <li class="page-item"><a class="page-link" href="?<?= http_build_query(array_merge($_GET, [$sec['page_key'] => 1])) ?>">1</a></li>
+                                                    <?php if ($_ps > 2): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; ?>
+                                                <?php endif;
+                                                for ($p = $_ps; $p <= $_pe; $p++): ?>
+                                                    <li class="page-item <?= $p === $sec['page'] ? 'active' : '' ?>"><a class="page-link" href="?<?= http_build_query(array_merge($_GET, [$sec['page_key'] => $p])) ?>"><?= $p ?></a></li>
+                                                <?php endfor;
+                                                if ($_pe < $sec['pages']): ?>
+                                                    <?php if ($_pe < $sec['pages'] - 1): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; ?>
+                                                    <li class="page-item"><a class="page-link" href="?<?= http_build_query(array_merge($_GET, [$sec['page_key'] => $sec['pages']])) ?>"><?= $sec['pages'] ?></a></li>
+                                                <?php endif; ?>
+                                            </ul>
+                                        </nav>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
