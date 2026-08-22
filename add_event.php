@@ -112,10 +112,10 @@ if ($target_company_id > 0) {
 ?>
 <?php
 // ดึงข้อมูลห้องประชุมทั้งหมด พร้อมเช็กสถานะการจอง (Join ทีเดียวจบ)
-$all_rooms_query = "SELECT r.*, 
-    (SELECT end_time FROM functions 
-     WHERE room_id = r.id AND approve = 1 AND end_time >= NOW() 
-     ORDER BY end_time DESC LIMIT 1) as active_booking_end
+$all_rooms_query = "SELECT r.*,
+    (SELECT CONCAT(DATE_FORMAT(start_time, '%d/%m %H:%i'), ' - ', DATE_FORMAT(end_time, '%d/%m %H:%i'), ' — ', COALESCE(function_name, '-')) FROM functions
+     WHERE room_id = r.id AND approve = 1 AND end_time >= NOW()
+     ORDER BY end_time ASC LIMIT 1) as active_booking_end
     FROM meeting_rooms r WHERE r.status = 'active'";
 $all_rooms_res = $conn->query($all_rooms_query);
 
@@ -255,6 +255,95 @@ foreach ($menu_types_array as $mt) {
 }
 ?>
 <style>
+    /* ===== Function Form — Hotel Gold/Dark reskin (plain) ===== */
+    .function-form .card {
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+    }
+
+    .function-form .main-header {
+        background: #fff;
+        border-bottom: 2px solid var(--hotel-gold, #b89441);
+    }
+
+    .function-form .main-header h4 {
+        color: #1a1a1a;
+    }
+
+    .function-form .main-header .form-header-sub {
+        color: #6b6b6b;
+        font-size: .78rem;
+        margin-top: 2px;
+    }
+
+    .function-form .section-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #262626;
+        padding-bottom: .5rem;
+        margin-bottom: 1rem !important;
+        border-bottom: 1px solid #e9e9e9;
+    }
+
+    .function-form .section-title i:first-child {
+        color: var(--hotel-gold, #b89441);
+        margin-right: .4rem;
+    }
+
+    .function-form .bg-sidebar {
+        background: #faf7f0;
+        border: 1px solid #efe3c4;
+    }
+
+    .function-form .btn-hotel-outline {
+        border: 1px solid var(--hotel-gold, #b89441);
+        color: var(--hotel-gold, #b89441);
+        background: #fff;
+        font-weight: 600;
+        font-size: .8rem;
+    }
+
+    .function-form .btn-hotel-outline:hover {
+        background: var(--hotel-gold, #b89441);
+        color: #fff;
+    }
+
+    .function-form .form-control:focus,
+    .function-form .form-select:focus {
+        border-color: var(--hotel-gold, #b89441);
+        box-shadow: 0 0 0 .12rem rgba(184, 148, 65, .18);
+    }
+
+    .function-form .bg-light {
+        background-color: #f7f7f9 !important;
+    }
+
+    /* Unify the tracking/financial mini-cards to one color family instead of mixed blue/cyan/green */
+    .function-form .bg-primary.bg-opacity-10,
+    .function-form .bg-secondary.bg-opacity-10,
+    .function-form .bg-info.bg-opacity-10,
+    .function-form .bg-success.bg-opacity-10 {
+        background-color: #faf7f0 !important;
+        border: 1px solid #efe3c4;
+    }
+
+    .function-form .bg-primary.bg-opacity-10 .text-primary,
+    .function-form .bg-secondary.bg-opacity-10 .text-secondary,
+    .function-form .bg-info.bg-opacity-10 .text-info,
+    .function-form .bg-success.bg-opacity-10 .text-success {
+        color: #7a5c1e !important;
+    }
+
+    /* Room picker */
+    .function-form .room-card {
+        cursor: pointer;
+        transition: border-color .15s ease;
+    }
+
+    .function-form .room-card:hover {
+        border-color: var(--hotel-gold, #b89441) !important;
+    }
+
     .room-card.selected {
         border: 2px solid #198754 !important;
         background-color: #f8fffb !important;
@@ -267,6 +356,64 @@ foreach ($menu_types_array as $mt) {
     .bg-light {
         background-color: #f8f9fa !important;
     }
+
+    /* Tables */
+    .function-form table thead th {
+        font-weight: 700;
+        background: #faf7f0;
+    }
+
+    .function-form .table-responsive {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #eee;
+    }
+
+    .function-form tfoot th {
+        background: #f5f0e4 !important;
+        color: #7a5c1e;
+    }
+
+    .function-form .kitchen-grand-total,
+    .function-form .menu-grand-total {
+        font-size: .78rem;
+        white-space: nowrap;
+        padding-left: .35rem !important;
+        padding-right: .35rem !important;
+    }
+
+    /* Give the auto-growing table textareas a taller starting height */
+    .function-form .break-menu-input,
+    .function-form .menu-detail-input {
+        min-height: 3.4rem !important;
+    }
+
+    /* Section tabs — plain underline style */
+    .function-form .function-tabs {
+        border-bottom: 1px solid #e2e2e2;
+        flex-wrap: nowrap;
+    }
+
+    .function-form .function-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: #666;
+        font-weight: 600;
+        font-size: .85rem;
+        padding: .55rem .9rem;
+        white-space: nowrap;
+    }
+
+    .function-form .function-tabs .nav-link:hover {
+        color: var(--hotel-gold, #b89441);
+    }
+
+    .function-form .function-tabs .nav-link.active {
+        color: var(--hotel-gold, #b89441);
+        background: transparent;
+        border-bottom-color: var(--hotel-gold, #b89441);
+    }
 </style>
 
 <script>
@@ -275,14 +422,17 @@ foreach ($menu_types_array as $mt) {
     const menuTypeOptions = <?= json_encode($menu_types_array) ?>;
 </script>
 
-<div class="container-fluid p-0">
+<div class="container-fluid p-0 function-form">
     <form method="POST" enctype="multipart/form-data">
         <div class="card  border-0">
             <div class="card-header main-header p-4">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0 fw-bold">
-                        <i class="bi bi-building-check me-2 text-gold"></i> FUNCTION MEETING
-                    </h4>
+                    <div>
+                        <h4 class="mb-0 fw-bold">
+                            <i class="bi bi-building-check me-2 text-gold"></i> FUNCTION MEETING
+                        </h4>
+                        <div class="form-header-sub">เพิ่มรายการจองห้องประชุม / จัดเลี้ยง</div>
+                    </div>
 
                     <div style="width: 100%; max-width: 450px;">
                         <div class="d-flex align-items-center justify-content-end">
@@ -311,6 +461,45 @@ foreach ($menu_types_array as $mt) {
             </div>
 
             <div class="card-body p-4 p-lg-5">
+                <ul class="nav nav-tabs function-tabs mb-4 flex-nowrap overflow-auto" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">
+                            <i class="bi bi-person-lines-fill me-1"></i> ข้อมูลทั่วไป
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button" role="tab">
+                            <i class="bi bi-calendar3 me-1"></i> กำหนดการ
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-break" type="button" role="tab">
+                            <i class="bi bi-egg-fried me-1"></i> รายการเบรก
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-menu" type="button" role="tab">
+                            <i class="bi bi-cup-hot-fill me-1"></i> เมนูอาหาร
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-setup" type="button" role="tab">
+                            <i class="bi bi-building me-1"></i> SET-UP
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-technical" type="button" role="tab">
+                            <i class="bi bi-gear-wide-connected me-1"></i> TECHNICAL
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-decor" type="button" role="tab">
+                            <i class="bi bi-palette-fill me-1"></i> ตกแต่ง
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป (General
                     Information)</h5>
 
@@ -390,7 +579,7 @@ foreach ($menu_types_array as $mt) {
                                 <div class="col-12 mt-1">
                                     <textarea id="customer_address" name="organization"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                        rows="2" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
+                                        rows="3" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -514,7 +703,9 @@ foreach ($menu_types_array as $mt) {
                         </div>
                     </div>
                 </div>
+                </div><!-- /tab-general -->
 
+                <div class="tab-pane fade" id="tab-schedule" role="tabpanel">
                     <div class="row mb-5">
                         <div class="col-12 mb-4">
                             <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)
@@ -539,7 +730,7 @@ foreach ($menu_types_array as $mt) {
                                                     placeholder="00:00 - 00:00"></td>
                                             <td><textarea name="schedule_function[]"
                                                     class="form-control form-control-sm border-0 bg-light"
-                                                    rows="2"></textarea></td>
+                                                    rows="3"></textarea></td>
                                             <td><input type="number" name="schedule_guarantee[]"
                                                     class="form-control form-control-sm border-0 bg-light"></td>
                                             <td><button type="button" class="btn text-danger btn-sm border-0"
@@ -551,8 +742,14 @@ foreach ($menu_types_array as $mt) {
                                 <button type="button" class="btn btn-hotel-outline btn-sm mt-1"
                                     onclick="addScheduleRow()"><i class="bi bi-plus-lg me-1"></i> เพิ่มกำหนดการ</button>
                             </div>
+                        </div>
+                    </div>
+                </div><!-- /tab-schedule -->
 
-                            <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
+                <div class="tab-pane fade" id="tab-break" role="tabpanel">
+                    <div class="row mb-5">
+                        <div class="col-12 mb-4">
+                            <h5 class="section-title mb-4"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
                                 <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="breakModalBtn"
                                     onclick="openTemplateModal('template-break', 'onBreakSectionSelect')">
                                     <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเบรก
@@ -699,11 +896,13 @@ foreach ($menu_types_array as $mt) {
                                 </button>
                             </div>
 
-                            <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="3"
+                            <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2" rows="4"
                                 placeholder="หมายเหตุเพิ่มเติม..."></textarea>
                         </div>
                     </div>
+                </div><!-- /tab-break -->
 
+                <div class="tab-pane fade" id="tab-menu" role="tabpanel">
                     <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4.
                         รายละเอียดเมนูอาหารและเครื่องดื่ม
                         <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="menuModalBtn"
@@ -819,68 +1018,63 @@ foreach ($menu_types_array as $mt) {
                         <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addMenuRow()"><i
                                 class="bi bi-plus-lg me-1"></i> เพิ่มรายการอาหาร</button>
                     </div>
+                </div><!-- /tab-menu -->
 
-                    <div class="row mb-5">
-                        <div class="col-md-6 mb-4 mb-md-0">
-                            <div class="bg-sidebar p-4 rounded-4 h-100">
-                                <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
-                                <div class="mb-0">
-                                    <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                                    <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                        rows="6"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="bg-sidebar p-4 rounded-4 h-100">
-                                <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
-                                <div class="mb-4">
-                                    <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                                    <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                        rows="5"></textarea>
-                                </div>
-                                <div class="mb-0">
-                                    <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                                    <textarea name="remark" class="form-control form-control-sm bg-white"
-                                        rows="2"></textarea>
-                                </div>
-                            </div>
+                <div class="tab-pane fade" id="tab-setup" role="tabpanel">
+                    <div class="bg-sidebar p-4 rounded-4">
+                        <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
+                        <div class="mb-0">
+                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                            <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                rows="9"></textarea>
                         </div>
                     </div>
+                </div><!-- /tab-setup -->
 
+                <div class="tab-pane fade" id="tab-technical" role="tabpanel">
+                    <div class="bg-sidebar p-4 rounded-4">
+                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
+                        <div class="mb-4">
+                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                            <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                rows="5"></textarea>
+                        </div>
+                        <div class="mb-0">
+                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                            <textarea name="remark" class="form-control form-control-sm bg-white"
+                                rows="4"></textarea>
+                        </div>
+                    </div>
+                </div><!-- /tab-technical -->
+
+                <div class="tab-pane fade" id="tab-decor" role="tabpanel">
                     <h5 class="section-title"><i class="bi bi-palette-fill"></i> 7. การตกแต่งและการดูแลทำความสะอาด
                     </h5>
-                    <div class="row g-3">
-                        <div class="col-lg-6">
-                            <div class="p-4 border rounded-4 bg-white h-100">
-                                <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
-                                <textarea name="backdrop_detail" class="form-control form-control-sm mb-3"
-                                    rows="3"></textarea>
-                                <div class="p-3 border-dashed text-center bg-light rounded-3">
-                                    <input type="file" name="backdrop_img" id="backdropInput"
-                                        class="form-control form-control-sm mb-2" accept="image/*"
-                                        onchange="previewImage(this)">
-                                    <input type="hidden" name="backdrop_img_path_ai" id="backdrop_img_path_ai">
-                                    <div id="imagePreviewContainer" class="text-center d-none">
-                                        <img id="imagePreview" src="#" class="img-thumbnail mt-2"
-                                            style="max-height: 150px;">
-                                        <button type="button"
-                                            class="btn btn-sm btn-link text-danger d-block mx-auto mt-2"
-                                            onclick="clearPreview()">ลบรูปภาพ</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="p-4 border rounded-4 bg-white h-100">
-                                <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
-                                <textarea name="hk_florist_detail" class="form-control form-control-sm"
-                                    rows="6"></textarea>
+                    <div class="p-4 border rounded-4 bg-white mb-4">
+                        <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
+                        <textarea name="backdrop_detail" class="form-control form-control-sm mb-3"
+                            rows="4"></textarea>
+                        <div class="p-3 border-dashed text-center bg-light rounded-3">
+                            <input type="file" name="backdrop_img" id="backdropInput"
+                                class="form-control form-control-sm mb-2" accept="image/*"
+                                onchange="previewImage(this)">
+                            <input type="hidden" name="backdrop_img_path_ai" id="backdrop_img_path_ai">
+                            <div id="imagePreviewContainer" class="text-center d-none">
+                                <img id="imagePreview" src="#" class="img-thumbnail mt-2"
+                                    style="max-height: 150px;">
+                                <button type="button"
+                                    class="btn btn-sm btn-link text-danger d-block mx-auto mt-2"
+                                    onclick="clearPreview()">ลบรูปภาพ</button>
                             </div>
                         </div>
                     </div>
-                </div>
+                    <div class="p-4 border rounded-4 bg-white">
+                        <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
+                        <textarea name="hk_florist_detail" class="form-control form-control-sm"
+                            rows="9"></textarea>
+                    </div>
+                </div><!-- /tab-decor -->
+                </div><!-- /tab-content -->
             </div>
     </form>
 </div>
@@ -1030,7 +1224,7 @@ foreach ($menu_types_array as $mt) {
         row.innerHTML = `
         <td><input type="date" name="schedule_date[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td><input type="text" name="schedule_hour[]" class="form-control form-control-sm border-0 bg-light" placeholder="00:00 - 00:00"></td>
-        <td><textarea name="schedule_function[]" class="form-control form-control-sm border-0 bg-light" rows="2"></textarea></td>
+        <td><textarea name="schedule_function[]" class="form-control form-control-sm border-0 bg-light" rows="3"></textarea></td>
         <td><input type="number" name="schedule_guarantee[]" class="form-control form-control-sm border-0 bg-light"></td>
         <td><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>`;
     }
@@ -1200,7 +1394,7 @@ foreach ($menu_types_array as $mt) {
         let html = '';
         filteredRooms.forEach(r => {
             const bookingStatus = r.active_booking_end
-                ? `<span class="badge bg-danger"><i class="bi bi-calendar-check me-1"></i> ใช้งานถึง: ${r.active_booking_end}</span>`
+                ? `<span class="badge bg-danger"><i class="bi bi-calendar-x me-1"></i> จองแล้ว: ${r.active_booking_end}</span>`
                 : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> ว่าง / พร้อมใช้งาน</span>`;
 
             html += `
@@ -1377,6 +1571,21 @@ foreach ($menu_types_array as $mt) {
             if (typeof updateKitchenRowTotal === 'function' && price) updateKitchenRowTotal(price);
         });
     }
+
+    // ถ้ามีช่องที่ต้องกรอกแต่ซ่อนอยู่ใน tab อื่น ให้สลับไปแสดง tab นั้นก่อน validate
+    document.querySelector('.function-form form').addEventListener('submit', function(e) {
+        const invalid = this.querySelector(':invalid');
+        if (!invalid) return;
+        const pane = invalid.closest('.tab-pane');
+        if (pane && !pane.classList.contains('active')) {
+            e.preventDefault();
+            const tabBtn = document.querySelector(`[data-bs-target="#${pane.id}"]`);
+            if (tabBtn) {
+                bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+                setTimeout(() => invalid.reportValidity(), 150);
+            }
+        }
+    });
 </script>
 <?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

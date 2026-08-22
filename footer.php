@@ -17,6 +17,13 @@
     document.addEventListener('input', function (e) {
         if (e.target && e.target.tagName === 'TEXTAREA') autoResizeTextarea(e.target);
     });
+    // textarea ที่อยู่ใน Bootstrap tab-pane ที่ยังไม่ถูกเปิด จะมี scrollHeight เป็น 0 ตอนโหลดหน้า
+    // ทำให้ auto-resize หดจนแบน ต้องคำนวณใหม่ทุกครั้งที่สลับไปแสดง tab นั้น
+    document.addEventListener('shown.bs.tab', function (e) {
+        const targetSel = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+        const pane = targetSel ? document.querySelector(targetSel) : null;
+        if (pane) pane.querySelectorAll('textarea').forEach(autoResizeTextarea);
+    });
     const _taObserver = new MutationObserver(function (mutations) {
         mutations.forEach(function (m) {
             m.addedNodes.forEach(function (node) {

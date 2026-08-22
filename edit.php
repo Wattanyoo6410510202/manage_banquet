@@ -139,18 +139,19 @@ $res_types = $conn->query("SELECT * FROM function_types ORDER BY id ASC");
 // ดึงข้อมูลห้องพร้อม "รายการวันที่จอง" (เฉพาะงานที่ Approve แล้ว)
 // ดึงข้อมูลห้องพร้อม "รายการวันที่จองทั้งหมด" (เฉพาะที่ Approve และเป็นอนาคต)
 $all_rooms_res = $conn->query("
-    SELECT 
-        r.*, 
-        (SELECT GROUP_CONCAT(DATE_FORMAT(f.start_time, '%d/%m %H:%i')
-                ORDER BY f.start_time ASC SEPARATOR ', ')
-         FROM functions f 
-         WHERE f.room_id = r.id 
+    SELECT
+        r.*,
+        (SELECT GROUP_CONCAT(
+                CONCAT(DATE_FORMAT(f.start_time, '%d/%m %H:%i'), ' - ', DATE_FORMAT(f.end_time, '%d/%m %H:%i'), '::', COALESCE(f.function_name, '-'))
+                ORDER BY f.start_time ASC SEPARATOR ';;')
+         FROM functions f
+         WHERE f.room_id = r.id
          AND f.status != 'Cancelled'
          AND f.status != 'Completed'
          AND f.start_time IS NOT NULL
         ) as booking_dates
     FROM meeting_rooms r
-    WHERE r.status = 'active' 
+    WHERE r.status = 'active'
     ORDER BY r.floor ASC, r.room_name ASC
 ");
 
@@ -180,21 +181,188 @@ $status_info = $status_badge_map[$current_status] ?? ['class' => 'bg-secondary t
 $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้ว' : ($current_status === 'In Progress' ? 'ดำเนินการ' : ($current_status === 'Completed' ? 'จบงานแล้ว' : ($current_status === 'Cancelled' ? 'ยกเลิก' : ($current_status === 'Pending' ? 'รออนุมัติ' : $current_status))));
 ?>
 <style>
-.room-card.selected {
-    border: 2px solid #198754 !important;
-    background-color: #f8fffb !important;
-}
+    /* ===== Function Form — Hotel Gold/Dark reskin (plain) ===== */
+    .function-form .card {
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+    }
 
-.room-card.selected .check-icon {
-    display: block !important;
-}
+    .function-form .main-header {
+        background: #fff;
+        border-bottom: 2px solid var(--hotel-gold, #b89441);
+    }
 
-.bg-light {
-    background-color: #f8f9fa !important;
-}
+    .function-form .main-header h4 {
+        color: #1a1a1a;
+    }
+
+    .function-form .main-header .form-header-sub {
+        color: #6b6b6b;
+        font-size: .78rem;
+        margin-top: 2px;
+    }
+
+    .function-form .section-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #262626;
+        padding-bottom: .5rem;
+        margin-bottom: 1rem !important;
+        border-bottom: 1px solid #e9e9e9;
+    }
+
+    .function-form .section-title i:first-child {
+        color: var(--hotel-gold, #b89441);
+        margin-right: .4rem;
+    }
+
+    .function-form .bg-sidebar {
+        background: #faf7f0;
+        border: 1px solid #efe3c4;
+    }
+
+    .function-form .btn-hotel-outline {
+        border: 1px solid var(--hotel-gold, #b89441);
+        color: var(--hotel-gold, #b89441);
+        background: #fff;
+        font-weight: 600;
+        font-size: .8rem;
+    }
+
+    .function-form .btn-hotel-outline:hover {
+        background: var(--hotel-gold, #b89441);
+        color: #fff;
+    }
+
+    .function-form .form-control:focus,
+    .function-form .form-select:focus {
+        border-color: var(--hotel-gold, #b89441);
+        box-shadow: 0 0 0 .12rem rgba(184, 148, 65, .18);
+    }
+
+    .function-form .bg-light {
+        background-color: #f7f7f9 !important;
+    }
+
+    /* Unify the tracking/financial mini-cards to one color family instead of mixed blue/cyan/green */
+    .function-form .bg-primary.bg-opacity-10,
+    .function-form .bg-secondary.bg-opacity-10,
+    .function-form .bg-info.bg-opacity-10,
+    .function-form .bg-success.bg-opacity-10 {
+        background-color: #faf7f0 !important;
+        border: 1px solid #efe3c4;
+    }
+
+    .function-form .bg-primary.bg-opacity-10 .text-primary,
+    .function-form .bg-secondary.bg-opacity-10 .text-secondary,
+    .function-form .bg-info.bg-opacity-10 .text-info,
+    .function-form .bg-success.bg-opacity-10 .text-success {
+        color: #7a5c1e !important;
+    }
+
+    /* Room picker */
+    .function-form .room-card {
+        cursor: pointer;
+        transition: border-color .15s ease;
+    }
+
+    .function-form .room-card:hover {
+        border-color: var(--hotel-gold, #b89441) !important;
+    }
+
+    .room-card.selected {
+        border: 2px solid #198754 !important;
+        background-color: #f8fffb !important;
+    }
+
+    .room-card.selected .check-icon {
+        display: block !important;
+    }
+
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+
+    /* Tables */
+    .function-form table thead th {
+        font-weight: 700;
+        background: #faf7f0;
+    }
+
+    .function-form .table-responsive {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #eee;
+    }
+
+    .function-form tfoot th {
+        background: #f5f0e4 !important;
+        color: #7a5c1e;
+    }
+
+    .function-form .kitchen-grand-total,
+    .function-form .menu-grand-total {
+        font-size: .78rem;
+        white-space: nowrap;
+        padding-left: .35rem !important;
+        padding-right: .35rem !important;
+    }
+
+    /* Give the auto-growing table textareas a taller starting height */
+    .function-form .break-menu-input,
+    .function-form .menu-detail-input {
+        min-height: 3.4rem !important;
+    }
+
+    .function-form .room-conflict-toggle .conflict-chevron {
+        transition: transform .15s ease;
+    }
+
+    .function-form .room-conflict-toggle.expanded .conflict-chevron {
+        transform: rotate(180deg);
+    }
+
+    /* Draft + status toolbar */
+    .function-toolbar {
+        background: #faf9f6;
+        border-color: #eee !important;
+    }
+
+    .function-toolbar .draft-pill {
+        font-size: .78rem;
+        border-radius: 50px;
+        padding: .3rem .85rem;
+    }
+
+    /* Section tabs — plain underline style */
+    .function-form .function-tabs {
+        border-bottom: 1px solid #e2e2e2;
+        flex-wrap: nowrap;
+    }
+
+    .function-form .function-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: #666;
+        font-weight: 600;
+        font-size: .85rem;
+        padding: .55rem .9rem;
+        white-space: nowrap;
+    }
+
+    .function-form .function-tabs .nav-link:hover {
+        color: var(--hotel-gold, #b89441);
+    }
+
+    .function-form .function-tabs .nav-link.active {
+        color: var(--hotel-gold, #b89441);
+        background: transparent;
+        border-bottom-color: var(--hotel-gold, #b89441);
+    }
 </style>
 
-<div class="container-fluid p-0">
+<div class="container-fluid p-0 function-form">
     <form action="api/update_function.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="function_id" value="<?php echo $id; ?>">
@@ -202,8 +370,11 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         <div class="card border-0">
             <div class="card-header main-header p-4">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i> EDIT FUNCTION MEETING
-                    </h4>
+                    <div>
+                        <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2 text-gold"></i> EDIT FUNCTION MEETING
+                        </h4>
+                        <div class="form-header-sub">แก้ไขรายการจองห้องประชุม / จัดเลี้ยง</div>
+                    </div>
                     <div style="width: 100%; max-width: 500px;">
                         <div class="d-flex align-items-center gap-2 justify-content-end">
                             <a href="manage_banquet.php" class="btn btn-outline-secondary btn-sm px-3">
@@ -224,66 +395,64 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 </div>
             </div>
 
-            <!-- --- [NEW] Draft Management Bar --- -->
-            <?php if ($project_id > 0): ?>
-            <div class="bg-light border-bottom px-4 py-2 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="small fw-bold text-secondary"><i class="bi bi-layers-half me-1"></i> รายการ Draft:</span>
-                    <div class="d-flex gap-2">
+            <!-- --- Draft + Status toolbar --- -->
+            <?php
+            $compare_id = 0;
+            if ($project_id > 0) {
+                foreach ($all_drafts as $d) {
+                    if ($d['is_approved'] == 1 && $d['id'] != $id) {
+                        $compare_id = $d['id'];
+                        break;
+                    }
+                }
+                if (!$compare_id) {
+                    $prev = null;
+                    foreach ($all_drafts as $d) {
+                        if ($d['id'] == $id) break;
+                        $prev = $d;
+                    }
+                    if ($prev) $compare_id = $prev['id'];
+                }
+            }
+            ?>
+            <div class="function-toolbar border-bottom px-4 py-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center flex-wrap gap-3">
+                    <?php if ($project_id > 0): ?>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <span class="small fw-bold text-secondary">Draft:</span>
                         <?php foreach ($all_drafts as $draft): ?>
-                            <?php 
+                            <?php
                                 $is_current = ($draft['id'] == $id);
                                 $btn_class = $is_current ? 'btn-dark' : 'btn-outline-dark';
                                 $approved_icon = ($draft['is_approved'] == 1) ? '<i class="bi bi-patch-check-fill text-info ms-1"></i>' : '';
                             ?>
-                            <a href="edit.php?id=<?= $draft['id'] ?>" class="btn btn-xs <?= $btn_class ?> px-2 py-1 rounded-pill small" style="font-size: 11px;">
+                            <a href="edit.php?id=<?= $draft['id'] ?>" class="btn btn-sm draft-pill <?= $btn_class ?>">
                                 <?= htmlspecialchars($draft['draft_name']) ?> <?= $approved_icon ?>
                             </a>
                         <?php endforeach; ?>
                     </div>
+                    <div class="vr d-none d-md-block" style="height: 22px; opacity: .4;"></div>
+                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small fw-bold text-secondary">สถานะ:</span>
+                        <span class="badge <?= $status_info['class'] ?> rounded-pill px-3 py-2">
+                            <i class="bi <?= $status_info['icon'] ?> me-1"></i> <?= $status_text ?>
+                        </span>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <?php
-                    $compare_id = 0;
-                    foreach ($all_drafts as $d) {
-                        if ($d['is_approved'] == 1 && $d['id'] != $id) {
-                            $compare_id = $d['id'];
-                            break;
-                        }
-                    }
-                    if (!$compare_id) {
-                        $prev = null;
-                        foreach ($all_drafts as $d) {
-                            if ($d['id'] == $id) break;
-                            $prev = $d;
-                        }
-                        if ($prev) $compare_id = $prev['id'];
-                    }
-                    ?>
-                    <?php if ($compare_id): ?>
-                    <a href="print_changes.php?id=<?= $id ?>&compare_id=<?= $compare_id ?>" target="_blank" class="btn btn-outline-info btn-xs px-3 py-1 rounded-pill small" style="font-size: 11px;">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <?php if ($project_id > 0 && $compare_id): ?>
+                    <a href="print_changes.php?id=<?= $id ?>&compare_id=<?= $compare_id ?>" target="_blank" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-file-earmark-diff me-1"></i> พิมพ์รายการที่เปลี่ยนแปลง
                     </a>
                     <?php endif; ?>
-                    <button type="button" class="btn btn-outline-success btn-xs px-3 py-1 rounded-pill small" style="font-size: 11px;" onclick="duplicateDraft(<?= $id ?>)">
+                    <?php if ($project_id > 0): ?>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="duplicateDraft(<?= $id ?>)">
                         <i class="bi bi-plus-circle me-1"></i> คัดลอกเป็น Draft ใหม่
                     </button>
-                </div>
-            </div>
-            <?php endif; ?>
-            <!-- --------------------------------- -->
-
-            <!-- Status Bar -->
-            <div class="bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="small fw-bold text-secondary"><i class="bi bi-activity me-1"></i> สถานะปัจจุบัน:</span>
-                    <span class="badge <?= $status_info['class'] ?> rounded-pill px-3 py-2">
-                        <i class="bi <?= $status_info['icon'] ?> me-1"></i> <?= $status_text ?>
-                    </span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
+                    <?php endif; ?>
                     <?php if ($has_rollback && $current_status !== $prev_status): ?>
-                    <button type="button" id="rollbackStatusBtn" class="btn btn-outline-warning btn-sm px-3" data-id="<?= $id ?>">
+                    <button type="button" id="rollbackStatusBtn" class="btn btn-sm btn-outline-warning" data-id="<?= $id ?>">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> ย้อนกลับสถานะ
                     </button>
                     <?php endif; ?>
@@ -292,6 +461,45 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <!-- ----------------- -->
 
             <div class="card-body p-4 p-lg-5">
+                <ul class="nav nav-tabs function-tabs mb-4 flex-nowrap overflow-auto" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">
+                            <i class="bi bi-person-lines-fill me-1"></i> ข้อมูลทั่วไป
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-schedule" type="button" role="tab">
+                            <i class="bi bi-calendar3 me-1"></i> กำหนดการ
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-break" type="button" role="tab">
+                            <i class="bi bi-egg-fried me-1"></i> รายการเบรก
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-menu" type="button" role="tab">
+                            <i class="bi bi-cup-hot-fill me-1"></i> เมนูอาหาร
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-setup" type="button" role="tab">
+                            <i class="bi bi-building me-1"></i> SET-UP
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-technical" type="button" role="tab">
+                            <i class="bi bi-gear-wide-connected me-1"></i> TECHNICAL
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-decor" type="button" role="tab">
+                            <i class="bi bi-palette-fill me-1"></i> ตกแต่ง
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
                 <h5 class="section-title mb-4"><i class="bi bi-person-lines-fill"></i> 1. ข้อมูลการจองทั่วไป</h5>
                 <!-- Row: Company + Customer + Event Details (3-column) -->
                 <div class="row g-3 mb-4">
@@ -366,7 +574,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                 <div class="col-12 mt-1">
                                     <textarea id="customer_address" name="organization"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                        rows="2" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
+                                        rows="3" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -562,7 +770,9 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                         </div>
                     </div>
                 </div>
+                </div><!-- /tab-general -->
 
+                <div class="tab-pane fade" id="tab-schedule" role="tabpanel">
                 <div class="row mb-5">
                     <div class="col-12 mb-4">
                         <h5 class="section-title mb-4"><i class="bi bi-calendar3"></i> 2. ตารางกำหนดการ (Schedule)</h5>
@@ -589,7 +799,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                                 value="<?php echo $s['schedule_hour']; ?>"></td>
                                         <td><textarea name="schedule_function[]"
                                                 class="form-control form-control-sm border-0 bg-light"
-                                                rows="2"><?php echo $s['schedule_function']; ?></textarea></td>
+                                                rows="3"><?php echo $s['schedule_function']; ?></textarea></td>
                                         <td><input type="number" name="schedule_guarantee[]"
                                                 class="form-control form-control-sm border-0 bg-light"
                                                 value="<?php echo $s['schedule_guarantee']; ?>"></td>
@@ -603,7 +813,13 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             <button type="button" class="btn btn-hotel-outline btn-sm mt-1" onclick="addScheduleRow()"><i
                                     class="bi bi-plus-lg"></i> เพิ่มกำหนดการ</button>
                         </div>
+                    </div>
+                </div>
+                </div><!-- /tab-schedule -->
 
+                <div class="tab-pane fade" id="tab-break" role="tabpanel">
+                <div class="row mb-5">
+                    <div class="col-12 mb-4">
                         <h5 class="section-title mb-4 mt-5"><i class="bi bi-egg-fried"></i> 3. รายการเบรก
                             <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="breakModalBtn"
                                 onclick="openTemplateModal('template-break', 'onBreakSectionSelect')">
@@ -625,7 +841,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
             <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
             <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
-            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
+            <th style="width: 105px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
     </thead>
@@ -718,10 +934,12 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     class="bi bi-plus-lg"></i> เพิ่มรายการครัว</button>
                         </div>
                         <textarea name="main_kitchen_remark" class="form-control form-control-sm mt-2"
-                            rows="3"><?php echo htmlspecialchars($data['main_kitchen_remark'] ?? ''); ?></textarea>
+                            rows="4"><?php echo htmlspecialchars($data['main_kitchen_remark'] ?? ''); ?></textarea>
                     </div>
                 </div>
+                </div><!-- /tab-break -->
 
+                <div class="tab-pane fade" id="tab-menu" role="tabpanel">
                 <h5 class="section-title mb-4"><i class="bi bi-cup-hot-fill"></i> 4. รายละเอียดเมนูอาหารและเครื่องดื่ม
                     <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="menuModalBtn"
                         onclick="openTemplateModal('template-menu', 'onMenuSectionSelect', 'set')">
@@ -743,7 +961,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
             <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน</th>
             <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
             <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
-            <th style="width: 100px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
+            <th style="width: 105px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
     </thead>
@@ -825,65 +1043,62 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addMenuRow()"><i
                             class="bi bi-plus-lg"></i> เพิ่มรายการอาหาร</button>
                 </div>
+                </div><!-- /tab-menu -->
 
-                <div class="row mb-5">
-                    <div class="col-md-6 mb-4 mb-md-0">
-                        <div class="bg-sidebar p-4 rounded-4 h-100">
-                            <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
-                            <div class="mb-0">
-                                <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
-                                <textarea name="banquet_style" class="form-control form-control-sm bg-white"
-                                    rows="6"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
-                            </div>
+                <div class="tab-pane fade" id="tab-setup" role="tabpanel">
+                    <div class="bg-sidebar p-4 rounded-4">
+                        <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
+                        <div class="mb-0">
+                            <label class="fw-bold small text-muted">การจัดงานเลี้ยง:</label>
+                            <textarea name="banquet_style" class="form-control form-control-sm bg-white"
+                                rows="9"><?php echo htmlspecialchars($data['banquet_style']); ?></textarea>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="bg-sidebar p-4 rounded-4 h-100">
-                            <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
-                            <div class="mb-4">
-                                <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
-                                <textarea name="equipment" class="form-control form-control-sm bg-white"
-                                    rows="5"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
-                            </div>
-                            <div class="mb-0">
-                                <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
-                                <textarea name="remark" class="form-control form-control-sm bg-white"
-                                    rows="2"><?php echo htmlspecialchars($data['remark']); ?></textarea>
-                            </div>
+                </div><!-- /tab-setup -->
+
+                <div class="tab-pane fade" id="tab-technical" role="tabpanel">
+                    <div class="bg-sidebar p-4 rounded-4">
+                        <h5 class="section-title mb-4"><i class="bi bi-gear-wide-connected"></i> 6. ระบบวิศวกรรม (TECHNICAL)</h5>
+                        <div class="mb-4">
+                            <label class="fw-bold small text-muted">งานช่างและภาพเสียง:</label>
+                            <textarea name="equipment" class="form-control form-control-sm bg-white"
+                                rows="6"><?php echo htmlspecialchars($data['equipment']); ?></textarea>
+                        </div>
+                        <div class="mb-0">
+                            <label class="fw-bold small text-muted">หมายเหตุเพิ่มเติม:</label>
+                            <textarea name="remark" class="form-control form-control-sm bg-white"
+                                rows="4"><?php echo htmlspecialchars($data['remark']); ?></textarea>
                         </div>
                     </div>
-                </div>
+                </div><!-- /tab-technical -->
 
+                <div class="tab-pane fade" id="tab-decor" role="tabpanel">
                 <h5 class="section-title mb-4"><i class="bi bi-palette-fill"></i> 7. การตกแต่งและการดูแลทำความสะอาด</h5>
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="p-4 border rounded-4 bg-white h-100">
-                            <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
-                            <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
-                                rows="3"><?php echo htmlspecialchars($data['backdrop_detail'] ?? ''); ?></textarea>
+                <div class="p-4 border rounded-4 bg-white mb-4">
+                    <label class="fw-bold small text-muted mb-3">รายละเอียดฉากหลังและป้าย:</label>
+                    <textarea name="backdrop_detail" class="form-control form-control-sm mb-4"
+                        rows="4"><?php echo htmlspecialchars($data['backdrop_detail'] ?? ''); ?></textarea>
 
-                            <div class="p-3 border-dashed text-center bg-light">
-                                <label class="small d-block mb-2">รูปภาพปัจจุบัน:</label>
-                                <div id="imagePreviewContainer"
-                                    class="<?php echo !empty($data['backdrop_img']) ? '' : 'd-none'; ?>">
-                                    <img id="imagePreview" src="<?php echo htmlspecialchars($data['backdrop_img'] ?: '#'); ?>"
-                                        class="img-thumbnail mb-2" style="max-height: 150px;">
-                                </div>
-                                <input type="file" name="backdrop_img" class="form-control form-control-sm"
-                                    accept="image/*" onchange="previewImage(this)">
-                                <input type="hidden" name="old_backdrop_img"
-                                    value="<?php echo htmlspecialchars($data['backdrop_img']); ?>">
-                            </div>
+                    <div class="p-3 border-dashed text-center bg-light">
+                        <label class="small d-block mb-2">รูปภาพปัจจุบัน:</label>
+                        <div id="imagePreviewContainer"
+                            class="<?php echo !empty($data['backdrop_img']) ? '' : 'd-none'; ?>">
+                            <img id="imagePreview" src="<?php echo htmlspecialchars($data['backdrop_img'] ?: '#'); ?>"
+                                class="img-thumbnail mb-2" style="max-height: 150px;">
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-4 border rounded-4 bg-white  h-100">
-                            <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
-                            <textarea name="hk_florist_detail" class="form-control form-control-sm"
-                                rows="8"><?php echo htmlspecialchars($data['hk_florist_detail']); ?></textarea>
-                        </div>
+                        <input type="file" name="backdrop_img" class="form-control form-control-sm"
+                            accept="image/*" onchange="previewImage(this)">
+                        <input type="hidden" name="old_backdrop_img"
+                            value="<?php echo htmlspecialchars($data['backdrop_img']); ?>">
                     </div>
                 </div>
+                <div class="p-4 border rounded-4 bg-white">
+                    <label class="fw-bold small text-muted mb-3">พนักงานทำความสะอาดและพนักงานจัดดอกไม้:</label>
+                    <textarea name="hk_florist_detail" class="form-control form-control-sm"
+                        rows="9"><?php echo htmlspecialchars($data['hk_florist_detail']); ?></textarea>
+                </div>
+                </div><!-- /tab-decor -->
+                </div><!-- /tab-content -->
             </div>
         </div>
     </form>
@@ -913,7 +1128,7 @@ function addScheduleRow() {
     const table = document.querySelector("#scheduleTable tbody");
     const row = table.insertRow();
     row.innerHTML =
-        `<td><input type="date" name="schedule_date[]" class="form-control form-control-sm border-0 bg-light"></td><td><input type="text" name="schedule_hour[]" class="form-control form-control-sm border-0 bg-light"></td><td><textarea name="schedule_function[]" class="form-control form-control-sm border-0 bg-light" rows="2"></textarea></td><td><input type="number" name="schedule_guarantee[]" class="form-control form-control-sm border-0 bg-light"></td><td><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>`;
+        `<td><input type="date" name="schedule_date[]" class="form-control form-control-sm border-0 bg-light"></td><td><input type="text" name="schedule_hour[]" class="form-control form-control-sm border-0 bg-light"></td><td><textarea name="schedule_function[]" class="form-control form-control-sm border-0 bg-light" rows="3"></textarea></td><td><input type="number" name="schedule_guarantee[]" class="form-control form-control-sm border-0 bg-light"></td><td><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>`;
 }
 
 function addKitchenRow() {
@@ -1218,6 +1433,12 @@ function confirmRemoveFile(index) {
 const allRooms = <?php echo json_encode($all_rooms_data); ?>;
 const selectedRoomId = "<?php echo intval($data['room_id']); ?>"; // ห้องที่เคยจองไว้เดิม
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
 function filterRooms(companyId) {
     const container = document.getElementById('roomContainer');
     container.innerHTML = ''; // ล้างค่าเก่า
@@ -1238,18 +1459,23 @@ function filterRooms(companyId) {
     // วนลูปสร้าง HTML ของ Card ห้องประชุม
    filtered.forEach(room => {
     const isSelected = (room.id == selectedRoomId);
-    
-    // ดึงรายการวันที่จอง (ถ้ามีค่าจะเป็น "25/03, 28/03" ถ้าไม่มีจะเป็น null)
+
+    // ดึงรายการวันที่จอง แต่ละรายการคั่นด้วย ';;' รูปแบบ "d/m H:i - d/m H:i::ชื่องาน"
     const bookingList = room.booking_dates;
+    const bookingDates = bookingList ? bookingList.split(';;').map(entry => {
+        const [range, name] = entry.split('::');
+        return { range, name: name || '-' };
+    }) : [];
+    const bookingCount = bookingDates.length;
 
     const cardHtml = `
         <div class="col-md-4 mb-3">
-            <div class="room-card p-3 rounded-4 border h-100 position-relative 
+            <div class="room-card p-3 rounded-4 border h-100 position-relative
                 ${isSelected ? 'selected border-primary bg-light shadow-sm' : 'bg-white'}"
-                onclick="selectRoom(this, '${room.id}')" 
-                style="cursor: pointer; transition: all 0.2s;">
-                
-                <input type="radio" name="room_id" value="${room.id}" 
+                onclick="selectRoom(this, '${room.id}')"
+                style="cursor: pointer;">
+
+                <input type="radio" name="room_id" value="${room.id}"
                        class="d-none room-radio" ${isSelected ? 'checked' : ''}>
 
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -1260,27 +1486,27 @@ function filterRooms(companyId) {
                 </div>
 
                 <h6 class="fw-bold mb-1">${room.room_name}</h6>
-                
+
                 <p class="text-muted small mb-1">
-                    <i class="bi bi-aspect-ratio me-1"></i> ${parseFloat(room.total_sqm).toFixed(2)} ตร.ม.
+                    <i class="bi bi-people me-1"></i> Banquet: <b>${room.cap_banquet ?? '-'}</b> | Theatre: <b>${room.cap_theatre ?? '-'}</b>
+                </p>
+                <p class="text-muted small mb-2">
+                    <i class="bi bi-aspect-ratio me-1"></i> ${parseFloat(room.total_sqm || 0).toFixed(2)} ตร.ม.
                 </p>
 
-                <div class="mt-2">
-                    ${bookingList ? `
-                        <div class="d-flex flex-column gap-1">
-                            <span class="text-danger fw-bold" style="font-size: 0.75rem;">
-                                <i class="bi bi-calendar-x-fill me-1"></i> วันที่มีใช้งานแล้ว:
-                            </span>
-                            <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">
-                                ${bookingList}
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="p-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25 text-success text-center small">
-                            <i class="bi bi-calendar-check me-1"></i> ว่าง / พร้อมใช้งาน
-                        </div>
-                    `}
-                </div>
+                ${bookingList ? `
+                    <button type="button" class="btn btn-sm w-100 text-start p-1 px-2 border-0 bg-danger bg-opacity-10 text-danger fw-bold room-conflict-toggle" style="font-size:.75rem;"
+                        onclick="event.stopPropagation(); this.classList.toggle('expanded'); this.nextElementSibling.classList.toggle('d-none');">
+                        <i class="bi bi-calendar-x me-1"></i> จองแล้ว ${bookingCount} ครั้ง <i class="bi bi-chevron-down float-end mt-1 conflict-chevron"></i>
+                    </button>
+                    <ul class="d-none mt-1 p-2 ps-4 mb-0 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger" style="font-size: .75rem;">
+                        ${bookingDates.map(d => `<li>${d.range} <span class="opacity-75">— ${escapeHtml(d.name)}</span></li>`).join('')}
+                    </ul>
+                ` : `
+                    <div class="p-1 px-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25 text-success small">
+                        <i class="bi bi-calendar-check me-1"></i> ว่าง / พร้อมใช้งาน
+                    </div>
+                `}
             </div>
         </div>
     `;
@@ -1561,6 +1787,21 @@ $(document).on('click', '#rollbackStatusBtn', function() {
             if (typeof updateKitchenRowTotal === 'function' && price) updateKitchenRowTotal(price);
         });
     }
+
+    // ถ้ามีช่องที่ต้องกรอกแต่ซ่อนอยู่ใน tab อื่น ให้สลับไปแสดง tab นั้นก่อน validate
+    document.querySelector('.function-form form').addEventListener('submit', function(e) {
+        const invalid = this.querySelector(':invalid');
+        if (!invalid) return;
+        const pane = invalid.closest('.tab-pane');
+        if (pane && !pane.classList.contains('active')) {
+            e.preventDefault();
+            const tabBtn = document.querySelector(`[data-bs-target="#${pane.id}"]`);
+            if (tabBtn) {
+                bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+                setTimeout(() => invalid.reportValidity(), 150);
+            }
+        }
+    });
 </script>
 
 <?php include "includes/menu_type_modal.php"; ?>
