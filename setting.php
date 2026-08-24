@@ -25,6 +25,19 @@ if (isset($_GET['edit_user_id'])) {
 
 // เช็กว่าควรเปิด Tab ไหน (Auto-switch เมื่อกดแก้ไข)
 $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 'company');
+
+// --- ข้อมูลสำหรับแท็บ "นำเข้าต้นทุน" (ใช้จับคู่/แสดงตัวอย่างฝั่ง JS ก่อนยืนยันนำเข้าจริง) ---
+$import_categories = [];
+$ic_res = $conn->query("SELECT id, category_name FROM master_menu_categories ORDER BY sort_order ASC, id ASC");
+while ($row = $ic_res->fetch_assoc()) { $import_categories[] = $row; }
+
+$import_menu_types = [];
+$imt_res = $conn->query("SELECT id, category_id, type_name FROM master_menu_types");
+while ($row = $imt_res->fetch_assoc()) { $import_menu_types[] = $row; }
+
+$import_menu_items = [];
+$imi_res = $conn->query("SELECT id, menu_type_id, menu_items, cost_per_pax FROM function_menu_details");
+while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -180,6 +193,12 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                     <button class="nav-link <?php echo $active_tab == 'user' ? 'active' : ''; ?>" data-bs-toggle="tab"
                         data-bs-target="#user-pane">
                         <i class="bi bi-people me-2"></i>จัดการผู้ใช้งาน
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link <?php echo $active_tab == 'import' ? 'active' : ''; ?>" data-bs-toggle="tab"
+                        data-bs-target="#import-pane">
+                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>นำเข้าต้นทุน
                     </button>
                 </li>
             </ul>
@@ -496,6 +515,69 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
                     </div>
                 </div>
 
+                <div class="tab-pane fade <?php echo $active_tab == 'import' ? 'show active' : ''; ?>" id="import-pane">
+                    <div class="row g-4">
+                        <div class="col-xl-4">
+                            <div class="p-3 border rounded-3 bg-light">
+                                <h6 class="fw-bold mb-3 text-gold"><i
+                                        class="bi bi-file-earmark-spreadsheet me-2"></i>นำเข้าต้นทุนอาหารจาก Excel</h6>
+                                <p class="small text-muted">อัปโหลดไฟล์ Excel (.xlsx) ที่แยกชีทตามชุดราคา
+                                    แต่ละชีทต้องมีคอลัมน์ "หมวด", "เมนู" และ "Total Cost"
+                                    ระบบจะจับคู่ชื่อเมนู + ประเภทอาหารในชีท เพื่ออัปเดต/เพิ่มราคาทุนต่อหัวให้อัตโนมัติ</p>
+
+                                <button type="button" id="btnDownloadSample" class="btn btn-outline-secondary btn-sm px-3 mb-3">
+                                    <i class="bi bi-download me-1"></i>ดาวน์โหลดไฟล์ตัวอย่าง
+                                </button>
+
+                                <div class="mb-3">
+                                    <input type="file" id="importFileInput" class="form-control form-control-sm"
+                                        accept=".xlsx,.xls">
+                                </div>
+                                <button type="button" id="btnParseFile" class="btn btn-dark btn-sm px-3" disabled>
+                                    <i class="bi bi-search me-1"></i>อ่านไฟล์ / จับคู่ชีท
+                                </button>
+
+                                <div id="sheetMappingZone" class="mt-3 d-none">
+                                    <label class="small fw-bold mb-2 d-block">จับคู่ชีท → กลุ่มอาหาร (หมวดราคา)</label>
+                                    <div id="sheetMappingList"></div>
+                                    <button type="button" id="btnGeneratePreview"
+                                        class="btn btn-outline-dark btn-sm w-100 mt-2">
+                                        <i class="bi bi-eye me-1"></i>สร้างตัวอย่างก่อนนำเข้า
+                                    </button>
+                                </div>
+
+                                <div id="importSummaryZone" class="mt-3 d-none">
+                                    <div class="alert alert-light border small mb-2" id="importSummaryText"></div>
+                                    <button type="button" id="btnConfirmImport" class="btn btn-success w-100 fw-bold">
+                                        <i class="bi bi-cloud-upload me-1"></i>ยืนยันนำเข้าข้อมูล
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-8">
+                            <div class="table-responsive" style="max-height: 640px;">
+                                <table class="table table-hover align-middle table-sm" id="importPreviewTable">
+                                    <thead class="table-light">
+                                        <tr class="small text-muted">
+                                            <th>กลุ่มอาหาร</th>
+                                            <th>หมวด</th>
+                                            <th>เมนู</th>
+                                            <th class="text-end">ต้นทุนใหม่</th>
+                                            <th>สถานะ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="importPreviewBody">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">อัปโหลดไฟล์แล้วกด
+                                                "อ่านไฟล์ / จับคู่ชีท" เพื่อเริ่มต้น</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -518,6 +600,7 @@ $active_tab = $_GET['active_tab'] ?? ((isset($_GET['edit_user_id'])) ? 'user' : 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -654,6 +737,373 @@ function resetStampPreview(event) {
         removeBtn.style.display = 'none';
     }
 }
+
+// ==== นำเข้าต้นทุนจาก Excel ====
+const importCategories = <?= json_encode($import_categories, JSON_UNESCAPED_UNICODE) ?>;
+const importMenuTypes = <?= json_encode($import_menu_types, JSON_UNESCAPED_UNICODE) ?>;
+const importMenuItems = <?= json_encode($import_menu_items, JSON_UNESCAPED_UNICODE) ?>;
+
+let importWorkbookSheets = {}; // sheetName -> [{type_name, menu_name, cost}]
+let importFinalRows = [];
+
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+// สร้างไฟล์ตัวอย่างให้ดาวน์โหลด ให้เห็นโครงสร้างคอลัมน์/การจัดกลุ่มที่ระบบอ่านได้ถูกต้อง
+document.getElementById('btnDownloadSample').addEventListener('click', function () {
+    const headerRow = ['หมวด', 'ลำดับ', 'เมนู', 'ต้นทุนค่าวัตถุดิบ', 'ต้นทุนสูญเสีย', 'ต้นทุนแฝง', 'Total Cost'];
+    const titleRow = ['ต้นทุนอาหารจัดเลี้ยง (ตัวอย่างไฟล์นำเข้า)'];
+    const blankRow = ['', '', '', '', '', '', ''];
+
+    const sheet1 = [
+        titleRow,
+        headerRow,
+        ['เมนูแกง/เมนูต้ม', 'A01', 'ต้มข่าไก่', 174.35, 8.72, 20, 203.07],
+        ['', 'A02', 'ต้มยำไก่', 152.57, 7.63, 20, 180.20],
+        ['', 'A03', 'มัสมั่นไก่', 168.30, 8.42, 20, 196.72],
+        blankRow,
+        ['เมนูผัด', 'B01', 'ผัดขี้เมาไก่สับ', 51.26, 2.56, 20, 73.82],
+        ['', 'B02', 'ผัดผักรวมไก่', 150.37, 7.52, 20, 177.89],
+        blankRow,
+        ['เมนูของหวาน', 'C01', 'กล้วยบวดชี', 82.50, 4.13, 20, 106.63],
+    ];
+
+    const sheet2 = [
+        titleRow,
+        headerRow,
+        ['เมนูทอด', 'A01', 'ไก่ทอดน้ำปลา', 124.30, 6.22, 20, 150.52],
+        ['', 'A02', 'ไข่ลูกเขย', 76.08, 3.80, 20, 99.88],
+        blankRow,
+        ['เมนูข้าว', 'B01', 'ข้าวสวย', 44.00, 2.20, 20, 66.20],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheet1), 'ไทยเซ็ต 3000');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheet2), 'ไทยเซ็ต 3500');
+    XLSX.writeFile(wb, 'ตัวอย่างนำเข้าต้นทุน.xlsx');
+});
+
+document.getElementById('importFileInput').addEventListener('change', function () {
+    document.getElementById('btnParseFile').disabled = !this.files.length;
+    document.getElementById('sheetMappingZone').classList.add('d-none');
+    document.getElementById('importSummaryZone').classList.add('d-none');
+});
+
+document.getElementById('btnParseFile').addEventListener('click', function () {
+    const file = document.getElementById('importFileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            importWorkbookSheets = {};
+            workbook.SheetNames.forEach(function (sheetName) {
+                importWorkbookSheets[sheetName] = parseCostSheet(workbook.Sheets[sheetName]);
+            });
+            renderSheetMapping();
+        } catch (err) {
+            console.error(err);
+            alert('อ่านไฟล์ Excel ไม่สำเร็จ: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// อ่าน sheet แบบไม่ผูกตำแหน่งแถว/คอลัมน์ตายตัว หาแถวหัวตารางจากคำว่า "เมนู" แล้วจับคอลัมน์จากชื่อหัวตาราง
+function parseCostSheet(ws) {
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+    let headerRowIdx = -1, idxType = -1, idxName = -1, idxCost = -1;
+
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].map(c => String(c).trim());
+        const ni = cells.indexOf('เมนู');
+        if (ni !== -1) {
+            headerRowIdx = i;
+            idxType = cells.indexOf('หมวด');
+            idxName = ni;
+            idxCost = cells.indexOf('Total Cost');
+            break;
+        }
+    }
+    if (headerRowIdx === -1 || idxName === -1 || idxCost === -1) return [];
+
+    // คอลัมน์ "หมวด" มี 2 แบบที่เจอในไฟล์จริง:
+    //  1) ไฟล์ไทยเซ็ต: แถวแรกของกลุ่มมีป้ายลำดับคอร์ส ("รายการที่1") แล้วแถวถัดไปมีชื่อหมวดจริง
+    //     ("เมนูแกง/เมนูต้ม" ฯลฯ) ซึ่งครอบคลุมทั้งกลุ่ม (รวมแถวแรกด้วย) — กรณีนี้ใช้ชื่อหมวดจริงเป็นหลัก
+    //     แต่บางกลุ่มท้ายๆ (เช่น ข้าว/ของหวาน) ดันไม่มีชื่อหมวดจริงตามมาเลย เหลือแต่ป้ายลำดับคอร์สเปล่าๆ
+    //     — กรณีนี้ "รายการที่N" ไม่ใช่ชื่อหมวดที่ระบบใช้จริงสำหรับไทยเซ็ต เลยต้องปล่อยว่างให้กรอกเอง
+    //  2) ไฟล์โต๊ะจีน: ทุกกลุ่มมีแค่ป้ายลำดับคอร์ส ("รายการที่1"..."รายการที่6") ไม่มีชื่อหมวดจริงเลยทั้งชีท
+    //     ซึ่งตรงกับชื่อประเภทอาหารที่ใช้จริงในระบบสำหรับหมวดโต๊ะจีนอยู่แล้ว ("รายการที่ 1" ฯลฯ)
+    //     กรณีนี้ต้องใช้ป้ายลำดับคอร์สนั่นแหละเป็นชื่อหมวด ไม่ใช่ทิ้งไปเฉยๆ
+    // แยก 2 กรณีนี้ด้วยการดูทั้งชีท: ถ้าไม่มีกลุ่มไหนในชีทมีชื่อหมวดจริงเลย (ทุกกลุ่มใช้ป้ายลำดับคอร์สล้วนๆ)
+    // แปลว่าชีทนี้ใช้ป้ายลำดับคอร์สเป็นชื่อหมวดจริง (แบบโต๊ะจีน) — แต่ถ้าชีทมีชื่อหมวดจริงอยู่แล้วในกลุ่มส่วนใหญ่
+    // กลุ่มที่เหลือป้ายลำดับคอร์สเปล่าๆ ถือเป็นข้อมูลไม่ครบ (แบบไทยเซ็ต) ต้องให้ผู้ใช้กรอกเอง ไม่เดาให้
+    const courseLabelPattern = /^รายการที่\s*(\d+)$/;
+    const blocks = []; // { items: [{name, cost}], realType, courseLabelType }
+    let block = [];
+    let realType = '';
+    let courseLabelType = '';
+
+    function flushBlock() {
+        if (!block.length) return;
+        blocks.push({ items: block, realType, courseLabelType });
+        block = [];
+        realType = '';
+        courseLabelType = '';
+    }
+
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const typeRaw = (idxType !== -1 ? String(r[idxType] ?? '').trim() : '');
+        const name = String(r[idxName] ?? '').trim();
+        const cost = parseFloat(r[idxCost]);
+
+        if (!name || isNaN(cost)) {
+            flushBlock(); // แถวคั่นกลุ่ม/แถวว่าง = จบกลุ่มปัจจุบัน
+            continue;
+        }
+
+        if (typeRaw) {
+            const courseMatch = typeRaw.match(courseLabelPattern);
+            if (courseMatch) {
+                if (!courseLabelType) courseLabelType = 'รายการที่ ' + courseMatch[1];
+            } else {
+                realType = typeRaw; // ชื่อหมวดจริง มาทีหลังก็ทับป้ายลำดับคอร์สได้เสมอ
+            }
+        }
+        block.push({ name, cost: Math.round(cost * 100) / 100 });
+    }
+    flushBlock();
+
+    // ทั้งชีทไม่มีกลุ่มไหนมีชื่อหมวดจริงเลย = ชีทนี้ใช้ป้ายลำดับคอร์สเป็นชื่อหมวดจริง (แบบโต๊ะจีน)
+    const sheetUsesCourseLabelsOnly = blocks.length > 0 && blocks.every(b => !b.realType);
+
+    const parsed = [];
+    blocks.forEach(b => {
+        const finalType = b.realType || (sheetUsesCourseLabelsOnly ? b.courseLabelType : '');
+        b.items.forEach(item => parsed.push({ type_name: finalType, menu_name: item.name, cost: item.cost }));
+    });
+
+    return parsed;
+}
+
+// เดากลุ่มอาหารจากตัวเลขในชื่อชีท เทียบกับตัวเลขในชื่อกลุ่มอาหารที่มีอยู่แล้ว
+function guessCategoryId(sheetName) {
+    const m = sheetName.match(/\d[\d,]*/);
+    if (!m) return '';
+    const digits = m[0].replace(/,/g, '');
+    const found = importCategories.find(c => c.category_name.replace(/[^\d]/g, '') === digits);
+    return found ? found.id : '';
+}
+
+function renderSheetMapping() {
+    const zone = document.getElementById('sheetMappingList');
+    zone.innerHTML = '';
+    const catOptions = importCategories.map(c => `<option value="${c.id}">${escapeHtml(c.category_name)}</option>`).join('');
+
+    Object.keys(importWorkbookSheets).forEach(function (sheetName) {
+        const rows = importWorkbookSheets[sheetName];
+        const guessId = guessCategoryId(sheetName);
+        const div = document.createElement('div');
+        div.className = 'd-flex align-items-start gap-2 mb-2 p-2 border rounded-2 bg-white';
+        div.innerHTML = `
+            <input type="checkbox" class="form-check-input sheet-import-check mt-1" data-sheet="${escapeHtml(sheetName)}" ${rows.length ? 'checked' : ''} ${rows.length ? '' : 'disabled'}>
+            <div class="flex-grow-1">
+                <div class="small fw-semibold">${escapeHtml(sheetName)} <span class="text-muted">(${rows.length} เมนู)</span>${rows.length ? '' : ' <span class="text-danger">(ไม่พบคอลัมน์ที่ต้องใช้)</span>'}</div>
+                <select class="form-select form-select-sm sheet-category-select" data-sheet="${escapeHtml(sheetName)}">
+                    <option value="">-- เลือกกลุ่มอาหาร --</option>
+                    ${catOptions}
+                </select>
+            </div>`;
+        zone.appendChild(div);
+        if (guessId) {
+            div.querySelector('.sheet-category-select').value = guessId;
+        }
+    });
+
+    document.getElementById('sheetMappingZone').classList.remove('d-none');
+    document.getElementById('importSummaryZone').classList.add('d-none');
+    document.getElementById('importPreviewBody').innerHTML =
+        '<tr><td colspan="5" class="text-center text-muted py-4">เลือกกลุ่มอาหารให้ครบ แล้วกด "สร้างตัวอย่างก่อนนำเข้า"</td></tr>';
+}
+
+document.getElementById('btnGeneratePreview').addEventListener('click', function () {
+    const checks = document.querySelectorAll('.sheet-import-check');
+    const finalRows = [];
+    let missingMap = false;
+
+    checks.forEach(function (chk) {
+        if (!chk.checked) return;
+        const sheetName = chk.getAttribute('data-sheet');
+        const sel = document.querySelector('.sheet-category-select[data-sheet="' + CSS.escape(sheetName) + '"]');
+        const catId = sel.value;
+        if (!catId) { missingMap = true; sel.classList.add('is-invalid'); return; }
+        sel.classList.remove('is-invalid');
+        const catName = (importCategories.find(c => String(c.id) === String(catId)) || {}).category_name || '';
+        importWorkbookSheets[sheetName].forEach(function (row) {
+            finalRows.push({
+                category_id: parseInt(catId, 10),
+                category_name: catName,
+                type_name: row.type_name,
+                menu_name: row.menu_name,
+                cost: row.cost
+            });
+        });
+    });
+
+    if (missingMap) {
+        alert('กรุณาเลือกกลุ่มอาหารให้ครบทุกชีทที่ติ๊กเลือกไว้');
+        return;
+    }
+    if (!finalRows.length) {
+        alert('ไม่มีรายการให้นำเข้า กรุณาติ๊กเลือกอย่างน้อย 1 ชีท');
+        return;
+    }
+
+    renderPreview(finalRows);
+});
+
+function renderPreview(finalRows) {
+    const typeLookup = {}; // "catId|typeName" -> type id
+    importMenuTypes.forEach(function (t) {
+        typeLookup[t.category_id + '|' + t.type_name.trim()] = t.id;
+    });
+    const itemLookup = {}; // "typeId|menuName" -> {id, cost}
+    importMenuItems.forEach(function (m) {
+        itemLookup[m.menu_type_id + '|' + m.menu_items.trim()] = { id: m.id, cost: parseFloat(m.cost_per_pax) || 0 };
+    });
+
+    let newCount = 0, updateCount = 0, unchangedCount = 0, unresolvedCount = 0;
+    const newTypeSet = new Set();
+
+    const bodyRows = finalRows.map(function (row, idx) {
+        const typeNameTrim = row.type_name.trim();
+
+        if (typeNameTrim === '') {
+            unresolvedCount++;
+            return `<tr data-row-idx="${idx}">
+                <td class="small">${escapeHtml(row.category_name)}</td>
+                <td class="small"><input type="text" class="form-control form-control-sm import-type-fix is-invalid" data-idx="${idx}" placeholder="ระบุหมวด เช่น เมนูข้าว"></td>
+                <td class="small">${escapeHtml(row.menu_name)}</td>
+                <td class="small text-end">${row.cost.toFixed(2)}</td>
+                <td><span class="badge bg-danger-subtle text-danger">ต้องระบุหมวดก่อน</span></td>
+            </tr>`;
+        }
+
+        const typeKey = row.category_id + '|' + typeNameTrim;
+        const typeId = typeLookup[typeKey];
+        let statusHtml;
+
+        if (typeId === undefined) {
+            newTypeSet.add(row.category_name + ' / ' + row.type_name);
+            newCount++;
+            statusHtml = '<span class="badge bg-primary-subtle text-primary">ใหม่ (สร้างประเภท+เมนู)</span>';
+        } else {
+            const itemKey = typeId + '|' + row.menu_name.trim();
+            const existing = itemLookup[itemKey];
+            if (!existing) {
+                newCount++;
+                statusHtml = '<span class="badge bg-primary-subtle text-primary">เมนูใหม่</span>';
+            } else if (Math.abs(existing.cost - row.cost) >= 0.005) {
+                updateCount++;
+                statusHtml = `<span class="badge bg-warning-subtle text-warning-emphasis">อัปเดต ${existing.cost.toFixed(2)} &rarr; ${row.cost.toFixed(2)}</span>`;
+            } else {
+                unchangedCount++;
+                statusHtml = '<span class="badge bg-light text-muted border">ไม่เปลี่ยนแปลง</span>';
+            }
+        }
+
+        return `<tr data-row-idx="${idx}">
+            <td class="small">${escapeHtml(row.category_name)}</td>
+            <td class="small">${escapeHtml(row.type_name)}</td>
+            <td class="small">${escapeHtml(row.menu_name)}</td>
+            <td class="small text-end">${row.cost.toFixed(2)}</td>
+            <td>${statusHtml}</td>
+        </tr>`;
+    });
+
+    document.getElementById('importPreviewBody').innerHTML =
+        bodyRows.join('') || '<tr><td colspan="5" class="text-center text-muted py-4">ไม่มีรายการ</td></tr>';
+
+    document.getElementById('importSummaryText').innerHTML =
+        `รวม <b>${finalRows.length}</b> รายการ &nbsp;|&nbsp; ` +
+        `<span class="text-primary">เมนูใหม่ ${newCount}</span> &nbsp;|&nbsp; ` +
+        `<span class="text-warning-emphasis">อัปเดตราคา ${updateCount}</span> &nbsp;|&nbsp; ` +
+        `<span class="text-muted">ไม่เปลี่ยนแปลง ${unchangedCount}</span>` +
+        (newTypeSet.size ? `<br><span class="text-danger small">จะสร้างประเภทอาหารใหม่ ${newTypeSet.size} รายการ: ${[...newTypeSet].map(escapeHtml).join(', ')}</span>` : '') +
+        (unresolvedCount ? `<br><span class="text-danger fw-bold small" id="unresolvedCountText">⚠ มี ${unresolvedCount} รายการที่ไม่มี "หมวด" ในไฟล์ Excel — กรุณาพิมพ์ระบุในตารางด้านขวาก่อนยืนยันนำเข้า</span>` : '');
+
+    importFinalRows = finalRows;
+    document.getElementById('importSummaryZone').classList.remove('d-none');
+    updateConfirmButtonState();
+}
+
+// ผูก event ให้ช่องกรอกหมวดที่ขาดหาย อัปเดตข้อมูลจริง + เปิด/ปิดปุ่มยืนยันตามความครบถ้วน
+document.getElementById('importPreviewBody').addEventListener('input', function (e) {
+    if (!e.target.classList.contains('import-type-fix')) return;
+    const idx = parseInt(e.target.getAttribute('data-idx'), 10);
+    const val = e.target.value.trim();
+    importFinalRows[idx].type_name = val;
+    e.target.classList.toggle('is-invalid', val === '');
+    updateConfirmButtonState();
+});
+
+function updateConfirmButtonState() {
+    const hasUnresolved = importFinalRows.some(r => r.type_name.trim() === '');
+    document.getElementById('btnConfirmImport').disabled = hasUnresolved;
+}
+
+document.getElementById('btnConfirmImport').addEventListener('click', function () {
+    if (!importFinalRows.length) return;
+    if (importFinalRows.some(r => r.type_name.trim() === '')) {
+        alert('กรุณาระบุ "หมวด" ให้ครบทุกรายการที่ขึ้นสีแดงก่อนยืนยันนำเข้า');
+        return;
+    }
+    if (!confirm('ยืนยันนำเข้าข้อมูลต้นทุน ' + importFinalRows.length + ' รายการ? ระบบจะอัปเดต/เพิ่มราคาทุนต่อหัวในระบบทันที')) return;
+
+    const btn = this;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังนำเข้า...';
+
+    fetch('api/import_food_cost.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            rows: importFinalRows.map(r => ({
+                category_id: r.category_id,
+                type_name: r.type_name,
+                menu_name: r.menu_name,
+                cost: r.cost
+            }))
+        })
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success') {
+                let msg = `นำเข้าสำเร็จ\nเพิ่มใหม่: ${res.inserted} รายการ\nอัปเดตราคา: ${res.updated} รายการ\nไม่เปลี่ยนแปลง: ${res.unchanged} รายการ\nสร้างประเภทอาหารใหม่: ${res.types_created} รายการ`;
+                if (res.errors && res.errors.length) {
+                    msg += `\n\nข้อผิดพลาด ${res.errors.length} รายการ:\n` + res.errors.slice(0, 10).join('\n');
+                }
+                alert(msg);
+                location.href = 'setting.php?active_tab=import';
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่ทราบสาเหตุ'));
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('การเชื่อมต่อล้มเหลว');
+            btn.disabled = false;
+            btn.innerHTML = original;
+        });
+});
 </script>
 
 <?php include "footer.php"; ?>

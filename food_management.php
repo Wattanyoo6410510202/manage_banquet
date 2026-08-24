@@ -40,6 +40,37 @@ if (isset($_POST['action'])) {
         exit;
     }
 
+    if ($_POST['action'] == 'delete_multi') {
+
+        // 🚫 1. ด่านแรก: เช็คสิทธิ์ Viewer ห้ามลบรายละเอียดเมนู
+        if ($user_role === 'viewer') {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'ขออภัย! สิทธิ์ Viewer ไม่สามารถลบรายการอาหารได้'
+            ]);
+            exit;
+        }
+
+        // 🛡️ 2. Clean ID ทุกตัวให้ชัวร์ว่าเป็นตัวเลข (ป้องกัน SQL Injection)
+        $ids = $_POST['ids'] ?? [];
+        $ids = array_filter(array_map('intval', is_array($ids) ? $ids : []), fn($v) => $v > 0);
+
+        if (!empty($ids)) {
+            $id_list = implode(',', $ids);
+            if ($conn->query("DELETE FROM function_menu_details WHERE id IN ($id_list)")) {
+                echo json_encode(['status' => 'success', 'deleted' => array_values($ids)]);
+            } else {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'ลบไม่สำเร็จ: ' . $conn->error
+                ]);
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'ไม่พบ ID รายการที่ต้องการลบ']);
+        }
+        exit;
+    }
+
     if ($_POST['action'] == 'save') {
         $id = intval($_POST['id'] ?? 0);
         $menu_type_id = intval($_POST['menu_type_id'] ?? 0);
@@ -195,6 +226,13 @@ require_once "header.php";
                     </h5>
 
                     <div class="btn-group">
+                        <?php if ($user_role !== 'viewer'): ?>
+                            <button type="button" id="btnDeleteSelected"
+                                class="btn btn-link btn-sm text-danger text-decoration-none p-1" title="ลบรายการที่เลือก" disabled>
+                                <i class="bi bi-trash3 fs-5"></i>
+                                <span class="d-none d-md-inline small ms-1">ลบที่เลือก (<span id="selectedCount">0</span>)</span>
+                            </button>
+                        <?php endif; ?>
                         <button type="button" id="customExcel"
                             class="btn btn-link btn-sm text-success text-decoration-none p-1" title="Excel">
                             <i class="bi bi-file-earmark-excel fs-5"></i>
@@ -226,6 +264,9 @@ require_once "header.php";
                         <table id="menuTable" class="table table-hover align-middle w-100">
                             <thead class="table-dark">
                                 <tr class="small text-uppercase">
+                                    <?php if ($user_role !== 'viewer'): ?>
+                                        <th class="text-center"><input type="checkbox" id="checkAll" class="form-check-input"></th>
+                                    <?php endif; ?>
                                     <th>รายการเมนู</th>
                                     <th class="text-center">จำนวน</th>
                                     <th class="text-center">ราคาขาย/หัว</th>
@@ -238,6 +279,11 @@ require_once "header.php";
                             <tbody class="small">
                                 <?php while ($row = $menus->fetch_assoc()): ?>
                                     <tr id="row-<?= $row['id'] ?>">
+                                        <?php if ($user_role !== 'viewer'): ?>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input row-check" value="<?= $row['id'] ?>">
+                                            </td>
+                                        <?php endif; ?>
                                         <td>
                                             <div>
                                                 <small
@@ -285,21 +331,31 @@ require_once "header.php";
 
 <script>
     let menuTable;
+    const hasCheckbox = <?= $user_role !== 'viewer' ? 'true' : 'false' ?>;
+    const colOffset = hasCheckbox ? 1 : 0;
+
+    function updateSelectedCount() {
+        if (!hasCheckbox) return;
+        let n = $('.row-check:checked').length;
+        $('#selectedCount').text(n);
+        $('#btnDeleteSelected').prop('disabled', n === 0);
+    }
 
     $(document).ready(function () {
         // ตั้งค่า DataTable
         menuTable = $('#menuTable').DataTable({
-            "order": [[0, "asc"]],
+            "order": [[colOffset, "asc"]],
             "pageLength": 100,
             "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
             },
             "columnDefs": [
-                { "orderable": false, "targets": [6] },
-                { "className": "text-center", "targets": [1, 2, 3] },
+                ...(hasCheckbox ? [{ "orderable": false, "className": "text-center", "targets": [0] }] : []),
+                { "orderable": false, "targets": [6 + colOffset] },
+                { "className": "text-center", "targets": [1 + colOffset, 2 + colOffset, 3 + colOffset] },
                 {
-                    "targets": 0,
+                    "targets": colOffset,
                     "render": function (data, type) {
                         if (type === 'export' || type === 'print') {
                             return $(data).text().trim();
@@ -313,10 +369,56 @@ require_once "header.php";
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                 "<'d-none'B>",
             "buttons": [
-                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5], modifier: { search: 'applied' } } },
-                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5], modifier: { search: 'applied' } } }
+                { extend: 'excel', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5].map(c => c + colOffset), modifier: { search: 'applied' } } },
+                { extend: 'print', title: 'รายการเมนูอาหาร', exportOptions: { columns: [0, 1, 2, 3, 4, 5].map(c => c + colOffset), modifier: { search: 'applied' } } }
             ]
         });
+
+        // --- Checkbox: เลือกทั้งหมด / เลือกทีละแถว ---
+        if (hasCheckbox) {
+            $(document).on('change', '#checkAll', function () {
+                let checked = $(this).is(':checked');
+                // เลือกเฉพาะแถวที่แสดงผลอยู่ (หลังกรอง/ค้นหา)
+                menuTable.rows({ search: 'applied' }).nodes().to$().find('.row-check').prop('checked', checked);
+                updateSelectedCount();
+            });
+
+            $(document).on('change', '.row-check', function () {
+                if (!$(this).is(':checked')) {
+                    $('#checkAll').prop('checked', false);
+                }
+                updateSelectedCount();
+            });
+
+            $('#btnDeleteSelected').on('click', function () {
+                let ids = $('.row-check:checked').map(function () { return $(this).val(); }).get();
+                if (ids.length === 0) return;
+                if (!confirm('ต้องการลบ ' + ids.length + ' รายการที่เลือก? เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) return;
+
+                let fd = new FormData();
+                fd.append('action', 'delete_multi');
+                ids.forEach(id => fd.append('ids[]', id));
+
+                fetch('food_management.php', { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.status === 'success') {
+                            (res.deleted || ids).forEach(id => {
+                                menuTable.row($('#row-' + id)).remove();
+                            });
+                            menuTable.draw(false);
+                            $('#checkAll').prop('checked', false);
+                            updateSelectedCount();
+                        } else {
+                            alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่สามารถลบข้อมูลได้'));
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error:', err);
+                        alert('การเชื่อมต่อล้มเหลว');
+                    });
+            });
+        }
 
         // --- ส่วนที่เพิ่ม/แก้ไข: AJAX Submit สำหรับ บันทึก & แก้ไข ---
         $('#menuForm').on('submit', function (e) {
@@ -339,7 +441,11 @@ require_once "header.php";
                             r.find('.menu-text').html($('#m_items').val().replace(/\n/g, '<br>'));
                         } else {
                             // --- กรณีเพิ่มใหม่: สร้างแถวใหม่เข้า DataTables ทันที ---
-                            let newRow = menuTable.row.add([
+                            let newRowData = [];
+                            if (hasCheckbox) {
+                                newRowData.push(`<input type="checkbox" class="form-check-input row-check" value="${res.id}">`);
+                            }
+                            let newRow = menuTable.row.add(newRowData.concat([
                                 // 0. รายการเมนู
                                 `<small class="text-muted menu-text">${$('#m_items').val().replace(/\n/g, '<br>')}</small>`,
 
@@ -377,15 +483,18 @@ require_once "header.php";
         <i class="bi bi-trash"></i>
     </button>
 </div>`
-                            ]).draw(false).node();
+                            ])).draw(false).node();
 
                             $(newRow).attr('id', 'row-' + res.id);
-                            $(newRow).find('td:eq(0)').addClass('menu-items');
-                            $(newRow).find('td:eq(1)').addClass('text-center col-pax');
-                            $(newRow).find('td:eq(2)').addClass('text-center fw-bold text-primary col-price');
-                            $(newRow).find('td:eq(3)').addClass('text-center fw-bold text-danger col-cost');
-                            $(newRow).find('td:eq(4)').addClass('col-cat');
-                            $(newRow).find('td:eq(6)').addClass('text-center');
+                            $(newRow).find('td:eq(' + (0 + colOffset) + ')').addClass('menu-items');
+                            $(newRow).find('td:eq(' + (1 + colOffset) + ')').addClass('text-center col-pax');
+                            $(newRow).find('td:eq(' + (2 + colOffset) + ')').addClass('text-center fw-bold text-primary col-price');
+                            $(newRow).find('td:eq(' + (3 + colOffset) + ')').addClass('text-center fw-bold text-danger col-cost');
+                            $(newRow).find('td:eq(' + (4 + colOffset) + ')').addClass('col-cat');
+                            $(newRow).find('td:eq(' + (6 + colOffset) + ')').addClass('text-center');
+                            if (hasCheckbox) {
+                                $(newRow).find('td:eq(0)').addClass('text-center');
+                            }
                         }
 
                         resetMenuForm();
@@ -527,6 +636,7 @@ require_once "header.php";
                     if (res.status === 'success') {
                         // 2. ถ้าลบใน DB สำเร็จ ให้ลบแถวออกจาก DataTables ทันที
                         menuTable.row($('#row-' + id)).remove().draw(false);
+                        updateSelectedCount();
 
                         // (Optional) อยากให้แจ้งเตือนว่าลบเสร็จแล้วก็ใส่เพิ่มตรงนี้ได้
                         // alert('ลบข้อมูลเรียบร้อยแล้ว');
@@ -542,7 +652,7 @@ require_once "header.php";
     }
 
     function filterByCategory(val) {
-        menuTable.column(4).search(val).draw();
+        menuTable.column(4 + colOffset).search(val).draw();
     }
 </script>
 
