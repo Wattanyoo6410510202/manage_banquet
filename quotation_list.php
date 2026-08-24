@@ -44,7 +44,6 @@ $workflow_statuses = [
     'เปิด Function (BEO)' => ['class' => 'bg-primary-subtle text-primary', 'icon' => 'bi-calendar-check'],
     'Lost Sale' => ['class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-x-circle'],
     'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'icon' => 'bi-trash'],
-    'Freeze' => ['class' => 'bg-secondary-subtle text-secondary', 'icon' => 'bi-snow2'],
 ];
 
 // 2) จัดหน่วยกลุ่ม (โปรเจกต์ = 1 หน่วย, ใบเดี่ยว = 1 หน่วย) แล้วตัดเฉพาะหน้าปัจจุบัน

@@ -22,17 +22,10 @@ $range_end   = date('Y-m-d H:i:s', (strtotime($_GET['end']   ?? '+2 month') ?: t
 
 $events = [];
 
-/* ---------- 0. Auto-freeze ใบ QT ที่วันงานซ้อนกับใบที่อนุมัติแล้ว ----------
-   ทำเป็น UPDATE คำสั่งเดียว (เดิมเป็น loop UPDATE ทีละใบทุกครั้งที่โหลดปฏิทิน) */
-mysqli_query($conn, "UPDATE quotations q1
-    JOIN (
-        SELECT DISTINCT event_date FROM quotations
-        WHERE status = 'approved' AND event_date IS NOT NULL AND event_date != ''
-    ) a ON q1.event_date = a.event_date
-    SET q1.workflow_status = 'Freeze'
-    WHERE LOWER(TRIM(q1.status)) != 'approved'
-      AND q1.status NOT IN ('Cancelled')
-      AND (q1.workflow_status IS NULL OR q1.workflow_status = '' OR q1.workflow_status = 'Draft')");
+/* Auto-freeze ถูกถอดออกแล้ว — ไม่เขียน workflow_status='Freeze' ลง DB อีก
+   (เดิม UPDATE ทุกครั้งที่โหลดปฏิทิน) แต่ยังเตือนบนปฏิทินแบบคำนวณสด
+   ที่ foreach ของ quotations ด้านล่าง: ใบไหน event_date ชนกับใบที่ approved
+   จะแสดง ❌ สีแดง "กรุณาเปลี่ยนวันหรือกด Freeze" โดยไม่แตะฐานข้อมูล */
 
 function cal_color($st) {
     if ($st === 'pending') return '#ffc107';
@@ -183,10 +176,11 @@ foreach ($qt_rows as $row) {
         $status_text = 'QT (อนุมัติ)';
     }
 
-    /* freeze ถ้า DB บอก Freeze อยู่แล้ว หรือวันงานซ้อนกับใบที่อนุมัติ (เห็นผลทันทีไม่ต้องรีเฟรช) */
-    $is_freeze = ($row['workflow_status'] ?? '') === 'Freeze';
+    /* freeze ถ้า DB บอก Freeze อยู่แล้ว หรือวันงานซ้อนกับใบที่อนุมัติ (เห็นผลทันทีไม่ต้องรีเฟรช)
+       แต่ใบที่ approved เองห้ามถูก freeze — ไม่งั้นจะชนวันของตัวเองแล้วขึ้นแดงเหมือนยกเลิก */
+    $is_freeze = ($st !== 'approved') && (($row['workflow_status'] ?? '') === 'Freeze');
     $d = $row['event_date'] ?? '';
-    if (!$is_freeze && $d && isset($date_approved_map[$d])) {
+    if (!$is_freeze && $st !== 'approved' && $d && isset($date_approved_map[$d])) {
         $is_freeze = true;
     }
     if ($is_freeze) {
