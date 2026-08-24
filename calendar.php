@@ -187,11 +187,12 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#198754"></i>จบงานแล้ว</span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#fd7e14"></i>QT อนุมัติ</span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#6c757d"></i>QT ฉบับร่าง</span>
-                        <span class="cal-legend-item"><i class="cal-dot" style="background:#dc3545"></i>ยกเลิก / ต้องแก้ไข</span>
+                        <span class="cal-legend-item"><i class="cal-dot" style="background:#dc3545"></i>ยกเลิก</span>
+                        <span class="cal-legend-item"><span class="cal-bubble"><i class="bi bi-chat-dots-fill me-1"></i>วันซ้อนกัน</span></span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#6f42c1"></i>จองห้องประชุม</span>
                     </div>
                     <div class="cal-legend cal-legend-type">
-                        <span class="cal-legend-label">ไอคอน/ความเข้มพื้นหลัง = ประเภท:</span>
+                        <span class="cal-legend-label">ไอคอน/รูปแบบ = ประเภท:</span>
                         <span class="cal-legend-item"><i class="cal-swatch cal-chip-eo"></i><i class="bi bi-journal-bookmark-fill me-1"></i>งานจัดเลี้ยง (EO)</span>
                         <span class="cal-legend-item"><i class="cal-swatch cal-chip-qt"></i><i class="bi bi-file-earmark-text-fill me-1"></i>ใบเสนอราคา (ตัวเอียง)</span>
                         <span class="cal-legend-item"><i class="cal-swatch cal-chip-rb"></i><i class="bi bi-door-closed-fill me-1"></i>จองห้องประชุม</span>
@@ -456,20 +457,37 @@ document.addEventListener('DOMContentLoaded', function () {
             const color = arg.event.backgroundColor || arg.event.extendedProps.color || '#0dcaf0';
             const title = (arg.event.title || '').replace(/</g, '&lt;');
 
-            // แยก "ประเภท" ออกจาก "สถานะ" ด้วยคนละมิติ: สถานะ = สีขอบ (ตาม legend เดิม),
-            // ประเภท = ความเข้ม/หนาของพื้นหลัง — EO จางสุด, ใบเสนอราคากลาง, จองห้องเข้มสุด (เพราะล็อกห้องจริง)
+            // สถานะ = สีพื้นหลังทั้งแท็บ (ตาม legend), ประเภท = ไอคอน + การเอียง/แถบซ้ายหนา
+            // EO = ปกติ, QT = ตัวเอียง, จองห้อง = แถบซ้ายหนา (เพราะล็อกห้องจริง)
             let typeClass = 'cal-chip-eo';
             let typeIcon = 'bi-journal-bookmark-fill';
             if (arg.event.id.startsWith('rb_')) { typeClass = 'cal-chip-rb'; typeIcon = 'bi-door-closed-fill'; }
             else if (arg.event.id.startsWith('qt_')) { typeClass = 'cal-chip-qt'; typeIcon = 'bi-file-earmark-text-fill'; }
 
+            // สีสถานะระบายทั้งแท็บ — เลือกสีตัวหนังสือตามความสว่างของพื้นหลัง (สีอ่อนใช้ตัวเข้ม สีเข้มใช้ตัวขาว)
+            let textColor = '#fff';
+            try {
+                const hex = color.startsWith('#') ? color.substring(1) : '';
+                if (hex.length === 3 || hex.length === 6) {
+                    const full = hex.length === 3 ? hex.split('').map(ch => ch + ch).join('') : hex;
+                    const r = parseInt(full.substring(0, 2), 16);
+                    const g = parseInt(full.substring(2, 4), 16);
+                    const b = parseInt(full.substring(4, 6), 16);
+                    if ((0.299 * r + 0.587 * g + 0.114 * b) > 170) textColor = '#3a3a3a';
+                }
+            } catch (e) {}
+
+            // วันซ้อนกับงานที่อนุมัติแล้ว → โชว์ bubble chat "วันซ้อนกัน" (ไม่ใช่ยกเลิก)
+            const isOverlap = !!(arg.event.extendedProps && arg.event.extendedProps.overlap);
+
             // สำคัญ: ต้องมี overflow:hidden ที่ตัว wrapper และ min-width:0 ที่ลูกใน flex
             // ไม่งั้นข้อความยาวจะ "ล้น" ทะลุไปทับช่องวันถัดไปแทนที่จะถูกตัดด้วย ellipsis
             return {
-                html: `<div class="cal-chip ${typeClass}" style="border-left-color:${color};">
-                    <i class="bi ${typeIcon} cal-chip-icon" style="color:${color};"></i>
-                    ${timeStr ? `<span class="cal-chip-time" style="color:${color};">${timeStr}</span>` : ''}
-                    <span class="cal-chip-title">${title}</span>
+                html: `<div class="cal-chip ${typeClass}" style="background:${color};color:${textColor};">
+                    <i class="bi ${typeIcon} cal-chip-icon" style="color:${textColor};"></i>
+                    ${timeStr ? `<span class="cal-chip-time" style="color:${textColor};">${timeStr}</span>` : ''}
+                    ${isOverlap ? '<span class="cal-bubble"><i class="bi bi-chat-dots-fill me-1"></i>วันซ้อนกัน</span>' : ''}
+                    <span class="cal-chip-title" style="color:${textColor};">${title}</span>
                 </div>`
             };
         },
@@ -1014,6 +1032,7 @@ function renderQtRow(ev) {
     else if (st === 'in progress') badgeClass = 'bg-primary';
     else if (st === 'completed') badgeClass = 'bg-success';
     else if (st === 'cancelled') badgeClass = 'bg-danger';
+    else if (props.overlap) badgeClass = 'bg-warning text-dark';
 
     timetableBody.innerHTML += `
         <tr data-event-id="${eid}">
@@ -1434,8 +1453,9 @@ function exportExcel() {
     .cal-legend-label { font-weight: 700; color: #5b6470; }
     .cal-swatch {
         display: inline-block; width: 20px; height: 12px; border-radius: 3px; flex-shrink: 0;
-        border-left: 3px solid #8a9099;
+        background: #f1f2f4; border-left: 3px solid #c9ccd1;
     }
+    .cal-swatch.cal-chip-rb { border-left-width: 5px; background: #ede4fa; }
 
     /* ===== ตัวปฏิทิน (FullCalendar) ===== */
     #calendar { font-size: 0.85rem; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
@@ -1463,24 +1483,29 @@ function exportExcel() {
     .fc-daygrid-event { padding: 0; }
     .fc-timegrid-event { padding: 2px 4px !important; }
 
-    /* กล่อง event แบบใหม่: แถบสีซ้าย(=สถานะ) + พื้นหลัง(=ประเภท) อ่านง่ายกว่าจุดเล็กๆ เดิม และตัดคำด้วย ellipsis เสมอ */
+    /* กล่อง event: พื้นหลังทั้งแท็บ = สีสถานะ (ระบายจาก JS) แยกประเภทด้วยไอคอน/เอียง/แถบหนา */
     .cal-chip {
         display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; box-sizing: border-box;
-        padding: 2px 6px 2px 7px; border-left: 3px solid #0dcaf0; border-radius: 3px;
+        padding: 2px 6px; border-radius: 3px;
         line-height: 1.5; overflow: hidden; white-space: nowrap;
     }
-    .cal-chip-icon { flex-shrink: 0; font-size: .62rem; opacity: .8; }
-    .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: .68rem; }
-    .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: .72rem; color: #2b2f36; }
-
-    /* 3 ประเภท แยกด้วย "ความเข้ม" ของพื้นหลัง ไม่ใช่สี (สีเก็บไว้บอกสถานะอย่างเดียว ไม่ให้ชนกัน) */
-    .cal-chip-eo { background: rgba(17, 19, 24, 0.045); }                    /* งานจัดเลี้ยง (EO) — จางสุด งานทั่วไป */
-    .cal-chip-eo:hover { background: rgba(17, 19, 24, 0.09); }
-    .cal-chip-qt { background: rgba(17, 19, 24, 0.11); font-style: italic; } /* ใบเสนอราคา — กลาง เอียงเล็กน้อยบอกว่ายังไม่ใช่งานจริง */
-    .cal-chip-qt:hover { background: rgba(17, 19, 24, 0.17); }
+    .cal-chip:hover { filter: brightness(.9); }
+    .cal-chip-icon { flex-shrink: 0; font-size: .62rem; opacity: .9; }
+    .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: .68rem; opacity: .95; }
+    .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: .72rem; }
+    .cal-chip-qt { font-style: italic; }                                     /* ใบเสนอราคา — เอียงบอกว่ายังไม่ใช่งานจริง */
     .cal-chip-qt .cal-chip-title { font-style: italic; }
-    .cal-chip-rb { background: rgba(111, 66, 193, 0.16); border-left-width: 5px; font-weight: 600; } /* จองห้อง — เข้มสุด+ขอบหนา เพราะล็อกห้องจริง */
-    .cal-chip-rb:hover { background: rgba(111, 66, 193, 0.26); }
+    .cal-chip-rb { border-left: 4px solid rgba(255,255,255,.6); font-weight: 600; } /* จองห้อง — แถบซ้ายหนา เพราะล็อกห้องจริง */
+
+    /* bubble chat เตือนวันซ้อนกับงานที่อนุมัติแล้ว (ไม่ใช่สถานะยกเลิก) */
+    .cal-bubble {
+        flex-shrink: 0; display: inline-flex; align-items: center;
+        background: #fff; color: #d03b3b !important;
+        border: 1px solid rgba(220, 53, 69, .5); border-radius: 999px;
+        padding: 0 6px; font-size: .58rem; font-weight: 700; line-height: 1.5;
+        box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap;
+    }
+    .cal-bubble .bi { font-size: .58rem; }
 
     /* "+N งาน" ให้ดูเป็นปุ่มเล็กๆ กดได้ชัดเจน แทนตัวหนังสือเปลือย */
     .fc .fc-daygrid-more-link {

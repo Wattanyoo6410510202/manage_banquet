@@ -177,21 +177,25 @@ foreach ($qt_rows as $row) {
     }
 
     /* freeze ถ้า DB บอก Freeze อยู่แล้ว หรือวันงานซ้อนกับใบที่อนุมัติ (เห็นผลทันทีไม่ต้องรีเฟรช)
-       แต่ใบที่ approved เองห้ามถูก freeze — ไม่งั้นจะชนวันของตัวเองแล้วขึ้นแดงเหมือนยกเลิก */
+       แต่ใบที่ approved เองห้ามถูก freeze — ไม่งั้นจะชนวันของตัวเอง */
     $is_freeze = ($st !== 'approved') && (($row['workflow_status'] ?? '') === 'Freeze');
+    $is_overlap = false;
     $d = $row['event_date'] ?? '';
     if (!$is_freeze && $st !== 'approved' && $d && isset($date_approved_map[$d])) {
         $is_freeze = true;
+        $is_overlap = true;
     }
-    if ($is_freeze) {
+    /* วันซ้อนกับใบที่อนุมัติ → เดิมระบายแดงทั้งแท็บ+❌ ทำให้ดูเหมือน "ยกเลิก"
+       ตอนนี้คงสีเดิมของใบไว้ แล้วส่ง overlap=1 ให้ปฏิทินแสดง bubble chat "วันซ้อนกัน" แทน */
+    if ($is_overlap) {
+        $color = ($st === 'draft' || $st === 'pending') ? '#6c757d' : '#fd7e14';
+        $status_text = 'วันซ้อนกับงานที่อนุมัติแล้ว';
+    } elseif ($is_freeze) {
         $color = '#dc3545';
         $status_text = 'กรุณาเปลี่ยนวันหรือกด Freeze';
     }
 
     $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
-    if ($is_freeze) {
-        $qt_title = "❌ " . $qt_title;
-    }
 
     $wf_status = $is_freeze ? 'Freeze' : (string) ($row['workflow_status'] ?? '');
     $ev_date = $row['event_date'] ?? '';
@@ -235,6 +239,7 @@ foreach ($qt_rows as $row) {
             'func_deposit' => number_format($row['func_deposit'] ?? 0, 2),
             'func_total_amount' => number_format($row['func_total_amount'] ?? 0, 2),
             'workflow_status' => $wf_status,
+            'overlap' => $is_overlap ? 1 : 0,
             'customer_signed' => (string) ($row['customer_signature'] ?? ''),
             'has_beo' => intval($row['beo_count'] ?? 0) > 0 ? '✓' : '-',
         ]
