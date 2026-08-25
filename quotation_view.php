@@ -13,15 +13,14 @@ $sql = "SELECT q.*,
                comp.company_name, comp.address as comp_address, comp.phone as comp_phone, comp.email as comp_email, comp.logo_path, comp.stamp_path,
                u_create.name as created_by_name,
                u_appr.name as approved_by_name,
-               s_create.path as creator_sig_path, -- ลายเซ็นคนทำ
-               s_appr.path as approver_sig_path    -- ลายเซ็นผู้อนุมัติ
+               s_create.path as creator_sig_path,
+               s_appr.path as approver_sig_path
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN functions f ON q.function_id = f.id
         LEFT JOIN companies comp ON q.company_id = comp.id
         LEFT JOIN users u_create ON q.created_by = u_create.id 
         LEFT JOIN users u_appr ON q.approved_by = u_appr.id
-        -- JOIN ตารางลายเซ็นโดยเทียบจาก users_id
         LEFT JOIN signatures s_create ON q.created_by = s_create.users_id
         LEFT JOIN signatures s_appr ON q.approved_by = s_appr.users_id
         WHERE q.id = $id";
@@ -35,70 +34,134 @@ if (!$quote) {
 // 2. ดึงรายการย่อย
 $sql_items = "SELECT * FROM quotation_items WHERE quote_id = $id ORDER BY id ASC";
 $items = $conn->query($sql_items);
+
+// 3. เช็คว่ามีการจ่ายมัดจำในหน้าบัญชี/ROI หรือยัง
+$func_id = intval($quote['function_id'] ?? 0);
+$deposit_cond = "quotation_id = $id";
+if ($func_id > 0) {
+    $deposit_cond .= " OR function_id = $func_id";
+}
+$res_dep = $conn->query("SELECT id FROM function_finance WHERE type = 'deposit' AND ($deposit_cond) LIMIT 1");
+$has_deposit = ($res_dep && $res_dep->num_rows > 0);
 ?>
 
 <div class="no-print"
     style="position: fixed; top: 100px; left: calc(50% + 105mm); transform: translateX(180px); z-index: 9999;">
-    <div class="bg-white p-2 rounded-pill  border border-gold-soft d-flex flex-column align-items-center gap-1">
+    <div class="position-relative">
+        <div class="bg-white p-2 rounded-pill border border-gold-soft d-flex flex-column align-items-center gap-1">
 
-        <button onclick="window.print()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="พิมพ์">
-            <i class="bi bi-printer-fill text-secondary fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">พิมพ์</span>
-        </button>
+            <button onclick="toggleCustomizePanel()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ปรับแต่งเอกสารก่อนพิมพ์">
+                <i class="bi bi-sliders text-secondary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">ปรับแต่ง</span>
+            </button>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <button onclick="window.location.href='signature_page.php?id=<?php echo $id; ?>'"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="จัดการลายเซ็น">
-            <i class="bi bi-pen-fill text-info fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">ลายเซ็น</span>
-        </button>
+            <button onclick="window.print()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="พิมพ์">
+                <i class="bi bi-printer-fill text-secondary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">พิมพ์</span>
+            </button>
 
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+            <button onclick="window.location.href='signature_page.php?id=<?php echo $id; ?>'"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="จัดการลายเซ็น">
+                <i class="bi bi-pen-fill text-info fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">ลายเซ็น</span>
+            </button>
 
-        <button onclick="downloadPDF(this)"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ดาวน์โหลด PDF">
-            <i class="bi bi-file-pdf-fill text-danger fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">PDF</span>
-        </button>
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+            <button onclick="downloadPDF(this)"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ดาวน์โหลด PDF">
+                <i class="bi bi-file-pdf-fill text-danger fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">PDF</span>
+            </button>
 
-        <button onclick="exportToWord()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ส่งออก Word">
-            <i class="bi bi-file-earmark-word-fill text-primary fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">Word</span>
-        </button>
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
+            <button onclick="exportToWord()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ส่งออก Word">
+                <i class="bi bi-file-earmark-word-fill text-primary fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">Word</span>
+            </button>
 
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
+            <button onclick="exportToDoc()"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ส่งออกเอกสาร">
+                <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">DOC</span>
+            </button>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+            <div class="hr-custom w-75 border-top opacity-25"></div>
 
-        <button onclick="exportToDoc()"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ส่งออกเอกสาร">
-            <i class="bi bi-file-earmark-richtext-fill text-warning fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">DOC</span>
-        </button>
+            <button onclick="sendPDFToCustomer(this)"
+                class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
+                title="ส่ง PDF ให้ลูกค้า">
+                <i class="bi bi-send-fill text-success fs-5"></i>
+                <span style="font-size: 10px;" class="fw-bold">ส่ง PDF</span>
+            </button>
 
-        <div class="hr-custom w-75 border-top opacity-25"></div>
+        </div>
 
-        <button onclick="sendPDFToCustomer(this)"
-            class="btn btn-link btn-sm text-dark text-decoration-none border-0 p-2 d-flex flex-column align-items-center custom-btn-pill"
-            title="ส่ง PDF ให้ลูกค้า">
-            <i class="bi bi-send-fill text-success fs-5"></i>
-            <span style="font-size: 10px;" class="fw-bold">ส่ง PDF</span>
-        </button>
+        <!-- Panel ปรับแต่งเอกสาร -->
+        <div id="customizePanel"
+            class="no-print bg-white shadow-lg rounded-3 border"
+            style="display: none; position: absolute; top: 0; right: calc(100% + 12px); width: 250px; z-index: 9999; padding: 14px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-1 text-gold"></i>ปรับแต่งเอกสาร</h6>
+                <button type="button" class="btn-close" onclick="toggleCustomizePanel()"></button>
+            </div>
+            <hr class="my-2">
 
+            <label class="form-label small fw-bold text-secondary mb-1 d-flex justify-content-between align-items-center">
+                <span>ขนาดตัวอักษร</span>
+                <span id="fontSizeLabel" class="badge bg-dark" style="font-size: 10px;">ปกติ (13px)</span>
+            </label>
+            <input type="range" class="form-range" id="fontSizeSlider" min="7" max="16" step="0.5" value="13">
+            <div class="d-flex justify-content-between text-muted mb-2" style="font-size: 10px;">
+                <span>เล็ก</span><span>ปกติ</span><span>ใหญ่</span>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="dividerToggle">
+                <label class="form-check-label small" for="dividerToggle">เส้นแบ่งระหว่างหัวข้อ</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="boldTitleToggle">
+                <label class="form-check-label small" for="boldTitleToggle">หัวข้อตัวหนา</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="shortTitleToggle">
+                <label class="form-check-label small" for="shortTitleToggle">หัวข้อสั้น (ซ่อนภาษาอังกฤษ)</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="hideLogoToggle">
+                <label class="form-check-label small" for="hideLogoToggle">ซ่อนโลโก้</label>
+            </div>
+            <hr class="my-2">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="showInvoiceToggle" checked>
+                <label class="form-check-label small fw-bold" for="showInvoiceToggle">แสดง INVOICE</label>
+            </div>
+            <small class="text-muted d-block mb-2" style="font-size: 9px;">เปิด = ขึ้น QUOTATION / INVOICE | ปิด = ขึ้น QUOTATION</small>
+
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="resetPrintSettings()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> รีเซ็ตค่าเริ่มต้น
+            </button>
+        </div>
     </div>
 </div>
+
 <div class="container my-5">
     <div id="printableArea">
         <div class="content-body">
@@ -106,8 +169,14 @@ $items = $conn->query($sql_items);
                 <div class="row align-items-start mb-4">
                     <div class="col-7">
                         <div class="mb-4">
-                            <h2 class="fw-bold text-primary mb-0" style="letter-spacing: 2px; font-size: 22px;">QUOTATION</h2>
-                            <p class="text-muted small text-uppercase" style="font-size: 11px;">ใบเสนอราคา</p>
+                            <div id="headerInvoice" class="<?= $has_deposit ? 'd-none' : '' ?>">
+                                <h2 class="fw-bold text-primary mb-0" style="letter-spacing: 2px; font-size: 22px;">QUOTATION / INVOICE</h2>
+                                <p class="text-muted small text-uppercase" style="font-size: 11px;">ใบเสนอราคา / ใบแจ้งหนี้</p>
+                            </div>
+                            <div id="headerQuotation" class="<?= $has_deposit ? '' : 'd-none' ?>">
+                                <h2 class="fw-bold text-primary mb-0" style="letter-spacing: 2px; font-size: 22px;">QUOTATION</h2>
+                                <p class="text-muted small text-uppercase" style="font-size: 11px;">ใบเสนอราคา</p>
+                            </div>
                         </div>
 
                         <div class="customer-info-section">
@@ -145,9 +214,9 @@ $items = $conn->query($sql_items);
                                 </p>
                             </div>
                             <?php if (!empty($quote['logo_path'])): ?>
-                                <div class="flex-shrink-0">
+                                <div class="flex-shrink-0 doc-logo">
                                     <img src="<?= htmlspecialchars($quote['logo_path']) ?>" alt="Logo"
-                                        style="max-height: 60px; width: auto; object-fit: contain; filter: grayscale(10%) ;">
+                                        style="max-height: 60px; width: auto; object-fit: contain; filter: grayscale(10%);">
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -208,7 +277,7 @@ $items = $conn->query($sql_items);
                 </table>
             </div>
 
-            <div class="section-group row ">
+            <div class="section-group row">
                 <div class="col-7">
                     <div class="section-title">หมายเหตุ / Remarks</div>
                     <div class="text-black" style="white-space: pre-line; font-size: 12px;">
@@ -429,7 +498,6 @@ $items = $conn->query($sql_items);
         padding: var(--print-pad) !important;
         vertical-align: middle;
         border-color: #333 !important;
-        /* ทำให้เส้นตารางเข้มขึ้นเพื่อความชัด */
     }
 
     .data-value {
@@ -437,14 +505,12 @@ $items = $conn->query($sql_items);
         padding: 0 5px;
     }
 
-    /* ส่วนลายเซ็นแบบกระชับพิเศษ */
     .signature-wrapper {
         margin-top: auto !important;
         padding-top: 10px;
         padding-bottom: 0;
     }
 
-    /* ปรับช่องขีดเส้นใต้ให้เตี้ยลงเพื่อประหยัดพื้นที่ */
     .signature-wrapper div[style*="height: 50px"],
     .signature-wrapper div[style*="height: 40px"] {
         height: 30px !important;
@@ -457,6 +523,30 @@ $items = $conn->query($sql_items);
 
     .content-body {
         flex-grow: 1;
+    }
+
+    /* --- ปรับแต่งเอกสาร: CSS --- */
+    #printableArea.section-divider .section-group:not(.no-frame) {
+        border: 2px solid #333;
+        border-radius: 0;
+        margin-top: 10px;
+        padding: 10px;
+    }
+
+    #printableArea.bold-titles .section-title {
+        font-weight: 800 !important;
+    }
+
+    #printableArea.short-titles .section-en {
+        display: none !important;
+    }
+
+    #printableArea.hide-logo .doc-logo {
+        display: none !important;
+    }
+
+    .custom-btn-pill {
+        position: relative;
     }
 
     /* --- ส่วนการตั้งค่าสำหรับการพิมพ์ --- */
@@ -504,7 +594,6 @@ $items = $conn->query($sql_items);
         .section-group {
             page-break-inside: avoid;
             margin-bottom: 5px !important;
-            /* ลดระยะห่างระหว่างกลุ่มเนื้อหา */
         }
 
         .section-title {
@@ -512,7 +601,6 @@ $items = $conn->query($sql_items);
             print-color-adjust: exact;
         }
 
-        /* ทำให้ตัวหนาชัดเจนขึ้นตอนพิมพ์ */
         .fw-bold {
             font-weight: 700 !important;
         }
@@ -650,5 +738,149 @@ function sendPDFToCustomer(btn) {
         btn.disabled = false;
     });
 }
+</script>
+
+<!-- === ปุ่มปรับแต่งเอกสาร + Auto-resize ตอนพิมพ์ === -->
+<script>
+    function toggleCustomizePanel() {
+        const p = document.getElementById('customizePanel');
+        if (p) p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function printFontSizeLabel(v) {
+        return v == 13 ? 'ปกติ (13px)' : (v + 'px');
+    }
+
+    function applyPrintSettings() {
+        const root = document.documentElement;
+        const area = document.getElementById('printableArea');
+        if (!area) return;
+
+        const fs = localStorage.getItem('printFontSize');
+        if (fs) {
+            root.style.setProperty('--print-fs', fs + 'px');
+            const s = document.getElementById('fontSizeSlider');
+            const l = document.getElementById('fontSizeLabel');
+            if (s) s.value = fs;
+            if (l) l.textContent = printFontSizeLabel(fs);
+        }
+
+        const t = document.getElementById('dividerToggle');
+        if (localStorage.getItem('printDivider') === '1') { area.classList.add('section-divider'); if (t) t.checked = true; }
+        const b = document.getElementById('boldTitleToggle');
+        if (localStorage.getItem('printBold') === '1') { area.classList.add('bold-titles'); if (b) b.checked = true; }
+        const st = document.getElementById('shortTitleToggle');
+        if (localStorage.getItem('printShortTitle') === '1') { area.classList.add('short-titles'); if (st) st.checked = true; }
+        const lg = document.getElementById('hideLogoToggle');
+        if (localStorage.getItem('printHideLogo') === '1') { area.classList.add('hide-logo'); if (lg) lg.checked = true; }
+
+        applyInvoiceToggle();
+    }
+
+    function applyInvoiceToggle() {
+        const hInv = document.getElementById('headerInvoice');
+        const hQt = document.getElementById('headerQuotation');
+        const invToggle = document.getElementById('showInvoiceToggle');
+        if (!hInv || !hQt || !invToggle) return;
+
+        var defaultShow = <?= $has_deposit ? 'false' : 'true' ?>;
+        var saved = localStorage.getItem('printShowInvoice');
+        var showInvoice = saved !== null ? (saved === '1') : defaultShow;
+
+        invToggle.checked = showInvoice;
+        hInv.classList.toggle('d-none', !showInvoice);
+        hQt.classList.toggle('d-none', showInvoice);
+    }
+
+    function resetPrintSettings() {
+        ['printFontSize', 'printDivider', 'printBold', 'printShortTitle', 'printHideLogo', 'printShowInvoice'].forEach(k => localStorage.removeItem(k));
+        const area = document.getElementById('printableArea');
+        if (area) area.classList.remove('section-divider', 'bold-titles', 'short-titles', 'hide-logo');
+        document.documentElement.style.setProperty('--print-fs', '13px');
+        const s = document.getElementById('fontSizeSlider');
+        const l = document.getElementById('fontSizeLabel');
+        if (s) s.value = 13;
+        if (l) l.textContent = printFontSizeLabel(13);
+        const t = document.getElementById('dividerToggle');
+        const b = document.getElementById('boldTitleToggle');
+        const st = document.getElementById('shortTitleToggle');
+        const lg = document.getElementById('hideLogoToggle');
+        if (t) t.checked = false;
+        if (b) b.checked = false;
+        if (st) st.checked = false;
+        if (lg) lg.checked = false;
+        applyInvoiceToggle();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const fsSlider = document.getElementById('fontSizeSlider');
+        const fsLabel = document.getElementById('fontSizeLabel');
+        if (fsSlider && fsLabel) {
+            fsSlider.addEventListener('input', function () {
+                const v = this.value;
+                document.documentElement.style.setProperty('--print-fs', v + 'px');
+                fsLabel.textContent = printFontSizeLabel(v);
+                localStorage.setItem('printFontSize', v);
+            });
+        }
+        const dt = document.getElementById('dividerToggle');
+        if (dt) dt.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('section-divider', this.checked);
+            localStorage.setItem('printDivider', this.checked ? '1' : '0');
+        });
+        const bt = document.getElementById('boldTitleToggle');
+        if (bt) bt.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('bold-titles', this.checked);
+            localStorage.setItem('printBold', this.checked ? '1' : '0');
+        });
+        const st = document.getElementById('shortTitleToggle');
+        if (st) st.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('short-titles', this.checked);
+            localStorage.setItem('printShortTitle', this.checked ? '1' : '0');
+        });
+        const lg = document.getElementById('hideLogoToggle');
+        if (lg) lg.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('hide-logo', this.checked);
+            localStorage.setItem('printHideLogo', this.checked ? '1' : '0');
+        });
+        const inv = document.getElementById('showInvoiceToggle');
+        if (inv) inv.addEventListener('change', function () {
+            localStorage.setItem('printShowInvoice', this.checked ? '1' : '0');
+            applyInvoiceToggle();
+        });
+        applyPrintSettings();
+    });
+
+    window.onbeforeprint = function () {
+        if (localStorage.getItem('printFontSize')) return;
+
+        const rows = document.querySelectorAll('#printableArea tr').length;
+        const root = document.documentElement;
+
+        if (rows > 45) {
+            root.style.setProperty('--print-fs', '8px');
+            root.style.setProperty('--print-pad', '1px 3px');
+            root.style.setProperty('--print-lh', '1.1');
+        }
+        else if (rows > 30) {
+            root.style.setProperty('--print-fs', '9px');
+            root.style.setProperty('--print-pad', '2px 4px');
+            root.style.setProperty('--print-lh', '1.2');
+        }
+        else {
+            root.style.setProperty('--print-fs', '13px');
+            root.style.setProperty('--print-pad', '3px 5px');
+            root.style.setProperty('--print-lh', '1.5');
+        }
+    };
+
+    window.onafterprint = function () {
+        if (localStorage.getItem('printFontSize')) return;
+
+        const root = document.documentElement;
+        root.style.setProperty('--print-fs', '13px');
+        root.style.setProperty('--print-pad', '3px 5px');
+        root.style.setProperty('--print-lh', '1.5');
+    };
 </script>
 <?php include "footer.php"; ?>

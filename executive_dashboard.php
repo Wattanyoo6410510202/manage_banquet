@@ -770,6 +770,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sales" type="button"><i class="bi bi-funnel me-1"></i>งานขาย</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button"><i class="bi bi-calendar-week me-1"></i>ปฏิบัติการ<?php if ($today_events_list->num_rows > 0): ?> <span class="badge rounded-pill text-bg-light"><?= $today_events_list->num_rows ?></span><?php endif; ?></button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-finance" type="button"><i class="bi bi-wallet2 me-1"></i>การเงิน</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-survey" type="button"><i class="bi bi-emoji-smile me-1"></i>แบบสำรวจความพึงพอใจ</button></li>
     </ul>
 
     <div class="tab-content">
@@ -1217,6 +1218,74 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                     <tr><td class="text-dim">ห้องที่ถูกใช้งาน</td><td class="text-end num fw-bold"><?= $mtd_rooms_used ?> ห้อง</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TAB 5: แบบสำรวจความพึงพอใจ ============ -->
+        <div class="tab-pane fade" id="tab-survey">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-4">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-emoji-smile me-1" style="color:var(--gold)"></i>คะแนนความพึงพอใจรวม</h6></div>
+                        <div class="pnl-bd">
+                            <div class="chart-empty">
+                                <div class="text-center">
+                                    <i class="bi bi-clipboard-data" style="font-size:2rem;color:var(--muted)"></i>
+                                    <div class="mt-2">รอเชื่อมต่อข้อมูลแบบสำรวจ</div>
+                                    <div style="font-size:.72rem;color:var(--muted)">ระบบจะแสดงคะแนนเฉลี่ยจากแบบสำรวจที่เก็บได้</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-pie-chart me-1" style="color:var(--gold)"></i>สัดส่วนคะแนน</h6></div>
+                        <div class="pnl-bd">
+                            <div class="chart-empty">
+                                <div class="text-center">
+                                    <i class="bi bi-graph-up" style="font-size:2rem;color:var(--muted)"></i>
+                                    <div class="mt-2">รอข้อมูลแบบสำรวจ</div>
+                                    <div style="font-size:.72rem;color:var(--muted)">แสดงสัดส่วน 5 ดาว / 4 ดาว ฯลฯ</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-chat-dots me-1" style="color:var(--gold)"></i>ความคิดเห็นล่าสุด</h6></div>
+                        <div class="pnl-bd">
+                            <div class="chart-empty">
+                                <div class="text-center">
+                                    <i class="bi bi-chat-left-text" style="font-size:2rem;color:var(--muted)"></i>
+                                    <div class="mt-2">ยังไม่มีความคิดเห็น</div>
+                                    <div style="font-size:.72rem;color:var(--muted)">ความคิดเห็นจากลูกค้าจะแสดงที่นี่</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-xl-12">
+                    <div class="pnl">
+                        <div class="pnl-hd"><h6><i class="bi bi-clipboard-check me-1" style="color:var(--gold)"></i>รายการสำรวจทั้งหมด</h6></div>
+                        <div class="pnl-bd">
+                            <div class="chart-empty" style="min-height:200px">
+                                <div class="text-center">
+                                    <i class="bi bi-inbox" style="font-size:2.5rem;color:var(--muted)"></i>
+                                    <div class="mt-2 fw-bold" style="color:var(--ink-2)">ระบบแบบสำรวจความพึงพอใจ</div>
+                                    <div style="font-size:.74rem;color:var(--muted);max-width:400px;margin:6px auto 0;line-height:1.6">
+                                        ฟีเจอร์นี้อยู่ระหว่างการพัฒนา · เมื่อพร้อมใช้งานจะแสดงรายชื่องานที่ส่งแบบสำรวจแล้ว
+                                        พร้อมคะแนนรวมและความคิดเห็นจากลูกค้า
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
