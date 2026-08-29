@@ -59,6 +59,53 @@ $date_from  = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') ? $_GET['
 $date_to    = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to'] ?? '') ? $_GET['to'] : '';
 if (!in_array($f_status, ['all', 'active', 'cancelled'])) $f_status = 'all';
 
+/* ---------- แหล่งข้อมูลที่จะแสดง (checklist) — จองห้อง / ใบเสนอราคา / EO ---------- */
+$all_sources = ['booking', 'quote', 'eo'];
+$sources = array_values(array_intersect($all_sources, array_map('strval', (array) ($_GET['src'] ?? $all_sources))));
+if (empty($sources)) $sources = $all_sources;
+$show_booking = in_array('booking', $sources, true);
+$show_quote   = in_array('quote', $sources, true);
+$show_eo      = in_array('eo', $sources, true);
+
+/* ป้ายกำกับแหล่งข้อมูลของแต่ละแถว (ใช้ทั้งบนจอและตอนส่งออก) */
+if (!function_exists('bl_src_meta')) {
+    function bl_src_meta($src)
+    {
+        static $m = [
+            'booking' => ['label' => 'จองห้อง',     'cls' => 'src-booking', 'icon' => 'bi-journal-bookmark'],
+            'quote'   => ['label' => 'ใบเสนอราคา',  'cls' => 'src-quote',   'icon' => 'bi-file-earmark-text'],
+            'eo'      => ['label' => 'EO',           'cls' => 'src-eo',      'icon' => 'bi-calendar-check'],
+        ];
+        return $m[$src] ?? ['label' => $src, 'cls' => '', 'icon' => 'bi-dot'];
+    }
+}
+
+/* สถานะแบบรวม — แต่ละแหล่งมีชุดสถานะของตัวเอง แปลงให้ออกมาเป็นหน้าตาเดียวกัน (pill + ธง "ยกเลิก") */
+if (!function_exists('bl_status_meta')) {
+    function bl_status_meta($r)
+    {
+        $src = $r['_src'] ?? 'booking';
+        $s = (string) ($r['status'] ?? '');
+        if ($src === 'booking') {
+            $cancelled = $s !== 'active';
+            return ['cancelled' => $cancelled, 'cls' => $cancelled ? 'off' : 'on',
+                    'icon' => $cancelled ? 'bi-x-circle-fill' : 'bi-check-circle-fill',
+                    'label' => $cancelled ? 'ยกเลิกแล้ว' : 'ใช้งานอยู่'];
+        }
+        if ($src === 'quote') {
+            if ($s === 'Cancelled') return ['cancelled' => true,  'cls' => 'off',  'icon' => 'bi-x-circle-fill',     'label' => 'ยกเลิก'];
+            if ($s === 'Approved')  return ['cancelled' => false, 'cls' => 'on',   'icon' => 'bi-check-circle-fill', 'label' => 'อนุมัติแล้ว'];
+            if ($s === 'Sent')      return ['cancelled' => false, 'cls' => 'done', 'icon' => 'bi-send',              'label' => 'ส่งแล้ว'];
+            return ['cancelled' => false, 'cls' => 'done', 'icon' => 'bi-pencil-square', 'label' => 'ฉบับร่าง'];
+        }
+        // eo
+        if (strcasecmp($s, 'Cancelled') === 0) return ['cancelled' => true, 'cls' => 'off', 'icon' => 'bi-x-circle-fill', 'label' => 'ยกเลิก'];
+        $approved = !empty($r['is_approved']) || !empty($r['approve']) || in_array($s, ['Confirmed', 'Approved'], true);
+        if ($approved) return ['cancelled' => false, 'cls' => 'on', 'icon' => 'bi-check-circle-fill', 'label' => 'ยืนยันแล้ว'];
+        return ['cancelled' => false, 'cls' => 'done', 'icon' => 'bi-hourglass-split', 'label' => $s !== '' ? $s : 'ร่าง'];
+    }
+}
+
 // เรียงลำดับ — ใช้ whitelist เท่านั้น ห้ามรับชื่อคอลัมน์จาก URL ตรงๆ
 $sort_map = [
     'start_time'   => 'rb.start_time',
@@ -107,7 +154,151 @@ $base_sql = "SELECT rb.*, mr.room_name, c.company_name, ft.type_name, cust.cust_
              WHERE $where_sql
              ORDER BY {$sort_map[$sort]} $dir, rb.id DESC";
 
-$rows = db_fetch_all($conn, $base_sql, $types, ...$params);
+$rows = $show_booking ? db_fetch_all($conn, $base_sql, $types, ...$params) : [];
+foreach ($rows as $i => $r) $rows[$i]['_src'] = 'booking';
+
+/* ---------- แหล่งเพิ่มเติม: ใบเสนอราคา (quotations) ----------
+   ตัวกรองที่ใช้ร่วมได้: ค้นหา, โรงแรม, ช่วงวัน, สถานะ (ยกเลิก/ไม่ยกเลิก)
+   ตัวกรอง "ห้องประชุม" และ "ประเภทงาน" ไม่มีในใบเสนอราคา → ถ้าเลือกไว้ให้ข้ามแหล่งนี้ */
+if ($show_quote && !($f_room > 0) && !($f_type > 0)) {
+    $qw = ["1=1"]; $qt = ''; $qp = [];
+    if ($q !== '') {
+        $qw[] = "(qt.quote_no LIKE ? OR qt.event_name LIKE ? OR cu.cust_name LIKE ? OR cu.cust_contact_name LIKE ? OR qt.remarks LIKE ?)";
+        $qt .= 'sssss';
+        $like = '%' . $q . '%';
+        array_push($qp, $like, $like, $like, $like, $like);
+    }
+    if ($f_company > 0) { $qw[] = "qt.company_id = ?"; $qt .= 'i'; $qp[] = $f_company; }
+    if ($date_from !== '') { $qw[] = "qt.event_date >= ?"; $qt .= 's'; $qp[] = $date_from; }
+    if ($date_to !== '')   { $qw[] = "qt.event_date <= ?"; $qt .= 's'; $qp[] = $date_to; }
+    if ($f_status === 'cancelled')  $qw[] = "qt.status = 'Cancelled'";
+    elseif ($f_status === 'active') $qw[] = "qt.status <> 'Cancelled'";
+
+    $qsql = "SELECT qt.id, qt.quote_no, qt.event_name, qt.event_date, qt.grand_total, qt.status,
+                    qt.remarks, qt.company_id, qt.customer_id, qt.created_at,
+                    cu.cust_name, cu.cust_contact_name, cu.cust_phone,
+                    co.company_name, u.name AS creator_name
+             FROM quotations qt
+             LEFT JOIN customers cu ON qt.customer_id = cu.id
+             LEFT JOIN companies co ON qt.company_id = co.id
+             LEFT JOIN users u      ON qt.created_by = u.id
+             WHERE " . implode(' AND ', $qw) . "
+             ORDER BY qt.event_date DESC, qt.id DESC";
+    foreach (db_fetch_all($conn, $qsql, $qt, ...$qp) as $q0) {
+        $rows[] = [
+            '_src'            => 'quote',
+            'id'              => $q0['id'],
+            'booking_code'    => $q0['quote_no'],
+            'event_name'      => $q0['event_name'],
+            'start_time'      => $q0['event_date'] ? $q0['event_date'] . ' 00:00:00' : null,
+            'end_time'        => null,
+            'organization'    => $q0['cust_name'],
+            'booking_name'    => $q0['cust_contact_name'],
+            'phone'           => $q0['cust_phone'],
+            'customer_id'     => $q0['customer_id'],
+            'system_cust_name' => $q0['cust_name'],
+            'room_name'       => null,
+            'company_name'    => $q0['company_name'],
+            'company_id'      => $q0['company_id'],
+            'type_name'       => null,
+            'pax'             => 0,
+            'break_type_name' => null,
+            'menu_type_name'  => null,
+            'room_stay'       => null,
+            'created_at'      => $q0['created_at'],
+            'created_by'      => $q0['creator_name'],
+            'selling_price'   => $q0['grand_total'],
+            'status'          => $q0['status'],
+            'remark'          => $q0['remarks'],
+        ];
+    }
+}
+
+/* ---------- แหล่งเพิ่มเติม: EO / Function Order (functions) ---------- */
+if ($show_eo) {
+    $ew = ["1=1"]; $et = ''; $ep = [];
+    if ($q !== '') {
+        $ew[] = "(f.function_code LIKE ? OR f.function_name LIKE ? OR f.booking_name LIKE ? OR f.phone LIKE ? OR f.organization LIKE ? OR f.remark LIKE ?)";
+        $et .= 'ssssss';
+        $like = '%' . $q . '%';
+        array_push($ep, $like, $like, $like, $like, $like, $like);
+    }
+    if ($f_room > 0)    { $ew[] = "f.room_id = ?";          $et .= 'i'; $ep[] = $f_room; }
+    if ($f_company > 0) { $ew[] = "f.company_id = ?";       $et .= 'i'; $ep[] = $f_company; }
+    if ($f_type > 0)    { $ew[] = "f.function_type_id = ?"; $et .= 'i'; $ep[] = $f_type; }
+    $eo_date_expr = "COALESCE(f.start_time, f.event_date)";
+    if ($date_from !== '') { $ew[] = "$eo_date_expr >= ?"; $et .= 's'; $ep[] = $date_from; }
+    if ($date_to !== '')   { $ew[] = "$eo_date_expr < DATE_ADD(?, INTERVAL 1 DAY)"; $et .= 's'; $ep[] = $date_to; }
+    if ($f_status === 'cancelled')  $ew[] = "f.status = 'Cancelled'";
+    elseif ($f_status === 'active') $ew[] = "(f.status IS NULL OR f.status <> 'Cancelled')";
+
+    $esql = "SELECT f.id, f.function_code, f.function_name, f.event_date, f.start_time, f.end_time,
+                    f.booking_name, f.organization, f.phone, f.room_name, f.room_id, f.pax,
+                    f.total_amount, f.remark, f.created_at, f.created_by, f.status, f.is_approved, f.approve,
+                    f.company_id, f.customer_id,
+                    co.company_name, ft.type_name, cu.cust_name
+             FROM functions f
+             LEFT JOIN companies co       ON f.company_id = co.id
+             LEFT JOIN function_types ft  ON f.function_type_id = ft.id
+             LEFT JOIN customers cu       ON f.customer_id = cu.id
+             WHERE " . implode(' AND ', $ew) . "
+             ORDER BY $eo_date_expr DESC, f.id DESC";
+    foreach (db_fetch_all($conn, $esql, $et, ...$ep) as $e0) {
+        $eo_start = $e0['start_time'] ?: ($e0['event_date'] ? $e0['event_date'] . ' 00:00:00' : null);
+        $rows[] = [
+            '_src'            => 'eo',
+            'id'              => $e0['id'],
+            'booking_code'    => $e0['function_code'],
+            'event_name'      => $e0['function_name'],
+            'start_time'      => $eo_start,
+            'end_time'        => $e0['end_time'],
+            'organization'    => $e0['organization'] ?: $e0['cust_name'],
+            'booking_name'    => $e0['booking_name'],
+            'phone'           => $e0['phone'],
+            'customer_id'     => $e0['customer_id'],
+            'system_cust_name' => $e0['cust_name'],
+            'room_name'       => $e0['room_name'],
+            'company_name'    => $e0['company_name'],
+            'company_id'      => $e0['company_id'],
+            'type_name'       => $e0['type_name'],
+            'pax'             => $e0['pax'],
+            'break_type_name' => null,
+            'menu_type_name'  => null,
+            'room_stay'       => null,
+            'created_at'      => $e0['created_at'],
+            'created_by'      => $e0['created_by'],
+            'selling_price'   => $e0['total_amount'],
+            'status'          => $e0['status'],
+            'is_approved'     => $e0['is_approved'],
+            'approve'         => $e0['approve'],
+            'remark'          => $e0['remark'],
+        ];
+    }
+}
+
+/* ---------- เรียงลำดับรวมทุกแหล่งในฝั่ง PHP (query ของแต่ละแหล่งเรียงมาแล้วในระดับหนึ่ง
+   แต่พอ merge กันต้องจัดใหม่ให้เป็นชุดเดียว ตาม sort/dir ที่ผู้ใช้เลือก) ---------- */
+if (count($sources) > 1 || !$show_booking) {
+    $sort_field_map = [
+        'start_time' => 'start_time', 'booking_code' => 'booking_code', 'event_name' => 'event_name',
+        'room_name' => 'room_name', 'pax' => 'pax', 'status' => 'status',
+        'created_at' => 'created_at', 'type_name' => 'type_name', 'organization' => 'organization',
+    ];
+    $sk = $sort_field_map[$sort] ?? 'start_time';
+    $dir_mul = ($dir === 'ASC') ? 1 : -1;
+    usort($rows, function ($a, $b) use ($sk, $dir_mul) {
+        $av = $a[$sk] ?? ''; $bv = $b[$sk] ?? '';
+        if ($sk === 'pax') {
+            $c = (int) $av <=> (int) $bv;
+        } elseif ($sk === 'start_time' || $sk === 'created_at') {
+            $c = (($av ? strtotime($av) : 0)) <=> (($bv ? strtotime($bv) : 0));
+        } else {
+            $c = strcmp((string) $av, (string) $bv);
+        }
+        if ($c === 0) $c = (($a['start_time'] ? strtotime($a['start_time']) : 0)) <=> (($b['start_time'] ? strtotime($b['start_time']) : 0));
+        return $c * $dir_mul;
+    });
+}
 
 /* ---------- มุมมองรายวัน (อารมณ์ปฏิทินแนวตั้ง) — ใช้ $rows ชุดเดียวกับตาราง แค่จัดกลุ่มใหม่ตามวันในเดือน
    ต้องคำนวณก่อนส่วน export เพราะปุ่ม "ส่งออก Excel" ต้องรู้ว่าตอนนี้อยู่มุมมองไหนด้วย ---------- */
@@ -127,9 +318,9 @@ if ($view === 'agenda') {
     $month_start_ts = mktime(0, 0, 0, $agenda_mon, 1, $agenda_year);
     $month_end_ts   = mktime(0, 0, 0, $agenda_mon, $days_in_month, $agenda_year);
     foreach ($rows as $r) {
-        $sts = strtotime($r['start_time']);
+        $sts = !empty($r['start_time']) ? strtotime($r['start_time']) : false;
         if (!$sts) continue;
-        $ets = $r['end_time'] ? strtotime($r['end_time']) : $sts;
+        $ets = !empty($r['end_time']) ? strtotime($r['end_time']) : $sts;
         if (!$ets || $ets < $sts) $ets = $sts;
 
         $seg_start = max($sts, $month_start_ts);
@@ -157,9 +348,10 @@ if (($_GET['export'] ?? '') === 'csv') {
     $eh = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     $csv_dow = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
     $csv_row = fn($r) => [
+        bl_src_meta($r['_src'] ?? 'booking')['label'],
         $r['booking_code'], $r['event_name'], $r['type_name'], $r['company_name'], $r['room_name'],
         $r['start_time'], $r['end_time'], $r['pax'], $r['booking_name'], $r['phone'],
-        $r['organization'], ($r['status'] === 'active' ? 'ใช้งาน' : 'ยกเลิก'),
+        $r['organization'], bl_status_meta($r)['label'],
         $r['break_type_name'], $r['menu_type_name'], $r['room_stay'],
         $r['selling_price'] !== null ? number_format($r['selling_price'], 2, '.', '') : '',
         $r['created_by'], $r['created_at'], $r['remark'],
@@ -174,8 +366,8 @@ if (($_GET['export'] ?? '') === 'csv') {
     echo "<table border=\"1\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;font-family:Tahoma,sans-serif;font-size:12px;\">";
     echo "<thead><tr>";
     $headers = $view === 'agenda'
-        ? ['วัน', 'วันที่', 'รหัสจอง', 'ชื่องาน', 'ประเภท', 'โรงแรม', 'ห้อง', 'เริ่ม', 'สิ้นสุด', 'จำนวนคน', 'ผู้จอง', 'เบอร์โทร', 'หน่วยงาน', 'สถานะ', 'เบรก', 'ประเภทอาหาร', 'ห้องพัก', 'ราคาขาย', 'ผู้บันทึก', 'บันทึกเมื่อ', 'หมายเหตุ']
-        : ['รหัสจอง', 'ชื่องาน', 'ประเภท', 'โรงแรม', 'ห้อง', 'เริ่ม', 'สิ้นสุด', 'จำนวนคน', 'ผู้จอง', 'เบอร์โทร', 'หน่วยงาน', 'สถานะ', 'เบรก', 'ประเภทอาหาร', 'ห้องพัก', 'ราคาขาย', 'ผู้บันทึก', 'บันทึกเมื่อ', 'หมายเหตุ'];
+        ? ['วัน', 'วันที่', 'แหล่งข้อมูล', 'รหัส', 'ชื่องาน', 'ประเภท', 'โรงแรม', 'ห้อง', 'เริ่ม', 'สิ้นสุด', 'จำนวนคน', 'ผู้จอง/ผู้ติดต่อ', 'เบอร์โทร', 'หน่วยงาน/ลูกค้า', 'สถานะ', 'เบรก', 'ประเภทอาหาร', 'ห้องพัก', 'ราคาขาย', 'ผู้บันทึก', 'บันทึกเมื่อ', 'หมายเหตุ']
+        : ['แหล่งข้อมูล', 'รหัส', 'ชื่องาน', 'ประเภท', 'โรงแรม', 'ห้อง', 'เริ่ม', 'สิ้นสุด', 'จำนวนคน', 'ผู้จอง/ผู้ติดต่อ', 'เบอร์โทร', 'หน่วยงาน/ลูกค้า', 'สถานะ', 'เบรก', 'ประเภทอาหาร', 'ห้องพัก', 'ราคาขาย', 'ผู้บันทึก', 'บันทึกเมื่อ', 'หมายเหตุ'];
     foreach ($headers as $hd) echo "<th style=\"$th_style\">" . $eh($hd) . "</th>";
     echo "</tr></thead><tbody>";
 
@@ -188,7 +380,7 @@ if (($_GET['export'] ?? '') === 'csv') {
             $day_items = $agenda_by_day[$d];
             if (empty($day_items)) {
                 echo "<tr><td style=\"$td_dowcol\">" . $eh($dow) . "</td><td style=\"$td_dowcol\">" . $eh($date_str) . "</td>"
-                    . "<td style=\"$td_empty\" colspan=\"19\">ไม่มีการจอง</td></tr>";
+                    . "<td style=\"$td_empty\" colspan=\"20\">ไม่มีการจอง</td></tr>";
             } else {
                 foreach ($day_items as $r) {
                     echo "<tr><td style=\"$td_dowcol\">" . $eh($dow) . "</td><td style=\"$td_dowcol\">" . $eh($date_str) . "</td>";
@@ -221,12 +413,12 @@ $sum_pax       = 0;
 $sum_upcoming  = 0;
 $now_ts = time();
 foreach ($rows as $r) {
-    if ($r['status'] === 'active') {
+    if (bl_status_meta($r)['cancelled']) {
+        $sum_cancelled++;
+    } else {
         $sum_active++;
         $sum_pax += (int)$r['pax'];
-        if (strtotime($r['start_time']) >= $now_ts) $sum_upcoming++;
-    } else {
-        $sum_cancelled++;
+        if (!empty($r['start_time']) && strtotime($r['start_time']) >= $now_ts) $sum_upcoming++;
     }
 }
 
@@ -270,17 +462,22 @@ if (!function_exists('thai_time_range')) {
 // $display_day_ts: ใช้ตอนแสดงในมุมมองรายวัน กรณีงานคร่อมหลายวัน — คอลัมน์ "วัน/วันที่" ต้องโชว์วันที่ของแถวนั้นๆ
 // ไม่ใช่วันเริ่มงานเดิม (ไม่งั้นแถวที่ซ้ำอยู่ใต้วันที่ 16 จะเขียนวันที่ 14 ทำให้งง)
 if (!function_exists('render_booking_row')) {
-    function render_booking_row($r, $h, $can_cancel, $display_day_ts = null)
+    function render_booking_row($r, $h, $can_cancel, $display_day_ts = null, $hide_date = false)
     {
-        $is_cancelled = $r['status'] !== 'active';
-        $is_continuation = $display_day_ts !== null && date('Y-m-d', $display_day_ts) !== date('Y-m-d', strtotime($r['start_time']));
-        $date_key = $display_day_ts !== null ? date('Y-m-d', $display_day_ts) : $r['start_time'];
+        $src = $r['_src'] ?? 'booking';
+        $sm  = bl_status_meta($r);
+        $src_meta = bl_src_meta($src);
+        $is_cancelled = $sm['cancelled'];
+        $start_ts = !empty($r['start_time']) ? strtotime($r['start_time']) : false;
+        $is_continuation = $display_day_ts !== null && $start_ts && date('Y-m-d', $display_day_ts) !== date('Y-m-d', $start_ts);
+        $date_key = $display_day_ts !== null ? date('Y-m-d', $display_day_ts) : ($r['start_time'] ?? '');
         ob_start();
         ?>
-        <tr class="<?= $is_cancelled ? 'is-cancelled' : '' ?>" data-id="<?= $r['id'] ?>">
-            <td><?= thai_dow($date_key) ?></td>
-            <td class="num"><?= thai_dt($date_key, false) ?></td>
-            <td class="text-truncate" style="max-width:200px" title="<?= $h($r['organization'] ?: '') ?>">
+        <tr class="<?= $is_cancelled ? 'is-cancelled' : '' ?><?= $hide_date ? ' bk-samedate' : '' ?>" data-id="<?= $r['id'] ?>" data-src="<?= $src ?>">
+            <td><?= $hide_date ? '' : thai_dow($date_key) ?></td>
+            <td class="num"><?= $hide_date ? '' : ($date_key ? thai_dt($date_key, false) : '-') ?></td>
+            <td class="text-truncate" style="max-width:220px" title="<?= $h($r['organization'] ?: '') ?>">
+                <div><span class="src-tag <?= $src_meta['cls'] ?>"><i class="bi <?= $src_meta['icon'] ?>"></i><?= $h($src_meta['label']) ?></span></div>
                 <div class="fw-medium"><?= $h($r['organization'] ?: '-') ?></div>
                 <div style="font-size:.72rem;color:#8a9099">
                     <?= $h($r['booking_name'] ?: '-') ?>
@@ -297,8 +494,8 @@ if (!function_exists('render_booking_row')) {
                 <div><?= $h($r['room_name'] ?: '-') ?></div>
                 <div style="font-size:.72rem;color:#8a9099"><?= $h($r['company_name'] ?: '-') ?></div>
             </td>
-            <td class="num"><?= thai_time_range($r['start_time'], $r['end_time']) ?></td>
-            <td><span class="tag"><?= $h($r['type_name'] ?: 'ไม่ระบุประเภท') ?></span></td>
+            <td class="num"><?= $src === 'quote' ? '-' : thai_time_range($r['start_time'] ?? null, $r['end_time'] ?? null) ?></td>
+            <td><?php if ($src === 'booking'): ?><span class="tag"><?= $h($r['type_name'] ?: 'ไม่ระบุประเภท') ?></span><?php else: ?><span class="<?= $r['type_name'] ? 'tag' : 'text-muted' ?>"><?= $h($r['type_name'] ?: '-') ?></span><?php endif; ?></td>
             <td class="text-center num"><?= $r['pax'] > 0 ? number_format($r['pax']) : '-' ?></td>
             <td class="<?= $r['break_type_name'] ? '' : 'text-muted' ?>"><?= $h($r['break_type_name'] ?: '-') ?></td>
             <td class="<?= $r['menu_type_name'] ? '' : 'text-muted' ?>"><?= $h($r['menu_type_name'] ?: '-') ?></td>
@@ -307,32 +504,45 @@ if (!function_exists('render_booking_row')) {
             <td><?= $h($r['created_by'] ?: '-') ?></td>
             <td class="text-end <?= $r['selling_price'] !== null ? 'fw-medium' : 'text-muted' ?>"><?= $r['selling_price'] !== null ? number_format($r['selling_price'], 2) : '-' ?></td>
             <td>
-                <span class="pill <?= $is_cancelled ? 'off' : 'on' ?>">
-                    <i class="bi <?= $is_cancelled ? 'bi-x-circle-fill' : 'bi-check-circle-fill' ?>"></i>
-                    <?= $is_cancelled ? 'ยกเลิกแล้ว' : 'ใช้งานอยู่' ?>
+                <span class="pill <?= $sm['cls'] ?>">
+                    <i class="bi <?= $sm['icon'] ?>"></i>
+                    <?= $h($sm['label']) ?>
                 </span>
             </td>
             <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-detail"
-                        data-id="<?= $r['id'] ?>" title="ดูรายละเอียด">
-                    <i class="bi bi-eye"></i>
-                </button>
-                <?php
-                    $quote_qs = http_build_query(array_filter([
-                        'event_name'  => $r['event_name'] ?? '',
-                        'event_date'  => $r['start_time'] ? date('Y-m-d', strtotime($r['start_time'])) : '',
-                        'company_id'  => $r['company_id'] ?? '',
-                        'customer_id' => $r['customer_id'] ?? '',
-                    ]));
-                ?>
-                <a href="add_quote.php?<?= $quote_qs ?>" class="btn btn-sm btn-outline-primary border-0" title="ส่งไปใบเสนอราคา">
-                    <i class="bi bi-file-earmark-plus"></i>
-                </a>
-                <?php if ($can_cancel && !$is_cancelled): ?>
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-cancel"
-                            data-id="<?= $r['id'] ?>" data-name="<?= $h($r['event_name']) ?>" title="ยกเลิกการจอง">
-                        <i class="bi bi-x-circle"></i>
+                <?php if ($src === 'quote'): ?>
+                    <a href="quotation_view.php?id=<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-secondary border-0" title="ดูใบเสนอราคา">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="edit_quotation.php?id=<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-primary border-0" title="แก้ไขใบเสนอราคา">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                <?php elseif ($src === 'eo'): ?>
+                    <a href="view.php?id=<?= (int) $r['id'] ?>" class="btn btn-sm btn-outline-secondary border-0" title="ดู EO">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                <?php else: ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-detail"
+                            data-id="<?= $r['id'] ?>" title="ดูรายละเอียด">
+                        <i class="bi bi-eye"></i>
                     </button>
+                    <?php
+                        $quote_qs = http_build_query(array_filter([
+                            'event_name'  => $r['event_name'] ?? '',
+                            'event_date'  => $r['start_time'] ? date('Y-m-d', strtotime($r['start_time'])) : '',
+                            'company_id'  => $r['company_id'] ?? '',
+                            'customer_id' => $r['customer_id'] ?? '',
+                        ]));
+                    ?>
+                    <a href="add_quote.php?<?= $quote_qs ?>" class="btn btn-sm btn-outline-primary border-0" title="ส่งไปใบเสนอราคา">
+                        <i class="bi bi-file-earmark-plus"></i>
+                    </a>
+                    <?php if ($can_cancel && !$is_cancelled): ?>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-cancel"
+                                data-id="<?= $r['id'] ?>" data-name="<?= $h($r['event_name']) ?>" title="ยกเลิกการจอง">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    <?php endif; ?>
                 <?php endif; ?>
             </td>
         </tr>
@@ -406,8 +616,12 @@ require_once "header.php";
     letter-spacing:.4px;border-bottom:1px solid var(--line)!important;white-space:nowrap;padding:10px 12px}
 .bk-tbl thead th a{color:var(--muted);text-decoration:none}
 .bk-tbl thead th a:hover{color:var(--ink)}
-.bk-tbl tbody td{padding:10px 12px;border-bottom:1px solid #f0f2f5;vertical-align:middle}
-.bk-tbl tbody tr:last-child td{border-bottom:0}
+.bk-tbl tbody td{padding:10px 12px;border-top:1px solid #f0f2f5;vertical-align:middle}
+.bk-tbl tbody tr:first-child td{border-top:0}
+/* คอลัมน์ วัน/วันที่ ทำเป็น "ราง" ด้านซ้าย มีเส้นคั่นแนวตั้ง */
+.bk-tbl tbody td:nth-child(2){border-right:1px solid #eef0f3}
+/* หลายรายการในวันเดียวกัน — เอาเส้นคั่นแนวนอนระหว่างแถวออก ให้อ่านเป็นบล็อกวันเดียว */
+.bk-tbl tbody tr.bk-samedate td{border-top:0}
 .bk-tbl tbody tr:hover{background:#f8f9fb}
 .bk-tbl tbody tr.is-cancelled{color:var(--muted)}
 .bk-tbl tbody tr.is-cancelled .bk-name{text-decoration:line-through}
@@ -428,6 +642,23 @@ require_once "header.php";
 .chipbar a.on{background:var(--gold-tint);border-color:var(--gold);color:#8a6c22}
 @media(max-width:575px){.bk-stat .v{font-size:1.2rem}}
 
+/* ===== checklist เลือกแหล่งข้อมูล (จองห้อง / ใบเสนอราคา / EO) ===== */
+.bk-srcbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:10px}
+.bk-srcbar-label{font-size:.7rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.bk-srcchk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+    border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;padding:4px 12px;font-size:.78rem;font-weight:600}
+.bk-srcchk input{margin:0;cursor:pointer}
+.bk-srcchk.on{border-color:currentColor}
+.bk-srcchk.src-booking.on{color:#8a6c22;background:var(--gold-tint)}
+.bk-srcchk.src-quote.on{color:#1d6fb8;background:#eaf3fb}
+.bk-srcchk.src-eo.on{color:#0ca30c;background:#e9f7e9}
+
+/* ป้ายแหล่งข้อมูลในแต่ละแถวของตาราง */
+.src-tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 7px;font-size:.66rem;font-weight:700;margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
+.src-tag.src-booking{background:var(--gold-tint);color:#8a6c22}
+.src-tag.src-quote{background:#eaf3fb;color:#1d6fb8}
+.src-tag.src-eo{background:#e9f7e9;color:#0ca30c}
+
 /* ===== มุมมองรายวัน (อารมณ์ปฏิทินแนวตั้ง) ===== */
 .bk-agenda-nav{border-bottom:1px solid var(--line);background:#fafbfc}
 .bk-tbl tbody tr.bk-empty-day td{color:var(--muted);background:#fcfcfd}
@@ -441,9 +672,9 @@ require_once "header.php";
     <div class="bk-hero mb-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
-                <h5 class="mb-1 fw-bold"><i class="bi bi-journal-bookmark-fill me-2 text-gold"></i>รวมรายการจองห้องประชุม</h5>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-journal-bookmark-fill me-2 text-gold"></i>รายการจองห้อง / ใบเสนอราคา</h5>
                 <div class="hero-sub">
-                    ทุกการจองที่บันทึกไว้ในระบบ ทั้งที่ใช้งานอยู่และที่ยกเลิกแล้ว
+                    รวมการจองห้อง ใบเสนอราคา และ EO — เลือกแหล่งข้อมูลที่ต้องการดูได้จากช่อง "แสดงรายการ"
                     <?php if ($sum_total > 0): ?>· พบ <?= number_format($sum_total) ?> รายการ<?php endif; ?>
                 </div>
             </div>
@@ -487,6 +718,7 @@ require_once "header.php";
             <input type="hidden" name="sort" value="<?= $h($sort) ?>">
             <input type="hidden" name="dir" value="<?= $h(strtolower($dir)) ?>">
             <input type="hidden" name="view" value="<?= $h($view) ?>">
+            <input type="hidden" name="status" value="<?= $h($f_status) ?>">
             <?php if ($view === 'agenda'): ?><input type="hidden" name="month" value="<?= $h($agenda_month) ?>"><?php endif; ?>
             <div class="row g-2 align-items-end">
                 <div class="col-lg-3 col-md-6">
@@ -532,6 +764,22 @@ require_once "header.php";
                         <input type="date" name="to" value="<?= $h($date_to) ?>" class="form-control form-control-sm">
                     </div>
                 </div>
+            </div>
+            <div class="bk-srcbar mt-3">
+                <span class="bk-srcbar-label"><i class="bi bi-collection me-1"></i>แสดงรายการ</span>
+                <?php
+                $src_opts = [
+                    'booking' => ['ค' => $show_booking, 'ic' => 'bi-journal-bookmark',   'lb' => 'จองห้อง'],
+                    'quote'   => ['ค' => $show_quote,   'ic' => 'bi-file-earmark-text', 'lb' => 'ใบเสนอราคา'],
+                    'eo'      => ['ค' => $show_eo,      'ic' => 'bi-calendar-check',    'lb' => 'EO'],
+                ];
+                foreach ($src_opts as $sk => $so): ?>
+                    <label class="bk-srcchk src-<?= $sk ?> <?= $so['ค'] ? 'on' : '' ?>">
+                        <input type="checkbox" name="src[]" value="<?= $sk ?>" <?= $so['ค'] ? 'checked' : '' ?>
+                               onchange="document.getElementById('bkFilter').submit()">
+                        <i class="bi <?= $so['ic'] ?>"></i><?= $so['lb'] ?>
+                    </label>
+                <?php endforeach; ?>
             </div>
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
                 <div class="chipbar">
@@ -602,11 +850,24 @@ require_once "header.php";
                                 if (empty($day_items)) {
                                     echo render_empty_day_row($day_ts, date('Y-m-d', $day_ts) === $today_key);
                                 } else {
-                                    foreach ($day_items as $it) echo render_booking_row($it, $h, $can_cancel, $day_ts);
+                                    // วันเดียวกันหลายรายการ — โชว์ วัน/วันที่ แค่รายการแรกของวันนั้น ที่เหลือเว้นว่าง
+                                    foreach ($day_items as $idx => $it) echo render_booking_row($it, $h, $can_cancel, $day_ts, $idx > 0);
                                 }
                             endfor; ?>
                         <?php else: ?>
-                            <?php foreach ($rows as $r) echo render_booking_row($r, $h, $can_cancel); ?>
+                            <?php
+                            // ถ้าหลายรายการตกวันเดียวกัน (เช่น 12 ส.ค. 2569 มี 2 งาน) ให้โชว์คอลัมน์ วัน/วันที่
+                            // แค่แถวแรกของวันนั้น แถวถัดไปเว้นว่างไว้ ให้อ่านเป็นบล็อกวันเดียวกัน
+                            // จัดกลุ่มตามวันเฉพาะตอนเรียงด้วย "วันที่" เท่านั้น (เรียงคอลัมน์อื่นแถววันเดียวกันจะไม่ติดกัน)
+                            $group_by_date = ($sort === 'start_time');
+                            $prev_date_key = null;
+                            foreach ($rows as $r):
+                                $rdk = !empty($r['start_time']) ? date('Y-m-d', strtotime($r['start_time'])) : '';
+                                $hide_date = $group_by_date && $rdk !== '' && ($rdk === $prev_date_key);
+                                $prev_date_key = $rdk;
+                                echo render_booking_row($r, $h, $can_cancel, null, $hide_date);
+                            endforeach;
+                            ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -616,9 +877,9 @@ require_once "header.php";
                     <?php
                         // นับจำนวน "รายการจองที่ไม่ซ้ำ" ไม่ใช่จำนวนแถว เพราะงานคร่อมหลายวันจะถูกแสดงซ้ำในทุกวันที่ครอบคลุม
                         $agenda_unique_ids = [];
-                        foreach ($agenda_by_day as $day_items) foreach ($day_items as $it) $agenda_unique_ids[$it['id']] = true;
+                        foreach ($agenda_by_day as $day_items) foreach ($day_items as $it) $agenda_unique_ids[($it['_src'] ?? 'booking') . '_' . $it['id']] = true;
                     ?>
-                    <span>เดือนนี้มีการจอง <b><?= number_format(count($agenda_unique_ids)) ?></b> รายการ</span>
+                    <span>เดือนนี้มี <b><?= number_format(count($agenda_unique_ids)) ?></b> รายการ</span>
                 <?php else: ?>
                     <span>แสดง <b><?= number_format($sum_total) ?></b> รายการ</span>
                     <span class="text-muted">คลิกหัวตารางเพื่อเรียงลำดับ</span>
@@ -662,7 +923,7 @@ require_once "header.php";
 </div>
 
 <script>
-const BK_ROWS = <?= json_encode(array_column($rows, null, 'id'), JSON_UNESCAPED_UNICODE) ?>;
+const BK_ROWS = <?= json_encode(array_column(array_filter($rows, fn($r) => ($r['_src'] ?? 'booking') === 'booking'), null, 'id'), JSON_UNESCAPED_UNICODE) ?>;
 const BK_CAN_CANCEL = <?= $can_cancel ? 'true' : 'false' ?>;
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m =>

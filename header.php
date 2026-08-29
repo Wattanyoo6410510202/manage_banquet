@@ -278,7 +278,7 @@ function is_active($pages)
                 <li>
                     <a href="booking_list.php"
                         class="<?php echo is_active(['booking_list.php', 'room_calendar.php']); ?>">
-                        <i class="bi bi-journal-bookmark"></i> รายการจองห้อง
+                        <i class="bi bi-journal-bookmark"></i> รายการจองห้อง / ใบเสนอราคา
                     </a>
                 </li>
                 <?php endif; ?>
