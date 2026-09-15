@@ -16,14 +16,30 @@ if (!isset($_GET['my'])) {
     $my_only = $_GET['my'] === '1';
 }
 $user_id = intval($_SESSION['user_id'] ?? 0);
-$filter_clause = $my_only ? "WHERE q.created_by = $user_id" : "";
+
+// ค้นหา: เลขที่ใบเสนอราคา / ชื่อลูกค้า / ชื่อผู้ติดต่อ / ชื่องาน / ชื่อโครงการ
+$search = trim($_GET['q_search'] ?? '');
+
+$where_parts = [];
+if ($my_only) $where_parts[] = "q.created_by = $user_id";
+if ($search !== '') {
+    $search_esc = $conn->real_escape_string($search);
+    $where_parts[] = "(q.quote_no LIKE '%$search_esc%' OR c.cust_name LIKE '%$search_esc%' OR c.cust_contact_name LIKE '%$search_esc%' OR f.function_name LIKE '%$search_esc%' OR p.project_name LIKE '%$search_esc%')";
+}
+$where_clause = $where_parts ? ('WHERE ' . implode(' AND ', $where_parts)) : '';
 
 // แท็บกรอง "รออนุมัติ / อนุมัติแล้ว" — โชว์ทีละแท็บ แทนที่จะแสดงทั้ง 2 สถานะซ้อนกันยาวๆ
 $active_tab = ($_GET['tab'] ?? 'pending') === 'approved' ? 'approved' : 'pending';
 
 // Query หลัก — แบ่งหน้า "ต่อกลุ่มโปรเจกต์" (20 กลุ่ม/หน้า แยกแต่ละส่วน)
-// 1) query เบา: เรียง/จัดกลุ่ม/นับโดยไม่ดึงคอลัมน์หนักทั้งหมด
-$light_sql = "SELECT q.id, q.project_id, q.status FROM quotations q $filter_clause ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
+// 1) query เบา: เรียง/จัดกลุ่ม/นับโดยไม่ดึงคอลัมน์หนักทั้งหมด (join ตารางที่ใช้ค้นหาเพิ่มเมื่อจำเป็น)
+$light_sql = "SELECT q.id, q.project_id, q.status
+              FROM quotations q
+              LEFT JOIN customers c ON q.customer_id = c.id
+              LEFT JOIN functions f ON q.function_id = f.id
+              LEFT JOIN event_projects p ON q.project_id = p.id
+              $where_clause
+              ORDER BY COALESCE(q.project_id, q.id) DESC, q.id DESC";
 $light_res = $conn->query($light_sql);
 $light_rows = [];
 if ($light_res) while ($r = $light_res->fetch_assoc()) $light_rows[] = $r;
@@ -152,17 +168,50 @@ $status_map = [
                 <div class="hero-sub">อนุมัติและใช้งาน</div>
             </div>
             <div class="d-flex align-items-center gap-2">
+                <?php
+                $my_qs = $_GET; unset($my_qs['pp'], $my_qs['pa'], $my_qs['my']);
+                $my_qs_str = http_build_query($my_qs);
+                $my_prefix = $my_qs_str ? $my_qs_str . '&' : '';
+                ?>
                 <select class="form-select form-select-sm" style="width:auto"
-                    onchange="location.href='quotation_list.php?my='+this.value">
+                    onchange="location.href='?<?= htmlspecialchars($my_prefix) ?>my='+this.value">
                     <option value="0" <?= !$my_only ? 'selected' : '' ?>>ทั้งหมด</option>
                     <option value="1" <?= $my_only ? 'selected' : '' ?>>เฉพาะของฉัน</option>
                 </select>
+                <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal"
+                    data-bs-target="#extQuoteModal">
+                    <i class="bi bi-cloud-download me-2"></i> ดึงใบเสนอราคาจากระบบ
+                </button>
                 <a href="add_quote.php" class="btn btn-dark btn-create">
                     <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
                 </a>
             </div>
         </div>
     </div>
+
+    <!-- ===== ค้นหาใบเสนอราคา ===== -->
+    <form method="GET" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <input type="hidden" name="tab" value="<?= htmlspecialchars($active_tab) ?>">
+        <input type="hidden" name="my" value="<?= $my_only ? '1' : '0' ?>">
+        <div class="flex-grow-1" style="min-width:220px;max-width:480px;">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" name="q_search" class="form-control"
+                    placeholder="ค้นหาเลขที่ใบเสนอราคา, ชื่อลูกค้า, ชื่องาน, ชื่อโครงการ..."
+                    value="<?= htmlspecialchars($search) ?>">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-outline-dark">ค้นหา</button>
+        <?php if ($search !== ''):
+            $clear_qs = $_GET;
+            unset($clear_qs['q_search'], $clear_qs['pp'], $clear_qs['pa']);
+            ?>
+            <a href="?<?= htmlspecialchars(http_build_query($clear_qs)) ?>" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1"></i>ล้างการค้นหา
+            </a>
+            <span class="text-muted small">ผลการค้นหา "<?= htmlspecialchars($search) ?>": <?= number_format($total_pending + $total_approved) ?> รายการ</span>
+        <?php endif; ?>
+    </form>
 
     <!-- ===== แท็บกรอง รออนุมัติ / อนุมัติแล้ว (ปุ่มใหญ่) ===== -->
     <div class="d-flex gap-3 mb-4 w-100">
@@ -759,6 +808,52 @@ $status_map = [
     </div>
 </div>
 
+<!-- ===== Modal: ดึงใบเสนอราคาจากระบบภายนอก ===== -->
+<div class="modal fade" id="extQuoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cloud-download me-2 text-gold"></i>ใบเสนอราคาจากระบบภายนอก</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-auto me-2" id="extQuoteRefreshBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>โหลดใหม่
+                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-control mb-3" id="extQuoteSearch"
+                    placeholder="ค้นหาเลขที่ใบเสนอราคา, ชื่อลูกค้า, บริษัท, ชื่องาน...">
+
+                <div id="extQuoteLoading" class="text-center text-muted py-5">
+                    <div class="spinner-border text-secondary mb-2" role="status"></div>
+                    <div>กำลังดึงข้อมูลจากระบบ...</div>
+                </div>
+                <div id="extQuoteError" class="alert alert-danger d-none"></div>
+
+                <div class="table-responsive d-none" id="extQuoteTableWrap">
+                    <table class="table table-hover align-middle mb-0" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>เลขที่</th>
+                                <th>ลูกค้า</th>
+                                <th>ชื่องาน</th>
+                                <th>วันที่จัดงาน</th>
+                                <th class="text-center">แขก</th>
+                                <th class="text-end">ยอดสุทธิ</th>
+                                <th class="text-center">สถานะ</th>
+                                <th class="text-center">รายการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extQuoteTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="extQuoteEmpty" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>ไม่พบใบเสนอราคาที่ตรงกับคำค้นหา
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -982,5 +1077,157 @@ $status_map = [
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     }
+
+    // ===== ดึงใบเสนอราคาจากระบบภายนอก (Modal) =====
+    (function () {
+        let extQuoteData = null;
+        let extQuoteLoaded = false;
+
+        const extStatusMap = {
+            new: { text: 'คำขอใหม่', class: 'bg-secondary-subtle text-secondary' },
+            draft: { text: 'ฉบับร่าง', class: 'bg-secondary-subtle text-secondary' },
+            sent: { text: 'ส่งลูกค้าแล้ว', class: 'bg-info-subtle text-info' },
+            confirmed: { text: 'ยืนยันแล้ว', class: 'bg-success-subtle text-success' },
+            cancelled: { text: 'ยกเลิก', class: 'bg-danger-subtle text-danger' },
+        };
+
+        function escHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function fmtDate(d) {
+            if (!d) return '-';
+            const dt = new Date(d);
+            if (isNaN(dt)) return escHtml(d);
+            return dt.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function fmtMoney(n) {
+            const v = Number(n || 0);
+            return v.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function renderItemsTable(items) {
+            if (!items || !items.length) {
+                return '<div class="text-muted small px-3 py-2">ไม่มีรายการอาหาร</div>';
+            }
+            let rows = items.map(it => `
+                <tr>
+                    <td>${escHtml(it.name)}${it.category_name ? `<div class="text-muted small">${escHtml(it.category_name)}</div>` : ''}</td>
+                    <td class="text-center">${escHtml(it.qty)} ${escHtml(it.unit || '')}</td>
+                    <td class="text-end">${fmtMoney(it.unit_price)}</td>
+                    <td class="text-end">${fmtMoney(it.amount)}</td>
+                </tr>`).join('');
+            return `
+                <table class="table table-sm table-borderless mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th>รายการ</th><th class="text-center">จำนวน</th><th class="text-end">ราคา/หน่วย</th><th class="text-end">รวม</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+
+        function renderExtQuoteTable(list) {
+            const tbody = $('#extQuoteTableBody');
+            tbody.empty();
+
+            if (!list.length) {
+                $('#extQuoteTableWrap').addClass('d-none');
+                $('#extQuoteEmpty').removeClass('d-none');
+                return;
+            }
+            $('#extQuoteEmpty').addClass('d-none');
+            $('#extQuoteTableWrap').removeClass('d-none');
+
+            list.forEach((q, idx) => {
+                const st = extStatusMap[q.status] || { text: escHtml(q.status || '-'), class: 'bg-secondary-subtle text-secondary' };
+                const rowId = 'extq-detail-' + idx;
+                tbody.append(`
+                    <tr>
+                        <td class="fw-bold text-primary">${escHtml(q.quote_no)}</td>
+                        <td>
+                            <div class="fw-bold text-dark">${escHtml(q.customer_name)}</div>
+                            ${q.company ? `<div class="text-muted small">${escHtml(q.company)}</div>` : ''}
+                            ${q.phone ? `<div class="text-muted small"><i class="bi bi-telephone me-1"></i>${escHtml(q.phone)}</div>` : ''}
+                        </td>
+                        <td>
+                            <div>${escHtml(q.event_name || '-')}</div>
+                            ${q.event_type ? `<div class="text-muted small">${escHtml(q.event_type)}</div>` : ''}
+                        </td>
+                        <td>${fmtDate(q.event_date)}</td>
+                        <td class="text-center">${q.guest_count != null ? escHtml(q.guest_count) : '-'}</td>
+                        <td class="text-end fw-bold">${fmtMoney(q.grand_total)}</td>
+                        <td class="text-center"><span class="badge border ${st.class} px-2 py-1">${st.text}</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-secondary ext-toggle-detail" data-target="${rowId}">
+                                <i class="bi bi-list-ul"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="${rowId}" style="display:none">
+                        <td colspan="8" class="bg-light p-0">${renderItemsTable(q.items)}</td>
+                    </tr>
+                `);
+            });
+        }
+
+        function filterExtQuotes() {
+            if (!extQuoteData) return;
+            const kw = $('#extQuoteSearch').val().trim().toLowerCase();
+            if (!kw) {
+                renderExtQuoteTable(extQuoteData);
+                return;
+            }
+            const filtered = extQuoteData.filter(q => [
+                q.quote_no, q.customer_name, q.company, q.event_name, q.phone, q.email
+            ].some(f => (f || '').toString().toLowerCase().includes(kw)));
+            renderExtQuoteTable(filtered);
+        }
+
+        function loadExtQuotes() {
+            $('#extQuoteLoading').removeClass('d-none');
+            $('#extQuoteError').addClass('d-none');
+            $('#extQuoteTableWrap').addClass('d-none');
+            $('#extQuoteEmpty').addClass('d-none');
+
+            $.ajax({
+                url: 'api/fetch_external_quotations.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    $('#extQuoteLoading').addClass('d-none');
+                    if (res.status === 'success') {
+                        extQuoteData = res.data || [];
+                        extQuoteLoaded = true;
+                        filterExtQuotes();
+                    } else {
+                        $('#extQuoteError').removeClass('d-none').text(res.message || 'เกิดข้อผิดพลาด');
+                    }
+                },
+                error: function () {
+                    $('#extQuoteLoading').addClass('d-none');
+                    $('#extQuoteError').removeClass('d-none').text('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+                }
+            });
+        }
+
+        $(document).on('shown.bs.modal', '#extQuoteModal', function () {
+            if (!extQuoteLoaded) loadExtQuotes();
+        });
+
+        $('#extQuoteRefreshBtn').on('click', function () {
+            loadExtQuotes();
+        });
+
+        $('#extQuoteSearch').on('input', filterExtQuotes);
+
+        $(document).on('click', '.ext-toggle-detail', function () {
+            $('#' + $(this).data('target')).toggle();
+        });
+    })();
 </script>
 <?php include "footer.php"; ?>
