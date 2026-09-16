@@ -187,31 +187,31 @@ $status_map = [
                 </a>
             </div>
         </div>
-    </div>
 
-    <!-- ===== ค้นหาใบเสนอราคา ===== -->
-    <form method="GET" class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <input type="hidden" name="tab" value="<?= htmlspecialchars($active_tab) ?>">
-        <input type="hidden" name="my" value="<?= $my_only ? '1' : '0' ?>">
-        <div class="flex-grow-1" style="min-width:220px;max-width:480px;">
-            <div class="input-group">
+        <hr class="ql-hero-divider">
+
+        <!-- ===== ค้นหาใบเสนอราคา ===== -->
+        <form method="GET" class="d-flex flex-wrap align-items-center gap-2">
+            <input type="hidden" name="tab" value="<?= htmlspecialchars($active_tab) ?>">
+            <input type="hidden" name="my" value="<?= $my_only ? '1' : '0' ?>">
+            <div class="input-group input-group-sm flex-grow-1" style="min-width:240px;max-width:420px;">
                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                 <input type="text" name="q_search" class="form-control"
                     placeholder="ค้นหาเลขที่ใบเสนอราคา, ชื่อลูกค้า, ชื่องาน, ชื่อโครงการ..."
                     value="<?= htmlspecialchars($search) ?>">
             </div>
-        </div>
-        <button type="submit" class="btn btn-outline-dark">ค้นหา</button>
-        <?php if ($search !== ''):
-            $clear_qs = $_GET;
-            unset($clear_qs['q_search'], $clear_qs['pp'], $clear_qs['pa']);
-            ?>
-            <a href="?<?= htmlspecialchars(http_build_query($clear_qs)) ?>" class="btn btn-outline-secondary">
-                <i class="bi bi-x-lg me-1"></i>ล้างการค้นหา
-            </a>
-            <span class="text-muted small">ผลการค้นหา "<?= htmlspecialchars($search) ?>": <?= number_format($total_pending + $total_approved) ?> รายการ</span>
-        <?php endif; ?>
-    </form>
+            <button type="submit" class="btn btn-outline-dark btn-sm">ค้นหา</button>
+            <?php if ($search !== ''):
+                $clear_qs = $_GET;
+                unset($clear_qs['q_search'], $clear_qs['pp'], $clear_qs['pa']);
+                ?>
+                <a href="?<?= htmlspecialchars(http_build_query($clear_qs)) ?>" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg me-1"></i>ล้างการค้นหา
+                </a>
+                <span class="text-muted small">ผลการค้นหา "<?= htmlspecialchars($search) ?>": <?= number_format($total_pending + $total_approved) ?> รายการ</span>
+            <?php endif; ?>
+        </form>
+    </div>
 
     <!-- ===== แท็บกรอง รออนุมัติ / อนุมัติแล้ว (ปุ่มใหญ่) ===== -->
     <div class="d-flex gap-3 mb-4 w-100">
@@ -244,6 +244,7 @@ $status_map = [
             background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
         .ql-hero>*{position:relative;z-index:1}
         .ql-hero .hero-sub{font-size:.78rem;color:var(--ink2)}
+        .ql-hero-divider{border:0;border-top:1px solid var(--line);margin:14px 0}
         .ql-tab-btn {
             display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; border-radius: 12px;
             border: 2px solid #e8eaee; background: #fff; text-decoration: none; color: #111318;
@@ -840,7 +841,7 @@ $status_map = [
                                 <th class="text-center">แขก</th>
                                 <th class="text-end">ยอดสุทธิ</th>
                                 <th class="text-center">สถานะ</th>
-                                <th class="text-center">รายการ</th>
+                                <th class="text-center" style="min-width:160px;">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="extQuoteTableBody"></tbody>
@@ -1082,6 +1083,7 @@ $status_map = [
     (function () {
         let extQuoteData = null;
         let extQuoteLoaded = false;
+        let extQuoteMap = {};
 
         const extStatusMap = {
             new: { text: 'คำขอใหม่', class: 'bg-secondary-subtle text-secondary' },
@@ -1134,6 +1136,7 @@ $status_map = [
         function renderExtQuoteTable(list) {
             const tbody = $('#extQuoteTableBody');
             tbody.empty();
+            extQuoteMap = {};
 
             if (!list.length) {
                 $('#extQuoteTableWrap').addClass('d-none');
@@ -1163,15 +1166,21 @@ $status_map = [
                         <td class="text-end fw-bold">${fmtMoney(q.grand_total)}</td>
                         <td class="text-center"><span class="badge border ${st.class} px-2 py-1">${st.text}</span></td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-secondary ext-toggle-detail" data-target="${rowId}">
-                                <i class="bi bi-list-ul"></i>
-                            </button>
+                            <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-outline-secondary ext-toggle-detail" data-target="${rowId}" title="ดูรายการอาหาร">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-dark ext-make-quote" data-ext-id="${escHtml(q.id)}" title="ทำใบเสนอราคา">
+                                    <i class="bi bi-file-earmark-plus me-1"></i>ทำใบเสนอราคา
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <tr id="${rowId}" style="display:none">
                         <td colspan="8" class="bg-light p-0">${renderItemsTable(q.items)}</td>
                     </tr>
                 `);
+                extQuoteMap[String(q.id)] = q;
             });
         }
 
@@ -1227,6 +1236,44 @@ $status_map = [
 
         $(document).on('click', '.ext-toggle-detail', function () {
             $('#' + $(this).data('target')).toggle();
+        });
+
+        // ทำใบเสนอราคา: หาลูกค้าเดิม/เพิ่มลูกค้าใหม่ให้ก่อน (ให้หน้า add_quote เลือกลูกค้าไว้ให้เลย)
+        // แล้วเก็บข้อมูลใบเสนอราคาภายนอกที่เหลือไว้ใน sessionStorage ก่อนไปหน้า add_quote
+        $(document).on('click', '.ext-make-quote', function () {
+            const extId = String($(this).data('extId'));
+            const q = extQuoteMap[extId];
+            if (!q) {
+                Swal.fire('ผิดพลาด!', 'ไม่พบข้อมูลใบเสนอราคานี้', 'error');
+                return;
+            }
+            const btn = $(this);
+            const originalHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+            $.post('api/find_or_create_customer.php', {
+                customer_name: q.customer_name || '',
+                company: q.company || '',
+                phone: q.phone || '',
+                email: q.email || ''
+            }, function (res) {
+                if (!res || res.status !== 'success') {
+                    Swal.fire('ผิดพลาด!', (res && res.message) || 'ไม่สามารถเตรียมข้อมูลลูกค้าได้', 'error');
+                    btn.prop('disabled', false).html(originalHtml);
+                    return;
+                }
+                try {
+                    sessionStorage.setItem('extQuoteImport', JSON.stringify(q));
+                } catch (e) {
+                    Swal.fire('ผิดพลาด!', 'ไม่สามารถส่งข้อมูลไปยังหน้าสร้างใบเสนอราคาได้', 'error');
+                    btn.prop('disabled', false).html(originalHtml);
+                    return;
+                }
+                window.location.href = 'add_quote.php?from_ext=1&customer_id=' + encodeURIComponent(res.id);
+            }, 'json').fail(function () {
+                Swal.fire('ผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+                btn.prop('disabled', false).html(originalHtml);
+            });
         });
     })();
 </script>

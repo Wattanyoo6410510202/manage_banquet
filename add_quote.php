@@ -651,6 +651,88 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         }
     }
     initProjectSelect();
+
+    // ===== นำเข้าข้อมูลจากใบเสนอราคาระบบภายนอก (quotation_list.php -> ปุ่ม "ทำใบเสนอราคา") =====
+
+    // แพ็กเกจอาหารจากระบบภายนอก เก็บรายละเอียดคอร์สเป็นบรรทัด "ชื่อคอร์ส: ชื่อเมนู" (เช่น "เมนูผัด: ...")
+    // ตัดป้ายชื่อคอร์สออก เหลือแค่ชื่อเมนู ให้แสดงผลเหมือนตอนเลือกแพ็กเกจในระบบนี้เอง
+    // (บรรทัดหัวข้อ "หมายเหตุ:" และบรรทัดโน้ต "- ชื่อเมนู: ..." ที่มีอยู่แล้วจะคงรูปแบบเดิมไว้ ไม่ถูกตัด)
+    // ส่วนเบรก (Coffee Break) เอาแค่ชื่อรายการพอ ไม่ต้องแสดงรายละเอียดของที่อยู่ในเบรก
+    function extPackageDescription(item) {
+        var desc = item.description || '';
+        var category = item.category_name || '';
+        if (/coffee break|อาหารว่าง/i.test(category)) return '';
+        if (category !== 'แพ็กเกจอาหาร' || !desc) return desc;
+        return desc.split('\n').map(function (line) {
+            var m = line.match(/^(?!-\s)[^:\n]+:\s*(.+)$/);
+            return m ? m[1] : line;
+        }).join('\n');
+    }
+
+    function applyExtQuoteImport(data) {
+        if (!data) return;
+
+        if (data.event_name) $('input[name="event_name"]').val(data.event_name);
+        if (data.event_date && /^\d{4}-\d{2}-\d{2}$/.test(data.event_date)) {
+            $('input[name="event_date"]').val(data.event_date);
+        }
+        if (data.valid_until && /^\d{4}-\d{2}-\d{2}$/.test(data.valid_until)) {
+            $('input[name="expiry_date"]').val(data.valid_until);
+        }
+        if (data.discount) $('#discount').val((parseFloat(data.discount) || 0).toFixed(2));
+        $('#vatType').val((parseFloat(data.vat_pct) || 0) === 0 ? 'no' : 'exclude');
+
+        var remarkLines = [];
+        remarkLines.push('นำเข้าจากใบเสนอราคาระบบภายนอก เลขที่ ' + (data.quote_no || '-'));
+        remarkLines.push('ลูกค้า: ' + (data.customer_name || '-') + (data.company ? ' (' + data.company + ')' : ''));
+        remarkLines.push('โทร: ' + (data.phone || '-') + '   อีเมล: ' + (data.email || '-'));
+        remarkLines.push('ประเภทงาน: ' + (data.event_type || '-') + '   ช่วงเวลา: ' + (data.event_time || '-'));
+        remarkLines.push('สถานที่: ' + (data.venue || '-') + '   จำนวนแขก: ' + (data.guest_count != null ? data.guest_count : '-'));
+        if (data.notes) remarkLines.push('หมายเหตุจากลูกค้า: ' + data.notes);
+        $('textarea[name="remarks"]').val(remarkLines.join('\n'));
+
+        if (Array.isArray(data.items) && data.items.length > 0) {
+            $('#itemTable tbody').empty();
+            data.items.forEach(function (item, idx) {
+                var name = item.name || '';
+                var desc = extPackageDescription(item);
+                if (desc) name += '\n' + desc;
+                var qty = parseFloat(item.qty) || 1;
+                var price = parseFloat(item.unit_price) || 0;
+                var total = item.amount != null ? (parseFloat(item.amount) || 0) : (qty * price);
+                var row = '<tr>'
+                    + '<td class="text-center">' + (idx + 1) + '</td>'
+                    + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
+                    + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1"></td>'
+                    + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01"></td>'
+                    + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total.toFixed(2) + '" readonly></td>'
+                    + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
+                    + '</tr>';
+                $('#itemTable tbody').append(row);
+            });
+            $('#itemTable textarea').each(function () { autoGrowTextarea(this); });
+            calculateAll();
+        }
+
+        // หมายเหตุ: ลูกค้าถูกค้นหา/เพิ่มใหม่และเลือกไว้ให้แล้วตั้งแต่ฝั่ง quotation_list.php
+        // (ส่ง customer_id มาทาง URL แล้ว PHP หน้านี้เลือกไว้ให้ตั้งแต่โหลดหน้า)
+    }
+
+    (function initExtQuoteImport() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('from_ext') !== '1') return;
+        var raw = null;
+        try {
+            raw = sessionStorage.getItem('extQuoteImport');
+            sessionStorage.removeItem('extQuoteImport');
+        } catch (e) {}
+        if (!raw) return;
+        try {
+            applyExtQuoteImport(JSON.parse(raw));
+        } catch (e) {
+            console.error('extQuoteImport parse error', e);
+        }
+    })();
 </script>
 
 <style>
