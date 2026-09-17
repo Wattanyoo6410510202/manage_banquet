@@ -162,6 +162,9 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openTemplateModal('template-break','onBreakTemplateSelect')">
                     <i class="bi bi-grid-3x3-gap me-1"></i>เลือกเบรก
                 </button>
+                <button type="button" class="btn btn-outline-success btn-sm" id="pickupImportBtn">
+                    <i class="bi bi-cloud-download me-1"></i>ดึงจากระบบ (ที่ลูกค้าเลือกไว้)
+                </button>
             </div>
             <!-- ====== END เทมเพลต ====== -->
 
@@ -271,6 +274,57 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             </div>
         </div>
     </form>
+</div>
+
+<!-- ===== Modal: ดึงรายการที่ลูกค้าเลือกไว้ (food-pick) จากระบบภายนอก ===== -->
+<div class="modal fade" id="pickupImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cloud-download me-2 text-success"></i>รายการเมนู/เบรกที่ลูกค้าเลือกไว้</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-auto me-2" id="pickupRefreshBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>โหลดใหม่
+                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <input type="text" class="form-control" id="pickupSearch" style="flex:1;min-width:220px;"
+                        placeholder="ค้นหาเลขที่อ้างอิง, ชื่อลูกค้า, ชื่องาน, เบอร์โทร...">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="pickupShowPending" checked>
+                        <label class="form-check-label small" for="pickupShowPending">แสดงเฉพาะที่ลูกค้าเลือกแล้ว</label>
+                    </div>
+                </div>
+
+                <div id="pickupLoading" class="text-center text-muted py-5">
+                    <div class="spinner-border text-secondary mb-2" role="status"></div>
+                    <div>กำลังดึงข้อมูลจากระบบ...</div>
+                </div>
+                <div id="pickupError" class="alert alert-danger d-none"></div>
+
+                <div class="table-responsive d-none" id="pickupTableWrap">
+                    <table class="table table-hover align-middle mb-0" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>เลขที่อ้างอิง</th>
+                                <th>ลูกค้า</th>
+                                <th>ชื่องาน</th>
+                                <th>วันที่จัดงาน</th>
+                                <th class="text-center">สถานะ</th>
+                                <th>วันที่เลือก</th>
+                                <th class="text-center" style="min-width:120px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pickupTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="pickupEmpty" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>ไม่พบรายการที่ตรงกับคำค้นหา
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -732,6 +786,323 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         } catch (e) {
             console.error('extQuoteImport parse error', e);
         }
+    })();
+
+    // ===== ดึงรายการที่ลูกค้าเลือกไว้ (food-pick) จากระบบภายนอก =====
+    (function initPickupImport() {
+        var pickupData = null;
+        var pickupLoaded = false;
+        var pickupMap = {};
+
+        var pickupStatusMap = {
+            pending: { text: 'รอลูกค้าเลือก', class: 'bg-warning-subtle text-warning' },
+            submitted: { text: 'เลือกแล้ว', class: 'bg-success-subtle text-success' }
+        };
+
+        function fmtDateTH(d) {
+            if (!d) return '-';
+            var dt = new Date(d);
+            if (isNaN(dt)) return escapeHtml(d);
+            return dt.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function fmtDateTimeTH(d) {
+            if (!d) return '-';
+            var dt = new Date(d);
+            if (isNaN(dt)) return escapeHtml(d);
+            return dt.toLocaleString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ตัดป้ายชื่อคอร์สออก เหลือแค่ชื่อเมนู (รูปแบบเดียวกับ extPackageDescription ด้านบน)
+        function pickupPackageDescription(desc) {
+            if (!desc) return '';
+            return desc.split('\n').map(function (line) {
+                var m = line.match(/^(?!-\s)[^:\n]+:\s*(.+)$/);
+                return m ? m[1] : line;
+            }).join('\n');
+        }
+
+        // ตัดอักขระที่ไม่ใช่ตัวอักษร/ตัวเลขออกแล้วแปลงเป็นตัวพิมพ์เล็ก เพื่อเทียบชื่อแบบคร่าวๆ
+        // (ระบบภายนอกกับระบบเราอาจเขียนชื่อแพ็กเกจไม่ตรงเป๊ะ เช่น "Thai Set 3,000" vs "Thai-set 3,000")
+        function normalizePickupName(s) {
+            return (s || '').toString().toLowerCase().replace(/[^a-z0-9฀-๿]/g, '');
+        }
+
+        // เดาราคาแพ็กเกจแบบ Best-effort โดยเทียบชื่อกับหมวดราคาเซ็ตที่ตั้งไว้ในระบบเรา (master_menu_categories)
+        // ข้อมูลจาก API ภายนอกไม่มีราคามาด้วย จึงเป็นแค่การเดา ต้องให้พนักงานตรวจสอบอีกครั้งเสมอ
+        function guessPickupPackagePrice(packageName) {
+            var norm = normalizePickupName(packageName);
+            if (!norm || typeof _menuTypesData === 'undefined') return null;
+            for (var i = 0; i < _menuTypesData.length; i++) {
+                var mt = _menuTypesData[i];
+                if (normalizePickupName(mt.category_name) === norm) {
+                    var price = parseFloat(mt.set_price);
+                    if (!isNaN(price) && price > 0) {
+                        return { price: price, matchedName: mt.category_name };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function addPickupRow(name, qty, price, isGuessed) {
+            var qtyNum = parseFloat(qty) || 1;
+            var priceNum = parseFloat(price) || 0;
+            var total = qtyNum * priceNum;
+            var rowCount = $('#itemTable tbody tr').length + 1;
+            var priceClass = 'form-control form-control-sm text-end price' + (isGuessed ? ' border-warning bg-warning-subtle' : '');
+            var row = '<tr' + (isGuessed ? ' class="table-warning"' : '') + '>'
+                + '<td class="text-center">' + rowCount + '</td>'
+                + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
+                + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qtyNum + '" min="1"></td>'
+                + '<td><input type="number" name="unit_price[]" class="' + priceClass + '" value="' + priceNum.toFixed(2) + '" step="0.01"' + (isGuessed ? ' title="ราคาโดยประมาณจากการเทียบชื่อ กรุณาตรวจสอบ"' : '') + '></td>'
+                + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total.toFixed(2) + '" readonly></td>'
+                + '<td class="text-center"><i class="bi bi-trash text-danger removeRow" style="cursor:pointer"></i></td>'
+                + '</tr>';
+            $('#itemTable tbody').append(row);
+            autoGrowTextarea($('#itemTable tbody tr:last textarea')[0]);
+        }
+
+        function applyPickupImport(entry, opts) {
+            if (!entry) return;
+            opts = opts || {};
+            var selections = entry.selections || [];
+            var extraItems = entry.extra_items || [];
+            if (selections.length === 0 && extraItems.length === 0) {
+                Swal.fire('ไม่มีข้อมูล', 'ลิงก์นี้ยังไม่มีรายการที่ลูกค้าเลือกไว้', 'info');
+                return;
+            }
+
+            // ถ้ามีแค่แถวว่างเปล่าแถวเดียว (ยังไม่ได้กรอกอะไร) ให้ล้างทิ้งก่อนนำเข้า
+            var $rows = $('#itemTable tbody tr');
+            if ($rows.length === 1 && $rows.find('textarea[name="item_name[]"]').val().trim() === '') {
+                $rows.remove();
+            }
+
+            var guessedCount = 0;
+            selections.forEach(function (sel) {
+                var name = sel.package_name || '';
+                var desc = pickupPackageDescription(sel.description);
+                if (desc) name += '\n' + desc;
+                if (sel.note) name += '\nหมายเหตุ: ' + sel.note;
+
+                var guess = guessPickupPackagePrice(sel.package_name);
+                if (guess) {
+                    guessedCount++;
+                    name += '\n[ราคาโดยประมาณ เทียบจากหมวด "' + guess.matchedName + '" ในระบบเรา กรุณาตรวจสอบราคาอีกครั้ง]';
+                }
+                addPickupRow(name, 1, guess ? guess.price : 0, !!guess);
+            });
+
+            extraItems.forEach(function (ei) {
+                var name = (ei.name || '') + (ei.unit ? ' (' + ei.unit + ')' : '');
+                addPickupRow(name, ei.qty || 1, 0);
+            });
+
+            $('#itemTable tbody tr').each(function (idx) {
+                $(this).find('td:first').text(idx + 1);
+            });
+            calculateAll();
+
+            var modalEl = document.getElementById('pickupImportModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            var title = opts.autoMatched ? 'พบชื่อลูกค้าตรงกัน นำเข้าอัตโนมัติ' : 'นำเข้าสำเร็จ';
+            var text = 'เพิ่มรายการจากลิงก์เลือกเมนูเรียบร้อยแล้ว';
+            if (guessedCount > 0) {
+                text += ' ระบบเดาราคาแพ็กเกจให้ ' + guessedCount + ' รายการ (แถวสีเหลือง) กรุณาตรวจสอบราคาก่อนบันทึก';
+            }
+            text += ' และกรอกราคา/หน่วยของรายการอื่นให้ครบ';
+            Swal.fire({ icon: 'success', title: title, text: text, timer: guessedCount > 0 ? 4500 : 3000, showConfirmButton: false });
+        }
+
+        function renderPickupTable(list) {
+            var tbody = $('#pickupTableBody');
+            tbody.empty();
+            pickupMap = {};
+
+            if (!list.length) {
+                $('#pickupTableWrap').addClass('d-none');
+                $('#pickupEmpty').removeClass('d-none');
+                return;
+            }
+            $('#pickupEmpty').addClass('d-none');
+            $('#pickupTableWrap').removeClass('d-none');
+
+            list.forEach(function (p, idx) {
+                var st = pickupStatusMap[p.status] || { text: escapeHtml(p.status || '-'), class: 'bg-secondary-subtle text-secondary' };
+                var hasData = (p.selections && p.selections.length) || (p.extra_items && p.extra_items.length);
+                pickupMap[String(p.token)] = p;
+                tbody.append(
+                    '<tr>'
+                    + '<td class="fw-bold text-primary">' + escapeHtml(p.external_quote_no || '-') + '</td>'
+                    + '<td>'
+                        + '<div class="fw-bold text-dark">' + escapeHtml(p.customer_name || '-') + '</div>'
+                        + (p.phone ? '<div class="text-muted small"><i class="bi bi-telephone me-1"></i>' + escapeHtml(p.phone) + '</div>' : '')
+                    + '</td>'
+                    + '<td>' + escapeHtml(p.event_name || '-') + '</td>'
+                    + '<td>' + fmtDateTH(p.event_date) + '</td>'
+                    + '<td class="text-center"><span class="badge border ' + st.class + ' px-2 py-1">' + st.text + '</span></td>'
+                    + '<td>' + fmtDateTimeTH(p.submitted_at || p.created_at) + '</td>'
+                    + '<td class="text-center">'
+                        + '<button type="button" class="btn btn-sm btn-outline-success pickup-import-btn" data-token="' + escapeHtml(p.token) + '"' + (hasData ? '' : ' disabled title="ยังไม่มีรายการที่เลือก"') + '>'
+                            + '<i class="bi bi-download me-1"></i>นำเข้า'
+                        + '</button>'
+                    + '</td>'
+                    + '</tr>'
+                );
+            });
+        }
+
+        function filterPickupList() {
+            if (!pickupData) return;
+            var kw = $('#pickupSearch').val().trim().toLowerCase();
+            var onlySubmitted = $('#pickupShowPending').is(':checked');
+            var filtered = pickupData.filter(function (p) {
+                if (onlySubmitted && p.status !== 'submitted') return false;
+                if (!kw) return true;
+                return [p.external_quote_no, p.customer_name, p.event_name, p.phone].some(function (f) {
+                    return (f || '').toString().toLowerCase().indexOf(kw) !== -1;
+                });
+            });
+            renderPickupTable(filtered);
+        }
+
+        // ดึงข้อมูลจากเซิร์ฟเวอร์ครั้งเดียว แคชไว้ใน pickupData แล้วแจ้งผลผ่าน callback(err, data)
+        function fetchPickupData(callback) {
+            if (pickupLoaded) { callback(null, pickupData); return; }
+            $.ajax({
+                url: 'api/fetch_pickup_selections.php',
+                type: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status === 'success') {
+                        pickupData = res.data || [];
+                        pickupLoaded = true;
+                        callback(null, pickupData);
+                    } else {
+                        callback(res.message || 'เกิดข้อผิดพลาด');
+                    }
+                },
+                error: function () {
+                    callback('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+                }
+            });
+        }
+
+        function loadPickupSelections() {
+            $('#pickupLoading').removeClass('d-none');
+            $('#pickupError').addClass('d-none');
+            $('#pickupTableWrap').addClass('d-none');
+            $('#pickupEmpty').addClass('d-none');
+            pickupLoaded = false;
+
+            fetchPickupData(function (err) {
+                $('#pickupLoading').addClass('d-none');
+                if (err) {
+                    $('#pickupError').removeClass('d-none').text(err);
+                } else {
+                    filterPickupList();
+                }
+            });
+        }
+
+        function pickupOpenModal(prefillSearch) {
+            if (typeof prefillSearch === 'string') {
+                $('#pickupSearch').val(prefillSearch);
+            }
+            var modalEl = document.getElementById('pickupImportModal');
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            if (pickupLoaded) filterPickupList();
+            else loadPickupSelections();
+        }
+
+        // เลขที่ใบเสนอราคาปัจจุบัน (ใช้จับคู่กับ external_quote_no ที่ผูกไว้ตอนสร้างลิงก์)
+        function getCurrentQuoteNo() {
+            return ($('input[name="quote_no"]').val() || '').trim();
+        }
+
+        // ชื่อลูกค้าที่เลือกไว้ในฟอร์มตอนนี้ (จาก select2 ค้นหาลูกค้า)
+        function getSelectedCustomerName() {
+            var text = $('#customer_select option:selected').text() || $('#info_name').text() || '';
+            text = text.trim();
+            if (!text || text.indexOf('---') !== -1) return '';
+            return text;
+        }
+
+        function pickupHasData(p) {
+            return (p.selections && p.selections.length) || (p.extra_items && p.extra_items.length);
+        }
+
+        // กดปุ่ม "ดึงจากระบบ": จับคู่ด้วยเลขที่ใบเสนอราคา (external_quote_no) ก่อนเป็นอันดับแรก
+        // เพราะแม่นยำกว่า ถ้าไม่พบค่อย fallback มาใช้ชื่อลูกค้า ถ้าพบพอดี 1 รายการ นำเข้าให้ทันที
+        // ถ้าไม่พบ/พบหลายรายการ ให้เปิด modal ตามปกติ
+        function handlePickupImportClick() {
+            var $btn = $('#pickupImportBtn');
+            if ($btn.prop('disabled')) return;
+
+            var quoteNo = getCurrentQuoteNo();
+            var custName = getSelectedCustomerName();
+            if (!quoteNo && !custName) {
+                pickupOpenModal();
+                return;
+            }
+
+            var originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> กำลังตรวจสอบ...');
+
+            fetchPickupData(function (err, data) {
+                $btn.prop('disabled', false).html(originalHtml);
+                if (err) {
+                    Swal.fire('ผิดพลาด!', err, 'error');
+                    pickupOpenModal();
+                    return;
+                }
+
+                var matches = [];
+                if (quoteNo) {
+                    matches = data.filter(function (p) {
+                        return p.status === 'submitted' && (p.external_quote_no || '').trim() === quoteNo && pickupHasData(p);
+                    });
+                }
+                if (matches.length === 0 && custName) {
+                    var kw = custName.toLowerCase();
+                    matches = data.filter(function (p) {
+                        return p.status === 'submitted' && (p.customer_name || '').trim().toLowerCase() === kw && pickupHasData(p);
+                    });
+                }
+
+                var prefill = quoteNo || custName;
+                if (matches.length === 1) {
+                    applyPickupImport(matches[0], { autoMatched: true });
+                } else if (matches.length > 1) {
+                    Swal.fire({ icon: 'info', title: 'พบหลายรายการ', text: 'พบข้อมูลที่ตรงกัน "' + prefill + '" มากกว่า 1 รายการ กรุณาเลือกจากรายการด้านล่าง' });
+                    pickupOpenModal(prefill);
+                } else {
+                    pickupOpenModal(prefill);
+                }
+            });
+        }
+
+        $('#pickupImportBtn').on('click', handlePickupImportClick);
+
+        $('#pickupRefreshBtn').on('click', function () {
+            loadPickupSelections();
+        });
+
+        $('#pickupSearch').on('input', filterPickupList);
+        $('#pickupShowPending').on('change', filterPickupList);
+
+        $(document).on('click', '.pickup-import-btn', function () {
+            var token = String($(this).data('token'));
+            var entry = pickupMap[token];
+            if (!entry) {
+                Swal.fire('ผิดพลาด!', 'ไม่พบข้อมูลรายการนี้', 'error');
+                return;
+            }
+            applyPickupImport(entry);
+        });
     })();
 </script>
 

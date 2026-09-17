@@ -7,8 +7,10 @@ Endpoint นี้รันอยู่บนเซิร์ฟเวอร์ P
 ## Endpoint
 
 ```
-GET/POST https://nas909ssf.myqnapcloud.com:8081/api/export_quotations.php
+GET/POST https://nas909ssf.myqnapcloud.com:8081/manage_banquet/api/export_quotations.php
 ```
+
+> หมายเหตุ: เว็บนี้รันอยู่ใต้ path ย่อย `/manage_banquet/` บน NAS ไม่ใช่ที่ root ของโดเมน (เทียบได้กับ URL ปฏิทินสาธารณะที่ใช้จริงใน `approve_event.php` ซึ่งเป็น `https://nas909ssf.myqnapcloud.com:8081/manage_banquet/public_calendar.php`)
 
 ## การยืนยันตัวตน (Auth)
 
@@ -25,13 +27,13 @@ GET/POST https://nas909ssf.myqnapcloud.com:8081/api/export_quotations.php
 
 ### cURL
 ```bash
-curl 'https://<โดเมน>/api/export_quotations.php' \
+curl 'https://nas909ssf.myqnapcloud.com:8081/manage_banquet/api/export_quotations.php' \
   -H 'X-API-Key: <key>'
 ```
 
 ### PHP
 ```php
-$ch = curl_init('https://<โดเมน>/api/export_quotations.php');
+$ch = curl_init('https://nas909ssf.myqnapcloud.com:8081/manage_banquet/api/export_quotations.php');
 curl_setopt_array($ch, [
     CURLOPT_HTTPHEADER => ['X-API-Key: <key>'],
     CURLOPT_RETURNTRANSFER => true,
