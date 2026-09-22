@@ -147,15 +147,9 @@ while ($f = $res_fin->fetch_assoc()) {
     $finances[] = $f;
 }
 
-// 2.5 ดึงข้อมูลต้นทุนอาหาร (Auto)
-if ($is_quote) {
-    // ขั้นใบเสนอราคา: รายการมาจาก quotation_items ราคาทุนล้วงตามชื่อเมนู
-    $quote_cost_detail = getQuoteCostDetailed($conn, $quote_id);
-    $kitchen_total = $quote_cost_detail['sum_main_cost'] + $quote_cost_detail['sum_break_cost'];
-} else {
-    $kitchen_data = getKitchenCost($conn, $id);
-    $kitchen_total = $kitchen_data['total'];
-}
+// 2.5 ต้นทุนอาหาร/เบรก: ราคาทุนรายเมนูเป็นแค่ประมาณการไว้เปรียบเทียบ ไม่นับเป็นต้นทุนจริง
+// ต้นทุนงานจึงมาจากรายจ่ายที่คีย์เองเท่านั้น
+$kitchen_total = 0;
 
 // ป้องกัน Error กรณีคอลัมน์ชื่อไม่ตรง หรือไม่มีข้อมูล
 $main_price = (float) ($data['total_amount'] ?? 0);
@@ -360,101 +354,6 @@ if (isset($_GET['ajax'])) {
     <?php
     exit; // จบการทำงานสำหรับ AJAX request
 }
-function getKitchenCost($conn, $function_id)
-{
-    $total_cost = 0;
-    $total_cost_price = 0;
-
-    // --- ส่วนที่ 1: คำนวณจากเมนูหลัก (function_menus) ---
-    $sql_m = "SELECT menu_qty, menu_price, menu_cost, menu_detail FROM function_menus WHERE function_id = $function_id";
-    $res_m = $conn->query($sql_m);
-
-    while ($m = $res_m->fetch_assoc()) {
-        $qty = (float) $m['menu_qty'];
-        $price_direct = (float) $m['menu_price'];
-        $cost_direct = (float) ($m['menu_cost'] ?? 0);
-
-        // ทุน/หน่วย: ใช้ menu_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
-        // จับคู่ไม่ได้สักเมนูค่อยตกไปที่ราคาขาย (ต้องตรงกับ calculate_costs.php)
-        $unit_cost = $cost_direct;
-        if ($unit_cost <= 0) {
-            foreach (preg_split('/\r\n|\r|\n/', $m['menu_detail']) as $line) {
-                $n = trim(preg_replace('/^[0-9\.\-\s]+/u', '', $line));
-                if ($n !== '') $unit_cost += menuLineCostSplit($conn, $n);
-            }
-        }
-
-        if ($unit_cost > 0) {
-            $total_cost += ($unit_cost * $qty);
-        } elseif ($price_direct > 0) {
-            $total_cost += ($price_direct * $qty);
-        } else {
-            $lines = explode("\n", str_replace("\r", "", $m['menu_detail']));
-            foreach ($lines as $line) {
-                $name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
-                if (empty($name))
-                    continue;
-
-                $name_esc = $conn->real_escape_string($name);
-                $q_p = menuDetailPriceCached($conn, $name);
-                if ($q_p > 0) {
-                    $total_cost += ($q_p * $qty);
-                }
-            }
-        }
-
-        if ($cost_direct > 0) {
-            $total_cost_price += ($cost_direct * $qty);
-        } elseif ($price_direct > 0) {
-            $total_cost_price += ($price_direct * $qty);
-        }
-    }
-
-    // --- ส่วนที่ 2: คำนวณจากครัว/เบรก (function_kitchens) ---
-    $sql_k = "SELECT k_item, k_qty, k_price, k_cost FROM function_kitchens WHERE function_id = $function_id";
-    $res_k = $conn->query($sql_k);
-
-    while ($k = $res_k->fetch_assoc()) {
-        $k_qty = (float) $k['k_qty'];
-        $k_price = (float) ($k['k_price'] ?? 0);
-        $k_cost = (float) ($k['k_cost'] ?? 0);
-
-        // ทุน/หน่วย: ใช้ k_cost ที่กรอกไว้ก่อน ไม่มีค่อยรวมทุนรายเมนูที่จับคู่ชื่อได้
-        $k_unit_cost = $k_cost;
-        if ($k_unit_cost <= 0) {
-            foreach (preg_split('/\r\n|\r|\n/', $k['k_item']) as $line) {
-                $n = trim(preg_replace('/^[0-9\.\-\s]+/u', '', $line));
-                if ($n !== '') $k_unit_cost += menuLineCostSplit($conn, $n);
-            }
-        }
-
-        if ($k_unit_cost > 0) {
-            $total_cost += ($k_unit_cost * $k_qty);
-        } elseif ($k_price > 0) {
-            $total_cost += ($k_price * $k_qty);
-        } else {
-            $k_lines = explode("\n", str_replace("\r", "", $k['k_item']));
-            foreach ($k_lines as $line) {
-                $k_name = trim(preg_replace('/^(\d+\.|\-)\s*/', '', $line));
-                if (empty($k_name))
-                    continue;
-
-                $k_name_esc = $conn->real_escape_string($k_name);
-                $unit_price = breakOrMenuPriceCached($conn, $k_name);
-                $total_cost += ($unit_price * $k_qty);
-            }
-        }
-
-        if ($k_cost > 0) {
-            $total_cost_price += ($k_cost * $k_qty);
-        } elseif ($k_price > 0) {
-            $total_cost_price += ($k_price * $k_qty);
-        }
-    }
-
-    return ['total' => $total_cost, 'total_cost_price' => $total_cost_price];
-}
-
 
 // 4. ส่วนหน้าจอปกติ (เรียก Header)
 include "header.php";
@@ -795,7 +694,6 @@ include "header.php";
                         <tr><td class="label-cell">เงินมัดจำรวม</td><td class="amount text-info"><?= number_format($total_deposit, 2) ?></td></tr>
                         <tr><td class="label-cell">รายรับเพิ่มเติม</td><td class="amount text-success"><?= number_format($total_income, 2) ?></td></tr>
                         <tr><td class="label-cell" style="background:#DAEEF3;"><strong>รวมรายรับทั้งหมด</strong></td><td class="amount" style="background:#DAEEF3;"><strong><?= number_format($grand_total_income, 2) ?></strong></td></tr>
-                        <tr><td class="label-cell">ต้นทุนอาหารหลัก (ครัว)</td><td class="amount text-danger"><?= number_format($kitchen_total, 2) ?></td></tr>
                         <tr><td class="label-cell">ค่าใช้จ่ายอื่นๆ</td><td class="amount text-danger"><?= number_format($extra_cost, 2) ?></td></tr>
                         <tr><td class="label-cell" style="background:#DAEEF3;"><strong>ต้นทุนรวมทั้งสิ้น</strong></td><td class="amount text-danger" style="background:#DAEEF3;"><strong><?= number_format($total_cost, 2) ?></strong></td></tr>
                         <tr><td class="label-cell">ค่าบริหาร 3%</td><td class="amount text-danger"><?= number_format($management_fee, 2) ?></td></tr>

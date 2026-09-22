@@ -75,7 +75,8 @@ while ($f = $res_fin->fetch_assoc()) {
 }
 
 $kitchen = $is_quote ? getQuoteCostDetailed($conn, $quote_id) : getKitchenCostDetailed($conn, $id);
-$kitchen_total = $kitchen['sum_main_cost'] + $kitchen['sum_break_cost'];
+// ทุนอาหาร/เบรกเป็นแค่ประมาณการไว้เปรียบเทียบ ไม่นับเป็นต้นทุนจริง
+$kitchen_total = 0;
 
 $main_price = (float) ($data['total_amount'] ?? 0);
 $grand_total_income = $main_price + $total_income;
@@ -229,7 +230,7 @@ $fmtTime = function($val) {
                     <td class="amount text-blue"><?= number_format($kitchen['sum_main'], 2) ?></td>
                 </tr>
                 <tr style="background:#fff0f0;font-weight:bold;">
-                    <td colspan="4" style="text-align:right;padding:5px 8px;">รวมต้นทุนอาหารหลัก</td>
+                    <td colspan="4" style="text-align:right;padding:5px 8px;">ทุนอาหารหลัก (ประมาณการ ไม่นับรวมต้นทุน)</td>
                     <td class="amount text-red"><?= number_format($kitchen['sum_main_cost'], 2) ?></td>
                 </tr>
             </tfoot>
@@ -278,7 +279,7 @@ $fmtTime = function($val) {
                     <td class="amount text-red"><?= number_format($kitchen['sum_break'], 2) ?></td>
                 </tr>
                 <tr style="background:#fff0f0;font-weight:bold;">
-                    <td colspan="4" style="text-align:right;padding:5px 8px;">รวมต้นทุนเบรก</td>
+                    <td colspan="4" style="text-align:right;padding:5px 8px;">ทุนเบรก (ประมาณการ ไม่นับรวมต้นทุน)</td>
                     <td class="amount text-red"><?= number_format($kitchen['sum_break_cost'], 2) ?></td>
                 </tr>
             </tfoot>
@@ -415,16 +416,15 @@ $costs = array_filter($finances, fn($f) => $f['type'] == 'cost');
     </tr>
     <tr><td colspan="4" style="height:6px; border:none;"></td></tr>
     <tr>
-        <td class="label">ต้นทุนอาหารหลัก (ครัว)</td>
-        <td class="amount text-red"><?= number_format($kitchen_total, 2) ?></td>
-        <td class="label">แยกอาหารหลัก</td>
+        <td class="label">ต้นทุนครัว (ไม่นับ)</td>
+        <td class="amount">0.00</td>
+        <td class="label">ทุนอาหารหลัก (ประมาณการ ไม่นับรวม)</td>
         <td class="amount text-red"><?= number_format($kitchen['sum_main_cost'], 2) ?></td>
     </tr>
     <tr class="alt">
-        <td class="label">ต้นทุนเบรก/จัดเตรียม</td>
+        <td class="label">ทุนเบรก (ประมาณการ ไม่นับรวม)</td>
         <td class="amount text-red"><?= number_format($kitchen['sum_break_cost'], 2) ?></td>
-        <td class="label">แยกเบรก</td>
-        <td class="amount text-red"><?= number_format($kitchen['sum_break_cost'], 2) ?></td>
+        <td colspan="2"></td>
     </tr>
     <tr>
         <td class="label">ค่าใช้จ่ายอื่นๆ (บันทึกเอง)</td>

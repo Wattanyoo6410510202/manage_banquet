@@ -72,9 +72,8 @@ $roi_job_count = 0;
 foreach ($jobs as $i => $j) {
     $is_active = $j['approve'] == 1 && $j['status'] !== 'Cancelled';
 
-    // ต้นทุนครัว (auto) ของงานนี้
-    $kitchen = getKitchenCostDetailed($conn, $j['id']);
-    $kitchen_cost = $kitchen['sum_main_cost'] + $kitchen['sum_break_cost'];
+    // ต้นทุนครัว (อาหาร/เบรก) เป็นแค่ประมาณการ ไม่นับเป็นต้นทุนจริง
+    $kitchen_cost = 0;
 
     // รายรับ/ต้นทุนเพิ่มเติมที่บันทึกในบัญชี (function_finance)
     $fin_res = $conn->query("SELECT type, amount FROM function_finance WHERE function_id = " . intval($j['id']));

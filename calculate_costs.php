@@ -197,7 +197,7 @@ while ($row = $res_k->fetch_assoc()) {
             </tbody>
             <tfoot style="background: #f0f7ff; font-weight: bold;">
                 <tr>
-                    <td colspan="3" align="right" style="padding: 8px;">รวมต้นทุนอาหารหลัก (ราคาขาย)</td>
+                    <td colspan="3" align="right" style="padding: 8px;">ทุนประมาณการ (ไม่นับรวมเป็นต้นทุน)</td>
                     <td align="right" style="color: #d94100;"><?= number_format($sum_main_cost, 2) ?></td>
                     <td align="right" style="color: #0d6efd;"><?= number_format($sum_main, 2) ?></td>
                 </tr>
@@ -241,7 +241,7 @@ while ($row = $res_k->fetch_assoc()) {
             </tbody>
             <tfoot style="background: #fff8f5; font-weight: bold;">
                 <tr>
-                    <td colspan="3" align="right" style="padding: 8px;">รวมต้นทุนเบรก (ราคาขาย)</td>
+                    <td colspan="3" align="right" style="padding: 8px;">ทุนประมาณการ (ไม่นับรวมเป็นต้นทุน)</td>
                     <td align="right" style="color: #d94100;"><?= number_format($sum_break_cost, 2) ?></td>
                     <td align="right" style="color: #d94100;"><?= number_format($sum_break, 2) ?></td>
                 </tr>

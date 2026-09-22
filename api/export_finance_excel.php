@@ -174,7 +174,8 @@ function getKitchenCostDetailed($conn, $function_id) {
 }
 
 $kitchen = $is_quote ? getQuoteCostDetailed($conn, $quote_id) : getKitchenCostDetailed($conn, $id);
-$kitchen_total = $kitchen['sum_main_cost'] + $kitchen['sum_break_cost'];
+// ทุนอาหาร/เบรกเป็นแค่ประมาณการไว้เปรียบเทียบ ไม่นับเป็นต้นทุนจริง
+$kitchen_total = 0;
 $main_price = (float) ($data['total_amount'] ?? 0);
 $grand_total_income = $main_price + $total_income;
 $total_cost = $extra_cost + $kitchen_total;
@@ -331,7 +332,7 @@ $fmtTime = function($val) {
         <?php endforeach; ?>
     <?php endforeach; ?>
     <tr style="background:#fff8f5;font-weight:bold;">
-        <td colspan="4" style="text-align:right;">รวมเบรก/จัดเตรียม</td>
+        <td colspan="4" style="text-align:right;">รวมเบรก/จัดเตรียม (ทุนเป็นประมาณการ)</td>
         <td class="amount text-red"><?= number_format($kitchen['sum_break'], 2) ?></td>
         <td class="amount text-red"><?= number_format($kitchen['sum_break_cost'], 2) ?></td>
         <td class="amount" style="color:<?= ($kitchen['sum_break'] - $kitchen['sum_break_cost']) >= 0 ? '#006100' : '#c00000' ?>;"><?= number_format($kitchen['sum_break'] - $kitchen['sum_break_cost'], 2) ?></td>
@@ -432,9 +433,9 @@ $fmtTime = function($val) {
     <tr>
         <td colspan="2" class="label-cell">ราคาขายงาน</td>
         <td class="amount text-blue"><?= number_format($main_price, 2) ?></td>
-        <td colspan="2" class="label-cell">ต้นทุนอาหารหลัก (ครัว)</td>
+        <td colspan="2" class="label-cell">ต้นทุนครัว (ไม่นับ)</td>
         <td class="amount text-red"><?= number_format($kitchen_total, 2) ?></td>
-        <td>แยก: อาหาร <?= number_format($kitchen['sum_main_cost'], 2) ?></td>
+        <td>ประมาณการ อาหาร <?= number_format($kitchen['sum_main_cost'], 2) ?> / เบรก <?= number_format($kitchen['sum_break_cost'], 2) ?></td>
     </tr>
     <tr>
         <td colspan="2" class="label-cell">รายรับเพิ่มเติม</td>
