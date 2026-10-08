@@ -236,7 +236,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
                     <div class="card p-3 border shadow-sm bg-white">
                         <div class="d-flex justify-content-between mb-2 small">
-                            <span class="text-muted">รวมเป็นเงิน (Subtotal) Ex.VAT:</span>
+                            <span class="text-muted" id="subtotal-label">รวมเป็นเงิน (Subtotal) Ex.VAT:</span>
                             <input type="number" id="subtotal" name="subtotal"
                                 class="text-end border-0 bg-transparent fw-bold w-50" value="0.00" readonly>
                         </div>
@@ -249,9 +249,15 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted">
-                            <span>รวมหลังหักส่วนลด (After Discount):</span>
+                            <span id="after-discount-label">รวมหลังหักส่วนลด (After Discount):</span>
                             <input type="number" id="after_discount" name="after_discount"
                                 class="text-end border-0 bg-transparent w-50" value="0.00" readonly>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 small text-muted d-none" id="ex-vat-row">
+                            <span>มูลค่าก่อน VAT (Ex.VAT):</span>
+                            <input type="number" id="ex_vat_amount" class="text-end border-0 bg-transparent w-50"
+                                value="0.00" readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
@@ -443,6 +449,16 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             $('#after_discount').val(afterDiscount.toFixed(2));
             $('#vat').val(vat.toFixed(2));
             $('#grand_total').val(grand.toFixed(2));
+            updateVatLabels(vatType, grand - vat);
+        }
+
+        // VAT รวมใน: ยอดที่กรอกรวม VAT แล้ว จึงแสดงป้าย Inc.VAT และแสดงมูลค่าก่อน VAT แยก
+        function updateVatLabels(vatType, exVat) {
+            let isInclude = vatType === 'include';
+            $('#subtotal-label').text(isInclude ? 'รวมเป็นเงิน (Subtotal) Inc.VAT:' : 'รวมเป็นเงิน (Subtotal) Ex.VAT:');
+            $('#after-discount-label').text(isInclude ? 'รวมหลังหักส่วนลด (After Discount) Inc.VAT:' : 'รวมหลังหักส่วนลด (After Discount):');
+            $('#ex_vat_amount').val(exVat.toFixed(2));
+            $('#ex-vat-row').toggleClass('d-none', !isInclude);
         }
 
         // 7. ฟังก์ชันอัปเดตเลขลำดับ # ให้เรียงใหม่เสมอ

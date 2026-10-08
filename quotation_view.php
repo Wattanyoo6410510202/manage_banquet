@@ -148,6 +148,11 @@ $has_deposit = ($res_dep && $res_dep->num_rows > 0);
                 <input class="form-check-input" type="checkbox" id="hideLogoToggle">
                 <label class="form-check-label small" for="hideLogoToggle">ซ่อนโลโก้</label>
             </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="legacyAmountsToggle">
+                <label class="form-check-label small" for="legacyAmountsToggle">แสดงยอดสรุปแบบเดิม</label>
+            </div>
+            <small class="text-muted d-block mb-2" style="font-size: 9px;">มีผลเฉพาะ VAT รวมใน | ปิด = Subtotal เป็นราคาก่อน VAT | เปิด = Subtotal รวม VAT แบบเดิม</small>
             <hr class="my-2">
             <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" id="showInvoiceToggle" checked>
@@ -285,20 +290,36 @@ $has_deposit = ($res_dep && $res_dep->num_rows > 0);
                     </div>
                 </div>
                 <div class="col-5">
+                    <?php
+                    // ยอดที่แสดงต้องเป็นมูลค่าก่อน VAT เสมอ (ฐานภาษี + VAT = ยอดสุทธิ)
+                    // กรณี VAT รวมใน ค่าที่บันทึกไว้รวม VAT แล้ว จึงต้องถอด VAT ออกก่อนแสดง
+                    // (toggle "แสดงยอดสรุปแบบเดิม" จะสลับไปแสดงค่า raw_*)
+                    $raw_subtotal = floatval($quote['subtotal'] ?? 0);
+                    $raw_discount = floatval($quote['discount'] ?? 0);
+                    $raw_after = $raw_subtotal - $raw_discount;
+                    $disp_subtotal = $raw_subtotal;
+                    $disp_discount = $raw_discount;
+                    $disp_after = $raw_after;
+                    if (($quote['vat_type'] ?? '') === 'include') {
+                        $disp_after = floatval($quote['grand_total'] ?? 0) - floatval($quote['vat'] ?? 0);
+                        $disp_discount = round($disp_discount * 100 / 107, 2);
+                        $disp_subtotal = $disp_after + $disp_discount;
+                    }
+                    ?>
                     <table class="table table-sm table-borderless table-tight" style="font-size: 12px;">
                         <tr>
                             <td class="text-end">รวมเป็นเงิน / Subtotal (Ex.vat):</td>
-                            <td class="text-end border-bottom" width="40%"><?= number_format($quote['subtotal'], 2) ?>
+                            <td class="text-end border-bottom" width="40%"><span class="amt-exvat"><?= number_format($disp_subtotal, 2) ?></span><span class="amt-raw"><?= number_format($raw_subtotal, 2) ?></span>
                             </td>
                         </tr>
                         <?php if (floatval($quote['discount'] ?? 0) > 0): ?>
                         <tr>
                             <td class="text-end text-danger">ส่วนลดท้ายบิล / Special Discount:</td>
-                            <td class="text-end border-bottom text-danger">- <?= number_format($quote['discount'], 2) ?></td>
+                            <td class="text-end border-bottom text-danger">- <span class="amt-exvat"><?= number_format($disp_discount, 2) ?></span><span class="amt-raw"><?= number_format($raw_discount, 2) ?></span></td>
                         </tr>
                         <tr>
                             <td class="text-end">รวมหลังหักส่วนลด / After Discount:</td>
-                            <td class="text-end border-bottom"><?= number_format(($quote['subtotal'] ?? 0) - ($quote['discount'] ?? 0), 2) ?></td>
+                            <td class="text-end border-bottom"><span class="amt-exvat"><?= number_format($disp_after, 2) ?></span><span class="amt-raw"><?= number_format($raw_after, 2) ?></span></td>
                         </tr>
                         <?php endif; ?>
                         <tr>
@@ -545,6 +566,15 @@ $has_deposit = ($res_dep && $res_dep->num_rows > 0);
         display: none !important;
     }
 
+    /* ยอดสรุป: ค่าเริ่มต้นแสดงแบบก่อน VAT, เปิด toggle = แสดงยอดดิบแบบเดิม */
+    #printableArea .amt-raw,
+    #printableArea.legacy-amounts .amt-exvat {
+        display: none;
+    }
+    #printableArea.legacy-amounts .amt-raw {
+        display: inline;
+    }
+
     .custom-btn-pill {
         position: relative;
     }
@@ -773,6 +803,8 @@ function sendPDFToCustomer(btn) {
         if (localStorage.getItem('printShortTitle') === '1') { area.classList.add('short-titles'); if (st) st.checked = true; }
         const lg = document.getElementById('hideLogoToggle');
         if (localStorage.getItem('printHideLogo') === '1') { area.classList.add('hide-logo'); if (lg) lg.checked = true; }
+        const la = document.getElementById('legacyAmountsToggle');
+        if (localStorage.getItem('printLegacyAmounts') === '1') { area.classList.add('legacy-amounts'); if (la) la.checked = true; }
 
         applyInvoiceToggle();
     }
@@ -793,9 +825,9 @@ function sendPDFToCustomer(btn) {
     }
 
     function resetPrintSettings() {
-        ['printFontSize', 'printDivider', 'printBold', 'printShortTitle', 'printHideLogo', 'printShowInvoice'].forEach(k => localStorage.removeItem(k));
+        ['printFontSize', 'printDivider', 'printBold', 'printShortTitle', 'printHideLogo', 'printShowInvoice', 'printLegacyAmounts'].forEach(k => localStorage.removeItem(k));
         const area = document.getElementById('printableArea');
-        if (area) area.classList.remove('section-divider', 'bold-titles', 'short-titles', 'hide-logo');
+        if (area) area.classList.remove('section-divider', 'bold-titles', 'short-titles', 'hide-logo', 'legacy-amounts');
         document.documentElement.style.setProperty('--print-fs', '13px');
         const s = document.getElementById('fontSizeSlider');
         const l = document.getElementById('fontSizeLabel');
@@ -809,6 +841,8 @@ function sendPDFToCustomer(btn) {
         if (b) b.checked = false;
         if (st) st.checked = false;
         if (lg) lg.checked = false;
+        const la = document.getElementById('legacyAmountsToggle');
+        if (la) la.checked = false;
         applyInvoiceToggle();
     }
 
@@ -842,6 +876,11 @@ function sendPDFToCustomer(btn) {
         if (lg) lg.addEventListener('change', function () {
             document.getElementById('printableArea').classList.toggle('hide-logo', this.checked);
             localStorage.setItem('printHideLogo', this.checked ? '1' : '0');
+        });
+        const la = document.getElementById('legacyAmountsToggle');
+        if (la) la.addEventListener('change', function () {
+            document.getElementById('printableArea').classList.toggle('legacy-amounts', this.checked);
+            localStorage.setItem('printLegacyAmounts', this.checked ? '1' : '0');
         });
         const inv = document.getElementById('showInvoiceToggle');
         if (inv) inv.addEventListener('change', function () {
