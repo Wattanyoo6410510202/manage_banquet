@@ -69,7 +69,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 8px 12px;
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
     outline: none;
 }
 .menu-type-modal-header input:focus { border-color: #0d6efd; }
@@ -83,7 +83,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 .menu-type-modal-tabs .tab-btn {
     flex: 1;
     padding: 10px 12px;
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     font-weight: 600;
     color: #6c757d;
     background: transparent;
@@ -106,7 +106,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
 }
 .menu-type-modal-breadcrumb .crumb {
     color: #6c757d;
@@ -125,7 +125,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 
 .menu-type-modal-body .cat-section { margin-bottom: 16px; }
 .menu-type-modal-body .cat-title {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     color: #6c757d;
     text-transform: uppercase;
@@ -147,7 +147,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     padding: 10px 12px;
     cursor: pointer;
     transition: all 0.15s;
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     font-weight: 500;
     color: #333;
     text-align: center;
@@ -205,20 +205,20 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     align-items: flex-start;
 }
 .menu-type-modal-body .template-card .tpl-name {
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     font-weight: 600;
     color: #333;
     margin-bottom: 2px;
 }
 .menu-type-modal-body .template-card .tpl-detail {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: #666;
     max-height: 2.4em;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .menu-type-modal-body .template-card .tpl-price {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: #198754;
     margin-top: 4px;
@@ -232,13 +232,13 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     text-align: center;
 }
 .menu-type-modal-body .set-price-panel .set-label {
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
     font-weight: 600;
     color: #333;
     margin-bottom: 6px;
 }
 .menu-type-modal-body .set-price-panel .set-sublabel {
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: #6c757d;
     margin-bottom: 12px;
 }
@@ -248,7 +248,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     background: #d1e7dd;
     color: #0f5132;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
     font-weight: 600;
     margin-bottom: 16px;
 }
@@ -257,7 +257,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     border: 2px solid #e0e0e0;
     border-radius: 10px;
     padding: 12px 16px;
-    font-size: 1.5rem;
+    font-size: var(--fs-xl);
     font-weight: 700;
     text-align: center;
     color: #333;
@@ -272,7 +272,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 }
 .menu-type-modal-body .set-price-panel input:focus { border-color: #0d6efd; }
 .menu-type-modal-body .set-price-panel .set-hint {
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     color: #999;
     margin-top: 8px;
 }
@@ -281,7 +281,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     text-align: center;
     padding: 30px;
     color: #999;
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
 }
 
 .menu-type-modal-body .loading-spinner {
@@ -300,7 +300,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 }
 
 .menu-type-modal-footer .selected-info {
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     color: #333;
     font-weight: 500;
     overflow: hidden;
@@ -314,7 +314,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
     background: #fafafa;
     border-radius: 8px;
     padding: 4px 10px;
-    font-size: 0.8rem;
+    font-size: var(--fs-sm);
     color: #555;
     cursor: pointer;
     transition: all 0.15s;
@@ -341,7 +341,7 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
 @media (max-width: 600px) {
     .menu-type-modal { width: 95%; max-height: 85vh; }
     .menu-type-modal-body .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
-    .menu-type-modal-body .menu-card { font-size: 0.8rem; padding: 8px; }
+    .menu-type-modal-body .menu-card { font-size: var(--fs-sm); padding: 8px; }
 }
 </style>
 
@@ -370,8 +370,8 @@ $break_modal_json = json_encode($break_types_array, JSON_UNESCAPED_UNICODE);
             <div class="selected-info" id="menuTypeSelectedInfo"></div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <span id="menuTypeQtyWrap" style="display:none;white-space:nowrap;">
-                    <label class="me-1" style="font-size:0.8rem;font-weight:600;color:#555;">จำนวน</label>
-                    <input type="number" id="mtmFooterQty" value="1" min="1" style="width:60px;border:1px solid #ccc;border-radius:6px;padding:4px 6px;font-size:0.85rem;text-align:center;font-weight:600;" onfocus="this.select()">
+                    <label class="me-1" style="font-size: var(--fs-sm);font-weight:600;color:#555;">จำนวน</label>
+                    <input type="number" id="mtmFooterQty" value="1" min="1" style="width:60px;border:1px solid #ccc;border-radius:6px;padding:4px 6px;font-size: var(--fs-base);text-align:center;font-weight:600;" onfocus="this.select()">
                 </span>
                 <button type="button" class="btn btn-sm btn-primary fw-bold" id="menuTypeConfirmBtn" onclick="confirmTemplateSelection()" disabled>
                     <i class="bi bi-check-lg me-1"></i><span id="menuTypeConfirmLabel">เลือก</span>
@@ -663,31 +663,31 @@ function _mtmRenderSetPricePanel() {
 
     let priceHtml = '';
     if (setPrice !== null && setPrice > 0) {
-        priceHtml = '<div style="font-size:1.3rem;font-weight:700;color:#198754;margin-bottom:14px;">'
+        priceHtml = '<div style="font-size: var(--fs-xl);font-weight:700;color:#198754;margin-bottom:14px;">'
             + 'ราคาเซต ' + setPrice.toLocaleString('th-TH', {minimumFractionDigits: 0}) + ' บาท</div>';
         priceHtml += '<div class="set-hint">ใช้ราคาเซตของกลุ่มนี้ (จำนวนจะใส่ตอนยืนยันด้านล่าง)</div>';
     } else {
-        priceHtml = '<div style="font-size:0.95rem;font-weight:600;color:#b8860b;margin-bottom:8px;">ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้</div>';
+        priceHtml = '<div style="font-size: var(--fs-md);font-weight:600;color:#b8860b;margin-bottom:8px;">ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้</div>';
         priceHtml += '<div style="max-width:300px;margin:0 auto 14px;text-align:left;">'
-            + '<label style="font-size:0.8rem;font-weight:600;color:#555;">ราคาเซต (กรอกได้)</label>'
+            + '<label style="font-size: var(--fs-sm);font-weight:600;color:#555;">ราคาเซต (กรอกได้)</label>'
             + '<input type="number" id="mtmSetPriceInput" placeholder="เช่น 3000" min="0" step="0.01" '
-            + 'style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">'
+            + 'style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size: var(--fs-base);color:#333;outline:none;">'
             + '</div>';
     }
 
     let listHtml = '';
     if (_mtmSetItems.length > 0) {
         listHtml = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
-        listHtml += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>รายการที่เลือกแล้ว (' + _mtmSetItems.length + ')</div>';
+        listHtml += '<div style="font-size: var(--fs-sm);font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>รายการที่เลือกแล้ว (' + _mtmSetItems.length + ')</div>';
         _mtmSetItems.forEach((item, idx) => {
-            listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
+            listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size: var(--fs-sm);">';
             listHtml += '<div style="flex:1;overflow:hidden;">';
             listHtml += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(item.name.substring(0, 50)) + (item.name.length > 50 ? '...' : '') + '</div>';
             if (item.note) {
-                listHtml += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
+                listHtml += '<div style="color:#b8860b;font-size: var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
             }
             listHtml += '</div>';
-            listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveSetItem(' + idx + ')"><i class="bi bi-x"></i></button>';
+            listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size: var(--fs-xs);" onclick="_mtmRemoveSetItem(' + idx + ')"><i class="bi bi-x"></i></button>';
             listHtml += '</div>';
         });
         listHtml += '</div>';
@@ -697,11 +697,11 @@ function _mtmRenderSetPricePanel() {
         <div class="set-price-panel">
             <div class="set-label">กำหนดราคาสำหรับรายการนี้</div>
             <div class="set-sublabel">${_mtmEscapeHtml(_mtmSelectedCategory || '')} › ${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
-            ${shortMenu ? '<div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size:0.8rem;">' + _mtmEscapeHtml(shortMenu) + '</div>' : ''}
+            ${shortMenu ? '<div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size: var(--fs-sm);">' + _mtmEscapeHtml(shortMenu) + '</div>' : ''}
             ${priceHtml}
             <div style="max-width:300px;margin:10px auto 0;text-align:left;">
-                <label style="font-size:0.8rem;font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
-                <input type="text" id="mtmSetNoteInput" placeholder="เช่น ไม่ใส่ใบกระเพรา" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">
+                <label style="font-size: var(--fs-sm);font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
+                <input type="text" id="mtmSetNoteInput" placeholder="เช่น ไม่ใส่ใบกระเพรา" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size: var(--fs-base);color:#333;outline:none;">
             </div>
             <button type="button" class="btn btn-success fw-bold mt-3" onclick="_mtmAddToSetList()" style="min-width:160px;">
                 <i class="bi bi-plus-circle me-1"></i>เพิ่มลงรายการ
@@ -723,7 +723,7 @@ function _mtmAddToSetList() {
     const qty = 1;
     const noteEl = document.getElementById('mtmSetNoteInput');
     const note = noteEl ? noteEl.value.trim() : '';
-    if (price <= 0) { alert('ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้ กรุณากรอกราคาเซตก่อน'); return; }
+    if (price <= 0) { UI.alert('ยังไม่ได้ตั้งราคาเซตสำหรับกลุ่มนี้ กรุณากรอกราคาเซตก่อน'); return; }
 
     _mtmSetItems.push({
         id: _mtmSelectedTemplate.id,
@@ -815,8 +815,8 @@ function _mtmRenderTemplates(filter) {
                 <div class="tpl-thumb-wrap">
                     <img class="tpl-img" data-kw="${_mtmEscapeAttr(imgKw)}" alt="" loading="lazy" onerror="this.style.display='none'">
                     <div style="flex:1;min-width:0;">
-                        <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
-                        <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc || item.menu_items || item.name)}</div>
+                        <div class="tpl-subtitle text-muted" style="font-size: var(--fs-sm);">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
+                        <div class="tpl-name" style="font-size: var(--fs-lg);font-weight:600;">${_mtmEscapeHtml(shortDesc || item.menu_items || item.name)}</div>
                         <div class="tpl-price">${parseFloat(item.price_per_pax).toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
                     </div>
                 </div>
@@ -1106,8 +1106,8 @@ function _mtmRenderBreakTemplates(items) {
                 <div class="tpl-thumb-wrap">
                     <img class="tpl-img" data-kw="${_mtmEscapeAttr(item.break_menu || '')}" alt="" loading="lazy" onerror="this.style.display='none'">
                     <div style="flex:1;min-width:0;">
-                        <div class="tpl-subtitle text-muted" style="font-size:0.8rem;">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
-                        <div class="tpl-name" style="font-size:1.1rem;font-weight:600;">${_mtmEscapeHtml(shortDesc)}</div>
+                        <div class="tpl-subtitle text-muted" style="font-size: var(--fs-sm);">${_mtmEscapeHtml(_mtmSelectedType || '')}</div>
+                        <div class="tpl-name" style="font-size: var(--fs-lg);font-weight:600;">${_mtmEscapeHtml(shortDesc)}</div>
                         <div class="tpl-price">${showPrice.toLocaleString('th-TH', {minimumFractionDigits:2})} บาท/หน่วย</div>
                     </div>
                 </div>
@@ -1126,23 +1126,23 @@ function _mtmBreakListHtml() {
     if (_mtmBreakItems.length === 0) return '';
     const isSet = (_mtmMode === 'template-break' && _mtmSubMode === 'set');
     let h = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
-    h += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
+    h += '<div style="font-size: var(--fs-sm);font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
     _mtmBreakItems.forEach((item, idx) => {
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size: var(--fs-sm);">';
         h += '<div style="flex:1;min-width:0;overflow:hidden;">';
         h += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(item.name) + '</div>';
         if (item.note) {
-            h += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
+            h += '<div style="color:#b8860b;font-size: var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(item.note) + '</div>';
         }
         h += '</div>';
         if (!isSet) {
             h += '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">';
-            h += '<label style="font-size:0.7rem;color:#555;">จำนวน</label>';
-            h += '<input type="number" value="' + item.qty + '" min="1" style="width:55px;border:1px solid #ccc;border-radius:6px;padding:3px 5px;font-size:0.8rem;text-align:center;" onchange="_mtmSetBreakQty(' + idx + ', this.value)">';
-            h += '<span style="font-weight:600;color:#198754;font-size:0.82rem;">' + (item.qty * item.price).toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท</span>';
+            h += '<label style="font-size: var(--fs-xs);color:#555;">จำนวน</label>';
+            h += '<input type="number" value="' + item.qty + '" min="1" style="width:55px;border:1px solid #ccc;border-radius:6px;padding:3px 5px;font-size: var(--fs-sm);text-align:center;" onchange="_mtmSetBreakQty(' + idx + ', this.value)">';
+            h += '<span style="font-weight:600;color:#198754;font-size: var(--fs-sm);">' + (item.qty * item.price).toLocaleString('th-TH', {minimumFractionDigits:0}) + ' บาท</span>';
             h += '</div>';
         }
-        h += '<button type="button" class="btn btn-sm btn-outline-danger" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
+        h += '<button type="button" class="btn btn-sm btn-outline-danger" style="padding:2px 6px;font-size: var(--fs-xs);" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
         h += '</div>';
     });
     h += '</div>';
@@ -1208,16 +1208,16 @@ function _mtmRenderBreakPricePanel() {
     let listHtml = '';
     if (_mtmBreakItems.length > 0) {
         listHtml = '<div style="margin-top:20px;text-align:left;border-top:2px dashed #dee2e6;padding-top:14px;">';
-        listHtml += '<div style="font-size:0.8rem;font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
+        listHtml += '<div style="font-size: var(--fs-sm);font-weight:700;color:#6c757d;margin-bottom:8px;"><i class="bi bi-list-check me-1"></i>เบรกที่เลือกแล้ว (' + _mtmBreakItems.length + ')</div>';
         _mtmBreakItems.forEach((it, idx) => {
-            listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:0.82rem;">';
+            listHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size: var(--fs-sm);">';
             listHtml += '<div style="flex:1;overflow:hidden;">';
             listHtml += '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _mtmEscapeHtml(it.name.substring(0, 50)) + (it.name.length > 50 ? '...' : '') + '</div>';
             if (it.note) {
-                listHtml += '<div style="color:#b8860b;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(it.note) + '</div>';
+                listHtml += '<div style="color:#b8860b;font-size: var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="bi bi-pencil-square me-1"></i>หมายเหตุ: ' + _mtmEscapeHtml(it.note) + '</div>';
             }
             listHtml += '</div>';
-            listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size:0.7rem;" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
+            listHtml += '<button type="button" class="btn btn-sm btn-outline-danger ms-2" style="padding:2px 6px;font-size: var(--fs-xs);" onclick="_mtmRemoveBreakItem(' + idx + ')"><i class="bi bi-x"></i></button>';
             listHtml += '</div>';
         });
         listHtml += '</div>';
@@ -1225,18 +1225,18 @@ function _mtmRenderBreakPricePanel() {
 
     body.innerHTML = `
         <div style="text-align:left;margin-bottom:6px;">
-            <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem;" onclick="_mtmCancelBreakPanel()"><i class="bi bi-arrow-left me-1"></i>ย้อนกลับ</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size: var(--fs-xs);" onclick="_mtmCancelBreakPanel()"><i class="bi bi-arrow-left me-1"></i>ย้อนกลับ</button>
         </div>
         <div class="set-price-panel">
             <div class="set-label">เพิ่มรายการเบรก</div>
             <div class="set-sublabel">${_mtmEscapeHtml(item.type_name || '')}</div>
-            <div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size:0.8rem;">${_mtmEscapeHtml(shortName)}</div>
-            <div style="font-size:1.3rem;font-weight:700;color:${item.price > 0 ? '#198754' : '#999'};margin-bottom:14px;">
+            <div class="set-type-badge" style="max-width:100%;white-space:normal;text-align:left;font-size: var(--fs-sm);">${_mtmEscapeHtml(shortName)}</div>
+            <div style="font-size: var(--fs-xl);font-weight:700;color:${item.price > 0 ? '#198754' : '#999'};margin-bottom:14px;">
                 ${item.price > 0 ? item.price.toLocaleString('th-TH', {minimumFractionDigits: 0}) + ' บาท' : 'ยังไม่ได้ตั้งราคาเบรกสำหรับประเภทนี้'}
             </div>
             <div style="max-width:300px;margin:10px auto 0;text-align:left;">
-                <label style="font-size:0.8rem;font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
-                <input type="text" id="mtmBreakNoteInput" placeholder="เช่น ไม่ใส่ผักชี" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size:0.9rem;color:#333;outline:none;">
+                <label style="font-size: var(--fs-sm);font-weight:600;color:#555;">หมายเหตุ (ไม่บังคับ)</label>
+                <input type="text" id="mtmBreakNoteInput" placeholder="เช่น ไม่ใส่ผักชี" maxlength="200" style="width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:8px 12px;font-size: var(--fs-base);color:#333;outline:none;">
             </div>
             <div class="set-hint">ใช้ราคาเบรกของประเภทนี้ (จำนวนจะใส่ตอนยืนยันด้านล่าง)</div>
             <button type="button" class="btn btn-success fw-bold mt-3" onclick="_mtmAddToBreakList()" style="min-width:160px;">

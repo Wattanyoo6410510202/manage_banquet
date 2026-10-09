@@ -172,7 +172,7 @@ require_once "header.php";
 
                         <div class="d-grid gap-2">
                             <?php if ($user_role !== 'viewer'): ?>
-                                <button type="submit" id="btn-submit" class="btn btn-dark fw-bold">
+                                <button type="submit" id="btn-submit" class="btn btn-primary fw-bold">
                                     <i class="bi bi-save me-1"></i>บันทึกข้อมูลห้อง
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary border-0"
@@ -183,7 +183,7 @@ require_once "header.php";
                                     <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
-                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                    <small class="text-danger" style="font-size: var(--fs-xs);">*
                                         คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
                                 </div>
                             <?php endif; ?>
@@ -391,7 +391,7 @@ require_once "header.php";
 
                         resetForm();
                     } else {
-                        alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่สามารถบันทึกได้'));
+                        UI.alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่สามารถบันทึกได้'));
                     }
                 })
                 .catch(err => console.error('Error:', err));
@@ -444,8 +444,8 @@ require_once "header.php";
     }
 
     // ฟังก์ชันลบแบบ AJAX
-    function deleteRoom(id) {
-        if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
+    async function deleteRoom(id) {
+        if (await UI.confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
             let fd = new FormData();
             fd.append('action', 'delete');
             fd.append('id', id);
@@ -456,7 +456,7 @@ require_once "header.php";
                     if (res.status === 'success') {
                         roomTable.row($('#row-' + id)).remove().draw(false);
                     } else {
-                        alert('เกิดข้อผิดพลาดในการลบ');
+                        UI.alert('เกิดข้อผิดพลาดในการลบ');
                     }
                 });
         }

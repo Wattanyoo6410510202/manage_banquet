@@ -53,31 +53,29 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 
 <style>
 .sd-page{--gold:#b89441;--gold-tint:#f7f1e3;--ink:#111318;--ink2:#5b6470;--muted:#8a9099;--line:#e8eaee}
-.sd-page{font-family:'Sarabun','Inter',sans-serif;color:var(--ink)}
+.sd-page{color:var(--ink)}
 .sd-hero{border-radius:16px;padding:15px 20px;color:var(--ink);position:relative;overflow:hidden;
     background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold)}
 .sd-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
 .sd-hero>*{position:relative;z-index:1}
-.sd-hero .hero-sub{font-size:.78rem;color:var(--ink2)}
+.sd-hero .hero-sub{font-size: var(--fs-xs);color:var(--ink2)}
 .sd-stat{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px 14px;height:100%}
-.sd-stat .v{font-size:1.45rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.sd-stat .l{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.sd-stat .v{font-size: var(--fs-xl);font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.sd-stat .l{font-size: var(--fs-xs);font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
 .sd-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.sd-card-head{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:.92rem}
+.sd-card-head{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size: var(--fs-base)}
 .sd-card-body{padding:18px}
-.sd-form label{font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:4px;display:block}
-.sd-form .form-control,.sd-form .form-select{border-radius:9px;font-size:.85rem}
-.btn-gold{background:var(--gold);border:1px solid var(--gold);color:#fff;font-weight:600;border-radius:9px}
-.btn-gold:hover{background:#a5833a;border-color:#a5833a;color:#fff}
-#salesTargetTable{font-size:.84rem}
-#salesTargetTable thead th{background:#fafbfc;color:var(--muted);font-weight:700;font-size:.68rem;text-transform:uppercase;
+.sd-form label{font-size: var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:4px;display:block}
+.sd-form .form-control,.sd-form .form-select{border-radius:9px;font-size: var(--fs-base)}
+#salesTargetTable{font-size: var(--fs-sm)}
+#salesTargetTable thead th{background:#fafbfc;color:var(--muted);font-weight:700;font-size: var(--fs-xs);text-transform:uppercase;
     letter-spacing:.4px;border-bottom:1px solid var(--line)!important;white-space:nowrap}
 #salesTargetTable tbody td{vertical-align:middle;border-bottom:1px solid #f0f2f5}
 .sd-perf-card{background:#fff;border:1px solid var(--line);border-radius:14px;height:100%;cursor:pointer;transition:box-shadow .15s ease,border-color .15s ease}
 .sd-perf-card:hover{box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d3d7dd}
 .sd-perf-card.rank-1{border-color:var(--gold);background:linear-gradient(180deg,var(--gold-tint),#fff 60%)}
-.sd-rank{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.sd-rank{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size: var(--fs-base);flex-shrink:0}
 .sd-empty{padding:52px 20px;text-align:center;color:var(--muted)}
 </style>
 
@@ -112,7 +110,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
         </div>
         <div class="col-6 col-lg-3">
             <div class="sd-stat"><div class="l">งานทั้งหมดเดือนนี้</div><div class="v" style="color:#2a78d6"><?= number_format($sum_events) ?></div>
-                <div style="font-size:.7rem;color:#8a9099">เงินมัดจำรวม ฿<?= number_format($sum_deposit, 0) ?></div></div>
+                <div style="font-size: var(--fs-xs);color:#8a9099">เงินมัดจำรวม ฿<?= number_format($sum_deposit, 0) ?></div></div>
         </div>
     </div>
 
@@ -194,7 +192,7 @@ $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
                                         <td class="text-end">
                                             <a href="/manage_banquet/api/save_sales_target.php?delete_id=<?= $t['id'] ?>&redirect=<?= urlencode($_SERVER['REQUEST_URI']) ?>"
                                                class="btn btn-sm btn-outline-danger border-0"
-                                               onclick="return confirm('ลบเป้าหมายนี้?')">
+                                               data-confirm="ลบเป้าหมายนี้?">
                                                 <i class="bi bi-trash"></i>
                                             </a>
                                         </td>

@@ -128,7 +128,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                             <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
                         <?php endif; ?>
                     </select>
-                    <div id="customer_info" class="mt-1 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: 0.8rem;">
+                    <div id="customer_info" class="mt-1 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: var(--fs-sm);">
                         <div class="fw-bold text-dark" id="info_name"><?= htmlspecialchars($selected_customer_id ? $c_name : '') ?></div>
                         <div class="text-muted small" id="info_phone"><?= htmlspecialchars($c_phone ?? '') ?></div>
                         <div class="text-muted small" id="info_address"><?= htmlspecialchars($c_address ?? '') ?></div>
@@ -170,7 +170,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 
             <div class="table-responsive">
                 <table class="table table-bordered table-items" id="itemTable">
-                    <thead class="table-light text-center" style="font-size:0.85rem;">
+                    <thead class="table-light text-center" style="font-size: var(--fs-base);">
                         <tr>
                             <th width="5%">#</th>
                             <th>รายละเอียดรายการ</th>
@@ -238,31 +238,31 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted" id="subtotal-label">รวมเป็นเงิน (Subtotal) Ex.VAT:</span>
                             <input type="number" id="subtotal" name="subtotal"
-                                class="text-end border-0 bg-transparent fw-bold w-50" value="0.00" readonly>
+                                class="text-end border-0 bg-transparent fw-bold quote-sum-input" value="0.00" readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-danger" id="discount-row">
                             <span>ส่วนลดท้ายบิล (Special Discount):</span>
                             <input type="number" id="discount" name="discount"
-                                class="text-end border-0 bg-transparent fw-bold text-danger w-50" value="0.00"
+                                class="text-end border-0 bg-transparent fw-bold text-danger quote-sum-input" value="0.00"
                                 step="0.01" min="0">
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted">
                             <span id="after-discount-label">รวมหลังหักส่วนลด (After Discount):</span>
                             <input type="number" id="after_discount" name="after_discount"
-                                class="text-end border-0 bg-transparent w-50" value="0.00" readonly>
+                                class="text-end border-0 bg-transparent quote-sum-input" value="0.00" readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted d-none" id="ex-vat-row">
                             <span>มูลค่าก่อน VAT (Ex.VAT):</span>
-                            <input type="number" id="ex_vat_amount" class="text-end border-0 bg-transparent w-50"
+                            <input type="number" id="ex_vat_amount" class="text-end border-0 bg-transparent quote-sum-input"
                                 value="0.00" readonly>
                         </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted" id="vat-row">
                             <span>VAT (7%):</span>
-                            <input type="number" id="vat" name="vat" class="text-end border-0 bg-transparent w-50"
+                            <input type="number" id="vat" name="vat" class="text-end border-0 bg-transparent quote-sum-input"
                                 value="0.00" readonly>
                         </div>
 
@@ -271,7 +271,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                         <div class="d-flex justify-content-between align-items-center fw-bold text-primary">
                             <span class="fs-6">ยอดรวมสุทธิ:</span>
                             <input type="number" id="grand_total" name="grand_total"
-                                class="text-end border-0 bg-transparent fw-bold text-primary fs-5 w-50" value="0.00"
+                                class="text-end border-0 bg-transparent fw-bold text-primary fs-5 quote-sum-input" value="0.00"
                                 readonly>
                         </div>
                         <input type="hidden" name="service_charge" id="service_charge" value="0.00">
@@ -376,7 +376,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 calculateAll();
                 updateRowNumbers();
             } else {
-                alert("ต้องมีอย่างน้อย 1 รายการครับ");
+                UI.alert("ต้องมีอย่างน้อย 1 รายการครับ");
             }
         });
 
@@ -609,8 +609,8 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 if (sources) {
                     var parts = sources.split(',');
                     parts.forEach(function(s) {
-                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size:0.65rem;">EO</span>');
-                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size:0.65rem;">ใบเสนอราคา</span>');
+                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size: var(--fs-xs);">EO</span>');
+                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size: var(--fs-xs);">ใบเสนอราคา</span>');
                     });
                 }
                 return $el;
@@ -623,8 +623,8 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 if (sources) {
                     var parts = sources.split(',');
                     parts.forEach(function(s) {
-                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size:0.65rem;">EO</span>');
-                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size:0.65rem;">QT</span>');
+                        if (s === 'EO') $el.append(' <span class="badge bg-info-subtle text-info" style="font-size: var(--fs-xs);">EO</span>');
+                        else if (s === 'QT') $el.append(' <span class="badge bg-warning-subtle text-warning" style="font-size: var(--fs-xs);">QT</span>');
                     });
                 }
                 return $el;
@@ -1125,12 +1125,12 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
 <style>
     .select2-container { z-index: 1030 !important; }
     .select2-dropdown { z-index: 1045 !important; }
-    .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; border: 1px solid #ced4da !important; font-size: 0.875rem; }
+    .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; border: 1px solid #ced4da !important; font-size: var(--fs-base); }
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 8px; }
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; }
     .select2-container .badge { vertical-align: middle; margin-left: 2px; }
-    .select2-results__option .badge { font-size: 0.65rem !important; }
-    .select2-selection__rendered .badge { font-size: 0.6rem !important; }
+    .select2-results__option .badge { font-size: var(--fs-xs) !important; }
+    .select2-selection__rendered .badge { font-size: var(--fs-xs) !important; }
 
     .table-items th, .table-items td { white-space: nowrap; }
     .table-items textarea { min-width: 180px; }

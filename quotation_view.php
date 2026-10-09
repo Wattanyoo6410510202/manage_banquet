@@ -750,18 +750,18 @@ function sendPDFToCustomer(btn) {
         pagebreak: { mode: ['css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(element).save().then(() => {
+    html2pdf().set(opt).from(element).save().then(async () => {
         const customerEmail = '<?php echo htmlspecialchars($quote['cust_email'] ?? ''); ?>';
         const quoteNo = '<?php echo htmlspecialchars($quote['quote_no'] ?? 'quotation'); ?>';
 
         if (customerEmail) {
-            if (confirm('ดาวน์โหลด PDF เรียบร้อย\n\nต้องการเปิดอีเมลเพื่อส่งให้ลูกค้า (' + customerEmail + ') หรือไม่?')) {
+            if (await UI.confirm('ดาวน์โหลด PDF เรียบร้อย\n\nต้องการเปิดอีเมลเพื่อส่งให้ลูกค้า (' + customerEmail + ') หรือไม่?')) {
                 const subject = encodeURIComponent('ใบเสนอราคา ' + quoteNo);
                 const body = encodeURIComponent('เรียน คุณลูกค้า\n\nตามเอกสารแนบเป็นใบเสนอราคาเลขที่ ' + quoteNo + '\n\nขอแสดงความนับถือ');
                 window.open('mailto:' + customerEmail + '?subject=' + subject + '&body=' + body, '_blank');
             }
         } else {
-            alert('ดาวน์โหลด PDF เรียบร้อย กรุณาส่งไฟล์ให้ลูกค้าผ่านช่องทางที่สะดวก (LINE, Email, Messenger ฯลฯ)');
+            UI.alert('ดาวน์โหลด PDF เรียบร้อย กรุณาส่งไฟล์ให้ลูกค้าผ่านช่องทางที่สะดวก (LINE, Email, Messenger ฯลฯ)');
         }
 
         btn.innerHTML = originalContent;

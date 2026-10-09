@@ -134,8 +134,8 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
 
                         <div class="d-grid gap-2">
                             <?php if ($user_role !== 'viewer'): ?>
-                                <button type="submit" class="btn btn-dark px-3 py-1 fw-bold">
-                                    <i class="bi bi-save me-2 text-amber"></i>บันทึกลูกค้า
+                                <button type="submit" class="btn btn-primary px-3 py-1 fw-bold">
+                                    <i class="bi bi-save me-2"></i>บันทึกลูกค้า
                                 </button>
                                 <button type="button" class="btn btn-light btn-sm border"
                                     onclick="resetForm()">ยกเลิก</button>
@@ -145,7 +145,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                                     <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
-                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                    <small class="text-danger" style="font-size: var(--fs-xs);">*
                                         คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูลลูกค้า</small>
                                 </div>
                             <?php endif; ?>
@@ -262,7 +262,6 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     function showCustomerHistory(custId, custName) {
@@ -376,12 +375,12 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                     }
                     resetForm();
                 } else {
-                    alert('เกิดข้อผิดพลาด: ' + res.message);
+                    UI.alert('เกิดข้อผิดพลาด: ' + res.message);
                 }
             })
             .catch(err => {
                 console.error("Error:", err);
-                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+                UI.alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
             })
             .finally(() => {
                 btn.disabled = false;
@@ -389,8 +388,8 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
             });
     }
 
-    function deleteCust(id) {
-        if (confirm('ยืนยันการลบลูกค้ารายนี้?')) {
+    async function deleteCust(id) {
+        if (await UI.confirm('ยืนยันการลบลูกค้ารายนี้?')) {
             let fd = new FormData();
             fd.append('action', 'delete');
             fd.append('id', id);
@@ -402,7 +401,7 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                         let table = $('#customerTable').DataTable();
                         table.row($(`button[onclick="deleteCust(${id})"]`).parents('tr')).remove().draw();
                     } else {
-                        alert('ลบไม่สำเร็จ: ' + data);
+                        UI.alert('ลบไม่สำเร็จ: ' + data);
                     }
                 })
                 .catch(err => console.error("Error:", err));

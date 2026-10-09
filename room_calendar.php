@@ -249,7 +249,7 @@ require_once "header.php";
 
                         <div class="d-grid gap-2">
                             <?php if ($can_manage): ?>
-                                <button type="submit" id="btn-submit" class="btn btn-dark fw-bold">
+                                <button type="submit" id="btn-submit" class="btn btn-primary fw-bold">
                                     <i class="bi bi-save me-1"></i>บันทึกการจอง
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary border-0" onclick="resetForm()">ยกเลิก</button>
@@ -308,13 +308,13 @@ require_once "header.php";
                                     <td><?= date('d/m/Y', strtotime($b['start_time'])) ?></td>
                                     <td>
                                         <?= date('H:i', strtotime($b['start_time'])) ?> - <?= date('H:i', strtotime($b['end_time'])) ?>
-                                        <span class="badge <?= $is_morning ? 'bg-warning text-dark' : 'bg-info' ?> ms-1" style="font-size:0.65rem">
+                                        <span class="badge <?= $is_morning ? 'bg-warning text-dark' : 'bg-info' ?> ms-1" style="font-size: var(--fs-xs)">
                                             <?= $is_morning ? 'เช้า' : 'บ่าย' ?>
                                         </span>
                                     </td>
                                     <td><?= htmlspecialchars($b['booking_name'] ?: '-') ?></td>
                                     <td class="text-center"><?= $b['pax'] ?></td>
-                                    <td style="font-size:0.78rem">
+                                    <td style="font-size: var(--fs-xs)">
                                         <?php if ($b['break_type_name']): ?><div><?= htmlspecialchars($b['break_type_name']) ?></div><?php endif; ?>
                                         <?php if ($b['menu_type_name']): ?><div><?= htmlspecialchars($b['menu_type_name']) ?></div><?php endif; ?>
                                         <?php if ($b['room_stay']): ?><div class="text-muted"><?= htmlspecialchars($b['room_stay']) ?></div><?php endif; ?>

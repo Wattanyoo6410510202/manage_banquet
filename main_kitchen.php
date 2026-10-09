@@ -185,7 +185,7 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
                                     <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
-                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                    <small class="text-danger" style="font-size: var(--fs-xs);">*
                                         คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
                                 </div>
                             <?php endif; ?>
@@ -462,8 +462,8 @@ $breaks = $conn->query("SELECT b.*, t.type_name FROM function_breaks b LEFT JOIN
         document.getElementById('btnSubmit').className = 'btn btn-warning btn-sm fw-bold shadow-sm';
     }
 
-    function deleteBreak(id) {
-        if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
+    async function deleteBreak(id) {
+        if (await UI.confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
             let fd = new FormData();
             fd.append('action', 'delete');
             fd.append('id', id);

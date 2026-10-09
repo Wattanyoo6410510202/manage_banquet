@@ -43,374 +43,128 @@ function is_active($pages)
     }
     return ($current_page == $pages) ? 'active' : '';
 }
+
+// 4. เมนูด้านข้าง: [หัวข้อกลุ่ม => [[ไฟล์, ไอคอน, ชื่อเมนู, Role ที่เห็น, หน้าที่นับเป็นเมนูนี้]]]
+//    กลุ่มที่ผู้ใช้ไม่เห็นเมนูใดเลยจะถูกซ่อนทั้งกลุ่ม
+$nav_role = strtolower($_SESSION['role'] ?? '');
+$nav_groups = [
+    'เมนูหลัก' => [
+        ['executive_dashboard.php', 'bi-grid-1x2', 'Executive Dashboard', ['admin', 'staff', 'gm', 'sale', 'procurement']],
+        ['calendar.php', 'bi-calendar3', 'ปฏิทิน', ['admin', 'staff', 'gm', 'sale', 'procurement']],
+        ['manage_banquet.php', 'bi-calendar-event', 'จัดเลี้ยง (Banquet)', ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'], ['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']],
+        ['booking_list.php', 'bi-journal-bookmark', 'รายการจองห้อง / ใบเสนอราคา', ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'], ['booking_list.php', 'room_calendar.php']],
+        ['quotation_list.php', 'bi-file-earmark-text', 'ใบเสนอราคา', ['admin', 'staff', 'gm', 'sale', 'procurement'], ['quotation_list.php', 'add_quote.php', 'edit_quotation.php', 'quotation_view.php']],
+        ['customer.php', 'bi-people', 'ลูกค้า', ['admin', 'staff', 'gm', 'sale', 'procurement']],
+    ],
+    'บันทึกภาระงานแผนก' => [
+        ['sales_dept.php', 'bi-graph-up-arrow', 'งานขาย', ['admin', 'gm', 'sale']],
+        ['banquet_mt.php', 'bi-tools', 'งานช่าง', ['admin', 'technician']],
+        ['banquet_bk.php', 'bi-calendar-check', 'งานจัดเลี้ยง', ['admin', 'banquet_staff']],
+        ['banquet_hk.php', 'bi-house-door', 'งานแม่บ้าน', ['admin', 'housekeeping']],
+    ],
+    'ตั้งค่ารายการตรวจสอบ' => [
+        ['checklist_mt.php', 'bi-ui-checks', 'Checklist ช่าง', ['admin', 'technician']],
+        ['checklist_hk.php', 'bi-ui-checks', 'Checklist แม่บ้าน', ['admin', 'housekeeping']],
+        ['checklist_bk.php', 'bi-ui-checks', 'Checklist จัดเลี้ยง', ['admin', 'banquet_staff']],
+    ],
+    'เพิ่ม/แก้ไข' => [
+        ['main_kitchen.php', 'bi-cup-hot', 'การจัดการเบรก', ['admin', 'gm', 'sale', 'procurement']],
+        ['food_management.php', 'bi-egg-fried', 'การจัดการเมนูอาหาร', ['admin', 'gm', 'sale', 'procurement']],
+        ['setting_room.php', 'bi-door-open', 'เพิ่มห้องประชุม', ['admin', 'gm', 'sale', 'procurement']],
+        ['setting_master.php', 'bi-tags', 'เพิ่มประเภทเมนูและเบรก', ['admin', 'gm', 'sale', 'procurement']],
+        ['setting_type.php', 'bi-bookmark-star', 'เพิ่มประเภทการจัดเลี้ยง', ['admin', 'gm', 'sale', 'procurement']],
+    ],
+    'Settings' => [
+        ['setting.php', 'bi-gear', 'การตั้งค่า', ['admin']],
+    ],
+];
+$nav_user = $_SESSION['user_name'] ?? $_SESSION['user'] ?? '';
+$nav_initial = mb_substr(trim((string)($_SESSION['user'] ?? 'U')), 0, 1);
 ?>
 <!DOCTYPE html>
 <html lang="th">
 
 <head>
     <meta charset="UTF-8">
-    <title>Sale System </title>
+    <title>Banquet Management</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sarabun:wght@300;400;600&display=swap"
-        rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- IBM Plex Sans Thai = ฟอนต์ของระบบ, Sarabun = ฟอนต์ของเอกสารพิมพ์ (ใบเสนอราคา/EO) -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <!-- jQuery (Must be before other scripts) -->
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=<?php echo @filemtime(__DIR__ . '/style.css') ?: time(); ?>">
     <!-- Driver.js for Tutorial -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
-    <style>
-        /* ล็อค Navbar บน */
-        .navbar {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1050;
-            /* เพิ่มให้สูงกว่า Sidebar */
-            height: 56px;
-            background-color: #1a1a1a !important;
-        }
-
-        /* ปรับแต่งปุ่ม Tutorial */
-        .btn-tutorial {
-            color: #b89441;
-            border: 1px solid #b89441;
-            transition: all 0.3s;
-        }
-        .btn-tutorial:hover {
-            background-color: #b89441;
-            color: #fff;
-        }
-        /* ซ่อนข้อความ Tutorial ในมือถือ */
-        @media (max-width: 576px) {
-            .btn-tutorial span {
-                display: none;
-            }
-        }
-
-        /* ล็อค Sidebar ข้าง */
-        #sidebar {
-            position: fixed;
-            top: 56px;
-            left: 0;
-            width: 260px;
-            height: calc(100vh - 56px);
-            overflow-y: auto;
-            z-index: 1040;
-            transition: all 0.3s ease;
-            background-color: #1a1a1a;
-            border-right: 1px solid rgba(184, 148, 65, 0.2);
-        }
-        /* สถานะพับใน Desktop (Mini-sidebar) */
-        #sidebar.collapsed {
-            width: 60px;
-        }
-        #sidebar.collapsed .sidebar-header,
-        #sidebar.collapsed .sidebar-header small,
-        #sidebar.collapsed .components li a span,
-        #sidebar.collapsed .components li a::after,
-        #sidebar.collapsed .components li a small {
-            display: none !important;
-        }
-        #sidebar.collapsed .components li a {
-            text-align: center;
-            padding: 15px 0;
-            font-size: 0;
-        }
-        #sidebar.collapsed .components li a i {
-            margin-right: 0 !important;
-            font-size: 1.2rem;
-        }
-
-        /* เนื้อหาหลัก */
-        #content {
-            margin-left: 260px;
-            width: calc(100% - 260px);
-            min-height: calc(100vh - 56px);
-            transition: all 0.3s ease;
-            padding: 20px;
-        }
-        #content.expanded {
-            margin-left: 60px;
-            width: calc(100% - 60px);
-        }
-
-        /* คลาสพิเศษสำหรับชื่อ User ในมือถือ */
-        .user-name {
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* สำหรับมือถือ (Tablet & Phone) */
-        @media (max-width: 991px) {
-            #sidebar {
-                margin-left: -260px;
-            }
-
-            #sidebar.active {
-                margin-left: 0;
-            }
-
-            #content {
-                margin-left: 0;
-                width: 100%;
-                padding: 15px;
-            }
-
-            .user-name {
-                max-width: 70px;
-                /* ในมือถือจำกัดให้สั้นลง */
-                font-size: 0.85rem;
-            }
-
-            .navbar-brand {
-                font-size: 0.9rem;
-                /* ย่อขนาดโลโก้ในมือถือ */
-            }
-        }
-
-        /* สำหรับหน้าจอเล็กมาก (iPhone SE) */
-        @media (max-width: 375px) {
-            .user-name {
-                display: none;
-                /* ซ่อนชื่อไปเลย เหลือแค่ไอคอน */
-            }
-
-            .navbar-brand span:last-child {
-                display: none;
-                /* ซ่อนคำว่า Management */
-            }
-        }
-
-        .text-gold {
-            color: #b89441 !important;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . '/assets/css/theme.css') ?: time(); ?>">
 </head>
 
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm border-bottom border-secondary">
-        <div class="container-fluid px-2 px-md-3">
+    <header class="app-topbar">
+        <button type="button" id="sidebarCollapse" class="icon-btn" title="ยุบ/ขยายเมนู" aria-label="ยุบ/ขยายเมนู">
+            <i class="bi bi-list"></i>
+        </button>
+        <a class="app-brand" href="executive_dashboard.php">
+            <span class="mark"><i class="bi bi-building"></i></span>
+            <span>Banquet <span class="sub">Management</span></span>
+        </a>
 
-            <div class="d-flex align-items-center">
-                <button type="button" id="sidebarCollapse" class="btn btn-link text-gold me-1 p-1" title="ยุบ/ขยายเมนู">
-                    <i class="bi bi-list fs-4"></i>
-                </button>
+        <div class="spacer"></div>
 
-                <a class="navbar-brand fw-bold d-flex align-items-center" href="executive_dashboard.php">
-                    <i class="bi bi-building me-2 text-gold"></i>
-                    <div class="d-flex flex-column flex-sm-row">
-                        <span class="text-white">Banquet</span>
-                        <span class="text-gold ms-sm-1">Management</span>
-                    </div>
-                </a>
-            </div>
-
-            <div class="d-flex align-items-center gap-2 gap-sm-3">
-                <button type="button" id="startTutorial" class="btn btn-tutorial btn-sm d-flex align-items-center shadow-none">
-                    <i class="bi bi-question-circle me-sm-1"></i>
-                    <span class="small">โหมดสอนใช้งาน</span>
-                </button>
-
-                <a href="https://line.me/R/ti/p/@080cyphf" target="_blank"
-                    class="btn btn-sm d-flex align-items-center gap-1 shadow-none"
-                    style="background:#06C755; color:#fff; border-radius: 50px; font-size: 0.75rem; padding: 2px 10px;">
-                    <i class="bi bi-line" style="font-size: 1rem;"></i>
-                    <span class="d-none d-sm-inline">@080cyphf</span>
-                </a>
-
-                <div class="d-flex align-items-center text-white-50">
-                    <i class="bi bi-person-circle text-gold fs-5 me-1 me-sm-2"></i>
-                    <span class="fw-bold text-white user-name">
-                        <?php echo $_SESSION['user']; ?>
+        <div class="top-actions">
+            <button type="button" id="startTutorial" class="btn-tutorial" title="โหมดสอนใช้งาน">
+                <i class="bi bi-question-circle"></i><span>โหมดสอนใช้งาน</span>
+            </button>
+            <a href="https://line.me/R/ti/p/@080cyphf" target="_blank" rel="noopener" class="btn-line" title="เพิ่มเพื่อน LINE เพื่อรับแจ้งเตือน">
+                <i class="bi bi-line"></i><span>@080cyphf</span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="avatar"><?php echo htmlspecialchars($nav_initial); ?></span>
+                    <span class="user-meta d-flex flex-column align-items-start lh-sm">
+                        <span class="user-name"><?php echo htmlspecialchars($_SESSION['user']); ?></span>
+                        <span class="role"><?php echo htmlspecialchars($_SESSION['role'] ?? ''); ?></span>
                     </span>
-                </div>
-
-                <div class="vr bg-secondary d-none d-sm-block" style="height: 20px; opacity: 0.5;"></div>
-
-                <a href="logout.php"
-                    class="btn btn-outline-danger btn-sm border-0 px-2 py-1 d-flex align-items-center shadow-none">
-                    <i class="bi bi-box-arrow-right me-1"></i>
-                    <span class="d-none d-sm-inline small">Logout</span>
-                </a>
+                    <i class="bi bi-chevron-down text-muted fs-xs"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <div class="px-3 py-2">
+                            <div class="fw-bold"><?php echo htmlspecialchars($nav_user); ?></div>
+                            <div class="text-muted small"><?php echo htmlspecialchars($_SESSION['role'] ?? ''); ?></div>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</a></li>
+                </ul>
             </div>
-
         </div>
-    </nav>
+    </header>
 
     <div class="wrapper">
-        <nav id="sidebar">
-            <div class="sidebar-header py-4 px-3">
-                <small class="text-uppercase text-gold fw-bold letter-spacing-1" style="font-size: 0.7rem;">Main
-                    Navigation</small>
-            </div>
-
-            <ul class="list-unstyled components">
-                <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
-                <li>
-                    <a href="executive_dashboard.php" class="<?php echo is_active('executive_dashboard.php'); ?>">
-                        <i class="bi bi-clipboard-data"></i> Executive Dashboard
-                    </a>
-                </li>
-                <li>
-                    <a href="calendar.php" class="<?php echo is_active('calendar.php'); ?>">
-                        <i class="bi bi-calendar"></i> ปฏิทิน
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'])): ?>
-                <li>
-                    <a href="manage_banquet.php"
-                        class="<?php echo is_active(['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']); ?>">
-                        <i class="bi bi-calendar-event"></i> จัดเลี้ยง (Banquet)
-                    </a>
-                </li>
-                <li>
-                    <a href="booking_list.php"
-                        class="<?php echo is_active(['booking_list.php', 'room_calendar.php']); ?>">
-                        <i class="bi bi-journal-bookmark"></i> รายการจองห้อง / ใบเสนอราคา
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'staff', 'gm', 'sale', 'procurement'])): ?>
-                <li>
-                    <a href="quotation_list.php"
-                        class="<?php echo is_active(['quotation_list.php', 'add_quote.php', 'quotation_view.php']); ?>">
-                        <i class="bi bi-file-earmark-text"></i> ใบเสนอราคา
-                    </a>
-                </li>
-                <li>
-                    <a href="customer.php" class="<?php echo is_active('customer.php'); ?>">
-                        <i class="bi bi-person"></i> ลูกค้า
-                    </a>
-                </li>
-                <?php endif; ?>
-                <?php $role = strtolower($_SESSION['role'] ?? ''); ?>
-
-                <?php if (in_array($role, ['admin', 'procurement', 'technician', 'housekeeping', 'banquet_staff', 'gm', 'sale'])): ?>
-                <li class="mt-4 sidebar-header px-3">
-                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">บันทึกภาระงานแผนก</small>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'gm', 'sale'])): ?>
-                <li>
-                    <a href="sales_dept.php" class="<?php echo is_active('sales_dept.php'); ?>">
-                        <i class="bi bi-graph-up-arrow"></i> งานขาย
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'technician'])): ?>
-                <li>
-                    <a href="banquet_mt.php" class="<?php echo is_active('banquet_mt.php'); ?>">
-                        <i class="bi bi-tools"></i> งานช่าง
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'banquet_staff'])): ?>
-                <li>
-                    <a href="banquet_bk.php" class="<?php echo is_active('banquet_bk.php'); ?>">
-                        <i class="bi bi-calendar-check"></i> งานจัดเลี้ยง
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'housekeeping'])): ?>
-                <li>
-                    <a href="banquet_hk.php" class="<?php echo is_active('banquet_hk.php'); ?>">
-                        <i class="bi bi-house-door"></i> งานแม่บ้าน
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'procurement'])): ?>
-                <li class="mt-4 sidebar-header px-3">
-                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">ตั้งค่ารายการตรวจสอบ</small>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'technician'])): ?>
-                <li>
-                    <a href="checklist_mt.php" class="<?php echo is_active('checklist_mt.php'); ?>">
-                        <i class="bi bi-tools"></i> Checklist ช่าง
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'housekeeping'])): ?>
-                <li>
-                    <a href="checklist_hk.php" class="<?php echo is_active('checklist_hk.php'); ?>">
-                        <i class="bi bi-house-door"></i> Checklist แม่บ้าน
-                    </a>
-                </li>
-                <?php endif; ?>
-                
-                <?php if (in_array($role, ['admin', 'banquet_staff'])): ?>
-                <li>
-                    <a href="checklist_bk.php" class="<?php echo is_active('checklist_bk.php'); ?>">
-                        <i class="bi bi-calendar-check"></i> Checklist จัดเลี้ยง
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if (in_array($role, ['admin', 'gm', 'sale', 'procurement'])): ?>
-                <li class="mt-4 sidebar-header px-3">
-                    <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">เพิ่ม/แก้ไข</small>
-                </li>
-                <li>
-                    <a href="main_kitchen.php" class="<?php echo is_active('main_kitchen.php'); ?>">
-                        <i class="bi bi-egg"></i> การจัดการเบรก
-                    </a>
-                </li>
-                
-                <li>
-                    <a href="food_management.php" class="<?php echo is_active('food_management.php'); ?>">
-                        <i class="bi bi-menu-app"></i> การจัดการเมนูอาหาร
-                    </a>
-                </li>
-                <li>
-                    <a href="setting_room.php" class="<?php echo is_active('setting_room.php'); ?>">
-                        <i class="bi bi-door-open"></i> เพิ่มห้องประชุม
-                    </a>
-                </li>
-                <li>
-                    <a href="setting_master.php" class="<?php echo is_active('setting_master.php'); ?>">
-                        <i class="bi bi-plus-circle"></i> เพิ่มประเภทเมนูและเบรก
-                    </a>
-                </li>
-                <li>
-                    <a href="setting_type.php" class="<?php echo is_active('setting_type.php'); ?>">
-                        <i class="bi bi-plus-circle "></i> เพิ่มประเภทการจัดเลี้ยง
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <?php if ($role === 'admin'): ?>
-                    <li class="mt-4 sidebar-header px-3">
-                        <small class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem;">Settings</small>
-                    </li>
+        <nav id="sidebar" aria-label="เมนูหลัก">
+            <?php foreach ($nav_groups as $group_label => $items): ?>
+                <?php $visible = array_filter($items, fn($it) => in_array($nav_role, $it[3])); ?>
+                <?php if (!$visible) continue; ?>
+                <div class="nav-group"><?php echo $group_label; ?></div>
+                <ul>
+                    <?php foreach ($visible as $it): ?>
                     <li>
-                        <a href="setting.php" class="<?php echo is_active('setting.php'); ?>">
-                            <i class="bi bi-gear-fill "></i> การตั้งค่า
+                        <a href="<?php echo $it[0]; ?>" class="<?php echo is_active($it[4] ?? $it[0]); ?>" title="<?php echo htmlspecialchars($it[2]); ?>">
+                            <i class="bi <?php echo $it[1]; ?>"></i><span><?php echo $it[2]; ?></span>
                         </a>
                     </li>
-                <?php endif; ?>
-
-            </ul>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endforeach; ?>
         </nav>
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <div id="content">
-            <div class="container-fluid pt-1 px-1">
+            <div class="container-fluid">

@@ -363,7 +363,7 @@ if (($_GET['export'] ?? '') === 'csv') {
     $td_dowcol = 'padding:5px 9px;border:1px solid #cccccc;background:#faf7ef;text-align:center;font-weight:bold;';
 
     echo "<html><head><meta charset=\"UTF-8\"></head><body>";
-    echo "<table border=\"1\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;font-family:Tahoma,sans-serif;font-size:12px;\">";
+    echo "<table border=\"1\" cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;font-family:Tahoma,sans-serif;font-size: var(--fs-xs);\">";
     echo "<thead><tr>";
     $headers = $view === 'agenda'
         ? ['วัน', 'วันที่', 'แหล่งข้อมูล', 'รหัส', 'ชื่องาน', 'ประเภท', 'โรงแรม', 'ห้อง', 'เริ่ม', 'สิ้นสุด', 'จำนวนคน', 'ผู้จอง/ผู้ติดต่อ', 'เบอร์โทร', 'หน่วยงาน/ลูกค้า', 'สถานะ', 'เบรก', 'ประเภทอาหาร', 'ห้องพัก', 'ราคาขาย', 'ผู้บันทึก', 'บันทึกเมื่อ', 'หมายเหตุ']
@@ -479,7 +479,7 @@ if (!function_exists('render_booking_row')) {
             <td class="text-truncate" style="max-width:220px" title="<?= $h($r['organization'] ?: '') ?>">
                 <div><span class="src-tag <?= $src_meta['cls'] ?>"><i class="bi <?= $src_meta['icon'] ?>"></i><?= $h($src_meta['label']) ?></span></div>
                 <div class="fw-medium"><?= $h($r['organization'] ?: '-') ?></div>
-                <div style="font-size:.72rem;color:#8a9099">
+                <div style="font-size: var(--fs-xs);color:#8a9099">
                     <?= $h($r['booking_name'] ?: '-') ?>
                     <?php if (!empty($r['customer_id'])): ?>
                         <i class="bi bi-link-45deg text-gold" title="ผูกกับลูกค้าในระบบ: <?= $h($r['system_cust_name'] ?: '') ?>"></i>
@@ -492,7 +492,7 @@ if (!function_exists('render_booking_row')) {
             <td><?= $h($r['phone'] ?: '-') ?></td>
             <td>
                 <div><?= $h($r['room_name'] ?: '-') ?></div>
-                <div style="font-size:.72rem;color:#8a9099"><?= $h($r['company_name'] ?: '-') ?></div>
+                <div style="font-size: var(--fs-xs);color:#8a9099"><?= $h($r['company_name'] ?: '-') ?></div>
             </td>
             <td class="num"><?= $src === 'quote' ? '-' : thai_time_range($r['start_time'] ?? null, $r['end_time'] ?? null) ?></td>
             <td><?php if ($src === 'booking'): ?><span class="tag"><?= $h($r['type_name'] ?: 'ไม่ระบุประเภท') ?></span><?php else: ?><span class="<?= $r['type_name'] ? 'tag' : 'text-muted' ?>"><?= $h($r['type_name'] ?: '-') ?></span><?php endif; ?></td>
@@ -595,24 +595,22 @@ require_once "header.php";
 
 <style>
 .bk-page{--gold:#b89441;--gold-tint:#f7f1e3;--ink:#111318;--ink2:#5b6470;--muted:#8a9099;--line:#e8eaee}
-.bk-page{font-family:'Sarabun','Inter',sans-serif;color:var(--ink)}
+.bk-page{color:var(--ink)}
 .bk-hero{border-radius:16px;padding:15px 20px;color:var(--ink);position:relative;overflow:hidden;
     background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold)}
 .bk-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
 .bk-hero>*{position:relative;z-index:1}
-.bk-hero .hero-sub{font-size:.78rem;color:var(--ink2)}
+.bk-hero .hero-sub{font-size: var(--fs-xs);color:var(--ink2)}
 .bk-stat{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px 14px;height:100%}
-.bk-stat .v{font-size:1.45rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.bk-stat .l{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.bk-stat .v{font-size: var(--fs-xl);font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.bk-stat .l{font-size: var(--fs-xs);font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
 .bk-card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .bk-filter{padding:14px 16px;border-bottom:1px solid var(--line);background:#fff}
-.bk-filter label{font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:3px;display:block}
-.bk-filter .form-control,.bk-filter .form-select{font-size:.82rem;border-radius:9px}
-.btn-gold{background:var(--gold);border:1px solid var(--gold);color:#fff;font-weight:600;font-size:.8rem;border-radius:9px}
-.btn-gold:hover{background:#a5833a;border-color:#a5833a;color:#fff}
-.bk-tbl{width:100%;margin:0;font-size:.82rem}
-.bk-tbl thead th{background:#fafbfc;color:var(--muted);font-weight:700;font-size:.68rem;text-transform:uppercase;
+.bk-filter label{font-size: var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:3px;display:block}
+.bk-filter .form-control,.bk-filter .form-select{font-size: var(--fs-sm);border-radius:9px}
+.bk-tbl{width:100%;margin:0;font-size: var(--fs-sm)}
+.bk-tbl thead th{background:#fafbfc;color:var(--muted);font-weight:700;font-size: var(--fs-xs);text-transform:uppercase;
     letter-spacing:.4px;border-bottom:1px solid var(--line)!important;white-space:nowrap;padding:10px 12px}
 .bk-tbl thead th a{color:var(--muted);text-decoration:none}
 .bk-tbl thead th a:hover{color:var(--ink)}
@@ -626,27 +624,27 @@ require_once "header.php";
 .bk-tbl tbody tr.is-cancelled{color:var(--muted)}
 .bk-tbl tbody tr.is-cancelled .bk-name{text-decoration:line-through}
 .bk-tbl .num{font-variant-numeric:tabular-nums}
-.bk-code{font-family:'Inter',monospace;font-size:.74rem;font-weight:700;color:#8a6c22;background:var(--gold-tint);
+.bk-code{font-size: var(--fs-xs);font-weight:700;color:#8a6c22;background:var(--gold-tint);
     border-radius:6px;padding:2px 7px;white-space:nowrap}
 .bk-name{font-weight:600}
-.tag{display:inline-block;background:#f1f3f6;color:var(--ink2);border-radius:6px;padding:1px 7px;font-size:.7rem;font-weight:600}
-.pill{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 9px;font-size:.7rem;font-weight:700;white-space:nowrap}
+.tag{display:inline-block;background:#f1f3f6;color:var(--ink2);border-radius:6px;padding:1px 7px;font-size: var(--fs-xs);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 9px;font-size: var(--fs-xs);font-weight:700;white-space:nowrap}
 .pill.on{background:#e9f7e9;color:#0ca30c}
 .pill.off{background:#fbeaea;color:#d03b3b}
 .pill.done{background:#eef1f6;color:#5b6470}
 .bk-empty{padding:52px 20px;text-align:center;color:var(--muted)}
 .chipbar{display:flex;gap:6px;flex-wrap:wrap}
 .chipbar a{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;
-    padding:5px 14px;font-size:.78rem;font-weight:600;text-decoration:none}
+    padding:5px 14px;font-size: var(--fs-xs);font-weight:600;text-decoration:none}
 .chipbar a:hover{border-color:#d3d7dd;color:var(--ink)}
 .chipbar a.on{background:var(--gold-tint);border-color:var(--gold);color:#8a6c22}
-@media(max-width:575px){.bk-stat .v{font-size:1.2rem}}
+@media(max-width:575px){.bk-stat .v{font-size: var(--fs-lg)}}
 
 /* ===== checklist เลือกแหล่งข้อมูล (จองห้อง / ใบเสนอราคา / EO) ===== */
 .bk-srcbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:10px}
-.bk-srcbar-label{font-size:.7rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.bk-srcbar-label{font-size: var(--fs-xs);font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
 .bk-srcchk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
-    border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;padding:4px 12px;font-size:.78rem;font-weight:600}
+    border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;padding:4px 12px;font-size: var(--fs-xs);font-weight:600}
 .bk-srcchk input{margin:0;cursor:pointer}
 .bk-srcchk.on{border-color:currentColor}
 .bk-srcchk.src-booking.on{color:#8a6c22;background:var(--gold-tint)}
@@ -654,7 +652,7 @@ require_once "header.php";
 .bk-srcchk.src-eo.on{color:#0ca30c;background:#e9f7e9}
 
 /* ป้ายแหล่งข้อมูลในแต่ละแถวของตาราง */
-.src-tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 7px;font-size:.66rem;font-weight:700;margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
+.src-tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 7px;font-size: var(--fs-xs);font-weight:700;margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
 .src-tag.src-booking{background:var(--gold-tint);color:#8a6c22}
 .src-tag.src-quote{background:#eaf3fb;color:#1d6fb8}
 .src-tag.src-eo{background:#e9f7e9;color:#0ca30c}
@@ -688,7 +686,7 @@ require_once "header.php";
                 <a href="<?= $h('?' . http_build_query($export_qs)) ?>" class="btn btn-gold btn-sm">
                     <i class="bi bi-file-earmark-spreadsheet me-1"></i>ส่งออก Excel
                 </a>
-                <a href="room_calendar.php" class="btn btn-outline-secondary btn-sm" style="font-size:.8rem;border-radius:9px">
+                <a href="room_calendar.php" class="btn btn-outline-secondary btn-sm" style="font-size: var(--fs-sm);border-radius:9px">
                     <i class="bi bi-calendar-plus me-1"></i>จองห้องใหม่
                 </a>
             </div>
@@ -708,7 +706,7 @@ require_once "header.php";
         </div>
         <div class="col-6 col-lg-3">
             <div class="bk-stat"><div class="l">ยังไม่ถึงวันจัด</div><div class="v" style="color:#2a78d6"><?= number_format($sum_upcoming) ?></div>
-                <div style="font-size:.7rem;color:#8a9099">รวม <?= number_format($sum_pax) ?> คน</div></div>
+                <div style="font-size: var(--fs-xs);color:#8a9099">รวม <?= number_format($sum_pax) ?> คน</div></div>
         </div>
     </div>
 
@@ -793,7 +791,7 @@ require_once "header.php";
                 </div>
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-gold btn-sm px-3"><i class="bi bi-funnel me-1"></i>กรองข้อมูล</button>
-                    <a href="booking_list.php" class="btn btn-outline-secondary btn-sm" style="font-size:.8rem;border-radius:9px">ล้างตัวกรอง</a>
+                    <a href="booking_list.php" class="btn btn-outline-secondary btn-sm" style="font-size: var(--fs-sm);border-radius:9px">ล้างตัวกรอง</a>
                 </div>
             </div>
         </form>
@@ -872,7 +870,7 @@ require_once "header.php";
                     </tbody>
                 </table>
             </div>
-            <div class="d-flex justify-content-between align-items-center px-3 py-2" style="border-top:1px solid #e8eaee;font-size:.76rem;color:#5b6470">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2" style="border-top:1px solid #e8eaee;font-size: var(--fs-xs);color:#5b6470">
                 <?php if ($view === 'agenda'): ?>
                     <?php
                         // นับจำนวน "รายการจองที่ไม่ซ้ำ" ไม่ใช่จำนวนแถว เพราะงานคร่อมหลายวันจะถูกแสดงซ้ำในทุกวันที่ครอบคลุม
@@ -894,7 +892,7 @@ require_once "header.php";
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden">
             <div class="modal-header py-2" style="background:#16181d;color:#fff;border:0">
-                <h6 class="modal-title fw-bold" style="font-size:.9rem">
+                <h6 class="modal-title fw-bold" style="font-size: var(--fs-base)">
                     <i class="bi bi-journal-text me-2" style="color:#b89441"></i><span id="bkDetailTitle">รายละเอียดการจอง</span>
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -911,8 +909,8 @@ require_once "header.php";
             <div class="modal-body text-center p-4">
                 <i class="bi bi-exclamation-triangle-fill fs-1" style="color:#fab219"></i>
                 <h6 class="fw-bold mt-3 mb-1">ยืนยันยกเลิกการจอง?</h6>
-                <p class="text-muted mb-1" style="font-size:.82rem" id="bkCancelName"></p>
-                <p class="text-muted mb-3" style="font-size:.76rem">ห้องจะถูกปล่อยว่างให้จองใหม่ได้ทันที</p>
+                <p class="text-muted mb-1" style="font-size: var(--fs-sm)" id="bkCancelName"></p>
+                <p class="text-muted mb-3" style="font-size: var(--fs-xs)">ห้องจะถูกปล่อยว่างให้จองใหม่ได้ทันที</p>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-light flex-fill btn-sm" data-bs-dismiss="modal">ไม่ใช่ตอนนี้</button>
                     <button type="button" class="btn btn-danger flex-fill btn-sm" id="bkCancelConfirm">ยกเลิกการจอง</button>
@@ -947,8 +945,8 @@ function showBkDetail(id) {
     const isCancelled = r.status !== 'active';
     const field = (label, val, wide) => `
         <div class="${wide ? 'col-12' : 'col-sm-6'} mb-3">
-            <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:#8a9099;font-weight:700">${label}</div>
-            <div style="font-size:.88rem">${val && String(val).trim() !== '' ? esc(val) : '<span class="text-muted">-</span>'}</div>
+            <div style="font-size: var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:#8a9099;font-weight:700">${label}</div>
+            <div style="font-size: var(--fs-base)">${val && String(val).trim() !== '' ? esc(val) : '<span class="text-muted">-</span>'}</div>
         </div>`;
 
     document.getElementById('bkDetailBody').innerHTML = `
@@ -1007,13 +1005,13 @@ document.getElementById('bkCancelConfirm')?.addEventListener('click', function (
             if (res.status === 'success') {
                 location.reload();
             } else {
-                alert(res.message || 'ยกเลิกไม่สำเร็จ');
+                UI.alert(res.message || 'ยกเลิกไม่สำเร็จ');
                 btn.disabled = false;
                 btn.textContent = 'ยกเลิกการจอง';
             }
         })
         .catch(() => {
-            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            UI.alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
             btn.disabled = false;
             btn.textContent = 'ยกเลิกการจอง';
         });

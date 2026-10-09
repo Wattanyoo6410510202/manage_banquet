@@ -272,13 +272,13 @@ foreach ($menu_types_array as $mt) {
 
     .function-form .main-header .form-header-sub {
         color: #6b6b6b;
-        font-size: .78rem;
+        font-size: var(--fs-xs);
         margin-top: 2px;
     }
 
     .function-form .section-title {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: var(--fs-md);
         color: #262626;
         padding-bottom: .5rem;
         margin-bottom: 1rem !important;
@@ -300,7 +300,7 @@ foreach ($menu_types_array as $mt) {
         color: var(--hotel-gold, #b89441);
         background: #fff;
         font-weight: 600;
-        font-size: .8rem;
+        font-size: var(--fs-sm);
     }
 
     .function-form .btn-hotel-outline:hover {
@@ -376,7 +376,7 @@ foreach ($menu_types_array as $mt) {
 
     .function-form .kitchen-grand-total,
     .function-form .menu-grand-total {
-        font-size: .78rem;
+        font-size: var(--fs-xs);
         white-space: nowrap;
         padding-left: .35rem !important;
         padding-right: .35rem !important;
@@ -400,7 +400,7 @@ foreach ($menu_types_array as $mt) {
         border-radius: 0;
         color: #666;
         font-weight: 600;
-        font-size: .85rem;
+        font-size: var(--fs-base);
         padding: .55rem .9rem;
         white-space: nowrap;
     }
@@ -516,7 +516,7 @@ foreach ($menu_types_array as $mt) {
                             <select name="company_id" class="form-select border-0 bg-light mb-2"
                                 id="company_select"
                                 onchange="updateCompanyLogo(this); renderRooms(this.value);" required
-                                style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
+                                style="border-radius: 10px; height: 38px; font-size: var(--fs-base);">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $res_companies->data_seek(0);
@@ -557,7 +557,7 @@ foreach ($menu_types_array as $mt) {
                             <div class="mb-2">
                                 <select id="customer_selector" name="customer_id"
                                     class="form-select border-0 bg-light select2-ajax-customer"
-                                    style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
+                                    style="border-radius: 10px; height: 38px; font-size: var(--fs-base);">
                                     <?php if ($quote_data['customer_id']): ?>
                                         <option value="<?= $quote_data['customer_id'] ?>" selected>
                                             <?= htmlspecialchars($quote_data['cust_name']) ?>
@@ -572,18 +572,18 @@ foreach ($menu_types_array as $mt) {
                                     <input type="text" id="booking_name" name="booking_name"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
                                         value="<?= htmlspecialchars($quote_data['cust_name'] ?? '') ?>"
-                                        style="height: 36px; font-size: 0.8rem;">
+                                        style="height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-6">
                                     <input type="text" id="customer_phone" name="phone"
                                         class="form-control border-0 bg-light rounded-3" placeholder="เบอร์โทร"
                                         value="<?= htmlspecialchars($quote_data['cust_phone'] ?? '') ?>"
-                                        style="height: 36px; font-size: 0.8rem;">
+                                        style="height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-12 mt-1">
                                     <textarea id="customer_address" name="organization"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                        rows="3" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
+                                        rows="3" style="font-size: var(--fs-sm); resize: none;"><?= htmlspecialchars($quote_data['cust_address'] ?? '') ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -599,11 +599,11 @@ foreach ($menu_types_array as $mt) {
                                     <input name="function_name" class="form-control border-0 bg-light"
                                         placeholder="ชื่องาน" required
                                         value="<?= htmlspecialchars($quote_data['event_name'] ?? '') ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-5">
                                     <select name="function_type_id" class="form-select border-0 bg-light" required
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                         <option value="" disabled selected>ประเภทงาน</option>
                                         <?php 
                                         $res_types->data_seek(0);
@@ -614,18 +614,18 @@ foreach ($menu_types_array as $mt) {
                                     </select>
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">เริ่มงาน</label>
+                                    <label class="small text-muted mb-0" style="font-size: var(--fs-xs);">เริ่มงาน</label>
                                     <input type="datetime-local" name="start_time"
                                         class="form-control border-0 bg-light" required
                                         value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T08:00' : '' ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">สิ้นสุด</label>
+                                    <label class="small text-muted mb-0" style="font-size: var(--fs-xs);">สิ้นสุด</label>
                                     <input type="datetime-local" name="end_time"
                                         class="form-control border-0 bg-light" required
                                         value="<?= isset($quote_data['event_date']) ? $quote_data['event_date'].'T17:00' : '' ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                             </div>
                         </div>
@@ -652,7 +652,7 @@ foreach ($menu_types_array as $mt) {
                 <div class="row g-2 mb-4">
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-primary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-primary mb-0" style="font-size: 0.65rem;">Booking No.</label>
+                            <label class="small fw-bold text-primary mb-0" style="font-size: var(--fs-xs);">Booking No.</label>
                             <input name="booking_room" value="<?php echo $quote_data['booking_room'] ?? ''; ?>"
                                                                         class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
                                 placeholder="BK-XXXX" style="height: 32px;">
@@ -660,7 +660,7 @@ foreach ($menu_types_array as $mt) {
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
-                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">จำนวน (PAX)</label>
+                            <label class="small fw-bold text-info mb-0" style="font-size: var(--fs-xs);">จำนวน (PAX)</label>
                             <div class="input-group">
                                 <input type="number" name="pax" value="<?php echo $quote_data['pax'] ?? ''; ?>"
                                     class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-6"
@@ -671,7 +671,7 @@ foreach ($menu_types_array as $mt) {
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
-                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">มัดจำ (Deposit)</label>
+                            <label class="small fw-bold text-success mb-0" style="font-size: var(--fs-xs);">มัดจำ (Deposit)</label>
                             <div class="input-group">
                                 <span class="input-group-text border-0 bg-transparent text-success fw-bold p-0">฿</span>
                                 <input type="number" step="0.01" name="deposit"
@@ -683,7 +683,7 @@ foreach ($menu_types_array as $mt) {
                     </div>
                     <div class="col-md-3">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">มูลค่างานทั้งหมด</label>
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: var(--fs-xs);">มูลค่างานทั้งหมด</label>
                             <div class="input-group">
                                 <span class="input-group-text border-0 bg-transparent text-secondary fw-bold p-0">฿</span>
                                 <input type="number" step="0.01" name="total_amount"
@@ -696,12 +696,12 @@ foreach ($menu_types_array as $mt) {
 
                     <div class="col-md-3">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: var(--fs-xs);"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
                             <div class="d-flex gap-1">
                                 <?php for ($i = 1; $i <= 3; $i++): ?>
                                     <input type="file" name="file_attachment<?= $i ?>"
                                         class="form-control form-control-sm border-0 bg-transparent p-0"
-                                        style="font-size: 0.6rem;">
+                                        style="font-size: var(--fs-xs);">
                                 <?php endfor; ?>
                             </div>
                         </div>
@@ -761,7 +761,7 @@ foreach ($menu_types_array as $mt) {
                                 <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
                                     <input class="form-check-input" type="checkbox" role="switch" id="breakModalToggle" checked
                                         onchange="toggleBreakPicker(this.checked)">
-                                    <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                                    <span class="form-check-label" style="font-size: var(--fs-base);">ดึงเมนู</span>
                                 </label>
                             </h5>
                             <div class="table-responsive">
@@ -916,7 +916,7 @@ foreach ($menu_types_array as $mt) {
                         <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
                             <input class="form-check-input" type="checkbox" role="switch" id="menuModalToggle" checked
                                 onchange="toggleMenuPicker(this.checked)">
-                            <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                            <span class="form-check-label" style="font-size: var(--fs-base);">ดึงเมนู</span>
                         </label>
                     </h5>
                     <div class="table-responsive mb-5">
@@ -1269,7 +1269,7 @@ foreach ($menu_types_array as $mt) {
             if (typeof updateKitchenGrandTotal === 'function') updateKitchenGrandTotal();
             if (typeof updateMenuGrandTotal === 'function') updateMenuGrandTotal();
         } else {
-            alert("ต้องมีอย่างน้อย 1 แถวครับจาร");
+            UI.alert("ต้องมีอย่างน้อย 1 แถวครับจาร");
         }
     }
 

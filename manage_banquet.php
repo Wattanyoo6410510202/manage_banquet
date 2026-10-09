@@ -489,7 +489,7 @@ if ($conflict_q) {
                                 <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <?= htmlspecialchars($project['project_name']); ?>
                                     <?php if(count($drafts) > 1): ?>
-                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: var(--fs-xs);"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> <?= $master['formatted_date']; ?></div>
@@ -499,11 +499,11 @@ if ($conflict_q) {
                             </td>
                             <td>
                                 <div class="text-dark fw-medium small mb-1"><?= htmlspecialchars($project['booking_name']); ?></div>
-                                <div class="text-muted small"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars(formatPhoneNumber($project['phone'])); ?></div>
+                                <div class="text-muted small text-nowrap"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars(formatPhoneNumber($project['phone'])); ?></div>
                             </td>
                             <td>
                                 <div class="text-primary fw-bold">฿<?= number_format($master['total_amount'] ?: 0, 2); ?></div>
-                                <small class="text-muted" style="font-size: 0.7rem;">
+                                <small class="text-muted" style="font-size: var(--fs-xs);">
                                     Draft: <?= htmlspecialchars($master['draft_name']); ?>
                                 </small>
                             </td>
@@ -518,14 +518,14 @@ if ($conflict_q) {
                                     <i class="bi <?= $master['status_info']['icon']; ?> me-1"></i><?= $master['status_info']['text']; ?>
                                 </span>
                                 <?php if (!empty($master['cancel_reason'])): ?>
-                                    <div class="text-danger small" style="font-size: 0.65rem; max-width: 150px; line-height: 1.2; word-wrap: break-word;">
+                                    <div class="text-danger small" style="font-size: var(--fs-xs); max-width: 150px; line-height: 1.2; word-wrap: break-word;">
                                         <?= htmlspecialchars($master['cancel_reason']); ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <div class="text-dark small fw-medium"><?= htmlspecialchars($master['created_by'] ?: '-'); ?></div>
-                                <small class="text-muted" style="font-size: 0.7rem;">เซลที่ดูแล: <?= htmlspecialchars($master['sales_name'] ?: '-'); ?></small>
+                                <small class="text-muted" style="font-size: var(--fs-xs);">เซลที่ดูแล: <?= htmlspecialchars($master['sales_name'] ?: '-'); ?></small>
                             </td>
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
@@ -600,7 +600,7 @@ if ($conflict_q) {
                                     <div class="fw-medium text-secondary small function-name-link" style="cursor: pointer;">
                                         <?= htmlspecialchars($row['draft_name']); ?>
                                         <?php if($row['is_approved']): ?>
-                                            <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>
+                                            <span class="badge bg-success-subtle text-success ms-1" style="font-size: var(--fs-xs);">Master</span>
                                         <?php endif; ?>
                                     </div>
                                     <small class="text-muted"><?= htmlspecialchars($row['function_name']); ?></small>
@@ -612,16 +612,16 @@ if ($conflict_q) {
                                 <td><div class="small fw-bold">฿<?= number_format($row['total_amount'] ?: 0, 2); ?></div></td>
                                 <td><span class="badge bg-white text-dark border small fw-normal">#<?= htmlspecialchars($row['function_code']); ?></span></td>
                                 <td>
-                                    <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                    <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: var(--fs-xs);">
                                         <?= $row['status_info']['text']; ?>
                                     </span>
                                     <?php if (!empty($row['cancel_reason'])): ?>
-                                        <div class="text-danger small" style="font-size: 0.6rem; max-width: 120px; line-height: 1.2; word-wrap: break-word;">
+                                        <div class="text-danger small" style="font-size: var(--fs-xs); max-width: 120px; line-height: 1.2; word-wrap: break-word;">
                                             <?= htmlspecialchars($row['cancel_reason']); ?>
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td><small class="text-muted" style="font-size: 0.7rem;"><?= date('d/m/y H:i', strtotime($row['modify'])); ?></small></td>
+                                <td><small class="text-muted" style="font-size: var(--fs-xs);"><?= date('d/m/y H:i', strtotime($row['modify'])); ?></small></td>
                                 <td></td>
                                 <!-- ช่องคุมคอลัมน์ Export (แถว draft ไม่ถูก export แต่ต้องครบจำนวนคอลัมน์) -->
                                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -683,7 +683,7 @@ if ($conflict_q) {
                                 <div class="function-name-link" style="cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($project['project_name']); ?></h6>
                                     <?php if(count($drafts) > 1): ?>
-                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: var(--fs-xs);"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
                                 <?php if (is_numeric($master['id']) && isset($conflict_map[$master['id']])): ?>
@@ -694,7 +694,7 @@ if ($conflict_q) {
                                 <?= $master['status_info']['text']; ?>
                             </span>
                             <?php if (!empty($master['cancel_reason'])): ?>
-                                <div class="text-danger small text-end" style="font-size: 0.6rem; line-height: 1.2; word-wrap: break-word;">
+                                <div class="text-danger small text-end" style="font-size: var(--fs-xs); line-height: 1.2; word-wrap: break-word;">
                                     <?= htmlspecialchars($master['cancel_reason']); ?>
                                 </div>
                             <?php endif; ?>
@@ -765,9 +765,9 @@ if ($conflict_q) {
                                             <div class="card-body p-2 small">
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
-                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
+                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: var(--fs-xs);"><?= $row['status_info']['text']; ?></span>
                                                     <?php if (!empty($row['cancel_reason'])): ?>
-                                                        <div class="text-danger" style="font-size: 0.55rem; line-height: 1.1; word-wrap: break-word; max-width: 120px;">
+                                                        <div class="text-danger" style="font-size: var(--fs-xs); line-height: 1.1; word-wrap: break-word; max-width: 120px;">
                                                             <?= htmlspecialchars($row['cancel_reason']); ?>
                                                         </div>
                                                     <?php endif; ?>
@@ -805,20 +805,11 @@ if ($conflict_q) {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    .modal-content { border-radius: 1rem; border: none; overflow: hidden; }
-    .modal-header { background: #212529; color: #fff; border-bottom: none; padding: 1.25rem; }
-    .card-header { background: #f8f9fa; border-bottom: 1px solid #eee; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05rem; }
-    .form-control { border: 1px solid #dee2e6; border-radius: 0.5rem; }
-    .form-control:focus { box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15); }
-    .btn-success { background: #198754; border-radius: 0.5rem; transition: transform 0.2s; }
-    .btn-success:hover { transform: translateY(-2px); }
     .hr-line { border-top: 2px solid #e9ecef; margin: 1.5rem 0; }
 
     /* ===== Hero + Stat (redesign ของหน้า Banquet Event List) ===== */
-    .mb-page { font-family: 'Sarabun', 'Inter', sans-serif; }
     .mb-hero {
         border-radius: 16px; padding: 15px 20px; position: relative; overflow: hidden;
         background: #fff; border: 1px solid #e8eaee; border-left: 4px solid var(--hotel-gold, #b89441);
@@ -832,8 +823,6 @@ if ($conflict_q) {
         background: #fff; border: 1px solid #e8eaee; color: #5b6470; border-radius: 9px; font-weight: 600;
     }
     .btn-mb-tool:hover { background: #f7f1e3; color: #8a6c22; border-color: #e3d6b3; }
-    .btn-gold { background: var(--hotel-gold, #b89441); border: 1px solid var(--hotel-gold, #b89441); color: #fff; font-weight: 600; border-radius: 9px; }
-    .btn-gold:hover { background: #a5833a; border-color: #a5833a; color: #fff; }
 
     /* หัวข้อ + ตัวกรอง + ปุ่มเครื่องมือ อยู่บรรทัดเดียวกันทั้งหมด (เลื่อนลงเป็นหลายบรรทัดเฉพาะจอแคบ) */
     .mb-hero-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -877,7 +866,7 @@ if ($conflict_q) {
             .then(res => res.json())
             .then(response => {
                 if (response.status !== 'success') {
-                    alert('ไม่สามารถโหลดข้อมูลได้');
+                    UI.alert('ไม่สามารถโหลดข้อมูลได้');
                     return;
                 }
                 const data = response.data;
@@ -1015,9 +1004,9 @@ if ($conflict_q) {
                         body: formData
                     }).then(res => res.json()).then(data => {
                         if(data.status === 'success') {
-                            alert('บันทึกข้อมูลเรียบร้อย');
+                            UI.toast('บันทึกข้อมูลเรียบร้อย');
                         } else {
-                            alert(data.message || 'เกิดข้อผิดพลาด');
+                            UI.alert(data.message || 'เกิดข้อผิดพลาด');
                         }
                     });
                 });
@@ -1031,7 +1020,7 @@ if ($conflict_q) {
                         if(data.status === 'success') {
                             loadFinanceContent(functionId, userRole);
                         } else {
-                            alert(data.message);
+                            UI.alert(data.message);
                         }
                     });
                 });

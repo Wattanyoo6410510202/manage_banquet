@@ -4,6 +4,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="assets/js/ui.js?v=<?php echo @filemtime(__DIR__ . '/assets/js/ui.js') ?: time(); ?>"></script>
 <!-- Driver.js for Tutorial -->
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script>
@@ -80,6 +81,12 @@
             content.classList.toggle('expanded', isCollapsed);
             localStorage.setItem('sidebarCollapsed', isCollapsed ? '1' : '0');
         }
+    });
+
+    // มือถือ: แตะพื้นหลังมืดเพื่อปิดเมนู
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', function () {
+        document.getElementById('sidebar').classList.remove('active');
     });
 
     applySidebarState();

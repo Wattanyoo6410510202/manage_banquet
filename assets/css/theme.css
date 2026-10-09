@@ -1,0 +1,1123 @@
+/* =====================================================================
+   Banquet Management — Design System (theme.css)
+   โหลดต่อจาก Bootstrap 5.3 ทุกหน้า ทับค่าเริ่มต้นของ Bootstrap ให้เป็นธีมเดียวกัน
+   - สีและขนาดตัวอักษรทั้งหมดอยู่ใน :root ด้านล่าง แก้ที่เดียวเปลี่ยนทั้งระบบ
+   - เอกสารสำหรับพิมพ์ (#printableArea) ไม่ถูกแตะ ยังใช้ฟอนต์/ขนาดเดิม
+   ===================================================================== */
+
+:root {
+    /* ---- พื้นผิวและเส้น ---- */
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #fbfaf7;
+    --sunken: #f2f0eb;
+    --line: #e8e4db;
+    --line-strong: #d8d2c5;
+
+    /* ---- ตัวอักษร ---- */
+    --ink: #1d2025;
+    --ink-2: #444a53;
+    --muted: #6b717b;
+    --faint: #9aa0a8;
+
+    /* ---- สีแบรนด์ (ทอง) ---- */
+    --gold: #b89441;
+    --gold-ink: #8a6b22;      /* ทองเข้ม ใช้กับตัวอักษร/ปุ่มบนพื้นขาว (contrast ผ่าน) */
+    --gold-hover: #745a1c;
+    --gold-50: #fbf7ee;
+    --gold-100: #f5ecd6;
+    --gold-200: #e9d8ad;
+    --ring: rgba(184, 148, 65, .28);
+
+    /* ---- สีสถานะ (ตัวเข้ม / พื้นอ่อน) ---- */
+    --success: #1c7a48;  --success-soft: #e5f4ec;
+    --warning: #965a00;  --warning-soft: #fdf1da;
+    --danger:  #b42318;  --danger-soft:  #fdeceb;
+    --info:    #1d5fa8;  --info-soft:    #e6eefa;
+    --neutral: #50565f;  --neutral-soft: #eeede9;
+
+    /* ---- ระดับขนาดตัวอักษร (มีแค่ 7 ขนาดนี้ทั้งระบบ) ---- */
+    --fs-xs: 12px;     /* ป้าย, ตัวเลขกำกับ, คำอธิบายเล็ก */
+    --fs-sm: 13px;     /* ข้อความรอง, หัวตาราง, ปุ่มเล็ก */
+    --fs-base: 14px;   /* เนื้อหาปกติ */
+    --fs-md: 16px;     /* หัวการ์ด, หัวข้อย่อย */
+    --fs-lg: 18px;     /* หัวข้อ modal, หัวข้อส่วน */
+    --fs-xl: 22px;     /* หัวข้อหน้า */
+    --fs-2xl: 28px;    /* ตัวเลข KPI ใหญ่ */
+
+    --font: "IBM Plex Sans Thai", "IBM Plex Sans", "Leelawadee UI", Tahoma, sans-serif;
+    --font-num: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+
+    /* ---- รูปทรง ---- */
+    --r-sm: 6px;
+    --r: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --shadow-xs: 0 1px 2px rgba(20, 20, 20, .04);
+    --shadow-sm: 0 1px 3px rgba(20, 20, 20, .06), 0 1px 2px rgba(20, 20, 20, .04);
+    --shadow-md: 0 6px 16px rgba(20, 20, 20, .08), 0 2px 4px rgba(20, 20, 20, .04);
+    --shadow-lg: 0 24px 48px rgba(20, 20, 20, .16), 0 6px 12px rgba(20, 20, 20, .06);
+
+    /* ---- โครงหน้า ---- */
+    --nav-height: 60px;
+    --sidebar-width: 248px;
+    --sidebar-mini: 68px;
+    --hotel-gold: var(--gold); /* ชื่อเดิมที่บางหน้ายังใช้อยู่ */
+    --hotel-dark: var(--ink);
+
+    /* ---- ส่งค่าให้ Bootstrap ---- */
+    --bs-body-font-family: var(--font);
+    --bs-body-font-size: var(--fs-base);
+    --bs-body-line-height: 1.6;
+    --bs-body-color: var(--ink);
+    --bs-body-color-rgb: 29, 32, 37;
+    --bs-body-bg: var(--bg);
+    --bs-secondary-color: var(--muted);
+    --bs-tertiary-bg: var(--surface-2);
+    --bs-border-color: var(--line);
+    --bs-border-color-translucent: var(--line);
+    --bs-border-radius: var(--r);
+    --bs-border-radius-sm: var(--r-sm);
+    --bs-border-radius-lg: var(--r-lg);
+    --bs-border-radius-xl: var(--r-xl);
+    --bs-link-color: var(--gold-ink);
+    --bs-link-color-rgb: 138, 107, 34;
+    --bs-link-hover-color: var(--gold-hover);
+    --bs-link-hover-color-rgb: 116, 90, 28;
+    --bs-primary: #8a6b22;
+    --bs-primary-rgb: 138, 107, 34;
+    --bs-success-rgb: 28, 122, 72;
+    --bs-danger-rgb: 180, 35, 24;
+    --bs-warning-rgb: 214, 150, 20;
+    --bs-info-rgb: 29, 95, 168;
+    --bs-dark-rgb: 29, 32, 37;
+    --bs-secondary-rgb: 107, 113, 123;
+    --bs-light-rgb: 246, 245, 242;
+    --bs-primary-text-emphasis: var(--gold-ink);
+    --bs-primary-bg-subtle: var(--gold-50);
+    --bs-primary-border-subtle: var(--gold-200);
+    --bs-focus-ring-color: var(--ring);
+}
+
+/* เอกสารสำหรับพิมพ์ใช้สี Bootstrap เดิม ไม่เปลี่ยนตามธีม */
+#printableArea {
+    --bs-primary: #0d6efd;
+    --bs-primary-rgb: 13, 110, 253;
+    --bs-success-rgb: 25, 135, 84;
+    --bs-danger-rgb: 220, 53, 69;
+    --bs-warning-rgb: 255, 193, 7;
+    --bs-info-rgb: 13, 202, 240;
+    --bs-dark-rgb: 33, 37, 41;
+    --bs-secondary-rgb: 108, 117, 125;
+}
+
+/* =====================================================================
+   พื้นฐานและตัวอักษร
+   ===================================================================== */
+html { -webkit-text-size-adjust: 100%; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: var(--fs-base);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+}
+body:not(:has(#printableArea)) .table:where(:not(#printableArea *)),
+body .tabular, .num:where(:not(#printableArea *)){ font-variant-numeric: tabular-nums; }
+
+h1:where(:not(#printableArea *)), .h1:where(:not(#printableArea *)){ font-size: var(--fs-2xl); }
+h2:where(:not(#printableArea *)), .h2:where(:not(#printableArea *)){ font-size: var(--fs-xl); }
+h3:where(:not(#printableArea *)), .h3:where(:not(#printableArea *)){ font-size: var(--fs-lg); }
+h4:where(:not(#printableArea *)), .h4:where(:not(#printableArea *)){ font-size: var(--fs-md); }
+h5:where(:not(#printableArea *)), .h5:where(:not(#printableArea *)){ font-size: var(--fs-md); }
+h6:where(:not(#printableArea *)), .h6:where(:not(#printableArea *)){ font-size: var(--fs-base); }
+h1:where(:not(#printableArea *)), h2:where(:not(#printableArea *)), h3:where(:not(#printableArea *)), h4:where(:not(#printableArea *)), h5:where(:not(#printableArea *)), h6:where(:not(#printableArea *)), .h1:where(:not(#printableArea *)), .h2:where(:not(#printableArea *)), .h3:where(:not(#printableArea *)), .h4:where(:not(#printableArea *)), .h5:where(:not(#printableArea *)), .h6:where(:not(#printableArea *)){
+    font-family: var(--font);
+    font-weight: 600;
+    line-height: 1.35;
+    color: inherit;
+    letter-spacing: 0;
+}
+small:where(:not(#printableArea *)), .small:where(:not(#printableArea *)){ font-size: var(--fs-sm); }
+small small:where(:not(#printableArea *)), .small small:where(:not(#printableArea *)), .small .small:where(:not(#printableArea *)){ font-size: inherit; }
+.text-muted:where(:not(#printableArea *)), .text-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
+.text-body-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
+.text-dark:where(:not(#printableArea *)){ color: var(--ink) !important; }
+.text-black-50:where(:not(#printableArea *)){ color: var(--muted) !important; }
+.fw-bold:where(:not(#printableArea *)), b:where(:not(#printableArea *)), strong:where(:not(#printableArea *)){ font-weight: 600 !important; }
+.fw-bolder:where(:not(#printableArea *)){ font-weight: 700 !important; }
+.lead:where(:not(#printableArea *)){ font-size: var(--fs-md); color: var(--ink-2); }
+hr:where(:not(#printableArea *)){ border-color: var(--line); opacity: 1; }
+a:where(:not(#printableArea *)){ color: var(--gold-ink); text-underline-offset: 2px; }
+a:hover:where(:not(#printableArea *)){ color: var(--gold-hover); }
+::selection { background: var(--gold-100); }
+
+/* ขนาดตัวอักษรของ Bootstrap (fs-1 … fs-6) ให้อยู่ในระดับเดียวกัน
+   (ยกเว้นในเอกสารพิมพ์) */
+body .fs-1:not(#printableArea *) { font-size: var(--fs-2xl) !important; }
+body .fs-2:not(#printableArea *) { font-size: var(--fs-xl) !important; }
+body .fs-3:not(#printableArea *) { font-size: var(--fs-lg) !important; }
+body .fs-4:not(#printableArea *) { font-size: var(--fs-lg) !important; }
+body .fs-5:not(#printableArea *) { font-size: var(--fs-md) !important; }
+body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
+.fs-xs:where(:not(#printableArea *)){ font-size: var(--fs-xs) !important; }
+.fs-sm:where(:not(#printableArea *)){ font-size: var(--fs-sm) !important; }
+.fs-base:where(:not(#printableArea *)){ font-size: var(--fs-base) !important; }
+.fs-md:where(:not(#printableArea *)){ font-size: var(--fs-md) !important; }
+.fs-lg:where(:not(#printableArea *)){ font-size: var(--fs-lg) !important; }
+.fs-xl:where(:not(#printableArea *)){ font-size: var(--fs-xl) !important; }
+.fs-2xl:where(:not(#printableArea *)){ font-size: var(--fs-2xl) !important; }
+
+/* สีแบรนด์ */
+.text-gold:where(:not(#printableArea *)){ color: var(--gold-ink) !important; }
+.bg-gold:where(:not(#printableArea *)){ background: var(--gold) !important; color: #fff !important; }
+.bg-gold-soft:where(:not(#printableArea *)){ background: var(--gold-50) !important; }
+.border-gold:where(:not(#printableArea *)), .border-gold-soft:where(:not(#printableArea *)){ border-color: var(--gold-200) !important; }
+.text-primary:where(:not(#printableArea *)){ color: var(--gold-ink) !important; }
+.text-success:where(:not(#printableArea *)){ color: var(--success) !important; }
+.text-danger:where(:not(#printableArea *)){ color: var(--danger) !important; }
+.text-warning:where(:not(#printableArea *)){ color: var(--warning) !important; }
+.text-info:where(:not(#printableArea *)){ color: var(--info) !important; }
+
+/* พื้นหลังสถานะแบบอ่อน (ใช้แทนพื้นทึบที่ดูหนัก) */
+.bg-light:where(:not(#printableArea *)){ background-color: var(--surface-2) !important; }
+.bg-white:where(:not(#printableArea *)){ background-color: var(--surface) !important; }
+.bg-body-tertiary:where(:not(#printableArea *)){ background-color: var(--surface-2) !important; }
+.bg-primary-subtle:where(:not(#printableArea *)), .bg-primary.bg-opacity-10:where(:not(#printableArea *)){ background-color: var(--gold-50) !important; }
+.bg-success-subtle:where(:not(#printableArea *)), .bg-success.bg-opacity-10:where(:not(#printableArea *)){ background-color: var(--success-soft) !important; }
+.bg-danger-subtle:where(:not(#printableArea *)), .bg-danger.bg-opacity-10:where(:not(#printableArea *)){ background-color: var(--danger-soft) !important; }
+.bg-warning-subtle:where(:not(#printableArea *)), .bg-warning.bg-opacity-10:where(:not(#printableArea *)){ background-color: var(--warning-soft) !important; }
+.bg-info-subtle:where(:not(#printableArea *)), .bg-info.bg-opacity-10:where(:not(#printableArea *)){ background-color: var(--info-soft) !important; }
+
+/* เงา: ทั้งระบบใช้เงาบางเท่านั้น */
+.shadow-sm:where(:not(#printableArea *)){ box-shadow: var(--shadow-xs) !important; }
+.shadow:where(:not(#printableArea *)){ box-shadow: var(--shadow-sm) !important; }
+.shadow-lg:where(:not(#printableArea *)){ box-shadow: var(--shadow-md) !important; }
+.rounded:where(:not(#printableArea *)){ border-radius: var(--r) !important; }
+.rounded-3:where(:not(#printableArea *)){ border-radius: var(--r-lg) !important; }
+.rounded-4:where(:not(#printableArea *)){ border-radius: var(--r-xl) !important; }
+
+/* =====================================================================
+   โครงหน้า: แถบบน + เมนูด้านข้าง + เนื้อหา
+   ===================================================================== */
+.app-topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--nav-height);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px 0 12px;
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: saturate(1.4) blur(8px);
+    border-bottom: 1px solid var(--line);
+}
+.app-topbar .icon-btn {
+    width: 38px; height: 38px;
+    display: inline-grid; place-items: center;
+    border: 0; border-radius: var(--r);
+    background: transparent; color: var(--ink-2);
+    font-size: 20px; line-height: 1;
+}
+.app-topbar .icon-btn:hover { background: var(--sunken); color: var(--ink); }
+.app-brand {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; color: var(--ink);
+    font-weight: 600; font-size: var(--fs-md); white-space: nowrap;
+}
+.app-brand:hover { color: var(--ink); }
+.app-brand .mark {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: linear-gradient(140deg, #cfae5d, #9a7a2e);
+    color: #fff; font-size: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);
+}
+.app-brand .sub { color: var(--muted); font-weight: 500; }
+.app-topbar .spacer { flex: 1; }
+.app-topbar .top-actions { display: flex; align-items: center; gap: 8px; }
+.btn-tutorial {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    background: var(--surface); color: var(--ink-2);
+    font-size: var(--fs-sm); font-weight: 500;
+}
+.btn-tutorial:hover { border-color: var(--gold); color: var(--gold-ink); background: var(--gold-50); }
+.btn-line {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 999px;
+    background: #e8f8ee; color: #058a3b; border: 1px solid #c4ebd2;
+    font-size: var(--fs-sm); font-weight: 600; text-decoration: none;
+}
+.btn-line:hover { background: #06c755; color: #fff; border-color: #06c755; }
+.user-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 38px; padding: 0 10px 0 4px;
+    border: 1px solid transparent; border-radius: 999px;
+    background: transparent; color: var(--ink);
+    font-size: var(--fs-base); font-weight: 500;
+}
+.user-chip:hover, .user-chip[aria-expanded="true"] { background: var(--sunken); }
+.user-chip .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--gold-100); color: var(--gold-ink);
+    font-size: var(--fs-sm); font-weight: 700; text-transform: uppercase;
+}
+.user-chip .user-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-chip .role { color: var(--muted); font-size: var(--fs-xs); font-weight: 500; }
+
+.wrapper { display: flex; width: 100%; margin-top: var(--nav-height); }
+
+#sidebar {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - var(--nav-height));
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1040;
+    padding: 12px 10px 24px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    color: var(--ink);
+    transition: width .2s ease, transform .2s ease;
+    scrollbar-width: thin;
+}
+#sidebar .nav-group {
+    margin: 18px 10px 6px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--faint);
+    white-space: nowrap;
+}
+#sidebar .nav-group:first-child { margin-top: 4px; }
+#sidebar ul { list-style: none; margin: 0; padding: 0; }
+#sidebar ul li a {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 38px;
+    padding: 7px 10px;
+    margin: 1px 0;
+    border-radius: var(--r);
+    color: var(--ink-2);
+    font-size: var(--fs-base);
+    font-weight: 500;
+    line-height: 1.35;
+    text-decoration: none;
+    border: 0;
+    position: relative;
+}
+#sidebar ul li a i {
+    flex: none; width: 20px; text-align: center;
+    font-size: 17px; color: var(--faint); margin: 0;
+}
+#sidebar ul li a:hover { background: var(--sunken); color: var(--ink) !important; }
+#sidebar ul li a:hover i { color: var(--ink-2); }
+#sidebar ul li a.active {
+    background: var(--gold-50);
+    color: var(--gold-ink) !important;
+    font-weight: 600;
+}
+#sidebar ul li a.active i { color: var(--gold-ink); }
+#sidebar ul li a.active::before {
+    content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px;
+    width: 3px; border-radius: 0 3px 3px 0; background: var(--gold);
+}
+
+/* เมนูพับ (เดสก์ท็อป) */
+#sidebar.collapsed { width: var(--sidebar-mini); }
+#sidebar.collapsed .nav-group { visibility: hidden; height: 1px; margin: 12px 8px; border-top: 1px solid var(--line); }
+#sidebar.collapsed ul li a { justify-content: center; padding: 9px 0; }
+#sidebar.collapsed ul li a span { display: none; }
+#sidebar.collapsed ul li a i { font-size: 18px; }
+
+#content {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    min-height: calc(100vh - var(--nav-height));
+    padding: 24px 28px 48px;
+    transition: margin .2s ease, width .2s ease;
+}
+#content.expanded { margin-left: var(--sidebar-mini); width: calc(100% - var(--sidebar-mini)); }
+#content > .container-fluid { padding-left: 0 !important; padding-right: 0 !important; }
+
+.sidebar-backdrop {
+    position: fixed; inset: var(--nav-height) 0 0 0;
+    background: rgba(20, 20, 20, .35);
+    z-index: 1035; opacity: 0; pointer-events: none;
+    transition: opacity .2s ease;
+}
+
+@media (max-width: 991px) {
+    #sidebar { transform: translateX(-100%); width: var(--sidebar-width); box-shadow: var(--shadow-lg); }
+    #sidebar.active { transform: none; }
+    #sidebar.active ~ .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+    #content, #content.expanded { margin-left: 0; width: 100%; padding: 16px 16px 40px; }
+    .app-brand .sub { display: none; }
+}
+@media (max-width: 575px) {
+    .btn-tutorial span, .btn-line span, .user-chip .user-meta { display: none; }
+    .btn-tutorial, .btn-line { padding: 0; width: 34px; justify-content: center; }
+}
+
+/* หัวหน้าเพจมาตรฐาน: <div class="page-header"><div><h1 class="page-title">…</h1><p class="page-sub">…</p></div><div class="page-actions">…</div></div> */
+.page-header {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px 20px; margin-bottom: 20px;
+}
+.page-title { font-size: var(--fs-xl); font-weight: 600; margin: 0; line-height: 1.3; }
+.page-sub { color: var(--muted); margin: 4px 0 0; font-size: var(--fs-base); }
+.page-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* =====================================================================
+   การ์ด
+   ===================================================================== */
+.card:where(:not(#printableArea *)){
+    --bs-card-border-color: var(--line);
+    --bs-card-border-radius: var(--r-lg);
+    --bs-card-inner-border-radius: calc(var(--r-lg) - 1px);
+    --bs-card-cap-bg: var(--surface);
+    --bs-card-spacer-y: 18px;
+    --bs-card-spacer-x: 20px;
+    --bs-card-cap-padding-y: 14px;
+    --bs-card-cap-padding-x: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-xs);
+}
+.card.border-0:where(:not(#printableArea *)){ border: 1px solid var(--line) !important; }
+.card-header:where(:not(#printableArea *)){
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink);
+}
+.card-header h1:where(:not(#printableArea *)), .card-header h2:where(:not(#printableArea *)), .card-header h3:where(:not(#printableArea *)), .card-header h4:where(:not(#printableArea *)), .card-header h5:where(:not(#printableArea *)), .card-header h6:where(:not(#printableArea *)){
+    font-size: var(--fs-md); margin-bottom: 0;
+}
+.card-footer:where(:not(#printableArea *)){ background: var(--surface-2); border-top: 1px solid var(--line); }
+.card-title:where(:not(#printableArea *)){ font-size: var(--fs-md); font-weight: 600; }
+
+/* หัวการ์ด/หัว modal ที่เคยเป็นพื้นสีทึบ → พื้นขาว + แถบสีด้านบน */
+.card-header.bg-dark:where(:not(#printableArea *)), .card-header.bg-primary:where(:not(#printableArea *)), .card-header.bg-success:where(:not(#printableArea *)), .card-header.bg-info:where(:not(#printableArea *)),
+.card-header.bg-warning:where(:not(#printableArea *)), .card-header.bg-danger:where(:not(#printableArea *)), .card-header.bg-secondary:where(:not(#printableArea *)){
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    box-shadow: inset 0 3px 0 var(--accent-bar, var(--gold));
+}
+.card-header.bg-success:where(:not(#printableArea *)){ --accent-bar: var(--success); }
+.card-header.bg-info:where(:not(#printableArea *)), .card-header.bg-primary:where(:not(#printableArea *)){ --accent-bar: var(--info); }
+.card-header.bg-warning:where(:not(#printableArea *)){ --accent-bar: #d69614; }
+.card-header.bg-danger:where(:not(#printableArea *)){ --accent-bar: var(--danger); }
+.card-header.bg-secondary:where(:not(#printableArea *)){ --accent-bar: var(--neutral); }
+.card-header.bg-opacity-10:where(:not(#printableArea *)){ box-shadow: none; }
+.card-header.bg-success.bg-opacity-10:where(:not(#printableArea *)){ background: var(--success-soft) !important; }
+.card-header.bg-warning.bg-opacity-10:where(:not(#printableArea *)){ background: var(--warning-soft) !important; }
+.card-header .text-white:where(:not(#printableArea *)), .card-header.text-white:where(:not(#printableArea *)),
+.modal-header .text-white, .modal-header.text-white { color: var(--ink) !important; }
+.card-header .text-gold:where(:not(#printableArea *)), .card-header.text-gold:where(:not(#printableArea *)){ color: var(--gold-ink) !important; }
+
+/* =====================================================================
+   ปุ่ม
+   ===================================================================== */
+.btn:where(:not(#printableArea *)){
+    --bs-btn-font-family: var(--font);
+    --bs-btn-font-size: var(--fs-base);
+    --bs-btn-font-weight: 500;
+    --bs-btn-padding-y: 7px;
+    --bs-btn-padding-x: 14px;
+    --bs-btn-border-radius: var(--r);
+    --bs-btn-line-height: 1.45;
+    --bs-btn-focus-box-shadow: 0 0 0 3px var(--ring);
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    white-space: nowrap;
+    transition: background-color .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease;
+}
+.btn i.me-1:where(:not(#printableArea *)), .btn i.me-2:where(:not(#printableArea *)), .btn i.ms-1:where(:not(#printableArea *)), .btn i.ms-2:where(:not(#printableArea *)){ margin: 0 !important; }
+.btn.text-start:where(:not(#printableArea *)){ justify-content: flex-start; }
+.btn.text-end:where(:not(#printableArea *)){ justify-content: flex-end; }
+.btn-sm:where(:not(#printableArea *)){
+    --bs-btn-font-size: var(--fs-sm);
+    --bs-btn-padding-y: 4px;
+    --bs-btn-padding-x: 10px;
+    --bs-btn-border-radius: var(--r-sm);
+}
+.btn-lg:where(:not(#printableArea *)){
+    --bs-btn-font-size: var(--fs-md);
+    --bs-btn-padding-y: 10px;
+    --bs-btn-padding-x: 20px;
+    --bs-btn-border-radius: var(--r);
+}
+.btn-primary:where(:not(#printableArea *)), .btn-gold:where(:not(#printableArea *)){
+    --bs-btn-color: #fff; --bs-btn-bg: var(--gold); --bs-btn-border-color: var(--gold);
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #a5833a; --bs-btn-hover-border-color: #a5833a;
+    --bs-btn-active-color: #fff; --bs-btn-active-bg: #a5833a; --bs-btn-active-border-color: #a5833a;
+    --bs-btn-disabled-color: #fff; --bs-btn-disabled-bg: var(--gold); --bs-btn-disabled-border-color: var(--gold);
+}
+.btn-dark:where(:not(#printableArea *)){
+    --bs-btn-color: #fff; --bs-btn-bg: var(--ink); --bs-btn-border-color: var(--ink);
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #000; --bs-btn-hover-border-color: #000;
+    --bs-btn-active-bg: #000; --bs-btn-active-border-color: #000;
+}
+.btn-secondary:where(:not(#printableArea *)), .btn-light:where(:not(#printableArea *)), .btn-white:where(:not(#printableArea *)){
+    --bs-btn-color: var(--ink); --bs-btn-bg: var(--surface); --bs-btn-border-color: var(--line-strong);
+    --bs-btn-hover-color: var(--ink); --bs-btn-hover-bg: var(--sunken); --bs-btn-hover-border-color: var(--line-strong);
+    --bs-btn-active-color: var(--ink); --bs-btn-active-bg: var(--sunken); --bs-btn-active-border-color: var(--line-strong);
+    --bs-btn-disabled-color: var(--faint); --bs-btn-disabled-bg: var(--surface); --bs-btn-disabled-border-color: var(--line);
+}
+.btn-success:where(:not(#printableArea *)){
+    --bs-btn-color: #fff; --bs-btn-bg: var(--success); --bs-btn-border-color: var(--success);
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #15613a; --bs-btn-hover-border-color: #15613a;
+    --bs-btn-active-bg: #15613a; --bs-btn-active-border-color: #15613a;
+}
+.btn-danger:where(:not(#printableArea *)){
+    --bs-btn-color: #fff; --bs-btn-bg: var(--danger); --bs-btn-border-color: var(--danger);
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #921c13; --bs-btn-hover-border-color: #921c13;
+    --bs-btn-active-bg: #921c13; --bs-btn-active-border-color: #921c13;
+}
+.btn-warning:where(:not(#printableArea *)){
+    --bs-btn-color: #4a2e00; --bs-btn-bg: #f4c35a; --bs-btn-border-color: #f4c35a;
+    --bs-btn-hover-color: #4a2e00; --bs-btn-hover-bg: #eab43f; --bs-btn-hover-border-color: #eab43f;
+    --bs-btn-active-color: #4a2e00; --bs-btn-active-bg: #eab43f; --bs-btn-active-border-color: #eab43f;
+}
+.btn-info:where(:not(#printableArea *)){
+    --bs-btn-color: #fff; --bs-btn-bg: var(--info); --bs-btn-border-color: var(--info);
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #174c86; --bs-btn-hover-border-color: #174c86;
+    --bs-btn-active-color: #fff; --bs-btn-active-bg: #174c86; --bs-btn-active-border-color: #174c86;
+}
+/* ปุ่มเส้นขอบ: ขอบเทา ตัวอักษรเป็นสีของปุ่ม → เรียบกว่าขอบสีจัด */
+.btn-outline-primary:where(:not(#printableArea *)), .btn-outline-gold:where(:not(#printableArea *)), .btn-outline-secondary:where(:not(#printableArea *)), .btn-outline-dark:where(:not(#printableArea *)), .btn-outline-success:where(:not(#printableArea *)),
+.btn-outline-danger:where(:not(#printableArea *)), .btn-outline-warning:where(:not(#printableArea *)), .btn-outline-info:where(:not(#printableArea *)), .btn-outline-light:where(:not(#printableArea *)){
+    --bs-btn-bg: var(--surface);
+    --bs-btn-border-color: var(--line-strong);
+    --bs-btn-hover-border-color: var(--line-strong);
+    --bs-btn-active-border-color: var(--line-strong);
+    --bs-btn-disabled-bg: var(--surface);
+    --bs-btn-disabled-border-color: var(--line);
+}
+.btn-outline-primary:where(:not(#printableArea *)), .btn-outline-gold:where(:not(#printableArea *)){ --bs-btn-color: var(--gold-ink); --bs-btn-hover-color: var(--gold-ink); --bs-btn-hover-bg: var(--gold-50); --bs-btn-active-color: var(--gold-ink); --bs-btn-active-bg: var(--gold-100); --bs-btn-hover-border-color: var(--gold-200); }
+.btn-outline-secondary:where(:not(#printableArea *)), .btn-outline-dark:where(:not(#printableArea *)), .btn-outline-light:where(:not(#printableArea *)){ --bs-btn-color: var(--ink-2); --bs-btn-hover-color: var(--ink); --bs-btn-hover-bg: var(--sunken); --bs-btn-active-color: var(--ink); --bs-btn-active-bg: var(--sunken); }
+.btn-outline-success:where(:not(#printableArea *)){ --bs-btn-color: var(--success); --bs-btn-hover-color: var(--success); --bs-btn-hover-bg: var(--success-soft); --bs-btn-active-color: var(--success); --bs-btn-active-bg: var(--success-soft); }
+.btn-outline-danger:where(:not(#printableArea *)){ --bs-btn-color: var(--danger); --bs-btn-hover-color: var(--danger); --bs-btn-hover-bg: var(--danger-soft); --bs-btn-active-color: var(--danger); --bs-btn-active-bg: var(--danger-soft); }
+.btn-outline-warning:where(:not(#printableArea *)){ --bs-btn-color: var(--warning); --bs-btn-hover-color: var(--warning); --bs-btn-hover-bg: var(--warning-soft); --bs-btn-active-color: var(--warning); --bs-btn-active-bg: var(--warning-soft); }
+.btn-outline-info:where(:not(#printableArea *)){ --bs-btn-color: var(--info); --bs-btn-hover-color: var(--info); --bs-btn-hover-bg: var(--info-soft); --bs-btn-active-color: var(--info); --bs-btn-active-bg: var(--info-soft); }
+.btn-check:checked + .btn-outline-primary:where(:not(#printableArea *)), .btn-check:checked + .btn-outline-secondary:where(:not(#printableArea *)),
+.btn-check:checked + .btn-outline-dark:where(:not(#printableArea *)), .btn-check:checked + .btn-outline-gold:where(:not(#printableArea *)){
+    background: var(--gold-50); color: var(--gold-ink); border-color: var(--gold);
+}
+.btn-link:where(:not(#printableArea *)){ --bs-btn-color: var(--gold-ink); --bs-btn-hover-color: var(--gold-hover); text-decoration: none; }
+.btn-close:where(:not(#printableArea *)){ --bs-btn-close-focus-shadow: 0 0 0 3px var(--ring); opacity: .55; }
+.btn-close:hover:where(:not(#printableArea *)){ opacity: .9; }
+.btn-group > .btn:where(:not(#printableArea *)){ gap: 4px; }
+
+/* ปุ่มไอคอนในตาราง (ดู/แก้ไข/ลบ) */
+.btn-icon:where(:not(#printableArea *)){
+    width: 32px; height: 32px; padding: 0 !important;
+    display: inline-grid; place-items: center;
+}
+
+/* =====================================================================
+   ฟอร์ม
+   ===================================================================== */
+.form-label:where(:not(#printableArea *)), label.form-label:where(:not(#printableArea *)){
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--ink-2);
+    margin-bottom: 6px;
+}
+.form-text:where(:not(#printableArea *)){ font-size: var(--fs-xs); color: var(--muted); }
+.form-control:where(:not(#printableArea *)), .form-select:where(:not(#printableArea *)){
+    font-family: var(--font);
+    font-size: var(--fs-base);
+    color: var(--ink);
+    background-color: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    min-height: 38px;
+    padding: 7px 12px;
+    line-height: 1.45;
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+.form-select:where(:not(#printableArea *)){ padding-right: 34px; }
+textarea.form-control:where(:not(#printableArea *)){ min-height: 64px; }
+.form-control-sm:where(:not(#printableArea *)), .form-select-sm:where(:not(#printableArea *)){
+    font-size: var(--fs-sm);
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: var(--r-sm);
+}
+.form-select-sm:where(:not(#printableArea *)){ padding-right: 30px; }
+.form-control-lg:where(:not(#printableArea *)), .form-select-lg:where(:not(#printableArea *)){ font-size: var(--fs-md); min-height: 44px; }
+.form-control:where(:not(#printableArea *))::placeholder{ color: var(--faint); opacity: 1; }
+.form-control:hover:where(:not(#printableArea *)), .form-select:hover:where(:not(#printableArea *)){ border-color: #c6bfaf; }
+.form-control:focus:where(:not(#printableArea *)), .form-select:focus:where(:not(#printableArea *)), .form-check-input:focus:where(:not(#printableArea *)){
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--ring);
+    outline: 0;
+}
+.form-control:disabled:where(:not(#printableArea *)), .form-control[readonly]:where(:not(#printableArea *)), .form-select:disabled:where(:not(#printableArea *)){
+    background-color: var(--sunken);
+    color: var(--ink-2);
+    border-color: var(--line);
+}
+.form-control.border-0[readonly]:where(:not(#printableArea *)), .form-control.bg-transparent[readonly]:where(:not(#printableArea *)){ background: transparent; }
+.form-control-plaintext:where(:not(#printableArea *)){ font-size: var(--fs-base); }
+.input-group-text:where(:not(#printableArea *)){
+    font-size: var(--fs-sm);
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+    color: var(--muted);
+}
+.input-group-sm > .input-group-text:where(:not(#printableArea *)){ font-size: var(--fs-xs); }
+.form-check-input:where(:not(#printableArea *)){
+    border-color: var(--line-strong);
+    width: 1.1em; height: 1.1em;
+}
+.form-check-input:checked:where(:not(#printableArea *)){ background-color: var(--gold-ink); border-color: var(--gold-ink); }
+.form-switch .form-check-input:where(:not(#printableArea *)){ width: 2.2em; height: 1.2em; }
+.form-switch .form-check-input:focus:where(:not(#printableArea *)){ --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23b89441'/%3e%3c/svg%3e"); }
+.form-check-label:where(:not(#printableArea *)){ font-size: var(--fs-base); }
+.form-range:where(:not(#printableArea *))::-webkit-slider-thumb{ background: var(--gold-ink); }
+.form-range:where(:not(#printableArea *))::-moz-range-thumb{ background: var(--gold-ink); }
+.was-validated .form-control:invalid:where(:not(#printableArea *)), .form-control.is-invalid:where(:not(#printableArea *)){ border-color: var(--danger); }
+.invalid-feedback:where(:not(#printableArea *)){ font-size: var(--fs-xs); }
+
+/* Select2 ให้หน้าตาเหมือน form-select */
+.select2-container { font-size: var(--fs-base); }
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    min-height: 38px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    background: var(--surface);
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px; padding-left: 12px; padding-right: 30px; color: var(--ink);
+}
+.select2-container--default .select2-selection--single .select2-selection__placeholder { color: var(--faint); }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; right: 6px; }
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: var(--gold); box-shadow: 0 0 0 3px var(--ring);
+}
+.select2-dropdown {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    font-size: var(--fs-base);
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 10px;
+}
+.select2-container--default .select2-results__option { padding: 7px 12px; }
+.select2-container--default .select2-results__option--highlighted[aria-selected],
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background: var(--gold-50); color: var(--ink);
+}
+.select2-container--default .select2-results__option--selected,
+.select2-container--default .select2-results__option[aria-selected=true] { background: var(--gold-100); }
+.form-select-sm + .select2-container .select2-selection--single:where(:not(#printableArea *)),
+.select2-sm .select2-selection--single { min-height: 32px; }
+.form-select-sm + .select2-container .select2-selection__rendered:where(:not(#printableArea *)){ line-height: 30px !important; font-size: var(--fs-sm); }
+.form-select-sm + .select2-container .select2-selection__arrow:where(:not(#printableArea *)){ height: 30px !important; }
+
+/* =====================================================================
+   ตาราง
+   ===================================================================== */
+.table:where(:not(#printableArea *)){
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--ink);
+    --bs-table-border-color: var(--line);
+    --bs-table-striped-bg: var(--surface-2);
+    --bs-table-hover-bg: #faf7ef;
+    --bs-table-hover-color: var(--ink);
+    --bs-table-active-bg: var(--gold-50);
+    font-size: var(--fs-base);
+    margin-bottom: 0;
+}
+.table > :not(caption) > * > *:where(:not(#printableArea *)){ padding: 10px 12px; border-bottom-color: var(--line); }
+.table-sm > :not(caption) > * > *:where(:not(#printableArea *)){ padding: 6px 10px; }
+.table > thead > tr > th:where(:not(#printableArea *)),
+.table > thead > tr > td:where(:not(#printableArea *)){
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--line-strong);
+    vertical-align: middle;
+}
+.table > tbody > tr > td:where(:not(#printableArea *)), .table > tbody > tr > th:where(:not(#printableArea *)){ vertical-align: middle; }
+.table-bordered > :not(caption) > * > *:where(:not(#printableArea *)){ border-color: var(--line); }
+/* หัวตารางเดิมที่เป็นสีดำ/สีอื่น → โทนเดียวกันหมด */
+.table > thead.table-dark > tr > th:where(:not(#printableArea *)), .table > thead.table-dark > tr > td:where(:not(#printableArea *)),
+.table-dark > thead > tr > th:where(:not(#printableArea *)), thead.table-dark th:where(:not(#printableArea *)),
+.table > thead.table-warning > tr > th:where(:not(#printableArea *)), .table > thead.table-light > tr > th:where(:not(#printableArea *)),
+.table > thead.table-secondary > tr > th:where(:not(#printableArea *)), .table > thead.table-primary > tr > th:where(:not(#printableArea *)){
+    --bs-table-bg: var(--surface-2);
+    --bs-table-color: var(--muted);
+    background: var(--surface-2) !important;
+    color: var(--muted) !important;
+    border-color: var(--line-strong) !important;
+}
+.table tfoot td:where(:not(#printableArea *)), .table tfoot th:where(:not(#printableArea *)){ background: var(--surface-2); font-weight: 600; }
+.table-responsive:where(:not(#printableArea *)){ border-radius: inherit; }
+.card > .table-responsive:last-child > .table > tbody > tr:last-child > *:where(:not(#printableArea *)),
+.card .card-body.p-0 > .table-responsive:last-child > .table > tbody > tr:last-child > *:where(:not(#printableArea *)){ border-bottom: 0; }
+
+/* DataTables */
+.dataTables_wrapper { font-size: var(--fs-sm); color: var(--muted); }
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select,
+.dt-container .dt-search input, .dt-container .dt-length select {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    min-height: 34px;
+    padding: 4px 10px;
+    font-size: var(--fs-sm);
+    background-color: var(--surface);
+    margin-left: 6px;
+}
+.dataTables_wrapper .dataTables_length select:where(:not(#printableArea *)),
+.dt-container .dt-length select:where(:not(#printableArea *)) {
+    padding-right: 28px;
+    background-position: right 8px center;
+}
+.dataTables_wrapper .dataTables_filter input:focus,
+.dt-container .dt-search input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--ring); outline: 0; }
+.dataTables_wrapper .dataTables_info, .dt-container .dt-info { font-size: var(--fs-sm); color: var(--muted); padding-top: 12px !important; }
+.page-link:where(:not(#printableArea *)){
+    --bs-pagination-color: var(--ink-2);
+    --bs-pagination-hover-color: var(--ink);
+    --bs-pagination-hover-bg: var(--sunken);
+    --bs-pagination-active-bg: var(--gold);
+    --bs-pagination-active-border-color: var(--gold-ink);
+    --bs-pagination-focus-box-shadow: 0 0 0 3px var(--ring);
+    font-size: var(--fs-sm);
+    border-color: var(--line);
+}
+.pagination:where(:not(#printableArea *)){ --bs-pagination-border-radius: var(--r); gap: 4px; }
+.pagination .page-item .page-link:where(:not(#printableArea *)){ border-radius: var(--r) !important; min-width: 34px; text-align: center; }
+.pagination .page-item.active .page-link:where(:not(#printableArea *)){ background: var(--gold); border-color: var(--gold); color: #fff; }
+.dt-buttons .btn, div.dt-buttons > .dt-button:where(:not(#printableArea *)){ font-size: var(--fs-sm); }
+table.dataTable thead > tr > th.sorting::before, table.dataTable thead > tr > th.sorting::after,
+table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr > th.sorting_desc::after { opacity: .35; }
+
+/* =====================================================================
+   ป้ายสถานะ (badge) — พื้นอ่อน ตัวเข้ม อ่านง่ายกว่าพื้นทึบ
+   ===================================================================== */
+.badge:where(:not(#printableArea *)){
+    --bs-badge-font-size: var(--fs-xs);
+    --bs-badge-font-weight: 600;
+    --bs-badge-padding-y: 3px;
+    --bs-badge-padding-x: 8px;
+    --bs-badge-border-radius: 6px;
+    letter-spacing: 0;
+    line-height: 1.4;
+    vertical-align: middle;
+}
+.badge.rounded-pill:where(:not(#printableArea *)){ --bs-badge-border-radius: 999px; }
+.badge.bg-success:where(:not(#printableArea *)), .badge.text-bg-success:where(:not(#printableArea *)){ background: var(--success-soft) !important; color: var(--success) !important; }
+.badge.bg-danger:where(:not(#printableArea *)), .badge.text-bg-danger:where(:not(#printableArea *)){ background: var(--danger-soft) !important; color: var(--danger) !important; }
+.badge.bg-warning:where(:not(#printableArea *)), .badge.text-bg-warning:where(:not(#printableArea *)){ background: var(--warning-soft) !important; color: var(--warning) !important; }
+.badge.bg-info:where(:not(#printableArea *)), .badge.text-bg-info:where(:not(#printableArea *)){ background: var(--info-soft) !important; color: var(--info) !important; }
+.badge.bg-primary:where(:not(#printableArea *)), .badge.text-bg-primary:where(:not(#printableArea *)){ background: var(--gold-100) !important; color: var(--gold-ink) !important; }
+.badge.bg-secondary:where(:not(#printableArea *)), .badge.text-bg-secondary:where(:not(#printableArea *)), .badge.bg-light:where(:not(#printableArea *)), .badge.text-bg-light:where(:not(#printableArea *)){
+    background: var(--neutral-soft) !important; color: var(--neutral) !important;
+}
+.badge.bg-dark:where(:not(#printableArea *)), .badge.text-bg-dark:where(:not(#printableArea *)){ background: var(--ink) !important; color: #fff !important; }
+.badge.bg-gold:where(:not(#printableArea *)){ background: var(--gold-100) !important; color: var(--gold-ink) !important; }
+.badge.text-white:where(:not(#printableArea *)), .badge.text-dark:where(:not(#printableArea *)){ color: inherit; }
+
+/* =====================================================================
+   แท็บ / เมนูดรอปดาวน์ / แจ้งเตือน / อื่น ๆ
+   ===================================================================== */
+.nav-tabs:where(:not(#printableArea *)){
+    --bs-nav-tabs-border-color: var(--line);
+    --bs-nav-tabs-link-active-color: var(--gold-ink);
+    --bs-nav-tabs-link-active-bg: transparent;
+    --bs-nav-tabs-link-active-border-color: transparent;
+    --bs-nav-tabs-link-hover-border-color: transparent;
+    gap: 4px;
+}
+.nav-tabs .nav-link:where(:not(#printableArea *)){
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    color: var(--muted);
+    font-size: var(--fs-base);
+    font-weight: 500;
+    padding: 10px 14px;
+    margin-bottom: -1px;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.nav-tabs .nav-link:hover:where(:not(#printableArea *)){ color: var(--ink); }
+.nav-tabs .nav-link.active:where(:not(#printableArea *)){ color: var(--gold-ink); border-bottom-color: var(--gold); font-weight: 600; background: transparent; }
+.nav-pills:where(:not(#printableArea *)){
+    --bs-nav-pills-link-active-bg: var(--gold-50);
+    --bs-nav-pills-link-active-color: var(--gold-ink);
+    --bs-nav-pills-border-radius: var(--r);
+    gap: 4px;
+}
+.nav-pills .nav-link:where(:not(#printableArea *)){ color: var(--ink-2); font-weight: 500; font-size: var(--fs-base); }
+.nav-pills .nav-link:hover:where(:not(#printableArea *)){ background: var(--sunken); }
+.nav-pills .nav-link.active:where(:not(#printableArea *)){ font-weight: 600; box-shadow: inset 0 0 0 1px var(--gold-200); }
+
+.dropdown-menu {
+    --bs-dropdown-font-size: var(--fs-base);
+    --bs-dropdown-border-color: var(--line);
+    --bs-dropdown-border-radius: var(--r-lg);
+    --bs-dropdown-link-hover-bg: var(--sunken);
+    --bs-dropdown-link-active-bg: var(--gold-50);
+    --bs-dropdown-link-active-color: var(--gold-ink);
+    --bs-dropdown-padding-y: 6px;
+    --bs-dropdown-item-padding-y: 7px;
+    --bs-dropdown-item-padding-x: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 6px;
+}
+.dropdown-item { border-radius: var(--r-sm); display: flex; align-items: center; gap: 8px; }
+.dropdown-item i { color: var(--muted); width: 18px; text-align: center; }
+.dropdown-item.text-danger i { color: var(--danger); }
+.dropdown-header { font-size: var(--fs-xs); color: var(--faint); font-weight: 600; }
+.dropdown-divider { border-color: var(--line); margin: 6px 0; }
+
+.alert:where(:not(#printableArea *)){
+    --bs-alert-border-radius: var(--r-lg);
+    --bs-alert-padding-y: 12px;
+    --bs-alert-padding-x: 16px;
+    font-size: var(--fs-base);
+    border: 1px solid transparent;
+}
+.alert-success:where(:not(#printableArea *)){ --bs-alert-bg: var(--success-soft); --bs-alert-color: var(--success); --bs-alert-border-color: #c5e6d3; }
+.alert-danger:where(:not(#printableArea *)){ --bs-alert-bg: var(--danger-soft); --bs-alert-color: var(--danger); --bs-alert-border-color: #f6cfcb; }
+.alert-warning:where(:not(#printableArea *)){ --bs-alert-bg: var(--warning-soft); --bs-alert-color: var(--warning); --bs-alert-border-color: #f3dcae; }
+.alert-info:where(:not(#printableArea *)), .alert-primary:where(:not(#printableArea *)){ --bs-alert-bg: var(--info-soft); --bs-alert-color: var(--info); --bs-alert-border-color: #cadbf3; }
+.alert-secondary:where(:not(#printableArea *)), .alert-light:where(:not(#printableArea *)){ --bs-alert-bg: var(--surface-2); --bs-alert-color: var(--ink-2); --bs-alert-border-color: var(--line); }
+
+/* Flash message มุมขวาบน (assets/alert.php) */
+#alert-container, #line-alert-container { top: calc(var(--nav-height) + 14px) !important; }
+.custom-alert {
+    background: var(--surface) !important;
+    border: 1px solid var(--line) !important;
+    border-left: 4px solid currentColor !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--shadow-md) !important;
+    font-size: var(--fs-base);
+}
+.custom-alert .fw-bold { color: var(--ink); font-weight: 500 !important; }
+.custom-alert i.fs-4 { font-size: 20px !important; }
+
+.list-group:where(:not(#printableArea *)){ --bs-list-group-border-color: var(--line); --bs-list-group-border-radius: var(--r-lg); --bs-list-group-action-hover-bg: var(--sunken); --bs-list-group-active-bg: var(--gold-50); --bs-list-group-active-color: var(--gold-ink); --bs-list-group-active-border-color: var(--gold-200); }
+.progress:where(:not(#printableArea *)){ --bs-progress-bg: var(--sunken); --bs-progress-border-radius: 999px; --bs-progress-bar-bg: var(--gold); }
+.tooltip { --bs-tooltip-font-size: var(--fs-xs); --bs-tooltip-bg: var(--ink); --bs-tooltip-border-radius: var(--r-sm); }
+.popover { --bs-popover-font-size: var(--fs-sm); --bs-popover-border-color: var(--line); --bs-popover-border-radius: var(--r-lg); box-shadow: var(--shadow-md); }
+.breadcrumb:where(:not(#printableArea *)){ font-size: var(--fs-sm); --bs-breadcrumb-divider-color: var(--faint); --bs-breadcrumb-item-active-color: var(--muted); }
+.accordion:where(:not(#printableArea *)){ --bs-accordion-border-color: var(--line); --bs-accordion-active-bg: var(--gold-50); --bs-accordion-active-color: var(--gold-ink); --bs-accordion-btn-focus-box-shadow: 0 0 0 3px var(--ring); --bs-accordion-border-radius: var(--r-lg); }
+.accordion-button:where(:not(#printableArea *)){ font-size: var(--fs-base); font-weight: 600; }
+.spinner-border:where(:not(#printableArea *)){ color: var(--gold); }
+.vr:where(:not(#printableArea *)){ background-color: var(--line-strong); opacity: 1; }
+kbd:where(:not(#printableArea *)){ background: var(--ink); font-size: var(--fs-xs); }
+code:where(:not(#printableArea *)){ color: var(--danger); }
+
+/* =====================================================================
+   Modal (Bootstrap) — มุมโค้ง เงานุ่ม เปิดแบบลอยขึ้น พื้นหลังเบลอ
+   ===================================================================== */
+.modal {
+    --bs-modal-border-radius: var(--r-xl);
+    --bs-modal-inner-border-radius: calc(var(--r-xl) - 1px);
+    --bs-modal-border-color: transparent;
+    --bs-modal-header-padding: 18px 22px;
+    --bs-modal-padding: 20px 22px;
+    --bs-modal-footer-gap: 8px;
+    --bs-modal-header-border-color: var(--line);
+    --bs-modal-footer-border-color: var(--line);
+    --bs-modal-box-shadow: var(--shadow-lg);
+    --bs-modal-title-line-height: 1.4;
+}
+.modal-backdrop { --bs-backdrop-bg: #14161a; --bs-backdrop-opacity: .42; }
+.modal-backdrop.show { backdrop-filter: blur(2px); }
+.modal-content { box-shadow: var(--shadow-lg); border: 0; overflow: hidden; }
+.modal-header {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    border-bottom: 1px solid var(--line);
+    gap: 12px;
+}
+.modal-header.border-0 { border-bottom: 0; }
+.modal-title, .modal-header h5, .modal-header h4, .modal-header h6 {
+    font-size: var(--fs-lg) !important;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+    margin: 0;
+}
+.modal-title i { color: var(--gold-ink); }
+.modal-header .btn-close, .modal-header .btn-close-white {
+    filter: none;
+    width: 32px; height: 32px; padding: 0;
+    border-radius: var(--r);
+    background-size: 12px;
+    opacity: .6;
+    margin: -4px -6px -4px auto;
+}
+.modal-header .btn-close:hover { background-color: var(--sunken); opacity: 1; }
+.modal-body { font-size: var(--fs-base); }
+.modal-footer {
+    background: var(--surface-2);
+    padding: 12px 22px;
+}
+.modal-footer > * { margin: 0; }
+.modal.fade .modal-dialog {
+    transform: translateY(14px) scale(.985);
+    transition: transform .22s cubic-bezier(.2, .8, .2, 1), opacity .18s ease;
+}
+.modal.show .modal-dialog { transform: none; }
+@media (max-width: 575px) {
+    .modal-dialog:not(.modal-fullscreen) { margin: auto 0 0; min-height: 100%; display: flex; align-items: flex-end; }
+    .modal-dialog:not(.modal-fullscreen) .modal-content { border-radius: var(--r-xl) var(--r-xl) 0 0; max-height: 92vh; }
+    .modal.fade .modal-dialog { transform: translateY(40px); }
+}
+
+/* =====================================================================
+   SweetAlert2 — ทำให้ตรงกับธีม (ตั้งค่าปุ่มใน assets/js/ui.js)
+   ===================================================================== */
+.swal2-container { font-family: var(--font); }
+.swal2-container.swal2-backdrop-show { background: rgba(20, 22, 26, .42) !important; backdrop-filter: blur(2px); }
+div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
+.swal2-popup {
+    border-radius: var(--r-xl) !important;
+    padding: 28px 24px 22px !important;
+    width: min(420px, calc(100vw - 32px));
+    box-shadow: var(--shadow-lg);
+    font-size: var(--fs-base);
+}
+.swal2-popup .swal2-title {
+    font-size: var(--fs-lg) !important;
+    font-weight: 600 !important;
+    color: var(--ink) !important;
+    padding: 4px 0 0 !important;
+}
+.swal2-popup .swal2-html-container {
+    font-size: var(--fs-base) !important;
+    color: var(--ink-2) !important;
+    line-height: 1.6 !important;
+    margin-top: 8px !important;
+}
+.swal2-popup .swal2-icon { transform: scale(.72); margin: 0 auto -6px !important; }
+.swal2-popup .swal2-actions { gap: 8px; margin-top: 20px !important; width: 100%; }
+.swal2-popup .swal2-actions .btn { min-width: 112px; justify-content: center; }
+.swal2-popup .swal2-input, .swal2-popup .swal2-textarea, .swal2-popup .swal2-select {
+    font-family: var(--font);
+    font-size: var(--fs-base);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r);
+    box-shadow: none;
+    margin: 14px 0 0 !important;
+    width: 100%;
+}
+.swal2-popup .swal2-input:focus, .swal2-popup .swal2-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--ring); }
+.swal2-popup .swal2-validation-message { font-size: var(--fs-sm); background: var(--danger-soft); color: var(--danger); border-radius: var(--r); }
+.swal2-popup.swal2-toast {
+    padding: 10px 14px !important;
+    width: auto;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-md) !important;
+}
+.swal2-popup.swal2-toast .swal2-title { font-size: var(--fs-base) !important; font-weight: 500 !important; margin: 0 8px !important; }
+.swal2-popup.swal2-toast .swal2-icon { transform: none; margin: 0 !important; }
+.swal2-timer-progress-bar { background: var(--gold) !important; }
+
+/* Driver.js (โหมดสอนใช้งาน) */
+.driver-popover {
+    font-family: var(--font) !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 18px !important;
+    color: var(--ink) !important;
+}
+.driver-popover-title { font-size: var(--fs-md) !important; font-weight: 600 !important; }
+.driver-popover-description { font-size: var(--fs-base) !important; color: var(--ink-2) !important; }
+.driver-popover-footer button {
+    font-family: var(--font) !important;
+    font-size: var(--fs-sm) !important;
+    text-shadow: none !important;
+    border: 1px solid var(--line-strong) !important;
+    border-radius: var(--r-sm) !important;
+    padding: 5px 12px !important;
+    background: var(--surface) !important;
+}
+.driver-popover-footer .driver-popover-next-btn { background: var(--gold-ink) !important; color: #fff !important; border-color: var(--gold-ink) !important; }
+.driver-popover-progress-text { font-size: var(--fs-xs) !important; color: var(--muted) !important; }
+
+/* FullCalendar (หน้าปฏิทิน) */
+.fc { font-size: var(--fs-sm); --fc-border-color: var(--line); --fc-today-bg-color: var(--gold-50); --fc-button-bg-color: var(--surface); --fc-button-border-color: var(--line-strong); --fc-button-text-color: var(--ink-2); --fc-button-hover-bg-color: var(--sunken); --fc-button-hover-border-color: var(--line-strong); --fc-button-active-bg-color: var(--gold-50); --fc-button-active-border-color: var(--gold); --fc-page-bg-color: var(--surface); --fc-neutral-bg-color: var(--surface-2); }
+.fc .fc-toolbar-title { font-size: var(--fs-lg) !important; font-weight: 600; }
+.fc .fc-button { font-size: var(--fs-sm) !important; font-weight: 500; border-radius: var(--r) !important; text-transform: none; box-shadow: none !important; }
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { color: var(--gold-ink); }
+.fc .fc-col-header-cell-cushion { color: var(--muted); font-weight: 600; text-decoration: none; padding: 8px 4px; }
+.fc .fc-daygrid-day-number { color: var(--ink-2); text-decoration: none; }
+.fc .fc-event { border-radius: var(--r-sm); font-size: var(--fs-xs); }
+
+/* =====================================================================
+   ชิ้นส่วนเสริมที่ใช้ซ้ำได้
+   ===================================================================== */
+/* การ์ดตัวเลขสรุป */
+.stat-card:where(:not(#printableArea *)){
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 16px 18px; box-shadow: var(--shadow-xs); height: 100%;
+}
+.stat-card .stat-label:where(:not(#printableArea *)){ font-size: var(--fs-sm); color: var(--muted); font-weight: 500; }
+.stat-card .stat-value:where(:not(#printableArea *)){ font-size: var(--fs-2xl); font-weight: 600; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.stat-card .stat-meta:where(:not(#printableArea *)){ font-size: var(--fs-xs); color: var(--muted); margin-top: 4px; }
+.stat-card .stat-icon:where(:not(#printableArea *)){ width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--gold-50); color: var(--gold-ink); font-size: 18px; }
+
+/* แถบเครื่องมือ (ตัวกรอง/ค้นหา) เหนือตาราง */
+.toolbar:where(:not(#printableArea *)){ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* หัวข้อส่วนในฟอร์ม */
+.section-label:where(:not(#printableArea *)){
+    font-size: var(--fs-sm); font-weight: 600; color: var(--muted);
+    margin: 0 0 10px; display: flex; align-items: center; gap: 6px;
+}
+.section-label i:where(:not(#printableArea *)){ color: var(--gold-ink); }
+
+/* สถานะว่าง */
+.empty-state:where(:not(#printableArea *)){ text-align: center; color: var(--muted); padding: 40px 16px; }
+.empty-state i:where(:not(#printableArea *)){ font-size: 32px; color: var(--faint); display: block; margin-bottom: 8px; }
+
+/* หัวหน้าเพจเดิมของแต่ละหน้า (hero) → รูปแบบเดียวกันทั้งระบบ: การ์ดขาว ไม่มีแถบทองด้านซ้าย */
+.bk-hero, .exec-hero, .mb-hero, .ql-hero, .sd-hero {
+    border-radius: var(--r-lg) !important;
+    border: 1px solid var(--line) !important;
+    background: var(--surface) !important;
+    box-shadow: var(--shadow-xs);
+    padding: 16px 20px !important;
+}
+.bk-hero::after, .exec-hero::after, .mb-hero::after, .ql-hero::after, .sd-hero::after { display: none !important; }
+:is(.bk-hero, .exec-hero, .mb-hero, .ql-hero, .sd-hero) :is(h1, h2, h3, h4, h5, .section-title, .mb-hero-title) {
+    font-size: var(--fs-lg) !important;
+    font-weight: 600 !important;
+}
+:is(.bk-hero, .exec-hero, .mb-hero, .ql-hero, .sd-hero) .hero-sub { font-size: var(--fs-sm) !important; color: var(--muted) !important; }
+
+/* แท็บสถานะ (รออนุมัติ / อนุมัติแล้ว) ในหน้ารายการใบเสนอราคา: ไม่ใช้พื้นสีทึบ */
+.ql-tab-btn { border-width: 1px !important; border-radius: var(--r-lg) !important; }
+.ql-tab-btn:hover { transform: none !important; box-shadow: var(--shadow-sm) !important; }
+.ql-tab-btn.active {
+    background: var(--surface) !important;
+    border-color: var(--tab-color) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tab-color) 22%, transparent) !important;
+}
+.ql-tab-btn.active i { color: var(--tab-color) !important; }
+.ql-tab-btn.active .ql-tab-label { color: var(--muted) !important; }
+.ql-tab-btn.active .ql-tab-count { color: var(--ink) !important; }
+.ql-tab-btn .ql-tab-label { text-transform: none !important; letter-spacing: 0 !important; font-size: var(--fs-sm) !important; font-weight: 600 !important; }
+
+/* แถบเลื่อนแบบบาง */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #d9d4c8; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: #c4bdae; background-clip: padding-box; border: 2px solid transparent; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ไม่พิมพ์โครงหน้าเว็บ */
+@media print {
+    .app-topbar, #sidebar, .sidebar-backdrop { display: none !important; }
+    #content, #content.expanded { margin: 0 !important; width: 100% !important; padding: 0 !important; }
+    .wrapper { margin-top: 0 !important; }
+    body { background: #fff !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* =====================================================================
+   เอกสารพิมพ์ (#printableArea ในใบเสนอราคา / EO) ใช้ค่าเดิมของ Bootstrap
+   กฎของธีมด้านบนทุกข้อมี :where(:not(#printableArea *)) จึงไม่แตะเนื้อหาเอกสาร
+   ที่นี่คืนค่าตัวแปรที่สืบทอดมาจาก :root / body ให้เหมือนก่อนเปลี่ยนธีม
+   ===================================================================== */
+#printableArea {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #212529;
+    --bs-body-color: #212529;
+    --bs-body-color-rgb: 33, 37, 41;
+    --bs-secondary-color: rgba(33, 37, 41, .75);
+    --bs-tertiary-bg: #f8f9fa;
+    --bs-border-color: #dee2e6;
+    --bs-border-color-translucent: rgba(0, 0, 0, .175);
+    --bs-border-radius: .375rem;
+    --bs-border-radius-sm: .25rem;
+    --bs-border-radius-lg: .5rem;
+    --bs-link-color: #0d6efd;
+    --bs-link-color-rgb: 13, 110, 253;
+    --bs-light-rgb: 248, 249, 250;
+    --bs-primary-text-emphasis: #052c65;
+    --bs-primary-bg-subtle: #cfe2ff;
+}
+
+/* ช่องสรุปยอดในหน้าสร้าง/แก้ไขใบเสนอราคา: ตัวเลขกว้างคงที่ ป้ายใช้พื้นที่ที่เหลือ */
+.quote-sum-input { width: 9rem; flex: none; font-variant-numeric: tabular-nums; }
+.quote-sum-input:not([readonly]) {
+    border: 1px solid var(--line-strong) !important;
+    border-radius: var(--r-sm);
+    background: var(--surface) !important;
+    padding: 2px 8px;
+}
+.quote-sum-input:not([readonly]):focus { border-color: var(--gold) !important; box-shadow: 0 0 0 3px var(--ring); outline: 0; }
+
+/* =====================================================================
+   สีเดิมของระบบ: แถบบนและเมนูด้านข้างสีดำ + ทอง (#1a1a1a / #b89441)
+   ===================================================================== */
+:root {
+    --shell-bg: #1a1a1a;
+    --shell-line: rgba(184, 148, 65, .22);
+    --shell-text: rgba(255, 255, 255, .72);
+    --shell-faint: rgba(255, 255, 255, .42);
+    --shell-hover: rgba(255, 255, 255, .06);
+    --shell-active: rgba(184, 148, 65, .16);
+}
+.app-topbar {
+    background: var(--shell-bg);
+    backdrop-filter: none;
+    border-bottom: 1px solid var(--shell-line);
+}
+.app-topbar .icon-btn { color: var(--gold); }
+.app-topbar .icon-btn:hover { background: var(--shell-hover); color: #d4af37; }
+.app-brand, .app-brand:hover { color: #fff; }
+.app-brand .sub { color: var(--gold); }
+.btn-tutorial { background: transparent; border-color: var(--gold); color: var(--gold); }
+.btn-tutorial:hover { background: var(--gold); border-color: var(--gold); color: #fff; }
+.btn-line { background: #06c755; border-color: #06c755; color: #fff; }
+.btn-line:hover { background: #05b04b; border-color: #05b04b; color: #fff; }
+.user-chip { color: #fff; }
+.user-chip:hover, .user-chip[aria-expanded="true"] { background: var(--shell-hover); }
+.user-chip .avatar { background: var(--shell-active); color: var(--gold); }
+.user-chip .role { color: var(--shell-faint); }
+.user-chip .bi-chevron-down { color: var(--shell-faint) !important; }
+
+#sidebar {
+    background: var(--shell-bg);
+    border-right: 1px solid var(--shell-line);
+    color: #fff;
+}
+#sidebar .nav-group { color: var(--gold); opacity: .85; }
+#sidebar.collapsed .nav-group { border-top-color: var(--shell-line); }
+#sidebar ul li a { color: var(--shell-text); }
+#sidebar ul li a i { color: var(--gold); }
+#sidebar ul li a:hover { background: var(--shell-hover); color: #fff !important; }
+#sidebar ul li a:hover i { color: var(--gold); }
+#sidebar ul li a.active { background: var(--shell-active); color: #fff !important; }
+#sidebar ul li a.active i { color: var(--gold); }
+#sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .15); background-clip: padding-box; }

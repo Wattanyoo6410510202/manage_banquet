@@ -370,7 +370,7 @@ include "header.php";
         .btn, .btn-delete-finance, .no-print, i.bi-trash,
         #financeForm, .col-md-4:first-child, .d-print-none { display: none !important; }
 
-        .table { border-collapse: collapse !important; width: 100% !important; font-size: 11px !important; font-family: Consolas, 'Courier New', monospace !important; }
+        .table { border-collapse: collapse !important; width: 100% !important; font-size: var(--fs-xs) !important; font-family: Consolas, 'Courier New', monospace !important; }
         .table th, .table td {
             border: 1px solid #000 !important;
             padding: 6px 6px !important;
@@ -392,7 +392,7 @@ include "header.php";
 
     .excel-table {
         font-family: Consolas, 'Courier New', monospace;
-        font-size: 13px;
+        font-size: var(--fs-sm);
         border-collapse: collapse;
         width: 100%;
     }
@@ -757,7 +757,6 @@ include "header.php";
             URL.revokeObjectURL(url);
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Export to Excel
         function exportExcel() {

@@ -49,54 +49,6 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
     --hotel-gold-dark: #a38235;
 }
 
-/* --- Tabs --- */
-.nav-tabs {
-    border-bottom: 2px solid #eee;
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.nav-tabs::-webkit-scrollbar {
-    display: none;
-}
-
-.nav-tabs .nav-link {
-    border: none;
-    color: #666;
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-    white-space: nowrap;
-}
-
-/* สีทองตอน Active ของ Tab */
-.nav-tabs .nav-link.active {
-    color: var(--hotel-gold) !important;
-    background: none;
-    border-bottom: 3px solid var(--hotel-gold);
-}
-
-/* --- DataTables & Buttons (Active State) --- */
-/* ปุ่ม Pagination หน้าที่กำลังเปิด (Active) */
-.page-item.active .page-link {
-    background-color: var(--hotel-gold) !important;
-    border-color: var(--hotel-gold) !important;
-    color: white !important;
-}
-
-/* สีของลิงก์/ปุ่มเวลา Hover */
-.btn-outline-secondary:hover {
-    background-color: var(--hotel-gold);
-    border-color: var(--hotel-gold);
-    color: white;
-}
-
-/* ไฮไลท์แถวในตารางเมื่อเอาเม้าส์ชี้ */
-.table-hover tbody tr:hover {
-    background-color: var(--hotel-gold-light) !important;
-}
-
 /* --- Preview รูปภาพ --- */
 .preview-zone {
     width: 100px;
@@ -125,7 +77,7 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
     border-radius: 50%;
     width: 24px;
     height: 24px;
-    font-size: 14px;
+    font-size: var(--fs-base);
     border: none;
     display: none;
     z-index: 10;
@@ -146,11 +98,6 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
     transform: scale(1.1);
 }
 
-.card {
-    border: none;
-
-    border-radius: 15px;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -168,7 +115,7 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
     }
 
     table.dataTable {
-        font-size: 0.85rem;
+        font-size: var(--fs-base);
     }
 
     .btn-sm {
@@ -288,8 +235,8 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                                         <textarea name="address" class="form-control"
                                             rows="2"><?php echo $edit_data['address'] ?? ''; ?></textarea>
                                     </div>
-                                    <button type="submit" class="btn btn-dark btn-sm px-3  flex-shrink-0"><i
-                                            class="bi bi-save me-2 text-gold"></i>บันทึกข้อมูล</button>
+                                    <button type="submit" class="btn btn-primary btn-sm px-3  flex-shrink-0"><i
+                                            class="bi bi-save me-2"></i>บันทึกข้อมูล</button>
                                     <?php if ($edit_data): ?> <a href="setting.php"
                                         class="btn btn-light border w-100 mt-2">ยกเลิกการแก้ไข</a> <?php endif; ?>
                                 </form>
@@ -341,7 +288,7 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                                                     class="bi bi-pencil"></i></a>
                                             <a href="api/save_settings.php?delete_id=<?php echo $row['id']; ?>"
                                                 class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('ยืนยันการลบ?')"><i class="bi bi-trash"></i></a>
+                                                data-confirm="ยืนยันการลบ?"><i class="bi bi-trash"></i></a>
                                         </td>
                                     </tr>
                                     <?php endwhile; ?>
@@ -423,8 +370,8 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                                             </option>
                                         </select>
                                     </div>
-                                    <button type="submit" class="btn btn-dark btn-sm px-3  flex-shrink-0"><i
-                                            class="bi bi-save me-2 text-gold"></i>บันทึกข้อมูลผู้ใช้</button>
+                                    <button type="submit" class="btn btn-primary btn-sm px-3  flex-shrink-0"><i
+                                            class="bi bi-save me-2"></i>บันทึกข้อมูลผู้ใช้</button>
                                     <?php if ($edit_user): ?> <a href="setting.php?edit_user_id="
                                         class="btn btn-light border w-100 mt-2">ยกเลิก</a> <?php endif; ?>
                                 </form>
@@ -489,7 +436,7 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                                                     <i class="bi bi-line text-success"></i> ผูกแล้ว
                                                 </span>
                                                 <button type="button" class="btn btn-sm btn-outline-success ms-1 py-0 px-1"
-                                                    style="font-size: 0.7rem;"
+                                                    style="font-size: var(--fs-xs);"
                                                     onclick="testLine(<?php echo $u['id']; ?>, this)"
                                                     title="ส่งข้อความทดสอบหาผู้ใช้นี้ทาง LINE">
                                                     <i class="bi bi-send"></i> ทดสอบ
@@ -676,8 +623,8 @@ function togglePass() {
     p.type = (p.type === "password") ? "text" : "password";
 }
 
-function confirmDelete(url, msg) {
-    if (confirm(msg)) {
+async function confirmDelete(url, msg) {
+    if (await UI.confirm(msg)) {
         window.location.href = url;
     }
 }
@@ -692,9 +639,9 @@ async function testLine(userId, btn) {
         fd.append('user_id', userId);
         const res = await fetch('api/test_line.php', { method: 'POST', body: fd });
         const data = await res.json();
-        alert((data.ok ? '✅ ' : '❌ ') + data.message);
+        UI.alert((data.ok ? '✅ ' : '❌ ') + data.message);
     } catch (e) {
-        alert('❌ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่');
+        UI.alert('❌ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่');
     } finally {
         btn.disabled = false;
         btn.innerHTML = original;
@@ -807,7 +754,7 @@ document.getElementById('btnParseFile').addEventListener('click', function () {
             renderSheetMapping();
         } catch (err) {
             console.error(err);
-            alert('อ่านไฟล์ Excel ไม่สำเร็จ: ' + err.message);
+            UI.alert('อ่านไฟล์ Excel ไม่สำเร็จ: ' + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
@@ -956,11 +903,11 @@ document.getElementById('btnGeneratePreview').addEventListener('click', function
     });
 
     if (missingMap) {
-        alert('กรุณาเลือกกลุ่มอาหารให้ครบทุกชีทที่ติ๊กเลือกไว้');
+        UI.alert('กรุณาเลือกกลุ่มอาหารให้ครบทุกชีทที่ติ๊กเลือกไว้');
         return;
     }
     if (!finalRows.length) {
-        alert('ไม่มีรายการให้นำเข้า กรุณาติ๊กเลือกอย่างน้อย 1 ชีท');
+        UI.alert('ไม่มีรายการให้นำเข้า กรุณาติ๊กเลือกอย่างน้อย 1 ชีท');
         return;
     }
 
@@ -1057,13 +1004,13 @@ function updateConfirmButtonState() {
     document.getElementById('btnConfirmImport').disabled = hasUnresolved;
 }
 
-document.getElementById('btnConfirmImport').addEventListener('click', function () {
+document.getElementById('btnConfirmImport').addEventListener('click', async function () {
     if (!importFinalRows.length) return;
     if (importFinalRows.some(r => r.type_name.trim() === '')) {
-        alert('กรุณาระบุ "หมวด" ให้ครบทุกรายการที่ขึ้นสีแดงก่อนยืนยันนำเข้า');
+        UI.alert('กรุณาระบุ "หมวด" ให้ครบทุกรายการที่ขึ้นสีแดงก่อนยืนยันนำเข้า');
         return;
     }
-    if (!confirm('ยืนยันนำเข้าข้อมูลต้นทุน ' + importFinalRows.length + ' รายการ? ระบบจะอัปเดต/เพิ่มราคาทุนต่อหัวในระบบทันที')) return;
+    if (!await UI.confirm('ยืนยันนำเข้าข้อมูลต้นทุน ' + importFinalRows.length + ' รายการ? ระบบจะอัปเดต/เพิ่มราคาทุนต่อหัวในระบบทันที')) return;
 
     const btn = this;
     const original = btn.innerHTML;
@@ -1089,17 +1036,16 @@ document.getElementById('btnConfirmImport').addEventListener('click', function (
                 if (res.errors && res.errors.length) {
                     msg += `\n\nข้อผิดพลาด ${res.errors.length} รายการ:\n` + res.errors.slice(0, 10).join('\n');
                 }
-                alert(msg);
-                location.href = 'setting.php?active_tab=import';
+                UI.alert(msg, 'success').then(() => { location.href = 'setting.php?active_tab=import'; });
             } else {
-                alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่ทราบสาเหตุ'));
+                UI.alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่ทราบสาเหตุ'));
                 btn.disabled = false;
                 btn.innerHTML = original;
             }
         })
         .catch(err => {
             console.error(err);
-            alert('การเชื่อมต่อล้มเหลว');
+            UI.alert('การเชื่อมต่อล้มเหลว');
             btn.disabled = false;
             btn.innerHTML = original;
         });

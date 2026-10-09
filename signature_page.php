@@ -20,12 +20,15 @@ $data = $res->fetch_assoc();
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . "/assets/css/theme.css"); ?>">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/js/ui.js?v=<?php echo @filemtime(__DIR__ . "/assets/js/ui.js"); ?>"></script>
 
     <style>
         body {
             background: #1a1a1a;
-            font-family: 'Sarabun', sans-serif;
+            font-family: var(--font);
             height: 100vh;
             display: flex;
             align-items: center;
@@ -85,7 +88,7 @@ $data = $res->fetch_assoc();
             left: 50%;
             transform: translate(-50%, -50%);
             color: #ddd;
-            font-size: 1rem;
+            font-size: var(--fs-md);
             pointer-events: none;
             user-select: none;
         }
@@ -113,7 +116,7 @@ $data = $res->fetch_assoc();
         }
 
         .info-box {
-            font-size: 0.85rem;
+            font-size: var(--fs-base);
             color: #666;
             margin-bottom: 15px;
             padding: 10px;
@@ -130,7 +133,7 @@ $data = $res->fetch_assoc();
         @media (max-width: 576px) {
             .btn {
                 flex: 1 1 auto;
-                font-size: 0.9rem;
+                font-size: var(--fs-base);
             }
         }
     </style>
@@ -237,7 +240,7 @@ $data = $res->fetch_assoc();
 
         function savePad() {
             if (!hasSigned) {
-                alert("กรุณาเซ็นชื่อก่อนครับ");
+                UI.alert("กรุณาเซ็นชื่อก่อนครับ");
                 return;
             }
 
@@ -254,17 +257,16 @@ $data = $res->fetch_assoc();
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        alert("บันทึกลายเซ็นเรียบร้อยแล้ว");
-                        window.history.back(); // ย้อนกลับไปหน้าก่อนหน้าทันที
+                        UI.alert("บันทึกลายเซ็นเรียบร้อยแล้ว", "success").then(() => window.history.back());
                     } else {
-                        alert("Error: " + data.message);
+                        UI.alert("Error: " + data.message);
                         btn.disabled = false;
                         btn.innerHTML = 'บันทึกลายเซ็น';
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+                    UI.alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
                     btn.disabled = false;
                 });
         }

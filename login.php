@@ -59,152 +59,92 @@ if (!isset($error)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - SALE SYSTEM</title>
+    <title>เข้าสู่ระบบ · Banquet Management</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sarabun:wght@300;400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/theme.css?v=<?php echo @filemtime(__DIR__ . '/assets/css/theme.css'); ?>">
     <style>
-        :root {
-            --hotel-dark: #1a1a1a;
-            --hotel-gold: #b89441;
-            --hotel-gold-light: #d4af37;
-        }
-
         body {
-            background: radial-gradient(circle at center, #2c2c2c 0%, #121212 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Inter', 'Sarabun', sans-serif;
-            margin: 0;
-            color: #fff;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px 16px;
+            background:
+                radial-gradient(900px 500px at 85% -10%, var(--gold-100), transparent 60%),
+                radial-gradient(700px 420px at -10% 110%, #efe9dc, transparent 60%),
+                var(--bg);
         }
-
         .login-card {
             width: 100%;
             max-width: 400px;
-            padding: 40px;
-            background: rgba(26, 26, 26, 0.9);
-            border: 1px solid rgba(184, 148, 65, 0.3);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-xl);
+            box-shadow: var(--shadow-md);
+            padding: 36px 32px 28px;
         }
-
-        .login-logo {
-            font-size: 2.5rem;
-            color: var(--hotel-gold);
-            text-align: center;
-            margin-bottom: 10px;
+        .login-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 26px; text-align: center; }
+        .login-brand .mark {
+            width: 52px; height: 52px; border-radius: 14px;
+            display: grid; place-items: center;
+            background: linear-gradient(140deg, #cfae5d, #9a7a2e);
+            color: #fff; font-size: 24px;
         }
-
-        .login-title {
-            text-align: center;
-            font-weight: 600;
-            letter-spacing: 2px;
-            margin-bottom: 30px;
-            color: #fff;
-            text-transform: uppercase;
-        }
-
-        .form-control {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 12px 15px;
-            border-radius: 10px;
-            transition: all 0.3s;
-        }
-
-        .form-control:focus {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--hotel-gold);
-            box-shadow: 0 0 0 0.25 margin-left rgba(184, 148, 65, 0.25);
-            color: #fff;
-        }
-
-        .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        .btn-login {
-            background: linear-gradient(45deg, var(--hotel-gold), var(--hotel-gold-light));
-            border: none;
-            color: #000;
-            font-weight: 600;
-            padding: 12px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(184, 148, 65, 0.4);
-            background: var(--hotel-gold-light);
-            color: #000;
-        }
-
-        .error-msg {
-            background: rgba(255, 0, 0, 0.1);
-            color: #ff6b6b;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 0, 0, 0.2);
-        }
-
-        .footer-text {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.4);
-        }
+        .login-brand h1 { font-size: var(--fs-xl); margin: 0; }
+        .login-brand p { margin: 0; color: var(--muted); }
+        .login-card .form-control { min-height: 44px; padding-left: 40px; }
+        .field { position: relative; }
+        .field > i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); font-size: 16px; pointer-events: none; }
+        .toggle-pass { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); width: 34px; height: 34px; border-radius: var(--r); }
+        .toggle-pass:hover { background: var(--sunken); }
+        .login-foot { text-align: center; margin-top: 22px; font-size: var(--fs-xs); color: var(--faint); }
     </style>
 </head>
 
 <body>
-
-    <div class="login-card">
-        <div class="login-logo">
-            <i class="bi bi-building"></i>
+    <main class="login-card">
+        <div class="login-brand">
+            <span class="mark"><i class="bi bi-building"></i></span>
+            <div>
+                <h1>Banquet Management</h1>
+                <p>เข้าสู่ระบบเพื่อจัดการงานจัดเลี้ยงและห้องประชุม</p>
+            </div>
         </div>
-        <h4 class="login-title">Sale System</h4>
 
         <?php if (isset($error)): ?>
-            <div class="error-msg">
-                <i class="bi bi-exclamation-circle me-2"></i><?php echo $error; ?>
+            <div class="alert alert-danger d-flex align-items-center gap-2 py-2" role="alert">
+                <i class="bi bi-exclamation-circle"></i><span><?php echo $error; ?></span>
             </div>
         <?php endif; ?>
 
         <form method="POST">
             <div class="mb-3">
-                <label class="form-label small text-white-50">Username</label>
-                <input name="username" class="form-control" placeholder="ระบุชื่อผู้ใช้งาน" required autofocus>
+                <label class="form-label" for="username">ชื่อผู้ใช้</label>
+                <div class="field">
+                    <i class="bi bi-person"></i>
+                    <input id="username" name="username" class="form-control" placeholder="Username" autocomplete="username" required autofocus>
+                </div>
             </div>
             <div class="mb-4">
-                <label class="form-label small text-white-50">Password</label>
-                <input type="password" name="password" class="form-control" placeholder="ระบุรหัสผ่าน" required>
+                <label class="form-label" for="password">รหัสผ่าน</label>
+                <div class="field">
+                    <i class="bi bi-lock"></i>
+                    <input id="password" type="password" name="password" class="form-control" placeholder="Password" autocomplete="current-password" required>
+                    <button type="button" class="toggle-pass" aria-label="แสดงรหัสผ่าน"
+                        onclick="const p=document.getElementById('password');p.type=p.type==='password'?'text':'password';this.firstElementChild.className=p.type==='password'?'bi bi-eye':'bi bi-eye-slash';">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
-            <button name="login" class="btn btn-login w-100">
-                Sign In <i class="bi bi-arrow-right-short ms-1"></i>
+            <button name="login" class="btn btn-primary btn-lg w-100">
+                เข้าสู่ระบบ <i class="bi bi-arrow-right"></i>
             </button>
         </form>
 
-        <div class="footer-text">
-            &copy; 2024 HMS. Wattanyoo641051020 All rights reserved.
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <div class="login-foot">&copy; 2024 HMS. Wattanyoo641051020 All rights reserved.</div>
+    </main>
 </body>
 
 </html>

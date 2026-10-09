@@ -115,7 +115,7 @@ require_once "header.php";
                         <input type="hidden" id="category_id" value="0">
                         <div class="input-group shadow-sm mb-2">
                             <input type="text" id="category_name" class="form-control" placeholder="ชื่อประเภทใหญ่..." required>
-                            <button class="btn btn-dark px-4" type="submit">บันทึก</button>
+                            <button class="btn btn-primary px-4" type="submit">บันทึก</button>
                             <button class="btn btn-light border" type="button" onclick="resetSettingForm('category')">ล้าง</button>
                         </div>
                         <input type="number" id="category_sort" class="form-control form-control-sm" placeholder="ลำดับ (sort_order)" value="0" style="max-width:180px;">
@@ -361,7 +361,7 @@ function saveData(event, type) {
     })
     .catch(err => {
         console.error('Save error:', err);
-        alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
+        UI.alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
     });
 }
 
@@ -400,8 +400,8 @@ function resetSettingForm(type) {
     }
 }
 
-function deleteSetting(tableName, id) {
-    if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
+async function deleteSetting(tableName, id) {
+    if (await UI.confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
         let fd = new FormData();
         fd.append('action', 'delete');
         fd.append('table_name', tableName);

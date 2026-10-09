@@ -70,7 +70,7 @@ require_once "header.php";
                         </div>
                         
                         <div class="d-grid gap-2">
-                            <button type="submit" id="btnSubmit" class="btn btn-dark fw-bold">
+                            <button type="submit" id="btnSubmit" class="btn btn-primary fw-bold">
                                 <i class="bi bi-save me-1"></i> บันทึกข้อมูล
                             </button>
                             <button type="button" class="btn btn-light btn-sm border-0" onclick="resetForm()">ยกเลิก</button>
@@ -179,7 +179,7 @@ function saveType(e) {
         }
         resetForm();
     })
-    .catch(err => alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'));
+    .catch(err => UI.alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'));
 }
 
 function editType(data) {
@@ -203,8 +203,8 @@ function resetForm() {
     document.getElementById('btnSubmit').innerHTML = '<i class="bi bi-save me-1"></i> บันทึกข้อมูล';
 }
 
-function deleteType(id) {
-    if (confirm('ลบรายการนี้ใช่ไหมจาร?')) {
+async function deleteType(id) {
+    if (await UI.confirm('ลบรายการนี้ใช่ไหมจาร?')) {
         const fd = new FormData();
         fd.append('action', 'delete');
         fd.append('id', id);

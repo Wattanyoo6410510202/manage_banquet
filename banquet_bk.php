@@ -139,7 +139,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 if (strtolower($user_role) === 'admin'):
                     ?>
                     <button id="deleteSelected" class="btn btn-danger btn-sm py-1 px-2 shadow-sm"
-                        style="display:none; font-size: 0.75rem;">
+                        style="display:none; font-size: var(--fs-xs);">
                         <i class="bi bi-trash3-fill"></i>
                         <span class="ms-1">ลบ (<span id="selectCount">0</span>)</span>
                     </button>
@@ -147,7 +147,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 else:
                     ?>
                     <button class="btn btn-secondary btn-sm py-1 px-2 shadow-sm disabled"
-                        style="font-size: 0.75rem; cursor: not-allowed;">
+                        style="font-size: var(--fs-xs); cursor: not-allowed;">
                         <i class="bi bi-eye-fill"></i>
                         <span class="ms-1">โหมดดูข้อมูลเท่านั้น</span>
                     </button>
@@ -163,8 +163,8 @@ if ($q && mysqli_num_rows($q) > 0) {
                 $allowed_roles = ['admin', 'staff', 'gm', 'viewer'];
                 if (in_array($user_role, $allowed_roles)):
                     ?>
-                    <a href="add_event.php" class="btn btn-dark btn-sm px-3 py-1 rounded-pill shadow-sm"
-                        style="font-size: 0.8rem;">
+                    <a href="add_event.php" class="btn btn-primary btn-sm px-3 py-1 rounded-pill shadow-sm"
+                        style="font-size: var(--fs-sm);">
                         <i class="bi bi-plus-lg"></i>
                         <span class="ms-1">เพิ่มงานใหม่</span>
                     </a>
@@ -225,7 +225,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <div class="fw-bold text-dark text-wrap project-title-link" style="max-width: 400px; cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <?= htmlspecialchars($project['project_name']); ?>
                                     <?php if($has_drafts): ?>
-                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                        <span class="badge bg-gold text-white rounded-pill ms-1" style="font-size: var(--fs-xs);"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="text-muted small"><i class="bi bi-calendar-event me-1"></i> <?= $master['formatted_date']; ?></div>
@@ -264,14 +264,14 @@ if ($q && mysqli_num_rows($q) > 0) {
                                     <div class="fw-medium text-secondary small function-name-link" style="cursor: pointer;" data-id="<?= $row['id'] ?>">
                                         <?= htmlspecialchars($row['draft_name']); ?>
                                         <?php if($row['is_approved']): ?>
-                                            <span class="badge bg-success-subtle text-success ms-1" style="font-size: 0.6rem;">Master</span>
+                                            <span class="badge bg-success-subtle text-success ms-1" style="font-size: var(--fs-xs);">Master</span>
                                         <?php endif; ?>
                                     </div>
                                     <small class="text-muted"><?= htmlspecialchars($row['function_name']); ?></small>
                                 </td>
                                 <td><small class="text-muted"><?= nl2br(htmlspecialchars($row['banquet_style'] ?: '-')); ?></small></td>
                                 <td>
-                                    <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                    <span class="badge <?= $row['status_info']['class']; ?> opacity-75 rounded-pill px-2 py-1" style="font-size: var(--fs-xs);">
                                         <?= $row['status_info']['text']; ?>
                                     </span>
                                 </td>
@@ -311,7 +311,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                 <div class="function-name-link" style="cursor: pointer;" data-id="<?= $master['id'] ?>">
                                     <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($project['project_name']); ?></h6>
                                     <?php if($has_drafts): ?>
-                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: 0.65rem;"><?= count($drafts) ?> Versions</span>
+                                        <span class="badge bg-gold text-white rounded-pill" style="font-size: var(--fs-xs);"><?= count($drafts) ?> Versions</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -351,7 +351,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                                             <div class="card-body p-2 small">
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span class="fw-bold text-dark"><?= htmlspecialchars($row['draft_name']) ?></span>
-                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: 0.6rem;"><?= $row['status_info']['text']; ?></span>
+                                                    <span class="badge <?= $row['status_info']['class']; ?> px-2" style="font-size: var(--fs-xs);"><?= $row['status_info']['text']; ?></span>
                                                 </div>
                                                 <div class="text-secondary mb-2"><?= nl2br(htmlspecialchars($row['banquet_style'] ?: '-')); ?></div>
                                                 <div class="text-end">
@@ -379,16 +379,8 @@ if ($q && mysqli_num_rows($q) > 0) {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    .modal-content { border-radius: 1rem; border: none; overflow: hidden; }
-    .modal-header { background: #212529; color: #fff; border-bottom: none; padding: 1.25rem; }
-    .card-header { background: #f8f9fa; border-bottom: 1px solid #eee; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05rem; }
-    .form-control { border: 1px solid #dee2e6; border-radius: 0.5rem; }
-    .form-control:focus { box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15); }
-    .btn-success { background: #198754; border-radius: 0.5rem; transition: transform 0.2s; }
-    .btn-success:hover { transform: translateY(-2px); }
     .hr-line { border-top: 2px solid #e9ecef; margin: 1.5rem 0; }
 </style>
 
@@ -406,7 +398,7 @@ if ($q && mysqli_num_rows($q) > 0) {
             .then(res => res.json())
             .then(response => {
                 if (response.status !== 'success') {
-                    alert('ไม่สามารถโหลดข้อมูลได้');
+                    UI.alert('ไม่สามารถโหลดข้อมูลได้');
                     return;
                 }
                 const data = response.data;
@@ -520,7 +512,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                             
                             refreshTable();
                         } else {
-                            alert(data.message || 'เกิดข้อผิดพลาด');
+                            UI.alert(data.message || 'เกิดข้อผิดพลาด');
                         }
                     });
                 });

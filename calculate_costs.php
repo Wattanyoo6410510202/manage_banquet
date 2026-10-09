@@ -160,10 +160,10 @@ while ($row = $res_k->fetch_assoc()) {
 } // จบโหมด EO
 ?>
 
-<div style="display: flex; gap: 15px; flex-wrap: wrap; font-family: 'Sarabun', sans-serif;">
+<div style="display: flex; gap: 15px; flex-wrap: wrap;">
     <div style="flex: 1; min-width: 350px;">
         <h6 style="color: #0d6efd; font-weight: bold;">[ รายการอาหารหลัก ]</h6>
-        <table border="1" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <table border="1" style="width: 100%; border-collapse: collapse; font-size: var(--fs-sm);">
             <thead style="background: #f8f9fa;">
                 <tr>
                     <th style="padding: 8px;">รายการ</th>
@@ -207,7 +207,7 @@ while ($row = $res_k->fetch_assoc()) {
 
     <div style="flex: 1; min-width: 350px;">
         <h6 style="color: #fd7e14; font-weight: bold;">[ รายการจัดเตรียมเบรก ]</h6>
-        <table border="1" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <table border="1" style="width: 100%; border-collapse: collapse; font-size: var(--fs-sm);">
             <thead style="background: #f8f9fa;">
                 <tr>
                     <th style="padding: 8px;">รายการเบรก</th>

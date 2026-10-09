@@ -209,13 +209,13 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
 
     .function-form .main-header .form-header-sub {
         color: #6b6b6b;
-        font-size: .78rem;
+        font-size: var(--fs-xs);
         margin-top: 2px;
     }
 
     .function-form .section-title {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: var(--fs-md);
         color: #262626;
         padding-bottom: .5rem;
         margin-bottom: 1rem !important;
@@ -237,7 +237,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         color: var(--hotel-gold, #b89441);
         background: #fff;
         font-weight: 600;
-        font-size: .8rem;
+        font-size: var(--fs-sm);
     }
 
     .function-form .btn-hotel-outline:hover {
@@ -313,7 +313,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
 
     .function-form .kitchen-grand-total,
     .function-form .menu-grand-total {
-        font-size: .78rem;
+        font-size: var(--fs-xs);
         white-space: nowrap;
         padding-left: .35rem !important;
         padding-right: .35rem !important;
@@ -340,7 +340,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
     }
 
     .function-toolbar .draft-pill {
-        font-size: .78rem;
+        font-size: var(--fs-xs);
         border-radius: 50px;
         padding: .3rem .85rem;
     }
@@ -357,7 +357,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
         border-radius: 0;
         color: #666;
         font-weight: 600;
-        font-size: .85rem;
+        font-size: var(--fs-base);
         padding: .55rem .9rem;
         white-space: nowrap;
     }
@@ -527,7 +527,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             <select name="company_id" class="form-select border-0 bg-light mb-2"
                                 id="company_select"
                                 onchange="updateCompanyLogo(this); filterRooms(this.value);" required
-                                style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
+                                style="border-radius: 10px; height: 38px; font-size: var(--fs-base);">
                                 <option value="">-- เลือกโรงแรม --</option>
                                 <?php
                                 $current_logo = 'assets/img/default-company.png';
@@ -560,7 +560,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             <div class="mb-2">
                                 <select id="customer_selector"
                                     class="form-select border-0 bg-light select2-ajax-customer"
-                                    style="border-radius: 10px; height: 38px; font-size: 0.85rem;">
+                                    style="border-radius: 10px; height: 38px; font-size: var(--fs-base);">
                                     <?php if ($data['customer_id']): 
                                         $c_stmt = $conn->prepare("SELECT cust_name FROM customers WHERE id = ?");
                                         $c_stmt->bind_param("i", $data['customer_id']);
@@ -578,18 +578,18 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     <input type="text" id="booking_name" name="booking_name"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ชื่อ-นามสกุล" required
                                         value="<?= htmlspecialchars($data['booking_name']) ?>"
-                                        style="height: 36px; font-size: 0.8rem;">
+                                        style="height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-6">
                                     <input type="text" id="customer_phone" name="phone"
                                         class="form-control border-0 bg-light rounded-3" placeholder="เบอร์โทร"
                                         value="<?= htmlspecialchars($data['phone']) ?>"
-                                        style="height: 36px; font-size: 0.8rem;">
+                                        style="height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-12 mt-1">
                                     <textarea id="customer_address" name="organization"
                                         class="form-control border-0 bg-light rounded-3" placeholder="ที่อยู่ลูกค้า..."
-                                        rows="3" style="font-size: 0.8rem; resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
+                                        rows="3" style="font-size: var(--fs-sm); resize: none;"><?= htmlspecialchars($data['organization']) ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -606,11 +606,11 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     <input name="function_name" class="form-control border-0 bg-light"
                                         placeholder="ชื่องาน" required
                                         value="<?= htmlspecialchars($data['function_name']) ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-5">
                                     <select name="function_type_id" class="form-select border-0 bg-light" required
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                         <option value="" disabled>-- เลือกประเภท --</option>
                                         <?php 
                                         $res_types->data_seek(0);
@@ -624,18 +624,18 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                     </select>
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">เริ่มงาน</label>
+                                    <label class="small text-muted mb-0" style="font-size: var(--fs-xs);">เริ่มงาน</label>
                                     <input type="datetime-local" name="start_time"
                                         class="form-control border-0 bg-light" required
                                         value="<?= (!empty($data['start_time']) && $data['start_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['start_time'])) : '' ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <label class="small text-muted mb-0" style="font-size: 0.65rem;">สิ้นสุด</label>
+                                    <label class="small text-muted mb-0" style="font-size: var(--fs-xs);">สิ้นสุด</label>
                                     <input type="datetime-local" name="end_time"
                                         class="form-control border-0 bg-light" required
                                         value="<?= (!empty($data['end_time']) && $data['end_time'] != '0000-00-00 00:00:00') ? date('Y-m-d\TH:i', strtotime($data['end_time'])) : '' ?>"
-                                        style="border-radius: 10px; height: 36px; font-size: 0.8rem;">
+                                        style="border-radius: 10px; height: 36px; font-size: var(--fs-sm);">
                                 </div>
                             </div>
                         </div>
@@ -681,7 +681,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 <div class="row g-2 mb-4">
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-primary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-primary mb-0" style="font-size: 0.65rem;">Draft Name</label>
+                            <label class="small fw-bold text-primary mb-0" style="font-size: var(--fs-xs);">Draft Name</label>
                             <input name="draft_name"
                                 class="form-control border-0 bg-transparent fw-bold text-primary p-0 fs-6"
                                 placeholder="Draft V1"
@@ -691,7 +691,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">Booking No.</label>
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: var(--fs-xs);">Booking No.</label>
                             <input name="booking_room"
                                 class="form-control border-0 bg-transparent fw-bold text-secondary p-0 fs-6"
                                 placeholder="BK-XXXX"
@@ -701,7 +701,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-info bg-opacity-10 h-100">
-                            <label class="small fw-bold text-info mb-0" style="font-size: 0.65rem;">จำนวน (PAX)</label>
+                            <label class="small fw-bold text-info mb-0" style="font-size: var(--fs-xs);">จำนวน (PAX)</label>
                             <div class="input-group">
                                 <input type="number" name="pax"
                                     class="form-control border-0 bg-transparent fw-bold text-info p-0 fs-6"
@@ -712,7 +712,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-success bg-opacity-10 h-100">
-                            <label class="small fw-bold text-success mb-0" style="font-size: 0.65rem;">มัดจำ (Deposit)</label>
+                            <label class="small fw-bold text-success mb-0" style="font-size: var(--fs-xs);">มัดจำ (Deposit)</label>
                             <div class="input-group">
                                 <span class="input-group-text border-0 bg-transparent text-success fw-bold p-0">฿</span>
                                 <input type="number" step="0.01" name="deposit"
@@ -723,7 +723,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     </div>
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;">มูลค่างานทั้งหมด</label>
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: var(--fs-xs);">มูลค่างานทั้งหมด</label>
                             <div class="input-group">
                                 <span class="input-group-text border-0 bg-transparent text-secondary fw-bold p-0">฿</span>
                                 <input type="number" step="0.01" name="total_amount"
@@ -737,7 +737,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
 
                     <div class="col-md-2">
                         <div class="p-2 rounded-3 bg-secondary bg-opacity-10 h-100">
-                            <label class="small fw-bold text-secondary mb-0" style="font-size: 0.65rem;"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
+                            <label class="small fw-bold text-secondary mb-0" style="font-size: var(--fs-xs);"><i class="bi bi-paperclip"></i> ไฟล์แนบ</label>
                             <div class="row g-1">
                                 <?php 
                                 $file_colors = ['secondary', 'warning', 'danger']; 
@@ -748,13 +748,13 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                 ?>
                                     <div class="col-md-4">
                                         <div class="p-1 rounded-2 bg-white border border-<?=$color?> border-opacity-25 h-100">
-                                            <label class="small fw-bold text-<?=$color?> mb-1 d-block" style="font-size: 0.6rem;">
+                                            <label class="small fw-bold text-<?=$color?> mb-1 d-block" style="font-size: var(--fs-xs);">
                                                 <i class="bi bi-paperclip"></i> แนบ <?=$i?>
                                             </label>
                                             <?php if($file_path): ?>
                                                 <div id="file_display_<?=$i?>"
                                                     class="d-flex align-items-center justify-content-between bg-white p-1 rounded-2 mb-1"
-                                                    style="font-size: 9px;">
+                                                    style="font-size: var(--fs-xs);">
                                                     <div class="text-truncate me-1" style="max-width: 70px;">
                                                         <a href="<?=$file_path?>" target="_blank"
                                                             class="text-decoration-none text-dark">
@@ -764,18 +764,18 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                                                     </div>
                                                     <button type="button"
                                                         class="btn btn-outline-danger btn-sm py-0 px-1 flex-shrink-0"
-                                                        style="font-size: 8px; border-radius: 4px; line-height: 1.2;"
-                                                        onclick="if(confirm('ลบไฟล์เดิม?')){ 
+                                                        style="font-size: var(--fs-xs); border-radius: 4px; line-height: 1.2;"
+                                                        onclick="UI.confirm('ลบไฟล์เดิม?').then(ok => { if (!ok) return;
                                                             document.getElementById('file_display_<?=$i?>').style.setProperty('display', 'none', 'important'); 
-                                                            document.getElementById('delete_flag_<?=$i?>').value = '1'; 
-                                                        }">
+                                                            document.getElementById('delete_flag_<?=$i?>').value = '1';
+                                                        })">
                                                         <i class="bi bi-trash3"></i>
                                                     </button>
                                                 </div>
                                             <?php endif; ?>
                                             <input type="file" name="file_attachment<?=$i?>"
                                                 class="form-control form-control-sm border-0 bg-white bg-opacity-50 text-<?=$color?>"
-                                                style="font-size: 10px; height: 28px;">
+                                                style="font-size: var(--fs-xs); height: 28px;">
                                             <input type="hidden" name="old_file_<?=$i?>" value="<?=$file_path?>">
                                             <input type="hidden" name="delete_file_<?=$i?>" id="delete_flag_<?=$i?>" value="0">
                                         </div>
@@ -843,20 +843,20 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                             <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
                                 <input class="form-check-input" type="checkbox" role="switch" id="breakModalToggle" checked
                                     onchange="toggleBreakPicker(this.checked)">
-                                <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                                <span class="form-check-label" style="font-size: var(--fs-base);">ดึงเมนู</span>
                             </label>
                         </h5>
                         <div class="table-responsive mb-4">
                             <table class="table table-sm table-hover align-middle" id="kitchenTable" style="table-layout: fixed; width: 100%;">
     <thead>
         <tr>
-            <th style="width: 130px; font-size: 11px;" class="text-center text-secondary">วันที่</th>
-            <th style="width: 140px; font-size: 11px;" class="text-center text-secondary">ประเภทเบรก</th>
-            <th style="font-size: 11px;" class="text-center text-secondary">รายการรายละเอียด</th>
-            <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน (PAX)</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
-            <th style="width: 105px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
+            <th style="width: 130px; font-size: var(--fs-xs);" class="text-center text-secondary">วันที่</th>
+            <th style="width: 140px; font-size: var(--fs-xs);" class="text-center text-secondary">ประเภทเบรก</th>
+            <th style="font-size: var(--fs-xs);" class="text-center text-secondary">รายการรายละเอียด</th>
+            <th style="width: 70px; font-size: var(--fs-xs);" class="text-center text-secondary">จำนวน (PAX)</th>
+            <th style="width: 90px; font-size: var(--fs-xs);" class="text-center text-secondary">ราคาขาย/หน่วย</th>
+            <th style="width: 90px; font-size: var(--fs-xs);" class="text-center text-secondary">ราคาทุน/หน่วย</th>
+            <th style="width: 105px; font-size: var(--fs-xs);" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
     </thead>
@@ -963,20 +963,20 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     <label class="form-check form-switch d-inline-block ms-3 mb-0 align-middle">
                         <input class="form-check-input" type="checkbox" role="switch" id="menuModalToggle" checked
                             onchange="toggleMenuPicker(this.checked)">
-                        <span class="form-check-label" style="font-size:0.9rem;">ดึงเมนู</span>
+                        <span class="form-check-label" style="font-size: var(--fs-base);">ดึงเมนู</span>
                     </label>
                 </h5>
                 <div class="table-responsive mb-5">
                     <table class="table table-sm table-hover align-middle" id="menuTable" style="table-layout: fixed; width: 100%;">
     <thead>
         <tr>
-            <th style="width: 130px; font-size: 11px;" class="text-center text-secondary">เวลา</th>
-            <th style="width: 150px; font-size: 11px;" class="text-center text-secondary">ประเภทเมนู</th>
-            <th style="font-size: 11px;" class="text-center text-secondary">รายละเอียด</th>
-            <th style="width: 70px; font-size: 11px;" class="text-center text-secondary">จำนวน</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาขาย/หน่วย</th>
-            <th style="width: 90px; font-size: 11px;" class="text-center text-secondary">ราคาทุน/หน่วย</th>
-            <th style="width: 105px; font-size: 11px;" class="text-center text-secondary">ยอดรวม</th>
+            <th style="width: 130px; font-size: var(--fs-xs);" class="text-center text-secondary">เวลา</th>
+            <th style="width: 150px; font-size: var(--fs-xs);" class="text-center text-secondary">ประเภทเมนู</th>
+            <th style="font-size: var(--fs-xs);" class="text-center text-secondary">รายละเอียด</th>
+            <th style="width: 70px; font-size: var(--fs-xs);" class="text-center text-secondary">จำนวน</th>
+            <th style="width: 90px; font-size: var(--fs-xs);" class="text-center text-secondary">ราคาขาย/หน่วย</th>
+            <th style="width: 90px; font-size: var(--fs-xs);" class="text-center text-secondary">ราคาทุน/หน่วย</th>
+            <th style="width: 105px; font-size: var(--fs-xs);" class="text-center text-secondary">ยอดรวม</th>
             <th style="width: 45px;"></th>
         </tr>
     </thead>
@@ -1416,8 +1416,8 @@ async function fetchMenuDetail(selectEl) {
 }
 
 // [NEW] ฟังก์ชันสำหรับ Duplicate Draft
-function duplicateDraft(id) {
-    if(!confirm('คุณต้องการคัดลอกข้อมูลรายการนี้เป็น Draft ใหม่ใช่หรือไม่?')) return;
+async function duplicateDraft(id) {
+    if (!await UI.confirm('คุณต้องการคัดลอกข้อมูลรายการนี้เป็น Draft ใหม่ใช่หรือไม่?')) return;
     
     fetch('api/duplicate_draft.php', {
         method: 'POST',
@@ -1452,12 +1452,12 @@ function duplicateDraft(id) {
             });
         } else {
             console.error('API Error:', data);
-            alert('เกิดข้อผิดพลาดจาก Server: ' + (data.message || 'Unknown error'));
+            UI.alert('เกิดข้อผิดพลาดจาก Server: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Fetch Error:', error);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ (Network Error). ลองเช็ค Console (F12)');
+        UI.alert('เกิดข้อผิดพลาดในการเชื่อมต่อ (Network Error). ลองเช็ค Console (F12)');
     });
 }
 
@@ -1478,8 +1478,8 @@ function fillCustomerInfo(select) {
 }
 </script>
 <script>
-function confirmRemoveFile(index) {
-    if (confirm('ยืนยันที่จะนำไฟล์เดิมออกเพื่อเปลี่ยนไฟล์ใหม่หรือไม่?')) {
+async function confirmRemoveFile(index) {
+    if (await UI.confirm('ยืนยันที่จะนำไฟล์เดิมออกเพื่อเปลี่ยนไฟล์ใหม่หรือไม่?')) {
         // หา Element ที่โชว์ไฟล์เดิม
         const displayDiv = document.getElementById('file_display_' + index);
         const flagInput = document.getElementById('delete_flag_' + index);
@@ -1489,7 +1489,7 @@ function confirmRemoveFile(index) {
             flagInput.value = '1'; // เปลี่ยนค่าเป็น 1 เพื่อบอก PHP ให้ลบ
             console.log('File ' + index + ' marked for deletion');
         } else {
-            alert('Error: ไม่พบ Element สำหรับลบไฟล์');
+            UI.alert('Error: ไม่พบ Element สำหรับลบไฟล์');
         }
     }
 }
@@ -1561,11 +1561,11 @@ function filterRooms(companyId) {
                 </p>
 
                 ${bookingList ? `
-                    <button type="button" class="btn btn-sm w-100 text-start p-1 px-2 border-0 bg-danger bg-opacity-10 text-danger fw-bold room-conflict-toggle" style="font-size:.75rem;"
+                    <button type="button" class="btn btn-sm w-100 text-start p-1 px-2 border-0 bg-danger bg-opacity-10 text-danger fw-bold room-conflict-toggle" style="font-size: var(--fs-xs);"
                         onclick="event.stopPropagation(); this.classList.toggle('expanded'); this.nextElementSibling.classList.toggle('d-none');">
                         <i class="bi bi-calendar-x me-1"></i> จองแล้ว ${bookingCount} ครั้ง <i class="bi bi-chevron-down float-end mt-1 conflict-chevron"></i>
                     </button>
-                    <ul class="d-none mt-1 p-2 ps-4 mb-0 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger" style="font-size: .75rem;">
+                    <ul class="d-none mt-1 p-2 ps-4 mb-0 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger" style="font-size: var(--fs-xs);">
                         ${bookingDates.map(d => `<li>${d.range} <span class="opacity-75">— ${escapeHtml(d.name)}</span></li>`).join('')}
                     </ul>
                 ` : `
@@ -1606,7 +1606,7 @@ function checkRoomAvailability() {
             if (result.status === 'conflict') {
                 const ev = result.events[0];
                 statusDiv.innerHTML = `
-                    <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger text-danger" style="font-size: 0.8rem;">
+                    <div class="p-2 rounded bg-danger bg-opacity-10 border border-danger text-danger" style="font-size: var(--fs-sm);">
                         <div class="fw-bold"><i class="bi bi-x-circle-fill me-1"></i> ไม่ว่างช่วงนี้</div>
                         <div class="small mt-1">${ev.function_name}</div>
                         <div class="small opacity-75">${ev.start_time} - ${ev.end_time}</div>
@@ -1663,7 +1663,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const selCard = document.querySelector('input[name="room_id"]:checked')?.closest('.room-card');
         if (selCard && selCard.classList.contains('border-danger')) {
             e.preventDefault();
-            alert('ห้องนี้มีงานในช่วงเวลาที่เลือก กรุณาเปลี่ยนเวลาหรือเลือกห้องอื่น');
+            UI.alert('ห้องนี้มีงานในช่วงเวลาที่เลือก กรุณาเปลี่ยนเวลาหรือเลือกห้องอื่น');
         }
     });
 

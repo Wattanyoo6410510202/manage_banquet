@@ -182,7 +182,7 @@ $status_map = [
                     data-bs-target="#extQuoteModal">
                     <i class="bi bi-cloud-download me-2"></i> ดึงใบเสนอราคาจากระบบ
                 </button>
-                <a href="add_quote.php" class="btn btn-dark btn-create">
+                <a href="add_quote.php" class="btn btn-primary btn-create">
                     <i class="bi bi-plus-circle-fill me-2"></i> สร้างใบเสนอราคาใหม่
                 </a>
             </div>
@@ -243,7 +243,7 @@ $status_map = [
         .ql-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
             background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
         .ql-hero>*{position:relative;z-index:1}
-        .ql-hero .hero-sub{font-size:.78rem;color:var(--ink2)}
+        .ql-hero .hero-sub{font-size: var(--fs-xs);color:var(--ink2)}
         .ql-hero-divider{border:0;border-top:1px solid var(--line);margin:14px 0}
         .ql-tab-btn {
             display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; border-radius: 12px;
@@ -252,14 +252,14 @@ $status_map = [
             box-shadow: 0 1px 2px rgba(16,24,40,.04);
         }
         .ql-tab-btn:hover { border-color: var(--tab-color); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,.08); }
-        .ql-tab-btn i { font-size: 1.4rem; color: var(--tab-color); flex-shrink: 0; }
-        .ql-tab-btn .ql-tab-label { font-size: .75rem; font-weight: 700; color: #5b6470; text-transform: uppercase; letter-spacing: .4px; }
-        .ql-tab-btn .ql-tab-count { font-size: 1.3rem; font-weight: 800; line-height: 1.2; color: #111318; }
+        .ql-tab-btn i { font-size: var(--fs-xl); color: var(--tab-color); flex-shrink: 0; }
+        .ql-tab-btn .ql-tab-label { font-size: var(--fs-xs); font-weight: 700; color: #5b6470; text-transform: uppercase; letter-spacing: .4px; }
+        .ql-tab-btn .ql-tab-count { font-size: var(--fs-xl); font-weight: 800; line-height: 1.2; color: #111318; }
         .ql-tab-btn.active { border-color: var(--tab-color); background: var(--tab-color); }
         .ql-tab-btn.active i,
         .ql-tab-btn.active .ql-tab-label,
         .ql-tab-btn.active .ql-tab-count { color: var(--tab-color-text); }
-        @media (max-width: 575px) { .ql-tab-btn { padding: 10px 12px; gap: 8px; } .ql-tab-btn i { font-size: 1.2rem; } .ql-tab-btn .ql-tab-count { font-size: 1.1rem; } }
+        @media (max-width: 575px) { .ql-tab-btn { padding: 10px 12px; gap: 8px; } .ql-tab-btn i { font-size: var(--fs-lg); } .ql-tab-btn .ql-tab-count { font-size: var(--fs-lg); } }
     </style>
 
     <div class="card p-0 border-0 shadow-sm">
@@ -289,11 +289,11 @@ $status_map = [
                         <tr>
                             <td colspan="9" class="p-0">
                                 <div class="d-flex align-items-center gap-2 px-3 py-2 <?= $sec['header_class'] ?>"
-                                    style="font-weight: 700; font-size: 0.95rem; border-bottom: 2px solid rgba(0,0,0,0.08);">
+                                    style="font-weight: 700; font-size: var(--fs-md); border-bottom: 2px solid rgba(0,0,0,0.08);">
                                     <i class="bi <?= $sec['icon'] ?>"></i>
                                     <span><?= $sec['title'] ?></span>
                                     <span class="badge <?= $sec['badge_class'] ?> rounded-pill"
-                                        style="font-size: 0.7rem;"><?= $sec['count'] ?> ใบ</span>
+                                        style="font-size: var(--fs-xs);"><?= $sec['count'] ?> ใบ</span>
                                     <?php if ($sec['pages'] > 1): ?>
                                         <nav class="ms-auto">
                                             <ul class="pagination pagination-sm mb-0">
@@ -324,11 +324,11 @@ $status_map = [
                                 <td class="text-center" colspan="9">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="bi bi-plus-square text-muted toggle-quotes"
-                                            style="cursor: pointer; font-size: 1.1rem;"></i>
+                                            style="cursor: pointer; font-size: var(--fs-lg);"></i>
                                         <i class="bi bi-file-earmark-text text-muted"></i>
                                         <span class="fw-bold text-muted">ใบเสนอราคาที่ไม่มีโครงการ</span>
                                         <span class="badge bg-secondary text-white rounded-pill"
-                                            style="font-size: 0.65rem;"><?= count($sec_ungrouped) ?> ใบ</span>
+                                            style="font-size: var(--fs-xs);"><?= count($sec_ungrouped) ?> ใบ</span>
                                     </div>
                                 </td>
                             </tr>
@@ -338,17 +338,17 @@ $status_map = [
                                 ?>
                                 <tr class="quote-sub-row bg-light" data-parent-pid="<?= $sec['key'] ?>_ungrouped"
                                     style="display:none">
-                                    <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
+                                    <td class="text-center fw-bold text-primary" style="font-size: var(--fs-base);">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
+                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: var(--fs-sm);"></i>
                                             <?= $q['quote_no'] ?>
                                         </div>
                                         <?php if ($q['is_selected']): ?>
-                                            <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                            <div class="badge bg-primary d-block mt-1" style="font-size: var(--fs-xs);">SELECTED</div>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
-                                    <td style="font-size: 0.85rem;">
+                                    <td style="font-size: var(--fs-base);">
                                         <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
                                         -
                                         <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
@@ -370,7 +370,7 @@ $status_map = [
                                     <td class="text-center">
                                         <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
                                             <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
-                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                style="font-size: var(--fs-xs); padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                 data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                 <?php foreach (array_keys($workflow_statuses) as $ws): ?>
                                                     <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?>
@@ -379,7 +379,7 @@ $status_map = [
                                             </select>
                                         <?php else: ?>
                                             <span class="badge <?= $wf['class'] ?> px-2 py-1"
-                                                style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                                style="font-size: var(--fs-xs);"><?= $q['workflow_status'] ?? 'Draft' ?></span>
                                         <?php endif; ?>
                                     </td>
                                     <?php if ($can_use_quote): ?>
@@ -440,11 +440,11 @@ $status_map = [
                                 <td class="text-center" colspan="9">
                                     <div class="d-flex align-items-center gap-2">
                                         <i class="bi bi-plus-square text-gold toggle-quotes"
-                                            style="cursor: pointer; font-size: 1.1rem;"></i>
+                                            style="cursor: pointer; font-size: var(--fs-lg);"></i>
                                         <span class="fw-bold text-dark">ชื่อโครงการ:
                                             <?= htmlspecialchars($project['project_name']) ?></span>
                                         <span class="badge bg-gold text-white rounded-pill"
-                                            style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                            style="font-size: var(--fs-xs);"><?= count($quotes_list) ?> ใบ</span>
                                         <span
                                             class="text-muted small ms-2"><?= htmlspecialchars($first_q['cust_name']) ?></span>
                                         <?php if (!empty($first_q['cust_contact_name'])): ?>
@@ -467,17 +467,17 @@ $status_map = [
                                 ?>
                                 <tr class="quote-sub-row bg-light" data-parent-pid="<?= $sec['key'] ?>_p_<?= $pid ?>"
                                     style="display:none">
-                                    <td class="text-center fw-bold text-primary" style="font-size: 0.85rem;">
+                                    <td class="text-center fw-bold text-primary" style="font-size: var(--fs-base);">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: 0.8rem;"></i>
+                                            <i class="bi bi-arrow-return-right text-muted" style="font-size: var(--fs-sm);"></i>
                                             <?= $q['quote_no'] ?>
                                         </div>
                                         <?php if ($q['is_selected']): ?>
-                                            <div class="badge bg-primary d-block mt-1" style="font-size: 0.6rem;">SELECTED</div>
+                                            <div class="badge bg-primary d-block mt-1" style="font-size: var(--fs-xs);">SELECTED</div>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($q['created_at'])) ?></td>
-                                    <td style="font-size: 0.85rem;">
+                                    <td style="font-size: var(--fs-base);">
                                         <?= !empty($q['event_date']) ? date('d/m/Y', strtotime($q['event_date'])) : '-' ?>
                                         -
                                         <?= !empty($q['expiry_date']) ? date('d/m/Y', strtotime($q['expiry_date'])) : '-' ?>
@@ -496,7 +496,7 @@ $status_map = [
                                     <td class="text-center">
                                         <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
                                             <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
-                                                style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                style="font-size: var(--fs-xs); padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                 data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                 <?php foreach (array_keys($workflow_statuses) as $ws): ?>
                                                     <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?>
@@ -505,7 +505,7 @@ $status_map = [
                                             </select>
                                         <?php else: ?>
                                             <span class="badge <?= $wf['class'] ?> px-2 py-1"
-                                                style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                                style="font-size: var(--fs-xs);"><?= $q['workflow_status'] ?? 'Draft' ?></span>
                                         <?php endif; ?>
                                     </td>
                                     <?php if ($can_use_quote): ?>
@@ -570,11 +570,11 @@ $status_map = [
                 <!-- Section Header Mobile -->
                 <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
                     <div class="card-body p-3 <?= $sec['header_class'] ?>">
-                        <div class="d-flex align-items-center gap-2 fw-bold" style="font-size: 0.95rem;">
+                        <div class="d-flex align-items-center gap-2 fw-bold" style="font-size: var(--fs-md);">
                             <i class="bi <?= $sec['icon'] ?>"></i>
                             <span><?= $sec['title'] ?></span>
                             <span class="badge <?= $sec['badge_class'] ?> rounded-pill"
-                                style="font-size: 0.7rem;"><?= $sec['count'] ?> ใบ</span>
+                                style="font-size: var(--fs-xs);"><?= $sec['count'] ?> ใบ</span>
                         </div>
                     </div>
                 </div>
@@ -588,7 +588,7 @@ $status_map = [
                                         class="bi bi-file-earmark-text me-1"></i>ใบเสนอราคาที่ไม่มีโครงการ
                                     (<?= count($sec_ungrouped) ?>)</div>
                                 <i class="bi bi-chevron-down text-muted toggle-ungrouped-mobile-<?= $sec['key'] ?>"
-                                    style="cursor: pointer; font-size: 1.2rem;"></i>
+                                    style="cursor: pointer; font-size: var(--fs-lg);"></i>
                             </div>
                             <div id="mobile-ungrouped-<?= $sec['key'] ?>" style="display:none">
                                 <?php foreach ($sec_ungrouped as $q):
@@ -608,7 +608,7 @@ $status_map = [
                                             <div class="mb-2">
                                                 <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
                                                     <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
-                                                        style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                        style="font-size: var(--fs-xs); padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                         data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                         <?php foreach (array_keys($workflow_statuses) as $ws): ?>
                                                             <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>><?= $ws ?></option>
@@ -616,7 +616,7 @@ $status_map = [
                                                     </select>
                                                 <?php else: ?>
                                                     <span class="badge <?= $wf['class'] ?> px-2 py-1"
-                                                        style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                                        style="font-size: var(--fs-xs);"><?= $q['workflow_status'] ?? 'Draft' ?></span>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="fw-bold text-dark mb-1">ชื่อลูกค้า : <?= $q['cust_name'] ?></div>
@@ -669,7 +669,7 @@ $status_map = [
                                         ชื่อโครงการ: <?= htmlspecialchars($project['project_name']) ?>
                                     </div>
                                     <span class="badge bg-gold text-white rounded-pill"
-                                        style="font-size: 0.65rem;"><?= count($quotes_list) ?> ใบ</span>
+                                        style="font-size: var(--fs-xs);"><?= count($quotes_list) ?> ใบ</span>
                                     <?php if (!empty($first_q['cust_contact_name'])): ?>
                                         <div class="text-muted small mt-1"><i
                                                 class="bi bi-person me-1"></i><?= htmlspecialchars($first_q['cust_contact_name']) ?>
@@ -683,7 +683,7 @@ $status_map = [
                                     </a>
                                     <i class="bi bi-chevron-down text-gold toggle-mobile-quotes"
                                         data-pid="<?= $sec['key'] ?>_p_<?= $pid ?>"
-                                        style="cursor: pointer; font-size: 1.2rem;"></i>
+                                        style="cursor: pointer; font-size: var(--fs-lg);"></i>
                                 </div>
                             </div>
 
@@ -700,7 +700,7 @@ $status_map = [
                                             <div>
                                                 <span class="fw-bold text-primary"><?= $q['quote_no'] ?></span>
                                                 <?php if ($q['is_selected']): ?>
-                                                    <span class="badge bg-primary" style="font-size: 0.6rem;">SELECTED</span>
+                                                    <span class="badge bg-primary" style="font-size: var(--fs-xs);">SELECTED</span>
                                                 <?php endif; ?>
                                                 <div class="text-muted small"><?= date('d/m/Y', strtotime($q['created_at'])) ?>
                                                 </div>
@@ -712,7 +712,7 @@ $status_map = [
                                         <div class="mb-2">
                                             <?php if ($is_admin_or_gm || intval($q['created_by']) === $current_user_id): ?>
                                                 <select class="form-select form-select-sm wf-status-select <?= $wf['class'] ?>"
-                                                    style="font-size: 0.72rem; padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
+                                                    style="font-size: var(--fs-xs); padding: 3px 26px 3px 8px; border-radius: 20px; width: auto; display: inline-block; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 6px center;"
                                                     data-id="<?= $q['id'] ?>" onchange="updateWorkflowStatus(this)">
                                                     <?php foreach (array_keys($workflow_statuses) as $ws): ?>
                                                         <option value="<?= $ws ?>" <?= ($q['workflow_status'] ?? 'Draft') === $ws ? 'selected' : '' ?><?= ($q['status'] === 'Approved' && $ws === 'Draft') ? ' disabled' : '' ?>>
@@ -721,7 +721,7 @@ $status_map = [
                                                 </select>
                                             <?php else: ?>
                                                 <span class="badge <?= $wf['class'] ?> px-2 py-1"
-                                                    style="font-size: 0.72rem;"><?= $q['workflow_status'] ?? 'Draft' ?></span>
+                                                    style="font-size: var(--fs-xs);"><?= $q['workflow_status'] ?? 'Draft' ?></span>
                                             <?php endif; ?>
                                         </div>
 
@@ -856,7 +856,6 @@ $status_map = [
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     $(document).ready(function () {
         // Toggle project sub-rows (desktop)

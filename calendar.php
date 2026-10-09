@@ -75,7 +75,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                 <div class="collapse show" id="conflictCollapse">
                     <div class="card-body p-2">
                         <div class="table-responsive">
-                            <table class="table table-sm table-bordered mb-0" style="font-size:0.8rem;">
+                            <table class="table table-sm table-bordered mb-0" style="font-size: var(--fs-sm);">
                                 <thead class="table-warning">
                                     <tr>
                                         <th>ห้อง</th>
@@ -174,7 +174,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                         </div>
                         <?php if ($can_manage): ?>
                         <div class="col-md-2">
-                            <button class="btn btn-dark btn-sm w-100" onclick="openRoomBookingModal()">
+                            <button class="btn btn-primary btn-sm w-100" onclick="openRoomBookingModal()">
                                 <i class="bi bi-door-open me-1"></i> จองห้องประชุม
                             </button>
                         </div>
@@ -387,13 +387,13 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                             <input type="text" name="remark" class="form-control form-control-sm" placeholder="หมายเหตุ...">
                         </div>
                     </div>
-                    <div id="rbConflictAlert" class="alert alert-danger mt-3 mb-0 d-none" style="font-size:0.8rem;">
+                    <div id="rbConflictAlert" class="alert alert-danger mt-3 mb-0 d-none" style="font-size: var(--fs-sm);">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <span id="rbConflictMsg"></span>
                     </div>
                     <div class="text-end mt-4">
                         <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="submit" id="btnSubmitRb" class="btn btn-dark btn-sm px-4">
+                        <button type="submit" id="btnSubmitRb" class="btn btn-primary btn-sm px-4">
                             <i class="bi bi-check-lg me-1"></i> บันทึกการจอง
                         </button>
                     </div>
@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
             url: 'api/calendar_events.php',
             method: 'GET',
             extraParams: function () { return { _: Date.now() }; },
-            failure: function () { alert('\u0e42\u0e2b\u0e25\u0e14\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e07\u0e32\u0e19\u0e43\u0e19\u0e1b\u0e0f\u0e34\u0e17\u0e34\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'); }
+            failure: function () { UI.alert('\u0e42\u0e2b\u0e25\u0e14\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e07\u0e32\u0e19\u0e43\u0e19\u0e1b\u0e0f\u0e34\u0e17\u0e34\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'); }
         },
 
         eventClick: function (info) {
@@ -963,7 +963,7 @@ function renderRow(ev) {
             <td class="small">${props.created_by_name || '-'}</td>
             <td class="fw-bold small">฿${props.total}</td>
             <td class="small editable" data-field="result" data-eid="${eid}">${props.result || '-'}</td>
-            <td><span class="badge ${badgeClass}" style="font-size:0.7rem;">${props.status}</span></td>
+            <td><span class="badge ${badgeClass}" style="font-size: var(--fs-xs);">${props.status}</span></td>
             <td class="small">${fmtDateTime(props.created_at)}</td>
             <td class="small editable" data-field="inspection_date" data-eid="${eid}" data-raw="${(props.inspection_date && props.inspection_date !== '0000-00-00' && props.inspection_date !== '0000-00-00 00:00:00') ? props.inspection_date : ''}">${fmtDate(props.inspection_date)}</td>
             <td class="small editable" data-field="follow_up_date" data-eid="${eid}" data-raw="${(props.follow_up_date && props.follow_up_date !== '0000-00-00' && props.follow_up_date !== '0000-00-00 00:00:00') ? props.follow_up_date : ''}">${fmtDate(props.follow_up_date)}</td>
@@ -1052,7 +1052,7 @@ function renderQtRow(ev) {
             <td class="small">${fmtDate(props.confirmed_date)}</td>
             <td class="small">฿${props.func_deposit}</td>
             <td class="small text-center">${props.has_beo || '-'}</td>
-            <td><span class="badge ${badgeClass}" style="font-size:0.7rem;">${props.status}</span></td>
+            <td><span class="badge ${badgeClass}" style="font-size: var(--fs-xs);">${props.status}</span></td>
             <td class="fw-bold small">฿${balance.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
         </tr>
     `;
@@ -1404,7 +1404,7 @@ function exportExcel() {
     const dateText = document.getElementById('selectedDateText')?.innerText || '';
     let html = '<html><head><meta charset="utf-8"><title>Export</title></head><body>';
     html += '<h3>ตารางเวลา: ' + dateText + ' (' + label + ')</h3>';
-    html += '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size:12px;">';
+    html += '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size: var(--fs-xs);">';
     html += '<thead><tr style="background:#212529;color:#fff;">';
     const headerTr = tbl.querySelector('thead tr');
     if (headerTr) {
@@ -1437,7 +1437,7 @@ function exportExcel() {
 <style>
     /* ===== ตัวกรอง: label เล็กเหนือ select ===== */
     .cal-filter-label {
-        font-size: .68rem; text-transform: uppercase; letter-spacing: .5px;
+        font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .5px;
         color: #8a9099; font-weight: 700; margin-bottom: 3px; display: block;
     }
 
@@ -1445,7 +1445,7 @@ function exportExcel() {
     .cal-legend {
         display: flex; flex-wrap: wrap; gap: 4px 14px;
         padding: 8px 2px 10px; margin-top: 4px;
-        border-top: 1px dashed #eef0f2; font-size: .72rem; color: #6c757d;
+        border-top: 1px dashed #eef0f2; font-size: var(--fs-xs); color: #6c757d;
     }
     .cal-legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
     .cal-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -1458,11 +1458,11 @@ function exportExcel() {
     .cal-swatch.cal-chip-rb { border-left-width: 5px; background: #ede4fa; }
 
     /* ===== ตัวปฏิทิน (FullCalendar) ===== */
-    #calendar { font-size: 0.85rem; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
-    .fc-toolbar-title { font-size: 1.1rem !important; font-weight: bold; color: #333; }
+    #calendar { font-size: var(--fs-base); background: white; border-radius: 10px; padding: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+    .fc-toolbar-title { font-size: var(--fs-lg) !important; font-weight: bold; color: #333; }
     .fc .fc-daygrid-day-frame { min-height: 92px; }
     .fc .fc-daygrid-day-top { padding: 3px 4px 0; }
-    .fc .fc-daygrid-day-number { font-size: 0.85rem; font-weight: 600; padding: 2px 4px; }
+    .fc .fc-daygrid-day-number { font-size: var(--fs-base); font-weight: 600; padding: 2px 4px; }
     .fc .fc-col-header-cell-cushion { font-weight: 600; padding: 6px 4px; color: #5b6470; }
     .fc .fc-day-today { background: rgba(184, 148, 65, 0.07) !important; }
     .fc .fc-day-today .fc-daygrid-day-number {
@@ -1490,9 +1490,9 @@ function exportExcel() {
         line-height: 1.5; overflow: hidden; white-space: nowrap;
     }
     .cal-chip:hover { filter: brightness(.9); }
-    .cal-chip-icon { flex-shrink: 0; font-size: .62rem; opacity: .9; }
-    .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: .68rem; opacity: .95; }
-    .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: .72rem; }
+    .cal-chip-icon { flex-shrink: 0; font-size: var(--fs-xs); opacity: .9; }
+    .cal-chip-time { flex-shrink: 0; font-weight: 700; font-size: var(--fs-xs); opacity: .95; }
+    .cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-size: var(--fs-xs); }
     .cal-chip-qt { font-style: italic; }                                     /* ใบเสนอราคา — เอียงบอกว่ายังไม่ใช่งานจริง */
     .cal-chip-qt .cal-chip-title { font-style: italic; }
     .cal-chip-rb { border-left: 4px solid rgba(255,255,255,.6); font-weight: 600; } /* จองห้อง — แถบซ้ายหนา เพราะล็อกห้องจริง */
@@ -1502,14 +1502,14 @@ function exportExcel() {
         flex-shrink: 0; display: inline-flex; align-items: center;
         background: #fff; color: #d03b3b !important;
         border: 1px solid rgba(220, 53, 69, .5); border-radius: 999px;
-        padding: 0 6px; font-size: .58rem; font-weight: 700; line-height: 1.5;
+        padding: 0 6px; font-size: var(--fs-xs); font-weight: 700; line-height: 1.5;
         box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap;
     }
-    .cal-bubble .bi { font-size: .58rem; }
+    .cal-bubble .bi { font-size: var(--fs-xs); }
 
     /* "+N งาน" ให้ดูเป็นปุ่มเล็กๆ กดได้ชัดเจน แทนตัวหนังสือเปลือย */
     .fc .fc-daygrid-more-link {
-        font-size: .68rem; font-weight: 700; color: #8a6c22; background: #f7f1e3;
+        font-size: var(--fs-xs); font-weight: 700; color: #8a6c22; background: #f7f1e3;
         border-radius: 3px; padding: 1px 6px; margin-top: 1px; display: inline-block;
     }
     .fc .fc-daygrid-more-link:hover { background: #efe3c4; }
@@ -1528,10 +1528,10 @@ function exportExcel() {
 
     @media (max-width: 768px) {
         #statsRow .card-body { padding: 0.5rem; }
-        #statsRow .card-body i { font-size: 1rem !important; }
-        #statsRow .card-body div div { font-size: 0.75rem; }
+        #statsRow .card-body i { font-size: var(--fs-md) !important; }
+        #statsRow .card-body div div { font-size: var(--fs-xs); }
         .fc .fc-daygrid-day-frame { min-height: 68px; }
-        .cal-legend { gap: 4px 10px; font-size: .68rem; }
+        .cal-legend { gap: 4px 10px; font-size: var(--fs-xs); }
     }
 </style>
 

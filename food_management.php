@@ -208,7 +208,7 @@ require_once "header.php";
                                     <i class="bi bi-lock-fill me-2"></i>โหมดอ่านอย่างเดียว (Viewer)
                                 </button>
                                 <div class="text-center">
-                                    <small class="text-danger" style="font-size: 0.7rem;">*
+                                    <small class="text-danger" style="font-size: var(--fs-xs);">*
                                         คุณไม่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล</small>
                                 </div>
                             <?php endif; ?>
@@ -390,10 +390,10 @@ require_once "header.php";
                 updateSelectedCount();
             });
 
-            $('#btnDeleteSelected').on('click', function () {
+            $('#btnDeleteSelected').on('click', async function () {
                 let ids = $('.row-check:checked').map(function () { return $(this).val(); }).get();
                 if (ids.length === 0) return;
-                if (!confirm('ต้องการลบ ' + ids.length + ' รายการที่เลือก? เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) return;
+                if (!await UI.confirm('ต้องการลบ ' + ids.length + ' รายการที่เลือก? เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) return;
 
                 let fd = new FormData();
                 fd.append('action', 'delete_multi');
@@ -410,12 +410,12 @@ require_once "header.php";
                             $('#checkAll').prop('checked', false);
                             updateSelectedCount();
                         } else {
-                            alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่สามารถลบข้อมูลได้'));
+                            UI.alert('เกิดข้อผิดพลาด: ' + (res.message || 'ไม่สามารถลบข้อมูลได้'));
                         }
                     })
                     .catch(err => {
                         console.error('Error:', err);
-                        alert('การเชื่อมต่อล้มเหลว');
+                        UI.alert('การเชื่อมต่อล้มเหลว');
                     });
             });
         }
@@ -502,7 +502,7 @@ require_once "header.php";
                 })
                 .catch(err => {
                     console.error('Error:', err);
-                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                    UI.alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
                 });
         });
 
@@ -622,9 +622,9 @@ require_once "header.php";
         $('#btnSubmit').text('บันทึกข้อมูล').removeClass('btn-primary').addClass('btn-success');
     }
 
-    function deleteMenu(id) {
+    async function deleteMenu(id) {
         // 1. เพิ่ม Confirm Alert ก่อนทำรายการ
-        if (confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
+        if (await UI.confirm('เมื่อดำเนินการ จะไม่สามารถย้อนกลับได้')) {
 
             let fd = new FormData();
             fd.append('action', 'delete');
@@ -639,14 +639,14 @@ require_once "header.php";
                         updateSelectedCount();
 
                         // (Optional) อยากให้แจ้งเตือนว่าลบเสร็จแล้วก็ใส่เพิ่มตรงนี้ได้
-                        // alert('ลบข้อมูลเรียบร้อยแล้ว');
+                        // UI.alert('ลบข้อมูลเรียบร้อยแล้ว');
                     } else {
-                        alert('เกิดข้อผิดพลาด: ไม่สามารถลบข้อมูลได้');
+                        UI.alert('เกิดข้อผิดพลาด: ไม่สามารถลบข้อมูลได้');
                     }
                 })
                 .catch(err => {
                     console.error('Error:', err);
-                    alert('การเชื่อมต่อล้มเหลว');
+                    UI.alert('การเชื่อมต่อล้มเหลว');
                 });
         }
     }

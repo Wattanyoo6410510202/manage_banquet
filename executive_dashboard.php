@@ -460,7 +460,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     --ink:#111318; --ink-2:#5b6470; --muted:#8a9099;
     --line:#e8eaee; --line-soft:#f0f2f5; --surface:#fff;
     --ok:#0ca30c; --warn:#fab219; --crit:#d03b3b;
-    font-family:'Sarabun','Inter',sans-serif; color:var(--ink);
+    color:var(--ink);
 }
 .exec-dash .text-dim{color:var(--ink-2)}
 .exec-dash .num{font-variant-numeric:tabular-nums}
@@ -476,22 +476,20 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     background:radial-gradient(520px 200px at 92% -40%, rgba(184,148,65,.10), transparent 70%);
 }
 .exec-hero > *{position:relative; z-index:1}
-.exec-hero .section-title{font-size:1.05rem;font-weight:700;margin:0;letter-spacing:.2px;color:var(--ink)}
-.exec-hero .hero-sub{font-size:.78rem;color:var(--ink-2)}
+.exec-hero .section-title{font-size: var(--fs-md);font-weight:700;margin:0;letter-spacing:.2px;color:var(--ink)}
+.exec-hero .hero-sub{font-size: var(--fs-xs);color:var(--ink-2)}
 
 /* ---------- Filter bar (พื้นขาว แยกออกมาจากแถบหัวสีเข้ม) ---------- */
 .exec-filter{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 16px}
-.exec-filter .flt-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:3px;display:block}
+.exec-filter .flt-label{font-size: var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:3px;display:block}
 .exec-filter .form-control,.exec-filter .form-select{
     background:#fff;border:1px solid var(--line);color:var(--ink);
-    font-size:.8rem;border-radius:9px;box-shadow:none;
+    font-size: var(--fs-sm);border-radius:9px;box-shadow:none;
 }
 .exec-filter .form-control:focus,.exec-filter .form-select:focus{
     border-color:var(--gold);box-shadow:0 0 0 .18rem rgba(184,148,65,.15);
 }
 .exec-filter .form-select:disabled{background:#f2f4f7;color:var(--muted)}
-.btn-gold{background:var(--gold);border:1px solid var(--gold);color:#fff;font-weight:600;font-size:.78rem;border-radius:9px;padding:6px 16px}
-.btn-gold:hover{background:#a5833a;border-color:#a5833a;color:#fff}
 
 /* ---------- Stat tiles ---------- */
 .tile{
@@ -501,10 +499,10 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 .tile:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(16,24,40,.09);border-color:#dcdfe5}
 .tile.is-click{cursor:pointer}
 .tile-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.tile-label{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
-.tile-ico{width:30px;height:30px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;font-size:.9rem}
-.tile-value{margin-top:7px;font-size:1.5rem;font-weight:700;line-height:1.15;letter-spacing:-.2px}
-.tile-sub{margin-top:3px;font-size:.74rem;color:var(--ink-2)}
+.tile-label{font-size: var(--fs-xs);font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.tile-ico{width:30px;height:30px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;font-size: var(--fs-base)}
+.tile-value{margin-top:7px;font-size: var(--fs-xl);font-weight:700;line-height:1.15;letter-spacing:-.2px}
+.tile-sub{margin-top:3px;font-size: var(--fs-xs);color:var(--ink-2)}
 .tile .bar{height:6px;border-radius:99px;background:var(--line-soft);overflow:hidden;margin-top:9px}
 .tile .bar > span{display:block;height:100%;border-radius:99px}
 
@@ -515,9 +513,9 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .chip:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(16,24,40,.08);border-color:#dcdfe5}
-.chip-ico{width:32px;height:32px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;font-size:1rem}
-.chip-lb{font-size:.76rem;font-weight:600;color:var(--ink-2);line-height:1.25}
-.chip-n{margin-left:auto;font-size:1.15rem;font-weight:700}
+.chip-ico{width:32px;height:32px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;font-size: var(--fs-md)}
+.chip-lb{font-size: var(--fs-xs);font-weight:600;color:var(--ink-2);line-height:1.25}
+.chip-n{margin-left:auto;font-size: var(--fs-lg);font-weight:700}
 .chip.ok .chip-ico{background:#e9f7e9;color:var(--ok)} .chip.ok .chip-n{color:var(--ok)}
 .chip.warn .chip-ico{background:#fdf4de;color:#9a6a06} .chip.warn .chip-n{color:#9a6a06}
 .chip.warn{border-color:#f4e3bb}
@@ -528,37 +526,37 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 .exec-tabs{border:0;gap:6px;flex-wrap:wrap}
 .exec-tabs .nav-link{
     border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
-    border-radius:999px;padding:7px 16px;font-size:.8rem;font-weight:600;
+    border-radius:999px;padding:7px 16px;font-size: var(--fs-sm);font-weight:600;
 }
 .exec-tabs .nav-link:hover{border-color:#d3d7dd;color:var(--ink)}
-.exec-tabs .nav-link.active{background:#16181d;border-color:#16181d;color:#fff}
-.exec-tabs .nav-link .badge{font-size:.62rem;font-weight:700}
+.exec-tabs .nav-link.active{background:var(--gold-tint);border-color:#e3d3a8;color:#7a5d1c}
+.exec-tabs .nav-link .badge{font-size: var(--fs-xs);font-weight:700}
 
 /* ---------- Panels ---------- */
 .pnl{background:var(--surface);border:1px solid var(--line);border-radius:14px;height:100%;overflow:hidden}
 .pnl-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
-.pnl-hd h6{margin:0;font-size:.88rem;font-weight:700}
-.pnl-hd .hint{font-size:.72rem;color:var(--muted);font-weight:400}
+.pnl-hd h6{margin:0;font-size: var(--fs-base);font-weight:700}
+.pnl-hd .hint{font-size: var(--fs-xs);color:var(--muted);font-weight:400}
 .pnl-bd{padding:16px}
 .pnl-bd.tight{padding:8px 16px 14px}
-.pnl-note{font-size:.72rem;color:var(--muted);padding:0 16px 12px;line-height:1.55}
-.pnl-desc{display:flex;gap:7px;font-size:.72rem;color:var(--muted);line-height:1.6;padding:10px 16px 0}
+.pnl-note{font-size: var(--fs-xs);color:var(--muted);padding:0 16px 12px;line-height:1.55}
+.pnl-desc{display:flex;gap:7px;font-size: var(--fs-xs);color:var(--muted);line-height:1.6;padding:10px 16px 0}
 .pnl-desc i{color:var(--gold);flex:0 0 auto;margin-top:2px}
-.sec-desc{display:flex;gap:7px;font-size:.74rem;color:var(--ink-2);line-height:1.6;margin:0 2px 9px}
+.sec-desc{display:flex;gap:7px;font-size: var(--fs-xs);color:var(--ink-2);line-height:1.6;margin:0 2px 9px}
 .sec-desc i{color:var(--gold);flex:0 0 auto;margin-top:3px}
 
 /* ---------- Segmented toggle ---------- */
 .seg{display:inline-flex;background:#f2f4f7;border-radius:999px;padding:3px;gap:2px}
-.seg-btn{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size:.74rem;font-weight:600;color:var(--ink-2)}
+.seg-btn{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size: var(--fs-xs);font-weight:600;color:var(--ink-2)}
 .seg-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.14)}
 
 /* ---------- Chart box ---------- */
 .chart-box{position:relative;width:100%}
-.chart-empty{display:grid;place-items:center;color:var(--muted);font-size:.8rem;min-height:160px}
+.chart-empty{display:grid;place-items:center;color:var(--muted);font-size: var(--fs-sm);min-height:160px}
 
 /* ---------- Donut legend / table twin ---------- */
 .lgd{list-style:none;margin:0;padding:0}
-.lgd li{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size:.79rem;cursor:pointer}
+.lgd li{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size: var(--fs-sm);cursor:pointer}
 .lgd li:last-child{border-bottom:0}
 .lgd li:hover{background:#f8f9fb}
 .lgd .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
@@ -569,31 +567,31 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 /* ---------- Funnel / runway ---------- */
 .fn-row{display:grid;grid-template-columns:112px 1fr auto;align-items:center;gap:12px;padding:9px 6px;border-radius:9px;cursor:pointer}
 .fn-row:hover{background:#f7f8fa}
-.fn-lb{font-size:.78rem;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.fn-lb{font-size: var(--fs-xs);font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px}
 .fn-track{height:12px;border-radius:99px;background:var(--line-soft);overflow:hidden}
 .fn-fill{display:block;height:100%;border-radius:99px;min-width:3px}
 .fn-num{text-align:right;min-width:96px}
-.fn-num b{font-size:.92rem;font-variant-numeric:tabular-nums}
-.fn-num small{display:block;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.fn-num b{font-size: var(--fs-base);font-variant-numeric:tabular-nums}
+.fn-num small{display:block;font-size: var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}
 
 /* ---------- Mini stats ---------- */
 .ministat{border:1px solid var(--line);border-radius:11px;padding:9px 8px;text-align:center;height:100%;background:var(--surface)}
-.ministat .v{font-size:1.1rem;font-weight:700;line-height:1.2}
-.ministat .l{font-size:.68rem;color:var(--muted);margin-top:2px}
+.ministat .v{font-size: var(--fs-lg);font-weight:700;line-height:1.2}
+.ministat .l{font-size: var(--fs-xs);color:var(--muted);margin-top:2px}
 
 /* ---------- Tables ---------- */
-.tbl{width:100%;margin:0;font-size:.79rem}
+.tbl{width:100%;margin:0;font-size: var(--fs-sm)}
 .tbl thead th{
-    background:#fafbfc;color:var(--muted);font-weight:700;font-size:.68rem;text-transform:uppercase;
+    background:#fafbfc;color:var(--muted);font-weight:700;font-size: var(--fs-xs);text-transform:uppercase;
     letter-spacing:.4px;border-bottom:1px solid var(--line)!important;white-space:nowrap;padding:9px 12px;
 }
 .tbl tbody td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
 .tbl tbody tr:last-child td{border-bottom:0}
 .tbl tbody tr:hover{background:#f8f9fb}
 .tbl .num{font-variant-numeric:tabular-nums}
-.tag{display:inline-block;background:#f1f3f6;color:var(--ink-2);border-radius:6px;padding:1px 7px;font-size:.7rem;font-weight:600}
-.rank{width:22px;height:22px;border-radius:7px;display:inline-grid;place-items:center;background:var(--gold-tint);color:#8a6c22;font-size:.68rem;font-weight:700}
-.who{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:#eef1f6;color:var(--ink-2);font-size:.68rem;font-weight:700;margin-right:7px}
+.tag{display:inline-block;background:#f1f3f6;color:var(--ink-2);border-radius:6px;padding:1px 7px;font-size: var(--fs-xs);font-weight:600}
+.rank{width:22px;height:22px;border-radius:7px;display:inline-grid;place-items:center;background:var(--gold-tint);color:#8a6c22;font-size: var(--fs-xs);font-weight:700}
+.who{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:#eef1f6;color:var(--ink-2);font-size: var(--fs-xs);font-weight:700;margin-right:7px}
 .prog{height:6px;border-radius:99px;background:var(--line-soft);width:66px;overflow:hidden}
 .prog > span{display:block;height:100%;border-radius:99px}
 
@@ -601,7 +599,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 .exec-dash a.lk:hover{color:var(--gold)}
 
 @media (max-width:575px){
-    .tile-value{font-size:1.3rem}
+    .tile-value{font-size: var(--fs-xl)}
     .fn-row{grid-template-columns:92px 1fr auto}
 }
 @media print{
@@ -930,7 +928,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-2">
                                 <i class="bi bi-alarm" style="color:var(--crit)"></i>
-                                <span class="fw-bold" style="font-size:.8rem">ใกล้หมดอายุใน 7 วัน</span>
+                                <span class="fw-bold" style="font-size: var(--fs-sm)">ใกล้หมดอายุใน 7 วัน</span>
                             </div>
                             <?php if ($expiring_quotes->num_rows > 0): ?>
                                 <div class="table-responsive">
@@ -949,7 +947,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                     </table>
                                 </div>
                             <?php else: ?>
-                                <div class="text-dim" style="font-size:.78rem"><i class="bi bi-check-circle me-1" style="color:var(--ok)"></i>ไม่มีใบเสนอราคาใกล้หมดอายุ</div>
+                                <div class="text-dim" style="font-size: var(--fs-xs)"><i class="bi bi-check-circle me-1" style="color:var(--ok)"></i>ไม่มีใบเสนอราคาใกล้หมดอายุ</div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1164,7 +1162,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                         <div class="pnl-bd">
                             <div class="chart-box" style="height:150px"><canvas id="gopChart"></canvas></div>
                             <div class="d-flex justify-content-between align-items-center mt-2 pt-2" style="border-top:1px solid var(--line)">
-                                <span class="text-dim" style="font-size:.78rem">GOP Margin</span>
+                                <span class="text-dim" style="font-size: var(--fs-xs)">GOP Margin</span>
                                 <span class="fw-bold num" style="color:<?= $gop_forecast >= 0 ? 'var(--ok)' : 'var(--crit)' ?>"><?= $gop_margin ?>%</span>
                             </div>
                         </div>
@@ -1235,7 +1233,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                 <div class="text-center">
                                     <i class="bi bi-clipboard-data" style="font-size:2rem;color:var(--muted)"></i>
                                     <div class="mt-2">รอเชื่อมต่อข้อมูลแบบสำรวจ</div>
-                                    <div style="font-size:.72rem;color:var(--muted)">ระบบจะแสดงคะแนนเฉลี่ยจากแบบสำรวจที่เก็บได้</div>
+                                    <div style="font-size: var(--fs-xs);color:var(--muted)">ระบบจะแสดงคะแนนเฉลี่ยจากแบบสำรวจที่เก็บได้</div>
                                 </div>
                             </div>
                         </div>
@@ -1249,7 +1247,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                 <div class="text-center">
                                     <i class="bi bi-graph-up" style="font-size:2rem;color:var(--muted)"></i>
                                     <div class="mt-2">รอข้อมูลแบบสำรวจ</div>
-                                    <div style="font-size:.72rem;color:var(--muted)">แสดงสัดส่วน 5 ดาว / 4 ดาว ฯลฯ</div>
+                                    <div style="font-size: var(--fs-xs);color:var(--muted)">แสดงสัดส่วน 5 ดาว / 4 ดาว ฯลฯ</div>
                                 </div>
                             </div>
                         </div>
@@ -1263,7 +1261,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                 <div class="text-center">
                                     <i class="bi bi-chat-left-text" style="font-size:2rem;color:var(--muted)"></i>
                                     <div class="mt-2">ยังไม่มีความคิดเห็น</div>
-                                    <div style="font-size:.72rem;color:var(--muted)">ความคิดเห็นจากลูกค้าจะแสดงที่นี่</div>
+                                    <div style="font-size: var(--fs-xs);color:var(--muted)">ความคิดเห็นจากลูกค้าจะแสดงที่นี่</div>
                                 </div>
                             </div>
                         </div>
@@ -1280,7 +1278,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
                                 <div class="text-center">
                                     <i class="bi bi-inbox" style="font-size:2.5rem;color:var(--muted)"></i>
                                     <div class="mt-2 fw-bold" style="color:var(--ink-2)">ระบบแบบสำรวจความพึงพอใจ</div>
-                                    <div style="font-size:.74rem;color:var(--muted);max-width:400px;margin:6px auto 0;line-height:1.6">
+                                    <div style="font-size: var(--fs-xs);color:var(--muted);max-width:400px;margin:6px auto 0;line-height:1.6">
                                         ฟีเจอร์นี้อยู่ระหว่างการพัฒนา · เมื่อพร้อมใช้งานจะแสดงรายชื่องานที่ส่งแบบสำรวจแล้ว
                                         พร้อมคะแนนรวมและความคิดเห็นจากลูกค้า
                                     </div>
@@ -1300,7 +1298,7 @@ $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden">
             <div class="modal-header py-2" style="background:#16181d;color:#fff;border:0">
-                <h6 class="modal-title fw-bold" style="font-size:.9rem"><i class="bi bi-search me-2" style="color:#b89441"></i><span id="drillTitle">รายละเอียด</span></h6>
+                <h6 class="modal-title fw-bold" style="font-size: var(--fs-base)"><i class="bi bi-search me-2" style="color:#b89441"></i><span id="drillTitle">รายละเอียด</span></h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-2" id="drillBody"></div>
@@ -1416,7 +1414,7 @@ function showDrill(title, rows, columns) {
         });
         html += '</tbody></table></div>';
         const sum = rows.reduce((s, r) => s + Number(r.total_amount || r.grand_total || r.amount || 0), 0);
-        html += '<div class="text-end mt-2 px-2" style="font-size:.78rem;color:#5b6470">ทั้งหมด <b>' + rows.length + '</b> รายการ · รวม <b>' + baht(sum) + '</b></div>';
+        html += '<div class="text-end mt-2 px-2" style="font-size: var(--fs-xs);color:#5b6470">ทั้งหมด <b>' + rows.length + '</b> รายการ · รวม <b>' + baht(sum) + '</b></div>';
     }
     document.getElementById('drillBody').innerHTML = html;
     bootstrap.Modal.getOrCreateInstance(document.getElementById('drillModal')).show();

@@ -52,7 +52,7 @@ $items = $conn->query("SELECT * FROM master_checklist_bk ORDER BY id ASC");
                         <td><?= $row['id'] ?></td>
                         <td><?= htmlspecialchars($row['task_detail']) ?></td>
                         <td>
-                            <form method="POST" onsubmit="return confirm('ยืนยันการลบ?');">
+                            <form method="POST" data-confirm="ยืนยันการลบ?">
                                 <input type="hidden" name="id" value="<?= $row['id'] ?>">
                                 <button type="submit" name="delete" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button>
                             </form>
