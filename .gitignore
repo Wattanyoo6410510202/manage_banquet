@@ -6,3 +6,5 @@ config.php
 .DS_Store
 Thumbs.db
 /uploads
+# Smart Login (SSO) — contains ITCC secret key
+sso.php
