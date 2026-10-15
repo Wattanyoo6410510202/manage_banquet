@@ -247,6 +247,11 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                                 class="text-end border-0 bg-transparent fw-bold text-danger quote-sum-input" value="0.00"
                                 step="0.01" min="0">
                         </div>
+                        <div class="mb-2 small">
+                            <textarea id="discount_note" name="discount_note" rows="2"
+                                class="form-control form-control-sm" style="resize: vertical;"
+                                placeholder="เงื่อนไขส่วนลด (เช่น ชำระมัดจำภายใน 7 วัน, จองครบ 100 ท่านขึ้นไป)"></textarea>
+                        </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted">
                             <span id="after-discount-label">รวมหลังหักส่วนลด (After Discount):</span>
@@ -678,6 +683,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                     if (q.company_id) $('select[name="company_id"]').val(q.company_id);
                     if (q.vat_type) $('#vatType').val(q.vat_type);
                     if (q.discount) $('#discount').val(parseFloat(q.discount).toFixed(2));
+                    if (q.discount_note) $('#discount_note').val(q.discount_note);
                     if (q.remarks) $('textarea[name="remarks"]').val(q.remarks);
 
                     if (res.items && res.items.length > 0) {

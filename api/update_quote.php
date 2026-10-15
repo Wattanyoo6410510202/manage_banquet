@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ข้อมูลตัวเลข (คูณค่าให้เป็น Float เพื่อความแม่นยำ)
     $subtotal = floatval($_POST['subtotal']);
     $discount = floatval($_POST['discount'] ?? 0);
+    $discount_note = trim($_POST['discount_note'] ?? '');
     $vat = floatval($_POST['vat']); // ใช้ชื่อให้ตรงกับตาราง (vat)
     $grand_total = floatval($_POST['grand_total']);
     $vat_type = $_POST['vat_type'] ?? 'exclude';
@@ -42,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         event_name = ?, 
                         subtotal = ?, 
                         discount = ?,
+                        discount_note = ?,
                         vat = ?, 
                         grand_total = ?, 
                         vat_type = ?, 
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare($sql_update);
 
         $stmt->bind_param(
-            "iiisssddddssssssssi",
+            "iiisssddsddssssssssi",
             $customer_id,
             $company_id,
             $project_id,
@@ -67,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $event_name,
             $subtotal,
             $discount,
+            $discount_note,
             $vat,
             $grand_total,
             $vat_type,

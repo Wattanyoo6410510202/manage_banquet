@@ -74,6 +74,7 @@ $quotations = $result['data'];
       },
       "subtotal": 15560.75,
       "discount": 0,
+      "discount_note": null,
       "service_charge": 0,
       "vat": 1089.25,
       "vat_type": "include",
@@ -117,6 +118,7 @@ $quotations = $result['data'];
 | `customer` | object | ข้อมูลลูกค้า (ดูตารางย่อยด้านล่าง) |
 | `subtotal` | numeric | รวมก่อนหักส่วนลด/ค่าบริการ/ภาษี |
 | `discount` | numeric | ส่วนลด (บาท) |
+| `discount_note` | string\|null | เงื่อนไขในการให้ส่วนลด |
 | `service_charge` | numeric | ค่าบริการ (บาท) |
 | `vat` | numeric | ภาษีมูลค่าเพิ่ม (บาท) |
 | `vat_type` | text | `include`/`exclude` |

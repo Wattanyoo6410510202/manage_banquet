@@ -299,6 +299,11 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                                 class="text-end border-0 bg-transparent fw-bold text-danger quote-sum-input"
                                 value="<?= number_format($quote['discount'] ?? 0, 2, '.', '') ?>" step="0.01" min="0">
                         </div>
+                        <div class="mb-2 small">
+                            <textarea id="discount_note" name="discount_note" rows="2"
+                                class="form-control form-control-sm" style="resize: vertical;"
+                                placeholder="เงื่อนไขส่วนลด (เช่น ชำระมัดจำภายใน 7 วัน, จองครบ 100 ท่านขึ้นไป)"><?= htmlspecialchars($quote['discount_note'] ?? '') ?></textarea>
+                        </div>
 
                         <div class="d-flex justify-content-between mb-2 small text-muted">
                             <span id="after-discount-label">รวมหลังหักส่วนลด (After Discount):</span>

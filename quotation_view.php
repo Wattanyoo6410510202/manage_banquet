@@ -314,7 +314,7 @@ $has_deposit = ($res_dep && $res_dep->num_rows > 0);
                         </tr>
                         <?php if (floatval($quote['discount'] ?? 0) > 0): ?>
                         <tr>
-                            <td class="text-end text-danger">ส่วนลดท้ายบิล / Special Discount:</td>
+                            <td class="text-end text-danger">ส่วนลดท้ายบิล / Special Discount:<?php if (!empty($quote['discount_note'])): ?><div class="text-muted fst-italic" style="font-size: 11px;">(<?= nl2br(htmlspecialchars($quote['discount_note'])) ?>)</div><?php endif; ?></td>
                             <td class="text-end border-bottom text-danger">- <span class="amt-exvat"><?= number_format($disp_discount, 2) ?></span><span class="amt-raw"><?= number_format($raw_discount, 2) ?></span></td>
                         </tr>
                         <tr>

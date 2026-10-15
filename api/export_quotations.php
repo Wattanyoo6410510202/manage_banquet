@@ -83,6 +83,7 @@ foreach ($quotes as $id => $q) {
         ],
         'subtotal' => (float)$q['subtotal'],
         'discount' => (float)$q['discount'],
+        'discount_note' => $q['discount_note'] ?? null,
         'service_charge' => (float)$q['service_charge'],
         'vat' => (float)$q['vat'],
         'vat_type' => $q['vat_type'],

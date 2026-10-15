@@ -15,10 +15,10 @@
     --line-strong: #d8d2c5;
 
     /* ---- ตัวอักษร ---- */
-    --ink: #1d2025;
-    --ink-2: #444a53;
-    --muted: #6b717b;
-    --faint: #9aa0a8;
+    --ink: #000000;
+    --ink-2: #1f2328;
+    --muted: #2b2f35;
+    --faint: #474c54;
 
     /* ---- สีแบรนด์ (ทอง) ---- */
     --gold: #b89441;
@@ -70,7 +70,7 @@
     --bs-body-font-size: var(--fs-base);
     --bs-body-line-height: 1.6;
     --bs-body-color: var(--ink);
-    --bs-body-color-rgb: 29, 32, 37;
+    --bs-body-color-rgb: 0, 0, 0;
     --bs-body-bg: var(--bg);
     --bs-secondary-color: var(--muted);
     --bs-tertiary-bg: var(--surface-2);
@@ -120,6 +120,7 @@ body {
     color: var(--ink);
     font-family: var(--font);
     font-size: var(--fs-base);
+    font-weight: 600; /* ฟอนต์ไทยน้ำหนัก 400 ดูบาง ใช้ 600 ให้อ่านชัด */
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     margin: 0;
@@ -135,7 +136,7 @@ h5:where(:not(#printableArea *)), .h5:where(:not(#printableArea *)){ font-size: 
 h6:where(:not(#printableArea *)), .h6:where(:not(#printableArea *)){ font-size: var(--fs-base); }
 h1:where(:not(#printableArea *)), h2:where(:not(#printableArea *)), h3:where(:not(#printableArea *)), h4:where(:not(#printableArea *)), h5:where(:not(#printableArea *)), h6:where(:not(#printableArea *)), .h1:where(:not(#printableArea *)), .h2:where(:not(#printableArea *)), .h3:where(:not(#printableArea *)), .h4:where(:not(#printableArea *)), .h5:where(:not(#printableArea *)), .h6:where(:not(#printableArea *)){
     font-family: var(--font);
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.35;
     color: inherit;
     letter-spacing: 0;
@@ -143,6 +144,8 @@ h1:where(:not(#printableArea *)), h2:where(:not(#printableArea *)), h3:where(:no
 small:where(:not(#printableArea *)), .small:where(:not(#printableArea *)){ font-size: var(--fs-sm); }
 small small:where(:not(#printableArea *)), .small small:where(:not(#printableArea *)), .small .small:where(:not(#printableArea *)){ font-size: inherit; }
 .text-muted:where(:not(#printableArea *)), .text-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
+/* ช่องกรอกของ Bootstrap ล็อก font-weight 400 ไว้ ให้เข้มเท่าตัวอักษรทั่วไป */
+.form-control:where(:not(#printableArea *)), .form-select:where(:not(#printableArea *)), .input-group-text:where(:not(#printableArea *)), .select2-container .select2-selection__rendered, .select2-results__option { font-weight: 600; }
 .text-body-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
 .text-dark:where(:not(#printableArea *)){ color: var(--ink) !important; }
 .text-black-50:where(:not(#printableArea *)){ color: var(--muted) !important; }
@@ -226,7 +229,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
 .app-brand {
     display: flex; align-items: center; gap: 10px;
     text-decoration: none; color: var(--ink);
-    font-weight: 600; font-size: var(--fs-md); white-space: nowrap;
+    font-weight: 700; font-size: var(--fs-md); white-space: nowrap;
 }
 .app-brand:hover { color: var(--ink); }
 .app-brand .mark {
@@ -236,7 +239,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     color: #fff; font-size: 16px;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);
 }
-.app-brand .sub { color: var(--muted); font-weight: 500; }
+.app-brand .sub { color: var(--muted); font-weight: 600; }
 .app-topbar .spacer { flex: 1; }
 .app-topbar .top-actions { display: flex; align-items: center; gap: 8px; }
 .btn-tutorial {
@@ -244,14 +247,14 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     height: 34px; padding: 0 12px;
     border: 1px solid var(--line-strong); border-radius: 999px;
     background: var(--surface); color: var(--ink-2);
-    font-size: var(--fs-sm); font-weight: 500;
+    font-size: var(--fs-sm); font-weight: 600;
 }
 .btn-tutorial:hover { border-color: var(--gold); color: var(--gold-ink); background: var(--gold-50); }
 .btn-line {
     display: inline-flex; align-items: center; gap: 6px;
     height: 34px; padding: 0 12px; border-radius: 999px;
     background: #e8f8ee; color: #058a3b; border: 1px solid #c4ebd2;
-    font-size: var(--fs-sm); font-weight: 600; text-decoration: none;
+    font-size: var(--fs-sm); font-weight: 700; text-decoration: none;
 }
 .btn-line:hover { background: #06c755; color: #fff; border-color: #06c755; }
 .user-chip {
@@ -259,7 +262,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     height: 38px; padding: 0 10px 0 4px;
     border: 1px solid transparent; border-radius: 999px;
     background: transparent; color: var(--ink);
-    font-size: var(--fs-base); font-weight: 500;
+    font-size: var(--fs-base); font-weight: 600;
 }
 .user-chip:hover, .user-chip[aria-expanded="true"] { background: var(--sunken); }
 .user-chip .avatar {
@@ -269,7 +272,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     font-size: var(--fs-sm); font-weight: 700; text-transform: uppercase;
 }
 .user-chip .user-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.user-chip .role { color: var(--muted); font-size: var(--fs-xs); font-weight: 500; }
+.user-chip .role { color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
 
 .wrapper { display: flex; width: 100%; margin-top: var(--nav-height); }
 
@@ -292,7 +295,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
 #sidebar .nav-group {
     margin: 18px 10px 6px;
     font-size: var(--fs-xs);
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: .04em;
     color: var(--faint);
     white-space: nowrap;
@@ -307,7 +310,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     border-radius: var(--r);
     color: var(--ink-2);
     font-size: var(--fs-base);
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.35;
     text-decoration: none;
     border: 0;
@@ -322,7 +325,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
 #sidebar ul li a.active {
     background: var(--gold-50);
     color: var(--gold-ink) !important;
-    font-weight: 600;
+    font-weight: 700;
 }
 #sidebar ul li a.active i { color: var(--gold-ink); }
 #sidebar ul li a.active::before {
@@ -371,7 +374,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
     gap: 12px 20px; margin-bottom: 20px;
 }
-.page-title { font-size: var(--fs-xl); font-weight: 600; margin: 0; line-height: 1.3; }
+.page-title { font-size: var(--fs-xl); font-weight: 700; margin: 0; line-height: 1.3; }
 .page-sub { color: var(--muted); margin: 4px 0 0; font-size: var(--fs-base); }
 .page-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
@@ -397,14 +400,14 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
     background: var(--surface);
     border-bottom: 1px solid var(--line);
     font-size: var(--fs-md);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--ink);
 }
 .card-header h1:where(:not(#printableArea *)), .card-header h2:where(:not(#printableArea *)), .card-header h3:where(:not(#printableArea *)), .card-header h4:where(:not(#printableArea *)), .card-header h5:where(:not(#printableArea *)), .card-header h6:where(:not(#printableArea *)){
     font-size: var(--fs-md); margin-bottom: 0;
 }
 .card-footer:where(:not(#printableArea *)){ background: var(--surface-2); border-top: 1px solid var(--line); }
-.card-title:where(:not(#printableArea *)){ font-size: var(--fs-md); font-weight: 600; }
+.card-title:where(:not(#printableArea *)){ font-size: var(--fs-md); font-weight: 700; }
 
 /* หัวการ์ด/หัว modal ที่เคยเป็นพื้นสีทึบ → พื้นขาว + แถบสีด้านบน */
 .card-header.bg-dark:where(:not(#printableArea *)), .card-header.bg-primary:where(:not(#printableArea *)), .card-header.bg-success:where(:not(#printableArea *)), .card-header.bg-info:where(:not(#printableArea *)),
@@ -431,7 +434,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
 .btn:where(:not(#printableArea *)){
     --bs-btn-font-family: var(--font);
     --bs-btn-font-size: var(--fs-base);
-    --bs-btn-font-weight: 500;
+    --bs-btn-font-weight: 600;
     --bs-btn-padding-y: 7px;
     --bs-btn-padding-x: 14px;
     --bs-btn-border-radius: var(--r);
@@ -529,7 +532,7 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
    ===================================================================== */
 .form-label:where(:not(#printableArea *)), label.form-label:where(:not(#printableArea *)){
     font-size: var(--fs-sm);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink-2);
     margin-bottom: 6px;
 }
@@ -652,7 +655,7 @@ textarea.form-control:where(:not(#printableArea *)){ min-height: 64px; }
     background: var(--surface-2);
     color: var(--muted);
     font-size: var(--fs-sm);
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
     border-bottom: 1px solid var(--line-strong);
     vertical-align: middle;
@@ -670,7 +673,7 @@ textarea.form-control:where(:not(#printableArea *)){ min-height: 64px; }
     color: var(--muted) !important;
     border-color: var(--line-strong) !important;
 }
-.table tfoot td:where(:not(#printableArea *)), .table tfoot th:where(:not(#printableArea *)){ background: var(--surface-2); font-weight: 600; }
+.table tfoot td:where(:not(#printableArea *)), .table tfoot th:where(:not(#printableArea *)){ background: var(--surface-2); font-weight: 700; }
 .table-responsive:where(:not(#printableArea *)){ border-radius: inherit; }
 .card > .table-responsive:last-child > .table > tbody > tr:last-child > *:where(:not(#printableArea *)),
 .card .card-body.p-0 > .table-responsive:last-child > .table > tbody > tr:last-child > *:where(:not(#printableArea *)){ border-bottom: 0; }
@@ -718,7 +721,7 @@ table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr 
    ===================================================================== */
 .badge:where(:not(#printableArea *)){
     --bs-badge-font-size: var(--fs-xs);
-    --bs-badge-font-weight: 600;
+    --bs-badge-font-weight: 700;
     --bs-badge-padding-y: 3px;
     --bs-badge-padding-x: 8px;
     --bs-badge-border-radius: 6px;
@@ -756,22 +759,22 @@ table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr 
     border-radius: 0;
     color: var(--muted);
     font-size: var(--fs-base);
-    font-weight: 500;
+    font-weight: 600;
     padding: 10px 14px;
     margin-bottom: -1px;
     display: inline-flex; align-items: center; gap: 6px;
 }
 .nav-tabs .nav-link:hover:where(:not(#printableArea *)){ color: var(--ink); }
-.nav-tabs .nav-link.active:where(:not(#printableArea *)){ color: var(--gold-ink); border-bottom-color: var(--gold); font-weight: 600; background: transparent; }
+.nav-tabs .nav-link.active:where(:not(#printableArea *)){ color: var(--gold-ink); border-bottom-color: var(--gold); font-weight: 700; background: transparent; }
 .nav-pills:where(:not(#printableArea *)){
     --bs-nav-pills-link-active-bg: var(--gold-50);
     --bs-nav-pills-link-active-color: var(--gold-ink);
     --bs-nav-pills-border-radius: var(--r);
     gap: 4px;
 }
-.nav-pills .nav-link:where(:not(#printableArea *)){ color: var(--ink-2); font-weight: 500; font-size: var(--fs-base); }
+.nav-pills .nav-link:where(:not(#printableArea *)){ color: var(--ink-2); font-weight: 600; font-size: var(--fs-base); }
 .nav-pills .nav-link:hover:where(:not(#printableArea *)){ background: var(--sunken); }
-.nav-pills .nav-link.active:where(:not(#printableArea *)){ font-weight: 600; box-shadow: inset 0 0 0 1px var(--gold-200); }
+.nav-pills .nav-link.active:where(:not(#printableArea *)){ font-weight: 700; box-shadow: inset 0 0 0 1px var(--gold-200); }
 
 .dropdown-menu {
     --bs-dropdown-font-size: var(--fs-base);
@@ -789,7 +792,7 @@ table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr 
 .dropdown-item { border-radius: var(--r-sm); display: flex; align-items: center; gap: 8px; }
 .dropdown-item i { color: var(--muted); width: 18px; text-align: center; }
 .dropdown-item.text-danger i { color: var(--danger); }
-.dropdown-header { font-size: var(--fs-xs); color: var(--faint); font-weight: 600; }
+.dropdown-header { font-size: var(--fs-xs); color: var(--faint); font-weight: 700; }
 .dropdown-divider { border-color: var(--line); margin: 6px 0; }
 
 .alert:where(:not(#printableArea *)){
@@ -815,7 +818,7 @@ table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr 
     box-shadow: var(--shadow-md) !important;
     font-size: var(--fs-base);
 }
-.custom-alert .fw-bold { color: var(--ink); font-weight: 500 !important; }
+.custom-alert .fw-bold { color: var(--ink); font-weight: 700 !important; }
 .custom-alert i.fs-4 { font-size: 20px !important; }
 
 .list-group:where(:not(#printableArea *)){ --bs-list-group-border-color: var(--line); --bs-list-group-border-radius: var(--r-lg); --bs-list-group-action-hover-bg: var(--sunken); --bs-list-group-active-bg: var(--gold-50); --bs-list-group-active-color: var(--gold-ink); --bs-list-group-active-border-color: var(--gold-200); }
@@ -824,7 +827,7 @@ table.dataTable thead > tr > th.sorting_asc::before, table.dataTable thead > tr 
 .popover { --bs-popover-font-size: var(--fs-sm); --bs-popover-border-color: var(--line); --bs-popover-border-radius: var(--r-lg); box-shadow: var(--shadow-md); }
 .breadcrumb:where(:not(#printableArea *)){ font-size: var(--fs-sm); --bs-breadcrumb-divider-color: var(--faint); --bs-breadcrumb-item-active-color: var(--muted); }
 .accordion:where(:not(#printableArea *)){ --bs-accordion-border-color: var(--line); --bs-accordion-active-bg: var(--gold-50); --bs-accordion-active-color: var(--gold-ink); --bs-accordion-btn-focus-box-shadow: 0 0 0 3px var(--ring); --bs-accordion-border-radius: var(--r-lg); }
-.accordion-button:where(:not(#printableArea *)){ font-size: var(--fs-base); font-weight: 600; }
+.accordion-button:where(:not(#printableArea *)){ font-size: var(--fs-base); font-weight: 700; }
 .spinner-border:where(:not(#printableArea *)){ color: var(--gold); }
 .vr:where(:not(#printableArea *)){ background-color: var(--line-strong); opacity: 1; }
 kbd:where(:not(#printableArea *)){ background: var(--ink); font-size: var(--fs-xs); }
@@ -857,7 +860,7 @@ code:where(:not(#printableArea *)){ color: var(--danger); }
 .modal-header.border-0 { border-bottom: 0; }
 .modal-title, .modal-header h5, .modal-header h4, .modal-header h6 {
     font-size: var(--fs-lg) !important;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--ink);
     display: flex; align-items: center; gap: 8px;
     margin: 0;
@@ -934,7 +937,7 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
     border: 1px solid var(--line);
     box-shadow: var(--shadow-md) !important;
 }
-.swal2-popup.swal2-toast .swal2-title { font-size: var(--fs-base) !important; font-weight: 500 !important; margin: 0 8px !important; }
+.swal2-popup.swal2-toast .swal2-title { font-size: var(--fs-base) !important; font-weight: 600 !important; margin: 0 8px !important; }
 .swal2-popup.swal2-toast .swal2-icon { transform: none; margin: 0 !important; }
 .swal2-timer-progress-bar { background: var(--gold) !important; }
 
@@ -962,10 +965,10 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
 
 /* FullCalendar (หน้าปฏิทิน) */
 .fc { font-size: var(--fs-sm); --fc-border-color: var(--line); --fc-today-bg-color: var(--gold-50); --fc-button-bg-color: var(--surface); --fc-button-border-color: var(--line-strong); --fc-button-text-color: var(--ink-2); --fc-button-hover-bg-color: var(--sunken); --fc-button-hover-border-color: var(--line-strong); --fc-button-active-bg-color: var(--gold-50); --fc-button-active-border-color: var(--gold); --fc-page-bg-color: var(--surface); --fc-neutral-bg-color: var(--surface-2); }
-.fc .fc-toolbar-title { font-size: var(--fs-lg) !important; font-weight: 600; }
-.fc .fc-button { font-size: var(--fs-sm) !important; font-weight: 500; border-radius: var(--r) !important; text-transform: none; box-shadow: none !important; }
+.fc .fc-toolbar-title { font-size: var(--fs-lg) !important; font-weight: 700; }
+.fc .fc-button { font-size: var(--fs-sm) !important; font-weight: 600; border-radius: var(--r) !important; text-transform: none; box-shadow: none !important; }
 .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { color: var(--gold-ink); }
-.fc .fc-col-header-cell-cushion { color: var(--muted); font-weight: 600; text-decoration: none; padding: 8px 4px; }
+.fc .fc-col-header-cell-cushion { color: var(--muted); font-weight: 700; text-decoration: none; padding: 8px 4px; }
 .fc .fc-daygrid-day-number { color: var(--ink-2); text-decoration: none; }
 .fc .fc-event { border-radius: var(--r-sm); font-size: var(--fs-xs); }
 
@@ -977,8 +980,8 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
     padding: 16px 18px; box-shadow: var(--shadow-xs); height: 100%;
 }
-.stat-card .stat-label:where(:not(#printableArea *)){ font-size: var(--fs-sm); color: var(--muted); font-weight: 500; }
-.stat-card .stat-value:where(:not(#printableArea *)){ font-size: var(--fs-2xl); font-weight: 600; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.stat-card .stat-label:where(:not(#printableArea *)){ font-size: var(--fs-sm); color: var(--muted); font-weight: 600; }
+.stat-card .stat-value:where(:not(#printableArea *)){ font-size: var(--fs-2xl); font-weight: 700; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .stat-card .stat-meta:where(:not(#printableArea *)){ font-size: var(--fs-xs); color: var(--muted); margin-top: 4px; }
 .stat-card .stat-icon:where(:not(#printableArea *)){ width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--gold-50); color: var(--gold-ink); font-size: 18px; }
 
@@ -987,7 +990,7 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
 
 /* หัวข้อส่วนในฟอร์ม */
 .section-label:where(:not(#printableArea *)){
-    font-size: var(--fs-sm); font-weight: 600; color: var(--muted);
+    font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
     margin: 0 0 10px; display: flex; align-items: center; gap: 6px;
 }
 .section-label i:where(:not(#printableArea *)){ color: var(--gold-ink); }
@@ -1049,6 +1052,7 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
    ===================================================================== */
 #printableArea {
     font-size: 1rem;
+    font-weight: 400;
     line-height: 1.5;
     color: #212529;
     --bs-body-color: #212529;
@@ -1083,8 +1087,8 @@ div:where(.swal2-container) div:where(.swal2-popup).swal2-popup,
 :root {
     --shell-bg: #1a1a1a;
     --shell-line: rgba(184, 148, 65, .22);
-    --shell-text: rgba(255, 255, 255, .72);
-    --shell-faint: rgba(255, 255, 255, .42);
+    --shell-text: #ffffff;
+    --shell-faint: rgba(255, 255, 255, .8);
     --shell-hover: rgba(255, 255, 255, .06);
     --shell-active: rgba(184, 148, 65, .16);
 }
