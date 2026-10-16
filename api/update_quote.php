@@ -1,5 +1,6 @@
 <?php
 include "../config.php";
+include_once "../includes/quote_item_types.php";
 
 // ตรวจสอบการส่งค่าแบบ POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -95,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 4. บันทึกรายการย่อยใหม่
         if (isset($_POST['item_name']) && is_array($_POST['item_name'])) {
-            $sql_item = "INSERT INTO quotation_items (quote_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)";
+            $sql_item = "INSERT INTO quotation_items (quote_id, item_name, quantity, unit_price, total_price, item_type, menu_category_id, break_type_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_item = $conn->prepare($sql_item);
 
             foreach ($_POST['item_name'] as $key => $name) {
@@ -104,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $price = floatval($_POST['unit_price'][$key]);
                     $total = floatval($_POST['total_price'][$key]);
 
-                    $stmt_item->bind_param("isddd", $quote_id, $name, $qty, $price, $total);
+                    [$type, $menu_cat, $break_type] = parseQuoteItemType($_POST['item_type'][$key] ?? '');
+                    $stmt_item->bind_param("isdddsii", $quote_id, $name, $qty, $price, $total, $type, $menu_cat, $break_type);
                     $stmt_item->execute();
                 }
             }

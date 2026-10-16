@@ -962,6 +962,7 @@ function confirmTemplateSelection() {
             id: tpl.id,
             type_id: _mtmSelectedTypeId,
             type_name: _mtmSelectedType || '',
+            category_name: _mtmSelectedCategory || '',
             name: tpl.menu_items || tpl.break_menu || '',
             qty: qty,
             price: parseFloat(tpl.price_per_pax || tpl.break_price || 0),

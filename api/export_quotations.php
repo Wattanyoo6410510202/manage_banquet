@@ -45,9 +45,16 @@ while ($row = $res->fetch_assoc()) {
 // ดึงรายการอาหาร/บริการของทุกใบในครั้งเดียว แล้วจับกลุ่มด้วย quote_id
 $items_by_quote = [];
 if (!empty($ids)) {
-    $items_sql = "SELECT * FROM quotation_items WHERE quote_id IN (" . implode(',', $ids) . ") ORDER BY id";
+    // menu_category = เซตอาหารที่เลือกใน dropdown (master_menu_categories) ให้เว็บปลายทางเลือกเซตให้ลูกค้าอัตโนมัติ
+    $items_sql = "SELECT qi.*, mc.category_name AS menu_category_name, bt.type_name AS break_type_name
+                  FROM quotation_items qi
+                  LEFT JOIN master_menu_categories mc ON qi.menu_category_id = mc.id
+                  LEFT JOIN master_break_types bt ON qi.break_type_id = bt.id
+                  WHERE qi.quote_id IN (" . implode(',', $ids) . ") ORDER BY qi.id";
     $items_res = $conn->query($items_sql);
     while ($item = $items_res->fetch_assoc()) {
+        $has_set = !empty($item['menu_category_id']) && $item['menu_category_name'] !== null;
+        $has_break = !empty($item['break_type_id']) && $item['break_type_name'] !== null;
         $items_by_quote[(int)$item['quote_id']][] = [
             'id' => (int)$item['id'],
             'item_name' => $item['item_name'],
@@ -55,6 +62,14 @@ if (!empty($ids)) {
             'unit_price' => (float)$item['unit_price'],
             'total_price' => (float)$item['total_price'],
             'item_type' => $item['item_type'],
+            'menu_category' => $has_set ? [
+                'id' => (int)$item['menu_category_id'],
+                'name' => $item['menu_category_name'],
+            ] : null,
+            'break_type' => $has_break ? [
+                'id' => (int)$item['break_type_id'],
+                'name' => $item['break_type_name'],
+            ] : null,
         ];
     }
 }

@@ -95,7 +95,28 @@ $quotations = $result['data'];
           "quantity": 1,
           "unit_price": 12000,
           "total_price": 12000,
-          "item_type": "Food"
+          "item_type": "Food",
+          "menu_category": null
+        },
+        {
+          "id": 331,
+          "item_name": "Thai-Buffet 400",
+          "quantity": 50,
+          "unit_price": 400,
+          "total_price": 20000,
+          "item_type": "Food",
+          "menu_category": { "id": 3, "name": "Thai-Buffet 400" },
+          "break_type": null
+        },
+        {
+          "id": 332,
+          "item_name": "รายการขนมไทย break 50",
+          "quantity": 50,
+          "unit_price": 50,
+          "total_price": 2500,
+          "item_type": "Break",
+          "menu_category": null,
+          "break_type": { "id": 7, "name": "รายการขนมไทย break 50" }
         }
       ]
     }
@@ -151,7 +172,11 @@ $quotations = $result['data'];
 | `quantity` | จำนวน |
 | `unit_price` | ราคาต่อหน่วย |
 | `total_price` | `quantity × unit_price` |
-| `item_type` | `Food` / `Beverage` / `Room` / `Equipment` / `Other` |
+| `item_type` | ประเภทที่เซลล์เลือกใน dropdown: `Food` (อาหาร) / `Break` (เบรก) / `Room` (ห้องพักโรงแรม) / `Extra` (เพิ่มเติม) / `Other` (อื่นๆ) — ข้อมูลเก่าอาจมี `Beverage` / `Equipment` |
+| `menu_category` | object หรือ `null` — เซตอาหารที่เซลล์เลือกให้รายการนี้ `{ "id", "name" }` (จาก `master_menu_categories` ของระบบนี้) — ใช้เลือกแพ็กเกจให้ลูกค้าอัตโนมัติ เป็น `null` ถ้าไม่ใช่อาหารหรือไม่ได้ระบุเซต (ใบเสนอราคาเก่าทั้งหมดเป็น `null`) |
+| `break_type` | object หรือ `null` — เบรกที่เซลล์เลือกให้รายการนี้ `{ "id", "name" }` (จาก `master_break_types` ของระบบนี้) มีค่าเฉพาะเมื่อ `item_type` = `Break` นอกนั้นเป็น `null` |
+
+> **การจับคู่เซตกับแพ็กเกจของเว็บปลายทาง:** `menu_category.id` เป็นรหัสฝั่งระบบนี้ ไม่ตรงกับ `package_id` ของเว็บปลายทาง ให้จับคู่ด้วยชื่อ โดยตัดช่องว่าง/ขีด และไม่สนตัวพิมพ์เล็ก-ใหญ่ เช่น `Thai-set 3,000` ↔ `Thai Set 3,000`
 
 ## ขอบเขตข้อมูล
 

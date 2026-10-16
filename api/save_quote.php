@@ -1,5 +1,6 @@
 <?php
 include "../config.php";
+include_once "../includes/quote_item_types.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -100,9 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quantities   = $_POST['quantity'] ?? [];
         $unit_prices  = $_POST['unit_price'] ?? [];
         $total_prices = $_POST['total_price'] ?? [];
+        $item_types   = $_POST['item_type'] ?? [];
 
-        $sql_item = "INSERT INTO quotation_items (quote_id, item_name, quantity, unit_price, total_price, item_type) 
-                     VALUES (?, ?, ?, ?, ?, 'Food')";
+        $sql_item = "INSERT INTO quotation_items (quote_id, item_name, quantity, unit_price, total_price, item_type, menu_category_id, break_type_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt_item = $conn->prepare($sql_item);
 
         foreach ($item_names as $index => $name) {
@@ -110,7 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $qty   = intval($quantities[$index]);
                 $price = floatval($unit_prices[$index]);
                 $total = floatval($total_prices[$index]);
-                $stmt_item->bind_param("isidd", $last_quote_id, $name, $qty, $price, $total);
+                [$type, $menu_cat, $break_type] = parseQuoteItemType($item_types[$index] ?? '');
+                $stmt_item->bind_param("isiddsii", $last_quote_id, $name, $qty, $price, $total, $type, $menu_cat, $break_type);
                 $stmt_item->execute();
             }
         }

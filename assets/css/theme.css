@@ -15,10 +15,10 @@
     --line-strong: #d8d2c5;
 
     /* ---- ตัวอักษร ---- */
-    --ink: #000000;
-    --ink-2: #1f2328;
-    --muted: #2b2f35;
-    --faint: #474c54;
+    --ink: #15181c;
+    --ink-2: #353a42;
+    --muted: #50565f;
+    --faint: #7a808a;
 
     /* ---- สีแบรนด์ (ทอง) ---- */
     --gold: #b89441;
@@ -70,7 +70,7 @@
     --bs-body-font-size: var(--fs-base);
     --bs-body-line-height: 1.6;
     --bs-body-color: var(--ink);
-    --bs-body-color-rgb: 0, 0, 0;
+    --bs-body-color-rgb: 21, 24, 28;
     --bs-body-bg: var(--bg);
     --bs-secondary-color: var(--muted);
     --bs-tertiary-bg: var(--surface-2);
@@ -120,7 +120,7 @@ body {
     color: var(--ink);
     font-family: var(--font);
     font-size: var(--fs-base);
-    font-weight: 600; /* ฟอนต์ไทยน้ำหนัก 400 ดูบาง ใช้ 600 ให้อ่านชัด */
+    font-weight: 500; /* ฟอนต์ไทยน้ำหนัก 400 ดูบาง ใช้ 500 ให้อ่านชัดแต่ไม่หนาเกิน */
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     margin: 0;
@@ -145,7 +145,7 @@ small:where(:not(#printableArea *)), .small:where(:not(#printableArea *)){ font-
 small small:where(:not(#printableArea *)), .small small:where(:not(#printableArea *)), .small .small:where(:not(#printableArea *)){ font-size: inherit; }
 .text-muted:where(:not(#printableArea *)), .text-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
 /* ช่องกรอกของ Bootstrap ล็อก font-weight 400 ไว้ ให้เข้มเท่าตัวอักษรทั่วไป */
-.form-control:where(:not(#printableArea *)), .form-select:where(:not(#printableArea *)), .input-group-text:where(:not(#printableArea *)), .select2-container .select2-selection__rendered, .select2-results__option { font-weight: 600; }
+.form-control:where(:not(#printableArea *)), .form-select:where(:not(#printableArea *)), .input-group-text:where(:not(#printableArea *)), .select2-container .select2-selection__rendered, .select2-results__option { font-weight: 500; }
 .text-body-secondary:where(:not(#printableArea *)){ color: var(--muted) !important; }
 .text-dark:where(:not(#printableArea *)){ color: var(--ink) !important; }
 .text-black-50:where(:not(#printableArea *)){ color: var(--muted) !important; }

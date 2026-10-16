@@ -1,6 +1,8 @@
 <?php
 include "config.php";
 include "header.php";
+include_once "includes/quote_item_types.php";
+$item_type_options = quoteItemTypeOptions($conn);
 
 // 1. ดึงรายชื่อ Project ทั้งหมด (พร้อมตรวจสอบแหล่งที่มา)
 $projects_sql = "SELECT ep.id, ep.project_name,
@@ -173,8 +175,9 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                     <thead class="table-light text-center" style="font-size: var(--fs-base);">
                         <tr>
                             <th width="5%">#</th>
+                            <th width="14%">ประเภท</th>
                             <th>รายละเอียดรายการ</th>
-                            <th width="12%">จำนวน</th>
+                            <th width="12%">จำนวน/ท่าน</th>
                             <th width="15%">ราคา/หน่วย</th>
                             <th width="15%">ยอดรวม</th>
                             <th width="5%"></th>
@@ -183,6 +186,14 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                     <tbody>
                         <tr>
                             <td class="text-center">1</td>
+                            <td>
+                                <select name="item_type[]" class="form-select form-select-sm" required>
+                                    <option value="" selected>-- เลือกประเภท --</option>
+                                    <?php foreach ($item_type_options as $tk => $tl): ?>
+                                        <option value="<?= $tk ?>"><?= htmlspecialchars($tl) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
                             <td>
                                 <textarea name="item_name[]" class="form-control form-control-sm"
                                     placeholder="ระบุรายการ เช่น ค่าอาหาร..." rows="2"
@@ -345,6 +356,83 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
         return d.innerHTML;
     }
 
+    // ประเภทรายการ (dropdown ในตาราง): เซตอาหารจาก master_menu_categories + ห้องพัก/เพิ่มเติม/อื่นๆ — ดู includes/quote_item_types.php
+    var QUOTE_ITEM_TYPES = <?= json_encode($item_type_options, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
+    // selected: 'Food' = รายการเก่าไม่ระบุเซต, ว่าง/ไม่รู้จัก = แถวใหม่ต้องเลือกเอง
+    function itemTypeCell(selected) {
+        var opts = '';
+        if (selected === 'Food') {
+            opts += '<option value="Food" selected><?= QUOTE_ITEM_UNSPECIFIED ?></option>';
+        } else if (!QUOTE_ITEM_TYPES[selected]) {
+            opts += '<option value="" selected>-- เลือกประเภท --</option>';
+        }
+        opts += Object.keys(QUOTE_ITEM_TYPES).map(function (k) {
+            return '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + escapeHtml(QUOTE_ITEM_TYPES[k]) + '</option>';
+        }).join('');
+        return '<td><select name="item_type[]" class="form-select form-select-sm" required>' + opts + '</select></td>';
+    }
+    // แถวจาก DB (item_type + menu_category_id + break_type_id) → ค่าใน dropdown
+    function itemTypeValue(type, menuCategoryId, breakTypeId) {
+        if (type === 'Break') return breakTypeId ? 'Break:' + breakTypeId : '';
+        if (type && type !== 'Food' && QUOTE_ITEM_TYPES[type]) return type;
+        return menuCategoryId ? 'Food:' + menuCategoryId : 'Food';
+    }
+    // ชื่อเซต/เบรกจากหน้าต่างเลือกเมนู → ค่าใน dropdown (ไม่เจอ = ว่าง ให้ผู้ใช้เลือกเอง)
+    function itemTypeForName(name, prefix) {
+        name = (name || '').trim();
+        for (var k in QUOTE_ITEM_TYPES) {
+            if (k.indexOf(prefix) === 0 && QUOTE_ITEM_TYPES[k].trim() === name) return k;
+        }
+        return '';
+    }
+    function itemTypeForSetName(name) { return itemTypeForName(name, 'Food:'); }
+    function itemTypeForBreakName(name) { return itemTypeForName(name, 'Break:'); }
+
+    // ราคาที่ตั้งไว้ของเซต (master_menu_categories) / เบรก (master_break_types) — ตัวที่ยังไม่ตั้งราคาจะไม่มีคีย์
+    var QUOTE_SET_PRICES = <?= json_encode(quoteSetPrices($conn), JSON_HEX_TAG) ?>;
+
+    // แถวที่เลือกเซตอาหาร/เบรก: ล็อกรายละเอียด (ชื่อเซต/เบรก) แก้ได้แค่จำนวน
+    // ราคา/หน่วย: เซตอาหารล็อกเสมอ (ดึงจากราคาเซต), เบรกล็อกเฉพาะที่ตั้งราคาไว้ — ยังไม่ตั้งก็กรอกเองได้
+    // fill = true ตอนผู้ใช้เปลี่ยน dropdown (กรอกชื่อ/ราคาให้), false ตอนโหลดแถวที่บันทึกไว้ (คงค่าเดิม)
+    function applySetLock($row, fill) {
+        if ($row.hasClass('template-row')) return; // แถวจาก modal ล็อกอยู่แล้ว
+        var val = $row.find('select[name="item_type[]"]').val() || '';
+        var $ta = $row.find('textarea[name="item_name[]"]');
+        var $price = $row.find('.price');
+        var isSet = val.indexOf('Food:') === 0;
+        var isBreak = val.indexOf('Break:') === 0;
+        var presetPrice = QUOTE_SET_PRICES[val];
+        var lockPrice = isSet || (isBreak && presetPrice !== undefined);
+
+        if (fill) {
+            if (isSet || isBreak) {
+                $ta.val(QUOTE_ITEM_TYPES[val]);
+                if (lockPrice) $price.val((presetPrice || 0).toFixed(2));
+                else if ($price.prop('readonly')) $price.val('0.00'); // ราคาที่ระบบกรอกไว้จากตัวก่อนหน้า
+                if (isSet && presetPrice === undefined) {
+                    UI.toast('เซต "' + QUOTE_ITEM_TYPES[val] + '" ยังไม่ได้ตั้งราคา — ตั้งได้ที่หน้าตั้งค่าหมวดเมนู', 'warning');
+                }
+            } else if ($row.hasClass('set-row')) {
+                // เปลี่ยนจากเซต/เบรกไปประเภทอื่น: ล้างค่าที่ระบบกรอกให้
+                $ta.val('');
+                $price.val('0.00');
+            }
+        }
+
+        $row.toggleClass('set-row', isSet || isBreak);
+        $ta.prop('readonly', isSet || isBreak);
+        $price.prop('readonly', lockPrice);
+        autoGrowTextarea($ta[0]);
+        if (fill) $price.trigger('input'); // คำนวณยอดแถว/ยอดรวมใหม่
+    }
+
+    $(function () {
+        $(document).on('change', 'select[name="item_type[]"]', function () {
+            applySetLock($(this).closest('tr'), true);
+        });
+        $('#itemTable tbody tr').each(function () { applySetLock($(this), false); });
+    });
+
     function autoGrowTextarea(el) {
         el.style.height = 'auto';
         el.style.height = (el.scrollHeight) + 'px';
@@ -364,6 +452,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             let rowCount = $('#itemTable tbody tr').length + 1;
             let newRow = `<tr>
                 <td class="text-center">${rowCount}</td>
+                ${itemTypeCell()}
                 <td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required></textarea></td>
                 <td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="1" min="1"></td>
                 <td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="0.00" step="0.01"></td>
@@ -499,9 +588,9 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
             }
             var total = data.set_price !== undefined ? parseFloat(data.set_price) || 0 : data.reduce(function(s, item) { return s + (item.qty * item.price); }, 0);
-            addTemplateRow(lines.join('\n'), data[0].qty || 1, total);
+            addTemplateRow(lines.join('\n'), data[0].qty || 1, total, null, itemTypeForSetName(data.category_name));
         } else {
-            addTemplateRow(itemText(data), data.qty || 1, data.price);
+            addTemplateRow(itemText(data), data.qty || 1, data.price, null, itemTypeForSetName(data.category_name));
         }
     };
 
@@ -521,21 +610,21 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 notes.forEach(function(n) { lines.push('- ' + n.name + ': ' + n.note); });
             }
             var setTotal = parseFloat(data.set_price) || 0;
-            addTemplateRow(lines.join('\n'), data[0].qty || 1, setTotal);
+            addTemplateRow(lines.join('\n'), data[0].qty || 1, setTotal, null, itemTypeForBreakName(data.category_name));
         } else if (Array.isArray(data)) {
-            data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price));
+            data.forEach(item => addTemplateRow(item.name, item.qty || 1, item.price, null, itemTypeForBreakName(item.type_name)));
         } else {
-            addTemplateRow(data.name, data.qty || 1, data.price);
+            addTemplateRow(data.name, data.qty || 1, data.price, null, itemTypeForBreakName(data.type_name));
         }
     };
 
     // 12. ฟังก์ชันเพิ่มแถวจากเทมเพลต (ล็อกไม่ให้แก้ไข)
-    function addTemplateRow(name, qty, price, explicitTotal) {
+    function addTemplateRow(name, qty, price, explicitTotal, typeValue) {
         var total = (explicitTotal !== undefined && explicitTotal !== null) ? Number(explicitTotal).toFixed(2) : (qty * price).toFixed(2);
         var rowCount = $('#itemTable tbody tr').length + 1;
         var row = '<tr class="template-row">'
             + '<td class="text-center">' + rowCount + '</td>'
-            + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" readonly>' + escapeHtml(name) + '</textarea></td>'
+            + itemTypeCell(typeValue) + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" readonly>' + escapeHtml(name) + '</textarea></td>'
             + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1" readonly></td>'
             + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01" readonly></td>'
             + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total + '" readonly></td>'
@@ -692,7 +781,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                             var rowNum = idx + 1;
                             var row = '<tr>'
                                 + '<td class="text-center">' + rowNum + '</td>'
-                                    + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(item.item_name || '') + '</textarea></td>'
+                                    + itemTypeCell(itemTypeValue(item.item_type, item.menu_category_id, item.break_type_id)) + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(item.item_name || '') + '</textarea></td>'
                                     + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + (item.quantity || 1) + '" min="1"></td>'
                                     + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + (parseFloat(item.unit_price) || 0).toFixed(2) + '" step="0.01"></td>'
                                     + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + (parseFloat(item.total_price) || 0).toFixed(2) + '" readonly></td>'
@@ -703,6 +792,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                         $('#itemTable textarea').each(function () {
                             autoGrowTextarea(this);
                         });
+                        $('#itemTable tbody tr').each(function () { applySetLock($(this), false); });
                         calculateAll();
                     }
                 }
@@ -778,7 +868,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 var total = item.amount != null ? (parseFloat(item.amount) || 0) : (qty * price);
                 var row = '<tr>'
                     + '<td class="text-center">' + (idx + 1) + '</td>'
-                    + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
+                    + itemTypeCell() + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
                     + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qty + '" min="1"></td>'
                     + '<td><input type="number" name="unit_price[]" class="form-control form-control-sm text-end price" value="' + price.toFixed(2) + '" step="0.01"></td>'
                     + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total.toFixed(2) + '" readonly></td>'
@@ -875,7 +965,7 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
             var priceClass = 'form-control form-control-sm text-end price' + (isGuessed ? ' border-warning bg-warning-subtle' : '');
             var row = '<tr' + (isGuessed ? ' class="table-warning"' : '') + '>'
                 + '<td class="text-center">' + rowCount + '</td>'
-                + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
+                + itemTypeCell() + '<td><textarea name="item_name[]" class="form-control form-control-sm" rows="2" style="resize: vertical; min-width: 200px;" required>' + escapeHtml(name) + '</textarea></td>'
                 + '<td><input type="number" name="quantity[]" class="form-control form-control-sm text-center qty" value="' + qtyNum + '" min="1"></td>'
                 + '<td><input type="number" name="unit_price[]" class="' + priceClass + '" value="' + priceNum.toFixed(2) + '" step="0.01"' + (isGuessed ? ' title="ราคาโดยประมาณจากการเทียบชื่อ กรุณาตรวจสอบ"' : '') + '></td>'
                 + '<td><input type="number" name="total_price[]" class="form-control form-control-sm text-end row-total" value="' + total.toFixed(2) + '" readonly></td>'
