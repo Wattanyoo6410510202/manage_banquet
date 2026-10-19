@@ -3,7 +3,7 @@
  * ประเภทรายการในใบเสนอราคา (dropdown ในตารางรายการ)
  *
  * เก็บลง quotation_items สามคอลัมน์:
- *   item_type        = Food / Break / Room / Extra / Other
+ *   item_type        = Food / Break / Room / Meeting / Extra / Other
  *   menu_category_id = id ของเซตอาหารใน master_menu_categories (เฉพาะ Food ที่เลือกเซต)
  *   break_type_id    = id ของเบรกใน master_break_types (เฉพาะ Break)
  *
@@ -12,8 +12,9 @@
 
 /** ประเภทที่ไม่ได้ดึงจาก DB */
 const QUOTE_ITEM_OTHER_TYPES = [
-    'Room'  => 'ห้องพักโรงแรม',
-    'Extra' => 'เพิ่มเติม',
+    'Room'    => 'ห้องพักโรงแรม',
+    'Meeting' => 'ห้องประชุม',
+    'Extra'   => 'เพิ่มเติม',
     'Other' => 'อื่นๆ',
 ];
 
@@ -22,6 +23,22 @@ const QUOTE_ITEM_OTHER_TYPES = [
  * แถวใหม่ไม่มีตัวเลือกนี้ ต้องเลือกประเภทเอง
  */
 const QUOTE_ITEM_UNSPECIFIED = 'ไม่ระบุ';
+
+/** ประเภทที่ไปลงตารางห้องพัก/ห้องประชุมของ EO (function_rooms.room_type) */
+const EO_ROOM_TYPES = [
+    'Room'    => 'ห้องพัก',
+    'Meeting' => 'ห้องประชุม',
+];
+
+/** <option> ของ dropdown ประเภทในตารางห้องพัก/ห้องประชุมของ EO */
+function eoRoomTypeOptions($selected = 'Room')
+{
+    $html = '';
+    foreach (EO_ROOM_TYPES as $k => $label) {
+        $html .= '<option value="' . $k . '"' . ($k === $selected ? ' selected' : '') . '>' . $label . '</option>';
+    }
+    return $html;
+}
 
 /** ตัวเลือกสำหรับแถวใหม่ตามลำดับที่แสดง: เซตอาหาร → เบรก (จาก DB) → ประเภทอื่น */
 function quoteItemTypeOptions($conn)

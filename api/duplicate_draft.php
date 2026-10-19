@@ -70,6 +70,8 @@ try {
                   
     $conn->query("INSERT INTO function_menus (function_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost)
                   SELECT $new_id, menu_time, menu_set_id, menu_detail, menu_qty, menu_price, menu_cost FROM function_menus WHERE function_id = $function_id");
+    $conn->query("INSERT INTO function_rooms (function_id, room_type, room_date, room_detail, room_qty, room_price, room_cost)
+                  SELECT $new_id, room_type, room_date, room_detail, room_qty, room_price, room_cost FROM function_rooms WHERE function_id = $function_id");
 
     $conn->commit();
 

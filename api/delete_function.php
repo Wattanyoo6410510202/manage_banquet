@@ -70,6 +70,7 @@ if (!empty($ids) && is_array($ids)) {
         $conn->query("DELETE FROM function_schedules WHERE function_id IN ($ids_string)");
         $conn->query("DELETE FROM function_kitchens WHERE function_id IN ($ids_string)");
         $conn->query("DELETE FROM function_menus WHERE function_id IN ($ids_string)");
+        $conn->query("DELETE FROM function_rooms WHERE function_id IN ($ids_string)");
 
         // 5. ลบตารางหลัก
         $conn->query("DELETE FROM functions WHERE id IN ($ids_string)");

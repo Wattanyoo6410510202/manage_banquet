@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/quote_item_types.php";
 
 // 1. รับ ID และดึงข้อมูลขึ้นมาก่อน (ต้องทำก่อนเช็คสิทธิ์)
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -69,6 +70,7 @@ if ($project_id > 0) {
 
 $kitchens = $conn->query("SELECT * FROM function_kitchens WHERE function_id = $id ORDER BY id ASC");
 $menus = $conn->query("SELECT * FROM function_menus WHERE function_id = $id ORDER BY id ASC");
+$rooms = $conn->query("SELECT * FROM function_rooms WHERE function_id = $id ORDER BY id ASC");
 
 $res_customers = $conn->query("SELECT * FROM customers ORDER BY cust_name ASC");
 
@@ -495,6 +497,11 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-menu" type="button" role="tab">
                             <i class="bi bi-cup-hot-fill me-1"></i> เมนูอาหาร
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-room" type="button" role="tab">
+                            <i class="bi bi-door-closed-fill me-1"></i> ห้องพัก/ห้องประชุม
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -1060,6 +1067,56 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
                 </div>
                 </div><!-- /tab-menu -->
 
+                <div class="tab-pane fade" id="tab-room" role="tabpanel">
+                    <h5 class="section-title mb-4"><i class="bi bi-door-closed-fill"></i> รายการห้องพัก / ห้องประชุม</h5>
+                    <table class="table table-sm table-hover align-middle" id="roomTable">
+                        <thead class="text-center text-secondary bg-light">
+                            <tr>
+                                <th width="12%">วันที่</th>
+                                <th width="13%">ประเภท</th>
+                                <th>รายละเอียด</th>
+                                <th width="10%">จำนวน</th>
+                                <th width="12%">ราคาขาย/หน่วย</th>
+                                <th width="10%">ราคาทุน/หน่วย</th>
+                                <th width="12%">ยอดรวม</th>
+                                <th width="5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($r = $rooms->fetch_assoc()):
+                                $room_total = (float) $r['room_qty'] * (float) $r['room_price'];
+                            ?>
+                                <tr>
+                                    <td><input type="date" name="room_date[]" class="form-control form-control-sm border-0 bg-light"
+                                            value="<?= htmlspecialchars($r['room_date'] ?? '') ?>"></td>
+                                    <td><select name="room_type[]" class="form-select form-select-sm border-0 bg-light"><?= eoRoomTypeOptions($r['room_type']) ?></select></td>
+                                    <td><textarea name="room_detail[]" class="form-control form-control-sm border-0 bg-light"
+                                            rows="1"><?= htmlspecialchars($r['room_detail']) ?></textarea></td>
+                                    <td><input type="number" name="room_qty[]" class="form-control form-control-sm border-0 bg-light text-center room-qty"
+                                            value="<?= (int) $r['room_qty'] ?>" oninput="updateRoomRowTotal(this)"></td>
+                                    <td><input type="number" step="0.01" name="room_price[]" class="form-control form-control-sm border-0 bg-light text-end room-price"
+                                            value="<?= number_format((float) $r['room_price'], 2, '.', '') ?>" oninput="updateRoomRowTotal(this)"></td>
+                                    <td><input type="number" step="0.01" name="room_cost[]" class="form-control form-control-sm border-0 bg-light text-end"
+                                            value="<?= number_format((float) $r['room_cost'], 2, '.', '') ?>"></td>
+                                    <td class="text-end fw-bold room-row-total"><?= number_format($room_total, 2) ?></td>
+                                    <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0"
+                                            onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="6" class="text-end fw-bold">รวมค่าห้อง</th>
+                                <th class="text-end fw-bold room-grand-total">0.00</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <button type="button" class="btn btn-hotel-outline btn-sm" onclick="addRoomRow()"><i
+                            class="bi bi-plus-lg"></i> เพิ่มรายการห้อง</button>
+                    <script>document.addEventListener('DOMContentLoaded', () => updateRoomGrandTotal());</script>
+                </div><!-- /tab-room -->
+
                 <div class="tab-pane fade" id="tab-setup" role="tabpanel">
                     <div class="bg-sidebar p-4 rounded-4">
                         <h5 class="section-title mb-4"><i class="bi bi-building"></i> 5. รูปแบบการจัดงาน (SET-UP)</h5>
@@ -1259,6 +1316,35 @@ function removeRow(btn) {
     btn.closest("tr").remove();
     if (typeof updateKitchenGrandTotal === 'function') updateKitchenGrandTotal();
     if (typeof updateMenuGrandTotal === 'function') updateMenuGrandTotal();
+    updateRoomGrandTotal();
+}
+
+function addRoomRow() {
+    const row = document.querySelector("#roomTable tbody").insertRow();
+    row.innerHTML = `
+    <td><input type="date" name="room_date[]" class="form-control form-control-sm border-0 bg-light"></td>
+    <td><select name="room_type[]" class="form-select form-select-sm border-0 bg-light"><?= eoRoomTypeOptions() ?></select></td>
+    <td><textarea name="room_detail[]" class="form-control form-control-sm border-0 bg-light" rows="1" placeholder="เช่น ห้อง Deluxe 2 คืน / ห้องประชุม A ครึ่งวัน"></textarea></td>
+    <td><input type="number" name="room_qty[]" class="form-control form-control-sm border-0 bg-light text-center room-qty" oninput="updateRoomRowTotal(this)"></td>
+    <td><input type="number" step="0.01" name="room_price[]" class="form-control form-control-sm border-0 bg-light text-end room-price" placeholder="0.00" oninput="updateRoomRowTotal(this)"></td>
+    <td><input type="number" step="0.01" name="room_cost[]" class="form-control form-control-sm border-0 bg-light text-end" placeholder="0.00"></td>
+    <td class="text-end fw-bold room-row-total">0.00</td>
+    <td class="text-center"><button type="button" class="btn text-danger btn-sm border-0" onclick="removeRow(this)"><i class="bi bi-dash-circle"></i></button></td>`;
+}
+
+function updateRoomRowTotal(el) {
+    const row = el.closest('tr');
+    const qty = parseFloat(row.querySelector('.room-qty').value) || 0;
+    const price = parseFloat(row.querySelector('.room-price').value) || 0;
+    row.querySelector('.room-row-total').textContent = (qty * price).toFixed(2);
+    updateRoomGrandTotal();
+}
+
+function updateRoomGrandTotal() {
+    const table = document.getElementById('roomTable');
+    let grandTotal = 0;
+    table.querySelectorAll('.room-row-total').forEach(el => grandTotal += parseFloat(el.textContent.replace(/,/g, '')) || 0);
+    table.querySelector('.room-grand-total').textContent = grandTotal.toFixed(2);
 }
 
 function updateKitchenRowTotal(el) {

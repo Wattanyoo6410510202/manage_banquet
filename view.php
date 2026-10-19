@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/quote_item_types.php";
 
 // 1. รับค่า ID
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -157,6 +158,8 @@ $sql_menus = "SELECT fm.*, mms.type_name as set_name, mmc.category_name
               WHERE fm.function_id = $id";
 
 $menus = $conn->query($sql_menus);
+
+$rooms = $conn->query("SELECT * FROM function_rooms WHERE function_id = $id ORDER BY id ASC");
 ?>
 
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
@@ -186,6 +189,13 @@ $menus = $conn->query($sql_menus);
         border-radius: 0;
         margin-top: 10px;
         padding: 10px;
+    }
+
+    /* หัวข้อที่ไม่มีรายการ (เบรก/อาหาร) — เห็นบนจอ แต่ไม่ออกตอนพิมพ์ */
+    @media print {
+        #printableArea .d-print-none {
+            display: none !important;
+        }
     }
 
     /* หัวข้อตัวหนา */
@@ -383,11 +393,7 @@ $menus = $conn->query($sql_menus);
                 <img src="<?php echo !empty($data['logo_path']) ? $data['logo_path'] : 'assets/img/default-company.png'; ?>"
                     style="max-height: 50px; max-width: 100px;" class="me-3 doc-logo">
                 <div>
-                    <?php if ($data['approve'] == 1): ?>
-                        <h5 class="mb-0 fw-bold text-dark">EVENT ORDER</h5>
-                    <?php else: ?>
-                        <h5 class="mb-0 fw-bold text-dark">QUOTATION</h5>
-                    <?php endif; ?>
+                    <h5 class="mb-0 fw-bold text-dark">EVENT ORDER</h5>
                     <p class="mb-0 text-muted" style="font-size: 9px;"><?php echo htmlspecialchars($data['company_name']); ?></p>
                 </div>
             </div>
@@ -465,7 +471,8 @@ $menus = $conn->query($sql_menus);
             </tbody>
         </table>
     </div>
-    <div class="section-group mb-0">
+    <?php // ไม่มีเบรกและไม่มีหมายเหตุครัว = ซ่อนตอนพิมพ์ (หน้าจอยังเห็นอยู่) ?>
+    <div class="section-group mb-0<?= ($kitchens->num_rows == 0 && trim($data['main_kitchen_remark'] ?? '') === '') ? ' d-print-none' : '' ?>">
         <div class="section-title">3. รายการเบรก</div>
         <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
@@ -524,7 +531,7 @@ $menus = $conn->query($sql_menus);
             </div>
         </div>
     </div>
-    <div class="section-group">
+    <div class="section-group<?= $menus->num_rows == 0 ? ' d-print-none' : '' ?>">
         <div class="section-title">6. รายละเอียดเมนูอาหารและเครื่องดื่ม <span class="section-en">(FOOD &amp; BEVERAGE DETAILS)</span></div>
         <table class="table table-sm table-bordered table-tight mb-0">
             <thead class="table-light text-center">
@@ -566,6 +573,48 @@ $menus = $conn->query($sql_menus);
             </tfoot>
         </table>
     </div>
+    <?php if ($rooms && $rooms->num_rows > 0): ?>
+    <div class="section-group">
+        <div class="section-title">รายการห้องพัก / ห้องประชุม <span class="section-en">(ROOMS)</span></div>
+        <table class="table table-sm table-bordered table-tight mb-0">
+            <thead class="table-light text-center">
+                <tr>
+                    <th width="10%">วันที่</th>
+                    <th width="15%">ประเภท</th>
+                    <th>รายละเอียด</th>
+                    <th width="10%">จำนวน</th>
+                    <th width="12%">ราคาขาย/หน่วย</th>
+                    <th width="12%">ราคาทุน/หน่วย</th>
+                    <th width="12%">ยอดรวม</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $room_grand_total = 0;
+                while ($row = $rooms->fetch_assoc()):
+                    $room_total = (float) $row['room_qty'] * (float) $row['room_price'];
+                    $room_grand_total += $room_total;
+                ?>
+                    <tr>
+                        <td class="text-center"><?php echo thai_date($row['room_date']); ?></td>
+                        <td class="text-center"><?= EO_ROOM_TYPES[$row['room_type']] ?? 'ห้องพัก' ?></td>
+                        <td><?php echo nl2br(htmlspecialchars($row['room_detail'])); ?></td>
+                        <td class="text-center fw-bold"><?php echo number_format($row['room_qty']); ?></td>
+                        <td class="text-end"><?php echo number_format($row['room_price'], 2); ?></td>
+                        <td class="text-end text-danger"><?php echo number_format($row['room_cost'] ?? 0, 2); ?></td>
+                        <td class="text-end fw-bold"><?php echo number_format($room_total, 2); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th colspan="6" class="text-end fw-bold">รวมค่าห้อง</th>
+                    <th class="text-end fw-bold"><?php echo number_format($room_grand_total, 2); ?></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <?php endif; ?>
     <div class="row g-2">
         <div class="col-6">
             <div class="section-group">

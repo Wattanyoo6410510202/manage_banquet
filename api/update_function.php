@@ -2,6 +2,7 @@
 ob_start();
 session_start();
 include "../config.php";
+include_once "../includes/quote_item_types.php";
 
 if (isset($_POST['update'])) {
     $function_id = intval($_POST['function_id'] ?? 0);
@@ -181,6 +182,7 @@ if (isset($_POST['update'])) {
         $conn->query("DELETE FROM function_schedules WHERE function_id = $function_id");
         $conn->query("DELETE FROM function_kitchens WHERE function_id = $function_id");
         $conn->query("DELETE FROM function_menus WHERE function_id = $function_id");
+        $conn->query("DELETE FROM function_rooms WHERE function_id = $function_id");
 
         // --- 7. Re-Insert Schedule ---
         if (!empty($_POST['schedule_function'])) {
@@ -275,6 +277,23 @@ if (isset($_POST['update'])) {
                     $stmt_m->bind_param("isisdsd", $function_id, $menu_time_val, $menu_set_id_val, $detail, $menu_qty_val, $menu_price_val, $menu_cost_val);
                     if (!$stmt_m->execute()) throw new Exception("Insert menu failed: " . $stmt_m->error);
                 }
+            }
+        }
+
+        // --- 8. Re-Insert Rooms ---
+        if (!empty($_POST['room_detail'])) {
+            $stmt_r = $conn->prepare("INSERT INTO function_rooms (function_id, room_type, room_date, room_detail, room_qty, room_price, room_cost) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt_r) throw new Exception("Prepare room failed: " . $conn->error);
+            foreach ($_POST['room_detail'] as $k => $detail) {
+                if (trim($detail) == "") continue;
+                $r_type = $_POST['room_type'][$k] ?? '';
+                if (!isset(EO_ROOM_TYPES[$r_type])) $r_type = 'Room';
+                $r_date = !empty($_POST['room_date'][$k]) ? $_POST['room_date'][$k] : null;
+                $r_qty = intval($_POST['room_qty'][$k] ?? 0);
+                $r_price = floatval($_POST['room_price'][$k] ?? 0);
+                $r_cost = floatval($_POST['room_cost'][$k] ?? 0);
+                $stmt_r->bind_param("isssidd", $function_id, $r_type, $r_date, $detail, $r_qty, $r_price, $r_cost);
+                if (!$stmt_r->execute()) throw new Exception("Insert room failed: " . $stmt_r->error);
             }
         }
 

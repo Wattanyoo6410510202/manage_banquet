@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . "/../config.php";
+include_once __DIR__ . "/../includes/quote_item_types.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -293,6 +294,22 @@ if (isset($_POST['save'])) {
                     $stmt_m->bind_param("isissdd", $last_id, $m_date, $m_set, $detail, $m_qty, $m_price, $m_cost);
                     $stmt_m->execute();
                 }
+            }
+        }
+
+        // --- 6. บันทึกรายการห้องพัก ---
+        if (!empty($_POST['room_detail'])) {
+            $stmt_r = $conn->prepare("INSERT INTO function_rooms (function_id, room_type, room_date, room_detail, room_qty, room_price, room_cost) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            foreach ($_POST['room_detail'] as $k => $detail) {
+                if (trim($detail) == "") continue;
+                $r_type = $_POST['room_type'][$k] ?? '';
+                if (!isset(EO_ROOM_TYPES[$r_type])) $r_type = 'Room';
+                $r_date = !empty($_POST['room_date'][$k]) ? $_POST['room_date'][$k] : null;
+                $r_qty = intval($_POST['room_qty'][$k] ?? 0);
+                $r_price = floatval($_POST['room_price'][$k] ?? 0);
+                $r_cost = floatval($_POST['room_cost'][$k] ?? 0);
+                $stmt_r->bind_param("isssidd", $last_id, $r_type, $r_date, $detail, $r_qty, $r_price, $r_cost);
+                $stmt_r->execute();
             }
         }
 

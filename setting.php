@@ -148,6 +148,12 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                         <i class="bi bi-file-earmark-spreadsheet me-2"></i>นำเข้าต้นทุน
                     </button>
                 </li>
+                <li class="nav-item ms-auto align-self-center">
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="runMigrations(this)"
+                        title="รันไฟล์ใน migrations/ ที่ยังไม่เคยรัน (กดหลัง git pull)">
+                        <i class="bi bi-database-up me-1"></i>อัพเดทฐานข้อมูล
+                    </button>
+                </li>
             </ul>
 
             <div class="tab-content p-4">
@@ -626,6 +632,24 @@ function togglePass() {
 async function confirmDelete(url, msg) {
     if (await UI.confirm(msg)) {
         window.location.href = url;
+    }
+}
+
+// --- อัพเดทฐานข้อมูล (รัน migrations/*.sql ที่ยังไม่เคยรัน) ---
+async function runMigrations(btn) {
+    if (!(await UI.confirm('อัพเดทโครงสร้างฐานข้อมูลให้เป็นเวอร์ชันล่าสุด?'))) return;
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try {
+        const res = await fetch('api/run_migrations.php', { method: 'POST' });
+        const data = await res.json();
+        UI.alert((data.ok ? '✅ ' : '❌ ') + data.message);
+    } catch (e) {
+        UI.alert('❌ เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
     }
 }
 
