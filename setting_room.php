@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/audit.php";
 $user_role = strtolower($_SESSION['role'] ?? 'viewer');
 // ==========================================
 // 🛡️ API SECTION (Logic) - จัดการแบบ JSON
@@ -38,6 +39,7 @@ if (isset($_POST['action'])) {
                 cap_banquet='$cap_banquet', cap_cocktail='$cap_cocktail'
                 WHERE id=$id";
             $conn->query($sql);
+            audit_log($conn, 'update', 'meeting_room', $id, 'แก้ไขห้องประชุม: ' . $_POST['room_name']);
             echo json_encode(['status' => 'updated', 'id' => $id, 'sqm' => number_format($total_sqm, 2)]);
         } else {
             // เพิ่มใหม่โดยใส่ company_id ลงไปด้วย
@@ -45,7 +47,9 @@ if (isset($_POST['action'])) {
                 VALUES ('$company_id', '$room_name', '$floor', '$length_m', '$width_m', '$height_m', '$total_sqm', 
                 '$cap_theatre', '$cap_classroom', '$cap_banquet', '$cap_cocktail')";
             $conn->query($sql);
-            echo json_encode(['status' => 'inserted', 'id' => $conn->insert_id, 'sqm' => number_format($total_sqm, 2)]);
+            $new_id = $conn->insert_id;
+            audit_log($conn, 'create', 'meeting_room', $new_id, 'เพิ่มห้องประชุม: ' . $_POST['room_name']);
+            echo json_encode(['status' => 'inserted', 'id' => $new_id, 'sqm' => number_format($total_sqm, 2)]);
         }
         exit;
     }
@@ -67,7 +71,9 @@ if (isset($_POST['action'])) {
 
         if ($id > 0) {
             // เช็คก่อนลบ เผื่อมีห้องประชุมนี้ถูกใช้งานอยู่ (Optional: ถ้าจารย์มีระบบตรวจสอบความสัมพันธ์)
+            $old = $conn->query("SELECT room_name FROM meeting_rooms WHERE id=$id")->fetch_assoc();
             if ($conn->query("DELETE FROM meeting_rooms WHERE id=$id")) {
+                audit_log($conn, 'delete', 'meeting_room', $id, 'ลบห้องประชุม: ' . ($old['room_name'] ?? ''));
                 echo json_encode(['status' => 'success']);
             } else {
                 echo json_encode([

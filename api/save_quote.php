@@ -1,6 +1,7 @@
 <?php
 include "../config.php";
 include_once "../includes/quote_item_types.php";
+include_once "../includes/audit.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -119,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->commit();
+        audit_log($conn, 'create', 'quotation', $last_quote_id, "สร้างใบเสนอราคา $quote_no: $event_name");
 
         // LINE แจ้ง GM/Admin ว่ามีใบเสนอราคาใหม่รออนุมัติ
         // ครอบ try ไว้เพราะแจ้งเตือนล้มเหลวต้องไม่ทำให้ใบเสนอราคาที่ commit แล้วพัง

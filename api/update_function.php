@@ -3,6 +3,7 @@ ob_start();
 session_start();
 include "../config.php";
 include_once "../includes/quote_item_types.php";
+include_once "../includes/audit.php";
 
 if (isset($_POST['update'])) {
     $function_id = intval($_POST['function_id'] ?? 0);
@@ -299,6 +300,7 @@ if (isset($_POST['update'])) {
 
         $conn->commit();
         $_SESSION['flash_msg'] = "update_success";
+        audit_log($conn, 'update', 'function', $function_id, 'แก้ไข EO: ' . $function_name);
 
         // LINE แจ้งทุกแผนกเมื่อมีการแก้งานที่อนุมัติไปแล้ว
         // (งานที่ยังไม่อนุมัติยังไม่มีใครเตรียมของ ไม่ต้องกวนให้รก)

@@ -1,6 +1,7 @@
 <?php
 ob_start();
 include "../config.php";
+include_once "../includes/audit.php";
 ob_end_clean();
 header('Content-Type: application/json');
 
@@ -105,6 +106,7 @@ if ($action === 'save') {
 
         if ($conn->query($sql_insert)) {
             $last_id = $conn->insert_id;
+            audit_log($conn, 'create', 'room_booking', $last_id, "จองห้อง $booking_code: $event_name ($start_time - $end_time)");
             echo json_encode([
                 'status' => 'success',
                 'booking_id' => $last_id,
@@ -136,6 +138,7 @@ if ($action === 'delete') {
         }
 
         $conn->query("UPDATE room_bookings SET status = 'cancelled' WHERE id = $booking_id");
+        audit_log($conn, 'cancel', 'room_booking', $booking_id, 'ยกเลิกการจองห้อง');
 
         echo json_encode(['status' => 'success', 'message' => 'ยกเลิกการจองสำเร็จ']);
     } catch (Throwable $e) {

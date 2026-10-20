@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -78,6 +79,7 @@ if ($stmt->execute()) {
         $stmt_upd->bind_param("i", $id);
         $stmt_upd->execute();
     }
+    audit_log($conn, 'rollback', 'function', $id, "ย้อนสถานะ: $current_status → $old_status");
     echo json_encode(['success' => true, 'old_status' => $old_status]);
 } else {
     echo json_encode(['success' => false, 'message' => $stmt->error]);

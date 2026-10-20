@@ -1,6 +1,7 @@
 <?php
 include "../config.php";
 include_once "../includes/quote_item_types.php";
+include_once "../includes/audit.php";
 
 // ตรวจสอบการส่งค่าแบบ POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -115,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ยืนยันการบันทึก
         $conn->commit();
         $_SESSION['flash_msg'] = "update_success";
+        audit_log($conn, 'update', 'quotation', $quote_id, 'แก้ไขใบเสนอราคา: ' . $event_name);
         header("Location: ../quotation_list.php");
 
     } catch (Exception $e) {

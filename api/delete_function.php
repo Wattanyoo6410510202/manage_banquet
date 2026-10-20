@@ -2,6 +2,7 @@
 ob_start();
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 
 // บอก Browser ว่าเราจะตอบกลับเป็น JSON
 header('Content-Type: application/json');
@@ -76,6 +77,7 @@ if (!empty($ids) && is_array($ids)) {
         $conn->query("DELETE FROM functions WHERE id IN ($ids_string)");
 
         $conn->commit();
+        audit_log($conn, 'delete', 'function', $clean_ids, 'ลบ EO ' . count($clean_ids) . ' รายการ');
 
         // ✅ เก็บ Session สำหรับ Flash Message (หน้าจอก็จะเด้งแถบเขียวเนียนๆ)
         $_SESSION['flash_msg'] = "delete_success";

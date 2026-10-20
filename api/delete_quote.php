@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $id = intval($_POST['id']);
@@ -20,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
             }
         }
 
+        $old = db_query($conn, "SELECT quote_no FROM quotations WHERE id = ?", "i", $id)->fetch_assoc();
+
         // 1. ลบรายการย่อยก่อน (quotation_items)
         $sql_items = "DELETE FROM quotation_items WHERE quote_id = ?";
         $stmt_items = $conn->prepare($sql_items);
@@ -33,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
         $stmt_main->execute();
 
         $conn->commit();
+        audit_log($conn, 'delete', 'quotation', $id, 'ลบใบเสนอราคา ' . ($old['quote_no'] ?? ''));
         echo "success";
 
     } catch (Exception $e) {

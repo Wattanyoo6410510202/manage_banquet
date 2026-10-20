@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -59,6 +60,7 @@ $stmt = $conn->prepare("UPDATE quotations SET workflow_status = ? WHERE id = ?")
 $stmt->bind_param("si", $workflow_status, $id);
 
 if ($stmt->execute()) {
+    audit_log($conn, 'status', 'quotation', $id, 'เปลี่ยนสถานะเป็น: ' . $workflow_status);
     echo json_encode(['status' => 'success', 'workflow_status' => $workflow_status]);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'อัปเดตไม่สำเร็จ: ' . $conn->error]);

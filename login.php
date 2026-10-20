@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/audit.php";
 // เริ่ม session หากยังไม่ได้เริ่ม
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -31,14 +32,17 @@ if (isset($_POST['login'])) {
             $_SESSION['user_name'] = $user_data['name'];
             $_SESSION['role'] = $user_data['role']; // ค่าใน DB ควรเป็น Admin, GM, Staff
             $_SESSION['login_time'] = time();
+            audit_log($conn, 'login', 'user', $user_data['id'], 'เข้าสู่ระบบ');
 
             header("Location: calendar.php");
             exit;
         } else {
             $error = "รหัสผ่านไม่ถูกต้อง";
+            audit_log($conn, 'login_failed', 'user', $user_data['id'], 'รหัสผ่านไม่ถูกต้อง: ' . $_POST['username']);
         }
     } else {
         $error = "ไม่พบชื่อผู้ใช้งานนี้ในระบบ";
+        audit_log($conn, 'login_failed', 'user', null, 'ไม่พบชื่อผู้ใช้: ' . $_POST['username']);
     }
 }
 

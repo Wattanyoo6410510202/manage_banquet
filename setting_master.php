@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/audit.php";
 
 $current_user = trim($_SESSION['user_name'] ?? '');
 $user_role = strtolower(trim($_SESSION['role'] ?? 'viewer'));
@@ -59,6 +60,8 @@ if (isset($_POST['action'])) {
             echo json_encode(['status' => 'error', 'message' => $conn->error, 'sql' => $sql]);
             exit;
         }
+        $saved_id = $id > 0 ? $id : $conn->insert_id;
+        audit_log($conn, $id > 0 ? 'update' : 'create', $table, $saved_id, ($id > 0 ? 'แก้ไข: ' : 'เพิ่ม: ') . ($_POST['type_name'] ?? ''));
 
         if ($id > 0) {
             $cat_name = '';
@@ -70,7 +73,7 @@ if (isset($_POST['action'])) {
             $resp_break_price = (isset($break_price) && $break_price !== 'NULL') ? $break_price : null;
             echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $name, 'table' => $table, 'category_name' => $cat_name, 'set_price' => $resp_set_price, 'break_price' => $resp_break_price]);
         } else {
-            $new_id = $conn->insert_id;
+            $new_id = $saved_id;
             $cat_name = '';
             if ($table === 'master_menu_types' && $category_id > 0) {
                 $cr = $conn->query("SELECT category_name FROM master_menu_categories WHERE id=$category_id");
@@ -85,7 +88,10 @@ if (isset($_POST['action'])) {
 
     if ($action == 'delete') {
         if (ob_get_length()) ob_clean();
+        $name_col = $table === 'master_menu_categories' ? 'category_name' : 'type_name';
+        $old = $conn->query("SELECT $name_col AS name FROM $table WHERE id=$id")->fetch_assoc();
         if ($conn->query("DELETE FROM $table WHERE id=$id")) {
+            audit_log($conn, 'delete', $table, $id, 'ลบ: ' . ($old['name'] ?? ''));
             echo "success";
         } else {
             echo json_encode(['status' => 'error', 'message' => $conn->error]);

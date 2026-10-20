@@ -1,5 +1,6 @@
 <?php
 include "../config.php";
+include_once "../includes/audit.php";
 
 if (isset($_GET['id'])) {
     // Check role — only admin/gm/manager can approve quotations
@@ -28,6 +29,7 @@ if (isset($_GET['id'])) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ii", $admin_id, $id);
         $stmt->execute();
+        audit_log($conn, 'approve', 'quotation', $id, 'อนุมัติใบเสนอราคา');
 
         // LINE แจ้งคนที่สร้างใบเสนอราคาว่าอนุมัติแล้ว + แจ้ง admin ไว้เป็นสำเนา
         try {

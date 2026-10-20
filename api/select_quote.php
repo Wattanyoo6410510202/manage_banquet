@@ -1,5 +1,6 @@
 <?php
 include "../config.php";
+include_once "../includes/audit.php";
 
 header('Content-Type: application/json');
 
@@ -52,6 +53,7 @@ try {
     }
 
     $conn->commit();
+    audit_log($conn, 'select', 'quotation', $id, $deselect ? 'ยกเลิกเลือกเป็นใบหลัก' : 'เลือกเป็นใบหลักของโปรเจกต์');
     echo json_encode(['status' => 'success']);
 
 } catch (Exception $e) {

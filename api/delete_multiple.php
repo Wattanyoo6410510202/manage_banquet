@@ -2,6 +2,7 @@
 ob_start();
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 
 header('Content-Type: application/json');
 
@@ -80,6 +81,7 @@ if (isset($_POST['ids']) && is_array($_POST['ids'])) {
         $conn->query("DELETE FROM functions WHERE id IN ($ids_string)");
 
         $conn->commit();
+        audit_log($conn, 'delete', 'function', $ids, 'ลบ EO ' . count($ids) . ' รายการ');
 
         // เซ็ต SESSION เพื่อให้หน้าหลักโชว์ Alert สไลด์จากขวา (ตามที่จารเซ็ตไว้)
         $_SESSION['flash_msg'] = 'delete_success';

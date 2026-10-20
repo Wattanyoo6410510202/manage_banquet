@@ -38,6 +38,11 @@ while ($row = $imt_res->fetch_assoc()) { $import_menu_types[] = $row; }
 $import_menu_items = [];
 $imi_res = $conn->query("SELECT id, menu_type_id, menu_items, cost_per_pax FROM function_menu_details");
 while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
+
+// --- ตัวกรองแท็บ "Audit Log" (ข้อมูลโหลดผ่าน api/get_audit_logs.php) ---
+$audit_users = [];
+$au_res = $conn->query("SELECT id, name, username FROM users ORDER BY name ASC");
+while ($row = $au_res->fetch_assoc()) { $audit_users[] = $row; }
 ?>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -146,6 +151,12 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                     <button class="nav-link <?php echo $active_tab == 'import' ? 'active' : ''; ?>" data-bs-toggle="tab"
                         data-bs-target="#import-pane">
                         <i class="bi bi-file-earmark-spreadsheet me-2"></i>นำเข้าต้นทุน
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link <?php echo $active_tab == 'audit' ? 'active' : ''; ?>" data-bs-toggle="tab"
+                        data-bs-target="#audit-pane" id="audit-tab">
+                        <i class="bi bi-clock-history me-2"></i>Audit Log
                     </button>
                 </li>
                 <li class="nav-item ms-auto align-self-center">
@@ -531,6 +542,59 @@ while ($row = $imi_res->fetch_assoc()) { $import_menu_items[] = $row; }
                     </div>
                 </div>
 
+                <div class="tab-pane fade <?php echo $active_tab == 'audit' ? 'show active' : ''; ?>" id="audit-pane">
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-1">ตั้งแต่วันที่</label>
+                            <input type="date" class="form-control form-control-sm audit-filter" id="auditDateFrom">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-1">ถึงวันที่</label>
+                            <input type="date" class="form-control form-control-sm audit-filter" id="auditDateTo">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-1">ผู้ใช้</label>
+                            <select class="form-select form-select-sm audit-filter" id="auditUser">
+                                <option value="">ทั้งหมด</option>
+                                <?php foreach ($audit_users as $u): ?>
+                                <option value="<?php echo $u['id']; ?>"><?php echo htmlspecialchars($u['name'] ?: $u['username']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-1">การกระทำ</label>
+                            <select class="form-select form-select-sm audit-filter" id="auditAction">
+                                <option value="">ทั้งหมด</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small mb-1">ข้อมูล</label>
+                            <select class="form-select form-select-sm audit-filter" id="auditEntity">
+                                <option value="">ทั้งหมด</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="resetAuditFilters()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>ล้างตัวกรอง
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="auditTable" class="table table-hover align-middle table-sm w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 140px;">วันเวลา</th>
+                                    <th>ผู้ใช้</th>
+                                    <th>การกระทำ</th>
+                                    <th>ข้อมูล</th>
+                                    <th>รายละเอียด</th>
+                                    <th>IP</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -634,6 +698,72 @@ async function confirmDelete(url, msg) {
         window.location.href = url;
     }
 }
+
+// --- Audit Log (โหลดตอนเปิดแท็บครั้งแรก, ดึงทีละหน้าจากเซิร์ฟเวอร์) ---
+const AUDIT_ACTIONS = {
+    login: ['เข้าสู่ระบบ', 'success'], login_failed: ['เข้าสู่ระบบไม่สำเร็จ', 'danger'], logout: ['ออกจากระบบ', 'secondary'],
+    create: ['เพิ่ม', 'primary'], update: ['แก้ไข', 'info'], delete: ['ลบ', 'danger'],
+    approve: ['อนุมัติ', 'success'], status: ['เปลี่ยนสถานะ', 'warning'], rollback: ['ย้อนสถานะ', 'warning'],
+    select: ['เลือกใบหลัก', 'info'], duplicate: ['คัดลอก', 'primary'], cancel: ['ยกเลิก', 'danger'],
+    import: ['นำเข้า', 'dark'], migrate: ['อัพเดทฐานข้อมูล', 'dark'],
+};
+const AUDIT_ENTITIES = {
+    user: 'ผู้ใช้', company: 'บริษัท', function: 'EO / Function', quotation: 'ใบเสนอราคา',
+    finance: 'การเงิน', room_booking: 'จองห้อง', meeting_room: 'ห้องประชุม', function_type: 'ประเภทงาน',
+    master_menu_types: 'ประเภทเมนู', master_menu_categories: 'หมวดเมนู', master_break_types: 'ประเภท Break',
+    food_cost: 'ต้นทุนอาหาร', database: 'ฐานข้อมูล',
+};
+let auditTable = null;
+
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function initAuditTable() {
+    if (auditTable) return;
+    for (const [k, [label]] of Object.entries(AUDIT_ACTIONS)) $('#auditAction').append(new Option(label, k));
+    for (const [k, label] of Object.entries(AUDIT_ENTITIES)) $('#auditEntity').append(new Option(label, k));
+
+    auditTable = $('#auditTable').DataTable({
+        serverSide: true,
+        processing: true,
+        ordering: false,
+        pageLength: 25,
+        lengthMenu: [25, 50, 100, 200],
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json' },
+        ajax: {
+            url: 'api/get_audit_logs.php',
+            data: d => {
+                d.date_from = $('#auditDateFrom').val();
+                d.date_to = $('#auditDateTo').val();
+                d.user_id = $('#auditUser').val();
+                d.action = $('#auditAction').val();
+                d.entity_type = $('#auditEntity').val();
+            },
+            dataSrc: json => {
+                if (json.error) UI.alert('❌ ' + json.error);
+                return json.data || [];
+            },
+        },
+        columns: [
+            { data: 'created_at', render: v => { const d = new Date(String(v).replace(' ', 'T')); return isNaN(d) ? escapeHtml(v) : d.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'medium' }); } },
+            { data: 'user_name', render: (v, t, r) => escapeHtml(v || '-') + (r.role ? ` <small class="text-muted">(${escapeHtml(r.role)})</small>` : '') },
+            { data: 'action', render: v => { const [label, color] = AUDIT_ACTIONS[v] || [v, 'secondary']; return `<span class="badge bg-${color}">${escapeHtml(label)}</span>`; } },
+            { data: 'entity_type', render: (v, t, r) => escapeHtml(AUDIT_ENTITIES[v] || v || '-') + (r.entity_id ? ` <small class="text-muted">#${escapeHtml(r.entity_id)}</small>` : '') },
+            { data: 'detail', render: v => escapeHtml(v) },
+            { data: 'ip_address', render: v => `<small class="text-muted">${escapeHtml(v)}</small>` },
+        ],
+    });
+    $('.audit-filter').on('change', () => auditTable.ajax.reload());
+}
+
+function resetAuditFilters() {
+    $('.audit-filter').val('');
+    if (auditTable) auditTable.ajax.reload();
+}
+
+document.getElementById('audit-tab').addEventListener('shown.bs.tab', initAuditTable);
+<?php if ($active_tab == 'audit'): ?>$(initAuditTable);<?php endif; ?>
 
 // --- อัพเดทฐานข้อมูล (รัน migrations/*.sql ที่ยังไม่เคยรัน) ---
 async function runMigrations(btn) {

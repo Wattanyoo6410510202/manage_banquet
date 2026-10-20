@@ -1,5 +1,6 @@
 <?php
 include "config.php";
+include_once "includes/audit.php";
 
 // ==========================================
 // 🛡️ API SECTION (Logic) - ต้องอยู่ก่อนการแสดงผล
@@ -15,11 +16,13 @@ if (isset($_POST['action'])) {
         if ($id > 0) {
             $sql = "UPDATE function_types SET type_name='$type_name', prefix='$prefix' WHERE id=$id";
             $conn->query($sql);
+            audit_log($conn, 'update', 'function_type', $id, "แก้ไขประเภทงาน: {$_POST['type_name']} ($prefix)");
             echo json_encode(['status' => 'updated', 'id' => $id, 'name' => $type_name, 'prefix' => $prefix]);
         } else {
             $sql = "INSERT INTO function_types (type_name, prefix) VALUES ('$type_name', '$prefix')";
             $conn->query($sql);
             $new_id = $conn->insert_id;
+            audit_log($conn, 'create', 'function_type', $new_id, "เพิ่มประเภทงาน: {$_POST['type_name']} ($prefix)");
             echo json_encode([
                 'status' => 'inserted', 
                 'id' => $new_id, 
@@ -33,7 +36,9 @@ if (isset($_POST['action'])) {
 
     if ($action == 'delete') {
         $id = intval($_POST['id']);
+        $old = $conn->query("SELECT type_name FROM function_types WHERE id=$id")->fetch_assoc();
         if ($conn->query("DELETE FROM function_types WHERE id=$id")) {
+            audit_log($conn, 'delete', 'function_type', $id, 'ลบประเภทงาน: ' . ($old['type_name'] ?? ''));
             echo "success";
         } else {
             echo "error";

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include "../config.php";
+include_once "../includes/audit.php";
 
 if (!isset($_SESSION['user_name'])) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
@@ -74,6 +75,7 @@ try {
                   SELECT $new_id, room_type, room_date, room_detail, room_qty, room_price, room_cost FROM function_rooms WHERE function_id = $function_id");
 
     $conn->commit();
+    audit_log($conn, 'duplicate', 'function', $new_id, "คัดลอก Draft จาก EO #$function_id");
 
     // LINE แจ้งเตือนมี Draft ใหม่ (Flex Message)
     include_once __DIR__ . "/../line_helper.php";

@@ -1,6 +1,7 @@
 <?php
 include_once __DIR__ . "/../config.php";
 include_once __DIR__ . "/../includes/quote_item_types.php";
+include_once __DIR__ . "/../includes/audit.php";
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -315,6 +316,7 @@ if (isset($_POST['save'])) {
 
         $conn->commit();
         $_SESSION['flash_msg'] = "success";
+        audit_log($conn, 'create', 'function', $last_id, "สร้าง EO $final_code: $function_name");
 
         // LINE แจ้ง GM/Admin ว่ามีงานใหม่รออนุมัติ
         // ครอบ try ไว้เพราะแจ้งเตือนล้มเหลวต้องไม่ทำให้การบันทึกงานพัง (commit ไปแล้ว)

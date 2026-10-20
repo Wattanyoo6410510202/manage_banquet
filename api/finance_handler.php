@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
 include "../config.php";
+include_once "../includes/audit.php";
 
 // รับ Action จากทั้ง GET หรือ POST เพื่อความยืดหยุ่น
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -70,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("iissdssssi", $fid, $qid, $type, $detail, $amount, $payment_method, $t_date, $created_by_role, $created_by_name, $is_post);
 
         if ($stmt->execute()) {
+            $ref = $fid ? "EO #$fid" : "ใบเสนอราคา #$qid";
+            audit_log($conn, 'create', 'finance', $conn->insert_id, "บันทึก $type " . number_format($amount, 2) . " บาท ($ref): $detail");
             echo json_encode(['status' => 'success', 'message' => 'บันทึกข้อมูลเรียบร้อยแล้ว']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Database Error: ' . $conn->error]);
@@ -82,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($id > 0) {
             // เช็คก่อนว่ามีข้อมูลไหม (เผื่อโดนลบไปแล้ว)
-            $stmt_chk = $conn->prepare("SELECT function_id, quotation_id FROM function_finance WHERE id = ?");
+            $stmt_chk = $conn->prepare("SELECT function_id, quotation_id, type, detail, amount FROM function_finance WHERE id = ?");
             $stmt_chk->bind_param("i", $id);
             $stmt_chk->execute();
             $res_chk = $stmt_chk->get_result();
@@ -105,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_del = $conn->prepare("DELETE FROM function_finance WHERE id = ?");
                 $stmt_del->bind_param("i", $id);
                 if ($stmt_del->execute()) {
+                    audit_log($conn, 'delete', 'finance', $id, "ลบ {$ff_row['type']} " . number_format($ff_row['amount'], 2) . " บาท: {$ff_row['detail']}");
                     echo json_encode(['status' => 'success', 'message' => 'ลบรายการเรียบร้อย']);
                 } else {
                     echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถลบข้อมูลได้']);

@@ -1,13 +1,14 @@
 <?php
 session_start();
 include "../config.php"; // ถอยออกจากโฟลเดอร์ api ไปหาไฟล์ตั้งค่า
+include_once "../includes/audit.php";
 
 // --- 1. กรณีลบข้อมูล ---
 if (isset($_GET['delete_id'])) {
     $id = $_GET['delete_id'];
     
     // ดึงชื่อไฟล์รูปมาลบทิ้งจาก Server ด้วย (เพื่อไม่ให้ขยะเต็ม)
-    $stmt_img = $conn->prepare("SELECT logo_path, stamp_path FROM companies WHERE id = ?");
+    $stmt_img = $conn->prepare("SELECT company_name, logo_path, stamp_path FROM companies WHERE id = ?");
     $stmt_img->bind_param("i", $id);
     $stmt_img->execute();
     $res_img = $stmt_img->get_result()->fetch_assoc();
@@ -23,6 +24,7 @@ if (isset($_GET['delete_id'])) {
     
     if($stmt->execute()) {
         $_SESSION['success'] = "ลบข้อมูลบริษัทเรียบร้อยแล้ว";
+        audit_log($conn, 'delete', 'company', $id, 'ลบบริษัท: ' . ($res_img['company_name'] ?? ''));
     } else {
         $_SESSION['error'] = "ไม่สามารถลบข้อมูลได้: " . $conn->error;
     }
@@ -96,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($stmt->execute()) {
          $_SESSION['flash_msg'] = "success";
          $_SESSION['success'] = $msg_text;
+         audit_log($conn, $id ? 'update' : 'create', 'company', $id ?: $conn->insert_id, ($id ? 'แก้ไขบริษัท: ' : 'เพิ่มบริษัท: ') . $company_name);
     } else {
         $_SESSION['flash_msg'] = "error";
         $_SESSION['error'] = "เกิดข้อผิดพลาด: " . $conn->error;

@@ -6,6 +6,7 @@
  */
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/audit.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -58,6 +59,8 @@ foreach ($files as $path) {
     $stmt->execute();
     $ran[] = $name;
 }
+
+if ($ran) audit_log($conn, 'migrate', 'database', null, 'รัน migration: ' . implode(', ', $ran));
 
 echo json_encode([
     'ok' => true,

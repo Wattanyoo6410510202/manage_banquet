@@ -6,6 +6,7 @@
  * แล้วจับคู่ menu_items แบบตรงชื่อเป๊ะภายใน menu_type_id นั้น — เจอแล้วราคาต่างค่อยอัปเดต, ไม่เจอค่อยเพิ่มแถวใหม่
  */
 require_once __DIR__ . "/../config.php";
+require_once __DIR__ . "/../includes/audit.php";
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -131,6 +132,8 @@ foreach ($rows as $row) {
         $inserted++;
     }
 }
+
+audit_log($conn, 'import', 'food_cost', null, "นำเข้าต้นทุน: เพิ่ม $inserted, อัปเดต $updated, ไม่เปลี่ยน $unchanged, สร้างประเภทใหม่ $types_created");
 
 jsonOut([
     'status'              => 'success',
