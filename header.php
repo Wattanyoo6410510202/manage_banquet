@@ -49,7 +49,7 @@ function is_active($pages)
 $nav_role = strtolower($_SESSION['role'] ?? '');
 $nav_groups = [
     'เมนูหลัก' => [
-        ['executive_dashboard.php', 'bi-grid-1x2', 'Executive Dashboard', ['admin', 'staff', 'gm', 'sale', 'procurement']],
+        ['executive_dashboard.php', 'bi-grid-1x2', 'Dashboard & รายงาน', ['admin', 'staff', 'gm', 'sale', 'procurement', 'manager']],
         ['calendar.php', 'bi-calendar3', 'ปฏิทิน', ['admin', 'staff', 'gm', 'sale', 'procurement']],
         ['manage_banquet.php', 'bi-calendar-event', 'จัดเลี้ยง (Banquet)', ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'], ['manage_banquet.php', 'view.php', 'edit.php', 'add_event.php', 'finance.php']],
         ['booking_list.php', 'bi-journal-bookmark', 'รายการจองห้อง / ใบเสนอราคา', ['admin', 'staff', 'gm', 'sale', 'manager', 'procurement'], ['booking_list.php', 'room_calendar.php']],
@@ -57,7 +57,7 @@ $nav_groups = [
         ['customer.php', 'bi-people', 'ลูกค้า', ['admin', 'staff', 'gm', 'sale', 'procurement']],
     ],
     'บันทึกภาระงานแผนก' => [
-        ['sales_dept.php', 'bi-graph-up-arrow', 'งานขาย', ['admin', 'gm', 'sale']],
+        ['sales_dept.php', 'bi-graph-up-arrow', 'งานขาย & รายงานการขาย', ['admin', 'staff', 'gm', 'sale', 'manager'], ['sales_dept.php', 'sales_report.php']],
         ['banquet_mt.php', 'bi-tools', 'งานช่าง', ['admin', 'technician']],
         ['banquet_bk.php', 'bi-calendar-check', 'งานจัดเลี้ยง', ['admin', 'banquet_staff']],
         ['banquet_hk.php', 'bi-house-door', 'งานแม่บ้าน', ['admin', 'housekeeping']],

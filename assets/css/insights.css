@@ -1,0 +1,186 @@
+/* =========================================================
+   Dashboard + รายงาน — สไตล์ร่วม (ใช้ token จาก theme.css)
+   ========================================================= */
+.ins { color: var(--ink); }
+.ins .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- หัวหน้า ---------- */
+.ins-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.ins-head h1 { font-size: var(--fs-xl); font-weight: 700; margin: 0; }
+.ins-head .sub { color: var(--muted); font-size: var(--fs-sm); margin-top: 2px; }
+
+/* ---------- แถบตัวกรอง ---------- */
+.ins-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ins-filter .form-select, .ins-filter .form-control { width: auto; min-width: 0; font-size: var(--fs-sm); border-radius: var(--r); }
+.ins-filter .lbl { font-size: var(--fs-xs); color: var(--faint); margin-right: -2px; }
+
+/* ---------- ปุ่มสลับ (segmented) ---------- */
+.ins-seg { display: inline-flex; background: var(--sunken); border-radius: 999px; padding: 3px; gap: 2px; }
+.ins-seg a, .ins-seg button { border: 0; background: transparent; border-radius: 999px; padding: 6px 16px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); text-decoration: none; }
+.ins-seg a.active, .ins-seg button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* ---------- การ์ด ---------- */
+.ins-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.ins-card-hd { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 6px; flex-wrap: wrap; }
+.ins-card-hd h2 { font-size: var(--fs-md); font-weight: 700; margin: 0; }
+.ins-card-hd .hint { font-size: var(--fs-xs); color: var(--faint); }
+.ins-card-hd .act { margin-left: auto; font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+.ins-card-bd { padding: 8px 16px 16px; flex: 1; }
+.ins-empty { color: var(--faint); font-size: var(--fs-sm); padding: 24px 0; text-align: center; }
+
+/* ---------- KPI ---------- */
+.kpi { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; height: 100%; color: inherit; transition: border-color .15s, box-shadow .15s; }
+button.kpi:hover { border-color: var(--gold-200); box-shadow: var(--shadow-md); }
+button.kpi:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.kpi .k-label { font-size: var(--fs-sm); color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.kpi .k-label .bi { color: var(--faint); margin-left: auto; font-size: var(--fs-xs); }
+.kpi .k-value { font-size: var(--fs-2xl); font-weight: 700; line-height: 1.2; margin-top: 6px; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
+.kpi .k-sub { font-size: var(--fs-xs); color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi .k-bar { height: 6px; background: var(--sunken); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+.kpi .k-bar > span { display: block; height: 100%; background: var(--gold); border-radius: 99px; }
+.delta { font-weight: 700; }
+.delta.up { color: var(--success); }
+.delta.down { color: var(--danger); }
+
+/* ---------- กราฟแท่งแนวตั้ง (HTML ล้วน) ---------- */
+.vbars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; align-items: end; height: 220px; padding-top: 22px; position: relative; }
+.vbars .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; cursor: pointer; border-radius: var(--r-sm); position: relative; min-width: 0; background: none; border: 0; padding: 0; }
+.vbars .col:hover { background: var(--surface-2); }
+.vbars .col:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.vbars .bar { width: min(70%, 34px); background: var(--gold-200); border-radius: 4px 4px 0 0; min-height: 2px; transition: background .15s; }
+.vbars .col:hover .bar { background: var(--gold); }
+.vbars .col.is-current .bar { background: var(--gold); }
+.vbars .col.is-zero .bar { background: var(--line); }
+.vbars .val { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vbars .col.is-current .val { color: var(--ink); }
+.vbars-x { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; border-top: 1px solid var(--line); padding-top: 6px; }
+.vbars-x span { text-align: center; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.vbars-x span.is-current { color: var(--ink); font-weight: 700; }
+.vbars .target-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line-strong); pointer-events: none; }
+
+/* tooltip ลอยของกราฟ */
+.ins-tip { position: fixed; z-index: 2000; pointer-events: none; background: var(--ink); color: #fff; font-size: var(--fs-xs); padding: 7px 10px; border-radius: var(--r); line-height: 1.5; box-shadow: var(--shadow-md); opacity: 0; transition: opacity .1s; max-width: 240px; }
+.ins-tip.show { opacity: 1; }
+.ins-tip b { font-variant-numeric: tabular-nums; }
+
+/* ---------- รายการแท่งแนวนอน (คลิกได้) ---------- */
+.hlist { list-style: none; margin: 0; padding: 0; }
+.hlist li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 8px; border-radius: var(--r); cursor: pointer; }
+.hlist li:hover { background: var(--surface-2); }
+.hlist .nm { font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hlist .vl { font-size: var(--fs-sm); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.hlist .tr { grid-column: 1 / -1; height: 6px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.hlist .tr > span { display: block; height: 100%; background: var(--gold); border-radius: 99px; min-width: 2px; }
+.hlist .meta { font-size: var(--fs-xs); color: var(--faint); font-weight: 400; margin-left: 6px; }
+
+/* ---------- รายการต้องจัดการ ---------- */
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li + li { border-top: 1px solid var(--line); }
+.todo button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: 0; padding: 11px 6px; border-radius: var(--r); color: inherit; }
+.todo button:hover { background: var(--surface-2); }
+.todo .ic { width: 34px; height: 34px; border-radius: var(--r); display: grid; place-items: center; flex: 0 0 auto; font-size: var(--fs-md); background: var(--neutral-soft); color: var(--neutral); }
+.todo .tx { flex: 1; min-width: 0; }
+.todo .tx b { display: block; font-size: var(--fs-sm); font-weight: 600; }
+.todo .tx small { display: block; font-size: var(--fs-xs); color: var(--faint); }
+.todo .n { font-size: var(--fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--faint); }
+.todo .is-warn .ic { background: var(--warning-soft); color: var(--warning); }
+.todo .is-warn .n { color: var(--warning); }
+.todo .is-crit .ic { background: var(--danger-soft); color: var(--danger); }
+.todo .is-crit .n { color: var(--danger); }
+.todo .is-ok .ic { background: var(--success-soft); color: var(--success); }
+
+/* ---------- ตารางงานข้างหน้า (agenda) ---------- */
+.agenda { list-style: none; margin: 0; padding: 0; }
+.agenda > li { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; padding: 10px 0; }
+.agenda > li + li { border-top: 1px solid var(--line); }
+.agenda .day { text-align: center; border-radius: var(--r); background: var(--surface-2); border: 1px solid var(--line); padding: 4px 0; align-self: start; }
+.agenda .day b { display: block; font-size: var(--fs-lg); line-height: 1.1; }
+.agenda .day small { font-size: 11px; color: var(--muted); }
+.agenda .day.is-today { background: var(--gold-50); border-color: var(--gold-200); }
+.agenda .ev { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; text-decoration: none; color: inherit; border-radius: var(--r-sm); }
+.agenda .ev:hover .ev-name { color: var(--gold-ink); text-decoration: underline; }
+.agenda .ev-time { font-size: var(--fs-xs); color: var(--muted); width: 82px; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.agenda .ev-main { flex: 1; min-width: 0; }
+.agenda .ev-name { font-size: var(--fs-sm); font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda .ev-meta { font-size: var(--fs-xs); color: var(--faint); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda .ev-amt { font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- ตาราง ---------- */
+.ins-tbl { width: 100%; font-size: var(--fs-sm); border-collapse: collapse; }
+.ins-tbl th { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface-2); position: sticky; top: 0; z-index: 1; }
+.ins-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ins-tbl .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ins-tbl .c { text-align: center; font-variant-numeric: tabular-nums; }
+.ins-tbl tbody tr.is-click { cursor: pointer; }
+.ins-tbl tbody tr.is-click:hover td { background: var(--surface-2); }
+.ins-tbl tbody tr.is-muted td { color: var(--faint); }
+.ins-tbl tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); border-bottom: 0; background: var(--surface-2); }
+.ins-tbl a { font-weight: 600; text-decoration: none; color: var(--ink); }
+.ins-tbl a:hover { color: var(--gold-ink); text-decoration: underline; }
+.ins-tbl .sm { display: block; font-size: var(--fs-xs); color: var(--faint); }
+.ins-tbl .weekend td:first-child { color: var(--danger); }
+
+.pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: var(--neutral-soft); color: var(--neutral); white-space: nowrap; }
+.pill.ok { background: var(--success-soft); color: var(--success); }
+.pill.warn { background: var(--warning-soft); color: var(--warning); }
+.pill.crit { background: var(--danger-soft); color: var(--danger); }
+.pill.info { background: var(--info-soft); color: var(--info); }
+
+/* ---------- แถบสรุปของรายงาน ---------- */
+.sumstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.sumstrip > button, .sumstrip > div { background: none; border: 0; text-align: left; padding: 14px 16px; border-right: 1px solid var(--line); color: inherit; }
+.sumstrip > button:hover { background: var(--surface-2); }
+.sumstrip > *:last-child { border-right: 0; }
+.sumstrip .s-l { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
+.sumstrip .s-v { font-size: var(--fs-xl); font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.sumstrip .s-s { font-size: var(--fs-xs); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ---------- กราฟ ---------- */
+.chart-wrap { position: relative; width: 100%; }
+.donut-row { display: flex; align-items: center; gap: 16px; }
+.lgd { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+.lgd li { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: var(--r-sm); font-size: var(--fs-sm); cursor: pointer; }
+.lgd li:hover, .lgd li:focus-visible { background: var(--surface-2); outline: none; }
+.lgd .sw { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.lgd .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.lgd .vl { font-weight: 700; font-variant-numeric: tabular-nums; }
+.lgd .pc { width: 38px; text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+details.ins-card > summary { list-style: none; }
+details.ins-card > summary::-webkit-details-marker { display: none; }
+
+/* ---------- ตารางการใช้ห้องของวัน ---------- */
+.tl { display: flex; flex-direction: column; gap: 6px; }
+.tl-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: center; }
+.tl-room { font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-track { position: relative; height: 34px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); }
+.tl-axis .tl-track { height: 18px; background: none; border: 0; }
+.tl-axis span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.tl-axis span:first-child { transform: none; }
+.tl-axis span:last-child { transform: translateX(-100%); }
+.tl-bar { position: absolute; top: 3px; bottom: 3px; background: var(--gold); color: #fff; border-radius: var(--r-sm); font-size: 11px; font-weight: 600; padding: 0 6px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; text-decoration: none; }
+.tl-bar:hover { background: var(--gold-hover); color: #fff; }
+.tl-bar.is-pending { background: var(--warning-soft); color: var(--warning); border: 1px dashed var(--warning); }
+
+/* ---------- Drawer รายละเอียด ---------- */
+#insDrawer { --bs-offcanvas-width: min(760px, 100vw); top: var(--nav-height); }
+.ins-tbl .nw { white-space: nowrap; }
+#insDrawer .offcanvas-header { border-bottom: 1px solid var(--line); align-items: flex-start; }
+#insDrawer .offcanvas-title { font-size: var(--fs-lg); font-weight: 700; }
+#insDrawer .d-sum { font-size: var(--fs-sm); color: var(--muted); margin-top: 2px; }
+#insDrawer .offcanvas-body { padding: 0; }
+#insDrawer .d-foot { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 575.98px) {
+    .kpi .k-value { font-size: var(--fs-xl); }
+    .vbars .val { display: none; }
+    .agenda .ev-time { width: 64px; }
+    .sumstrip > button, .sumstrip > div { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+@media print {
+    #sidebar, .app-topbar, .no-print, .sidebar-backdrop { display: none !important; }
+    #content { margin: 0 !important; padding: 0 !important; }
+    .ins-card, .sumstrip, .kpi { break-inside: avoid; border-color: #ccc; }
+    .ins-tbl th { position: static; }
+    body { background: #fff !important; }
+}

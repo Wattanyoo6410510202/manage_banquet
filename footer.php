@@ -116,12 +116,39 @@
             if (currentPage === 'executive_dashboard.php' || currentPage === '') {
                 steps.push(
                     {
-                        element: '.section-title:first-child',
+                        element: '#dashKpi',
                         popover: {
-                            title: 'Executive Dashboard',
-                            description: 'ภาพรวมธุรกิจแบบละเอียด ทั้งยอดขาย รายได้ และ KPI',
+                            title: 'ตัวเลขหลักของเดือน',
+                            description: 'รายได้ จำนวนงาน มัดจำ และงานที่ยกเลิก กดการ์ดเพื่อดูรายการงานที่อยู่เบื้องหลังตัวเลข',
                             side: "bottom",
                             align: 'start'
+                        }
+                    },
+                    {
+                        element: '#dashTrend',
+                        popover: {
+                            title: 'รายได้แต่ละเดือน',
+                            description: 'กดแท่งของเดือนใดก็ได้เพื่อดูงานของเดือนนั้น',
+                            side: "top",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#dashTodo',
+                        popover: {
+                            title: 'ต้องจัดการ',
+                            description: 'เรื่องที่ค้างอยู่ เช่น งานรออนุมัติ หรือใกล้วันงานแต่ยังไม่ได้มัดจำ กดเพื่อดูว่าเป็นงานไหน',
+                            side: "left",
+                            align: 'start'
+                        }
+                    },
+                    {
+                        element: '#dashFilter',
+                        popover: {
+                            title: 'เลือกเดือน / โรงแรม / เซลล์',
+                            description: 'เปลี่ยนแล้วหน้าจะอัปเดตทันที ปุ่ม "ดูรายงาน" ไปที่รายงานรายวัน รายเดือน รายปี',
+                            side: "bottom",
+                            align: 'end'
                         }
                     }
                 );
