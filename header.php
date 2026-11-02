@@ -61,6 +61,7 @@ $nav_groups = [
         ['banquet_mt.php', 'bi-tools', 'งานช่าง', ['admin', 'technician']],
         ['banquet_bk.php', 'bi-calendar-check', 'งานจัดเลี้ยง', ['admin', 'banquet_staff']],
         ['banquet_hk.php', 'bi-house-door', 'งานแม่บ้าน', ['admin', 'housekeeping']],
+        ['accounting.php', 'bi-calculator', 'บัญชี', ['admin', 'staff', 'gm', 'manager', 'procurement', 'account', 'accounting']],
     ],
     'ตั้งค่ารายการตรวจสอบ' => [
         ['checklist_mt.php', 'bi-ui-checks', 'Checklist ช่าง', ['admin', 'technician']],

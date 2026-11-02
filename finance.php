@@ -12,7 +12,9 @@ $is_quote = ($quote_id > 0 && $id === 0);
 
 // โหมดใบเสนอราคา (เข้ามาจากปุ่มบัญชี/ROI ใน quotation_list.php) เปิดให้เฉพาะ admin กับ staff
 // หมายเหตุ: กันเฉพาะโหมดนี้ ไม่กระทบโหมด ?id= ที่หน้างานช่าง/แม่บ้าน/จัดเลี้ยงเรียกใช้อยู่
-if ($is_quote && !in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'staff'])) {
+// ฝ่ายบัญชี (account/accounting) เข้าได้ด้วย และแก้รายการของใบที่อนุมัติแล้วได้ (ดู $quote_locked ด้านล่าง)
+$is_accounting = in_array(strtolower($_SESSION['role'] ?? ''), ['account', 'accounting']);
+if ($is_quote && !$is_accounting && !in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'staff'])) {
     echo "<script>window.location.href='login.php?error=access_denied';</script>";
     exit;
 }
@@ -44,7 +46,8 @@ if ($is_quote) {
 
     // อนุมัติใบเสนอราคาแล้ว = ล็อกรายการบัญชี แก้ไข/ลบ/เพิ่มไม่ได้
     // (ใบที่แปลงเป็น EO แล้วก็ล็อกด้วย รายการใหม่ต้องไปคีย์ที่ EO)
-    $quote_locked = (($data['status'] ?? '') === 'Approved') || !empty($eo_of_quote);
+    // ยกเว้นฝ่ายบัญชี ที่ยังเพิ่ม/ลบรายการของใบที่อนุมัติแล้วได้ (เช่น รับมัดจำหลังอนุมัติ)
+    $quote_locked = ((($data['status'] ?? '') === 'Approved') && !$is_accounting) || !empty($eo_of_quote);
 
     // แปลงชื่อฟิลด์ให้ตรงกับฝั่ง EO เพื่อให้ส่วนที่เหลือของหน้าใช้โค้ดร่วมกันได้
     $data['created_by_id']      = intval($data['created_by'] ?? 0);

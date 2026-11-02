@@ -6,6 +6,9 @@ include_once "../includes/audit.php";
 // รับ Action จากทั้ง GET หรือ POST เพื่อความยืดหยุ่น
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+// ฝ่ายบัญชีแก้รายการของใบเสนอราคาที่อนุมัติแล้วได้ (role อื่นยังถูกล็อกตามเดิม)
+$is_accounting = in_array(strtolower($_SESSION['role'] ?? ''), ['account', 'accounting']);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // --- กรณีบันทึกข้อมูล (Save) ---
@@ -56,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['status' => 'error', 'message' => 'ไม่พบใบเสนอราคานี้']);
                 exit;
             }
-            if ($quote_row['status'] === 'Approved') {
+            if ($quote_row['status'] === 'Approved' && !$is_accounting) {
                 echo json_encode(['status' => 'error', 'message' => 'ใบเสนอราคานี้อนุมัติแล้ว ไม่สามารถเพิ่มรายการบัญชีได้']);
                 exit;
             }
@@ -98,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_q->bind_param("i", $ff_row['quotation_id']);
                 $stmt_q->execute();
                 $q_row = $stmt_q->get_result()->fetch_assoc();
-                if ($q_row && $q_row['status'] === 'Approved') {
+                if ($q_row && $q_row['status'] === 'Approved' && !$is_accounting) {
                     echo json_encode(['status' => 'error', 'message' => 'ใบเสนอราคานี้อนุมัติแล้ว ไม่สามารถลบรายการบัญชีได้']);
                     exit;
                 }
