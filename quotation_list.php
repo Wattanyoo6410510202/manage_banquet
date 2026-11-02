@@ -155,6 +155,24 @@ $status_map = [
     'Approved' => ['class' => 'bg-success-subtle text-success', 'text' => 'อนุมัติแล้ว'],
     'Cancelled' => ['class' => 'bg-danger-subtle text-danger', 'text' => 'ยกเลิก']
 ];
+
+// ปุ่มใบเสนอราคาที่ลูกค้าเซ็นแล้ว — โชว์หลังอนุมัติเท่านั้น
+// อัปโหลด: admin/gm หรือคนสร้างใบ (ตรงกับสิทธิ์ใน api/upload_signed_quote.php) / ดูไฟล์: ทุกคนที่เห็นใบนี้
+function ql_signed_buttons(array $q, string $role, int $current_user_id): string
+{
+    if (($q['status'] ?? '') !== 'Approved') return '';
+    $id = (int)$q['id'];
+    $has_file = !empty($q['signed_file']);
+    $html = '';
+    if ($has_file) {
+        $html .= '<a href="api/view_signed_quote.php?id=' . $id . '" target="_blank" class="btn btn-sm btn-success" title="ดูใบเสนอราคาที่ลูกค้าเซ็นแล้ว"><i class="bi bi-file-earmark-check"></i></a>';
+    }
+    if (in_array($role, ['admin', 'gm']) || intval($q['created_by']) === $current_user_id) {
+        $title = $has_file ? 'อัปโหลดใบที่ลูกค้าเซ็นใหม่ (แทนไฟล์เดิม)' : 'อัปโหลดใบเสนอราคาที่ลูกค้าเซ็นแล้ว';
+        $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-upload-signed" data-id="' . $id . '" data-has-file="' . ($has_file ? '1' : '0') . '" title="' . $title . '"><i class="bi bi-file-earmark-arrow-up"></i></button>';
+    }
+    return $html;
+}
 ?>
 
 <div id="alert-container">
@@ -411,6 +429,7 @@ $status_map = [
                                                         class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
                                                 <?php endif; ?>
                                             <?php endif; ?>
+                                            <?= ql_signed_buttons($q, $role, $current_user_id) ?>
                                             <?php if ($q['status'] === 'Approved'): ?>
                                                 <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i
                                                         class="bi bi-calendar-plus"></i></a>
@@ -537,6 +556,7 @@ $status_map = [
                                                         class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i></a>
                                                 <?php endif; ?>
                                             <?php endif; ?>
+                                            <?= ql_signed_buttons($q, $role, $current_user_id) ?>
                                             <?php if ($q['status'] === 'Approved'): ?>
                                                 <a href="add_event.php?quote_id=<?= $q['id'] ?>" class="btn btn-sm btn-outline-info"><i
                                                         class="bi bi-calendar-plus"></i></a>
@@ -644,6 +664,7 @@ $status_map = [
                                                             class="btn btn-sm btn-outline-warning" title="บัญชี/เงินมัดจำ"><i
                                                                 class="bi bi-cash-coin"></i></a>
                                                     <?php endif; ?>
+                                                    <?= ql_signed_buttons($q, $role, $current_user_id) ?>
                                                     <a href="quotation_view.php?id=<?= $q['id'] ?>"
                                                         class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i></a>
                                                 </div>
@@ -762,6 +783,7 @@ $status_map = [
                                                     </button>
                                                 <?php endif; ?>
 
+                                                <?= ql_signed_buttons($q, $role, $current_user_id) ?>
                                                 <?php if ($q['status'] === 'Approved'): ?>
                                                     <a href="add_event.php?quote_id=<?= $q['id'] ?>"
                                                         class="btn btn-sm btn-outline-info">
@@ -949,6 +971,47 @@ $status_map = [
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = 'api/approve_process.php?id=' + id;
+                }
+            });
+        });
+
+        // อัปโหลดใบเสนอราคาที่ลูกค้าเซ็นแล้ว → สถานะ "ลูกค้าเซ็นยืนยัน"
+        $(document).on('click', '.btn-upload-signed', function () {
+            const id = $(this).data('id');
+            const hasFile = $(this).data('has-file') == 1;
+            Swal.fire({
+                title: 'อัปโหลดใบเสนอราคาที่ลูกค้าเซ็นแล้ว',
+                html: '<div class="small text-muted">รองรับ PDF, JPG, PNG (ไม่เกิน 10MB)<br>อัปโหลดแล้วสถานะจะเปลี่ยนเป็น <b>ลูกค้าเซ็นยืนยัน</b></div>' +
+                    (hasFile ? '<div class="small text-warning mt-2"><i class="bi bi-exclamation-triangle"></i> มีไฟล์เดิมอยู่แล้ว ไฟล์ใหม่จะแทนที่ไฟล์เดิม</div>' : ''),
+                input: 'file',
+                inputAttributes: { accept: 'application/pdf,image/jpeg,image/png' },
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'อัปโหลด',
+                cancelButtonText: 'ยกเลิก',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                inputValidator: (file) => {
+                    if (!file) return 'กรุณาเลือกไฟล์';
+                    if (file.size > 10 * 1024 * 1024) return 'ไฟล์ต้องไม่เกิน 10MB';
+                },
+                preConfirm: (file) => {
+                    const fd = new FormData();
+                    fd.append('id', id);
+                    fd.append('signed_file', file);
+                    return fetch('api/upload_signed_quote.php', { method: 'POST', body: fd })
+                        .then(r => r.json().catch(() => ({ status: 'error', message: 'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง' })))
+                        .then(res => {
+                            if (res.status !== 'success') throw new Error(res.message || 'อัปโหลดไม่สำเร็จ');
+                            return res;
+                        })
+                        .catch(err => Swal.showValidationMessage(err.message));
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({ icon: 'success', title: 'อัปโหลดเรียบร้อย', text: 'สถานะเปลี่ยนเป็น: ลูกค้าเซ็นยืนยัน', timer: 1500, showConfirmButton: false })
+                        .then(() => location.reload());
                 }
             });
         });
