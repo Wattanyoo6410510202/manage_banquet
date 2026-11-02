@@ -1,9 +1,10 @@
 <?php
 include "config.php";
-include "header.php";
 
 // หน้าบัญชี: ดูใบเสนอราคาทั้งหมดแยกตามสถานะอนุมัติ (อ่านอย่างเดียว ไม่มีปุ่มแก้ไข/อนุมัติ)
-access_control(['admin', 'staff', 'gm', 'manager', 'procurement', 'account', 'accounting']);
+// header.php ถูก include หลังส่วน export เพื่อให้ส่งไฟล์ Excel ได้ก่อนมี HTML ออกไป
+$allowed_roles = ['admin', 'staff', 'gm', 'manager', 'procurement', 'account', 'accounting'];
+$is_export = ($_GET['export'] ?? '') === 'xlsx';
 
 $role = strtolower($_SESSION['role'] ?? '');
 $can_finance = in_array($role, ['admin', 'staff', 'account', 'accounting']); // ต้องตรงกับสิทธิ์ใน finance.php โหมดใบเสนอราคา
@@ -74,8 +75,8 @@ $list_sql = "SELECT q.id, q.quote_no, q.event_name, q.event_date, q.expiry_date,
              LEFT JOIN event_projects p ON q.project_id = p.id
              LEFT JOIN users ua ON q.approved_by = ua.id
              $tab_where_sql
-             ORDER BY " . ($tab === 'approved' ? 'COALESCE(q.approved_at, q.updated_at) DESC,' : '') . " q.id DESC
-             LIMIT $per_page OFFSET $offset";
+             ORDER BY " . ($tab === 'approved' ? 'COALESCE(q.approved_at, q.updated_at) DESC,' : '') . " q.id DESC"
+             . ($is_export ? '' : " LIMIT $per_page OFFSET $offset"); // export = ทุกรายการตามตัวกรอง ไม่แบ่งหน้า
 $res = $conn->query($list_sql);
 $rows = [];
 if ($res) while ($r = $res->fetch_assoc()) $rows[] = $r;
@@ -87,6 +88,80 @@ $status_map = [
     'Cancelled' => ['bg-danger-subtle text-danger', 'ยกเลิก'],
 ];
 $fmt_date = fn($d) => !empty($d) ? date('d/m/Y', strtotime($d)) : '-';
+$tab_labels = ['pending' => 'ยังไม่อนุมัติ', 'approved' => 'อนุมัติแล้ว', 'all' => 'ทั้งหมด'];
+
+/* =========================================================
+   ส่งออก Excel — รายการตามแท็บและตัวกรองปัจจุบันทั้งหมด
+   ========================================================= */
+if ($is_export) {
+    if (!isset($_SESSION['user']) || !in_array($role, $allowed_roles)) { http_response_code(403); exit('forbidden'); }
+    include_once __DIR__ . "/includes/xlsx_writer.php";
+
+    $scope = ['สถานะ: ' . $tab_labels[$tab]];
+    if ($is_date($date_from) || $is_date($date_to)) {
+        $scope[] = ($date_by === 'created' ? 'วันที่ออกใบ ' : 'วันจัดงาน ')
+            . ($is_date($date_from) ? $fmt_date($date_from) : '…') . ' - ' . ($is_date($date_to) ? $fmt_date($date_to) : '…');
+    }
+    if ($search !== '') $scope[] = 'ค้นหา "' . $search . '"';
+    if ($show_cancelled) $scope[] = 'รวมใบที่ยกเลิก';
+    $scope_txt = implode(' · ', $scope);
+
+    $head = ['ลำดับ', 'เลขที่ใบเสนอราคา', 'วันที่ออก', 'วันจัดงาน', 'วันสิ้นสุด', 'ลูกค้า', 'ผู้ติดต่อ', 'ชื่องาน', 'โครงการ',
+        'เซลล์', 'ก่อน VAT', 'VAT', 'ยอดสุทธิ', 'มัดจำรับแล้ว', 'คงเหลือ', 'สถานะ', 'สถานะใบเสนอราคา', 'อนุมัติโดย', 'วันที่อนุมัติ'];
+    $last_col = XlsxWriter::col(count($head) - 1);
+    $sheet = [
+        [['v' => 'รายงานใบเสนอราคา (บัญชี) — ' . $tab_labels[$tab], 's' => 'title']],
+        [['v' => $scope_txt . ' · ออกรายงาน ' . date('d/m/Y H:i'), 's' => 'sub']],
+        array_map(fn($h) => ['v' => $h, 's' => 'header'], $head),
+    ];
+    $first = 4; // แถวข้อมูลแรก
+    foreach ($rows as $i => $r) {
+        $n = $first + $i;
+        $sheet[] = [
+            ['v' => $i + 1, 's' => 'int'],
+            ['v' => (string)$r['quote_no'], 's' => 'text'],
+            ['v' => $r['created_at'] ? substr($r['created_at'], 0, 10) : null, 's' => 'date', 'date' => true],
+            ['v' => $r['event_date'] ?: null, 's' => 'date', 'date' => true],
+            ['v' => $r['expiry_date'] ?: null, 's' => 'date', 'date' => true],
+            ['v' => (string)$r['cust_name'], 's' => 'text'],
+            ['v' => (string)$r['cust_contact_name'], 's' => 'text'],
+            ['v' => (string)$r['event_name'], 's' => 'text'],
+            ['v' => (string)$r['project_name'], 's' => 'text'],
+            ['v' => (string)$r['sales_name'], 's' => 'text'],
+            ['v' => (float)$r['grand_total'] - (float)$r['vat'], 's' => 'num'],
+            ['v' => (float)$r['vat'], 's' => 'num'],
+            ['v' => (float)$r['grand_total'], 's' => 'num'],
+            ['v' => (float)$r['deposit_total'], 's' => 'num'],
+            ['v' => (float)$r['grand_total'] - (float)$r['deposit_total'], 'f' => "M$n-N$n", 's' => 'calc'],
+            ['v' => $status_map[$r['status']][1] ?? $r['status'], 's' => 'text'],
+            ['v' => (string)($r['workflow_status'] ?? ''), 's' => 'text'],
+            ['v' => $r['status'] === 'Approved' ? (string)$r['approver_name'] : '', 's' => 'text'],
+            ['v' => ($r['status'] === 'Approved' && $r['approved_at']) ? date('d/m/Y H:i', strtotime($r['approved_at'])) : '', 's' => 'text'],
+        ];
+    }
+    $last = $first + count($rows) - 1;
+    $tot = ['v' => 'รวม ' . count($rows) . ' ใบ', 's' => 'total_label'];
+    $total_row = array_fill(0, count($head), ['v' => null, 's' => 'total_label']);
+    $total_row[0] = $tot;
+    foreach (['K' => 10, 'L' => 11, 'M' => 12, 'N' => 13, 'O' => 14] as $L => $ci) {
+        $total_row[$ci] = ['v' => null, 'f' => $rows ? "SUM({$L}{$first}:{$L}{$last})" : '0', 's' => 'total_num'];
+    }
+    $sheet[] = $total_row;
+
+    $x = new XlsxWriter();
+    $x->addSheet('ใบเสนอราคา', $sheet, [
+        'cols' => [7, 20, 12, 12, 12, 30, 22, 30, 24, 20, 15, 13, 15, 15, 15, 13, 24, 20, 17],
+        'merges' => ["A1:{$last_col}1", "A2:{$last_col}2", 'A' . ($last + 1) . ':J' . ($last + 1)],
+        'heights' => [1 => 28],
+        'freeze' => 'C4',
+        'filter' => $rows ? "A3:{$last_col}{$last}" : null,
+    ]);
+    $x->download('บัญชี-ใบเสนอราคา-' . $tab_labels[$tab] . '-' . date('Ymd-His') . '.xlsx');
+    exit;
+}
+
+include "header.php";
+access_control($allowed_roles);
 $qs = function (array $override) {
     $q = array_merge($_GET, $override);
     return '?' . htmlspecialchars(http_build_query(array_filter($q, fn($v) => $v !== '' && $v !== null)));
@@ -114,6 +189,10 @@ $qs = function (array $override) {
                 <h5 class="mb-1 fw-bold"><i class="bi bi-calculator me-2" style="color:#b89441"></i>บัญชี — ใบเสนอราคา</h5>
                 <div class="text-muted small">กรองใบเสนอราคาที่อนุมัติแล้ว / ยังไม่อนุมัติ สำหรับฝ่ายบัญชี</div>
             </div>
+            <a href="<?= $qs(['export' => 'xlsx', 'page' => null]) ?>" class="btn btn-success btn-sm"
+                title="ส่งออกทุกรายการในแท็บ &quot;<?= $tab_labels[$tab] ?>&quot; ตามตัวกรองปัจจุบัน">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export Excel (<?= $tab_labels[$tab] ?>)
+            </a>
         </div>
 
         <form method="GET" class="row g-2 align-items-end">

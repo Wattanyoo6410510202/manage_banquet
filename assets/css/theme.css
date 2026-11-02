@@ -45,8 +45,8 @@
     --fs-xl: 22px;     /* หัวข้อหน้า */
     --fs-2xl: 28px;    /* ตัวเลข KPI ใหญ่ */
 
-    --font: "IBM Plex Sans Thai", "IBM Plex Sans", "Leelawadee UI", Tahoma, sans-serif;
-    --font-num: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+    --font: "Inter", "Sarabun", "Leelawadee UI", Tahoma, sans-serif;
+    --font-num: "Inter", "Sarabun", system-ui, sans-serif;
 
     /* ---- รูปทรง ---- */
     --r-sm: 6px;

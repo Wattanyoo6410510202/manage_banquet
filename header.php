@@ -94,8 +94,8 @@ $nav_initial = mb_substr(trim((string)($_SESSION['user'] ?? 'U')), 0, 1);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- IBM Plex Sans Thai = ฟอนต์ของระบบ, Sarabun = ฟอนต์ของเอกสารพิมพ์ (ใบเสนอราคา/EO) -->
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Inter (อังกฤษ/ตัวเลข) + Sarabun (ไทย) = ฟอนต์ของระบบ และเอกสารพิมพ์ (ใบเสนอราคา/EO) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <!-- jQuery (Must be before other scripts) -->
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <!-- Select2 CSS -->
