@@ -240,7 +240,9 @@ foreach ($qt_rows as $row) {
             'func_total_amount' => number_format($row['func_total_amount'] ?? 0, 2),
             'workflow_status' => $wf_status,
             'overlap' => $is_overlap ? 1 : 0,
-            'customer_signed' => (string) ($row['customer_signature'] ?? ''),
+            // ลูกค้าเซ็นแล้ว = อัปโหลดใบเซ็นแล้ว (api/upload_signed_quote.php) หรือมีลายเซ็นในระบบเดิม
+            'customer_signed' => (!empty($row['signed_file']) || !empty($row['customer_signature'])) ? 1 : 0,
+            'signed_at' => (string) ($row['signed_uploaded_at'] ?? ''),
             'has_beo' => intval($row['beo_count'] ?? 0) > 0 ? '✓' : '-',
         ]
     ];

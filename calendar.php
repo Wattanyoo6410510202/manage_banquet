@@ -189,6 +189,7 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#6c757d"></i>QT ฉบับร่าง</span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#dc3545"></i>ยกเลิก</span>
                         <span class="cal-legend-item"><span class="cal-bubble"><i class="bi bi-chat-dots-fill me-1"></i>วันซ้อนกัน</span></span>
+                        <span class="cal-legend-item"><span class="cal-signed"><i class="bi bi-pen-fill me-1"></i>เซ็นแล้ว</span></span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#6f42c1"></i>จองห้องประชุม</span>
                     </div>
                     <div class="cal-legend cal-legend-type">
@@ -479,6 +480,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // วันซ้อนกับงานที่อนุมัติแล้ว → โชว์ bubble chat "วันซ้อนกัน" (ไม่ใช่ยกเลิก)
             const isOverlap = !!(arg.event.extendedProps && arg.event.extendedProps.overlap);
+            // QT ที่ลูกค้าเซ็นแล้ว (อัปโหลดใบเซ็นแล้ว) → ป้าย "เซ็นแล้ว" สีเขียว
+            const isSigned = arg.event.id.startsWith('qt_') && !!(arg.event.extendedProps && Number(arg.event.extendedProps.customer_signed));
 
             // สำคัญ: ต้องมี overflow:hidden ที่ตัว wrapper และ min-width:0 ที่ลูกใน flex
             // ไม่งั้นข้อความยาวจะ "ล้น" ทะลุไปทับช่องวันถัดไปแทนที่จะถูกตัดด้วย ellipsis
@@ -487,6 +490,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <i class="bi ${typeIcon} cal-chip-icon" style="color:${textColor};"></i>
                     ${timeStr ? `<span class="cal-chip-time" style="color:${textColor};">${timeStr}</span>` : ''}
                     ${isOverlap ? '<span class="cal-bubble"><i class="bi bi-chat-dots-fill me-1"></i>วันซ้อนกัน</span>' : ''}
+                    ${isSigned ? '<span class="cal-signed"><i class="bi bi-pen-fill me-1"></i>เซ็นแล้ว</span>' : ''}
                     <span class="cal-chip-title" style="color:${textColor};">${title}</span>
                 </div>`
             };
@@ -1020,7 +1024,7 @@ function renderQtRow(ev) {
     const props = ev.extendedProps;
     const eid = ev.id;
     const wf = props.workflow_status || '';
-    const hasSigned = props.customer_signed ? '✓' : '-';
+    const hasSigned = Number(props.customer_signed) ? '<span class="text-success fw-bold">✓ เซ็นแล้ว</span>' : '-';
     const deposit = parseFloat((props.func_deposit || '0').replace(/,/g, '')) || 0;
     const total = parseFloat((props.total || '0').replace(/,/g, '')) || 0;
     const balance = Math.max(0, total - deposit);
@@ -1049,7 +1053,7 @@ function renderQtRow(ev) {
             <td class="small">${fmtDate(props.follow_up_date)}</td>
             <td class="small">${props.result || '-'}</td>
             <td class="small text-center">${hasSigned}</td>
-            <td class="small">${fmtDate(props.confirmed_date)}</td>
+            <td class="small">${fmtDate(props.signed_at)}</td>
             <td class="small">฿${props.func_deposit}</td>
             <td class="small text-center">${props.has_beo || '-'}</td>
             <td><span class="badge ${badgeClass}" style="font-size: var(--fs-xs);">${props.status}</span></td>
@@ -1506,6 +1510,16 @@ function exportExcel() {
         box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap;
     }
     .cal-bubble .bi { font-size: var(--fs-xs); }
+
+    /* ป้าย "เซ็นแล้ว" — ใบเสนอราคาที่ลูกค้าเซ็นยืนยันแล้ว */
+    .cal-signed {
+        flex-shrink: 0; display: inline-flex; align-items: center;
+        background: #fff; color: #198754 !important;
+        border: 1px solid rgba(25, 135, 84, .5); border-radius: 999px;
+        padding: 0 6px; font-size: var(--fs-xs); font-weight: 700; line-height: 1.5;
+        box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap; font-style: normal;
+    }
+    .cal-signed .bi { font-size: var(--fs-xs); }
 
     /* "+N งาน" ให้ดูเป็นปุ่มเล็กๆ กดได้ชัดเจน แทนตัวหนังสือเปลือย */
     .fc .fc-daygrid-more-link {
