@@ -96,7 +96,9 @@ const { data } = await res.json();
 | ห้อง | `meeting_rooms`, `room_bookings` |
 | ข้อมูลหลัก | `master_menu_types`, `master_menu_categories`, `master_break_types`, `master_checklist_bk`, `master_checklist_hk`, `master_checklist_mt` |
 | ฝ่ายขาย | `sales_logs`, `sales_targets` |
-| ผู้ใช้/ระบบ | `users` (**ไม่มีคอลัมน์ `password`**), `signatures`, `audit_logs` |
+| ผู้ใช้/ระบบ | `users` (**ไม่มีคอลัมน์ `password`**), `signatures`, `audit_logs`, `schema_migrations` |
+
+> ไฟล์แนบ (ลายเซ็น, ใบเสนอราคาที่ลูกค้าเซ็นแล้ว, โลโก้) ส่งออกเฉพาะชื่อไฟล์/path ตามที่เก็บในฐานข้อมูล ไม่ได้ส่งตัวไฟล์
 
 ความสัมพันธ์หลัก: `functions.project_id → event_projects.id`, `event_projects.customer_id → customers.id`, `quotations.customer_id → customers.id`, `quotation_items.quote_id → quotations.id`, `function_*.function_id → functions.id`
 

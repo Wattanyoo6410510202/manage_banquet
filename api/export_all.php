@@ -13,8 +13,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 define('EXPORT_ALL_KEY', '63b15a505dcd53139466cd99dcd57b7812a5e473b6987ef7');
 
-// ตารางที่ไม่ส่งออก (ข้อมูลภายในระบบ ไม่มีประโยชน์กับภายนอก)
-const EXPORT_SKIP_TABLES = ['schema_migrations'];
+// ตารางที่ไม่ส่งออก (ตอนนี้ส่งออกทุกตาราง)
+const EXPORT_SKIP_TABLES = [];
 // คอลัมน์ที่ห้ามหลุดออกไปเด็ดขาด
 const EXPORT_HIDDEN_COLUMNS = [
     'users' => ['password'],
