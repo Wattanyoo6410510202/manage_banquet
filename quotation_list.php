@@ -257,7 +257,7 @@ function ql_signed_buttons(array $q, string $role, int $current_user_id): string
 
     <style>
         .ql-hero{--gold:#b89441;--line:#e8eaee;--ink2:#5b6470;border-radius:16px;padding:15px 20px;
-            background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);position:relative;overflow:hidden}
+            background:#fff;border:1px solid var(--line);position:relative;overflow:hidden}
         .ql-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
             background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
         .ql-hero>*{position:relative;z-index:1}
@@ -682,7 +682,7 @@ function ql_signed_buttons(array $q, string $role, int $current_user_id): string
                     $first_q = $quotes_list[0];
                     ?>
                     <div class="card mb-3 border-0 shadow-sm"
-                        style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
+                        style="border-radius: 12px;">
                         <div class="card-body p-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>

@@ -64,8 +64,8 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
     <div class="row g-3 mb-3">
         <div class="col-12">
             <?php if (!empty($conflicts)): ?>
-            <div class="card border-warning shadow-sm">
-                <div class="card-header bg-warning bg-opacity-10 border-warning d-flex align-items-center gap-2 py-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center gap-2 py-2">
                     <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                     <span class="fw-bold text-warning-emphasis">พบการทับซ้อนของห้อง (<?= count($conflicts) ?> รายการ)</span>
                     <button class="btn btn-sm btn-outline-warning ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#conflictCollapse" aria-expanded="true">
@@ -117,8 +117,8 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                 </div>
             </div>
             <?php else: ?>
-            <div class="card border-success shadow-sm">
-                <div class="card-header bg-success bg-opacity-10 border-success d-flex align-items-center gap-2 py-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success bg-opacity-10 d-flex align-items-center gap-2 py-2">
                     <i class="bi bi-check-circle-fill text-success"></i>
                     <span class="fw-bold text-success-emphasis">ไม่มีการทับซ้อนของห้อง</span>
                 </div>

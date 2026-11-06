@@ -87,8 +87,8 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
     <div id="alert-container"><?php include "assets/alert.php"; ?></div>
 
     <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-dark text-white fw-bold py-3">
                     <i class="bi bi-person-plus-fill me-2"></i>ข้อมูลลูกค้า / บริษัท (กรุณากรอกให้ครบถ้วน)
                 </div>
@@ -151,6 +151,42 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
                             <?php endif; ?>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-dark text-white fw-bold py-3">
+                    <i class="bi bi-cloud-download me-2"></i>ลูกค้าจาก Lead Management
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-2">
+                        <label class="small fw-bold" for="leadCompany">บริษัท</label>
+                        <select id="leadCompany" class="form-select form-select-sm" disabled></select>
+                    </div>
+                    <div id="leadNotice" class="small text-muted mb-2">กำลังโหลด...</div>
+                    <div class="table-responsive flex-grow-1" style="max-height: 400px;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="small">ชื่อลูกค้า</th>
+                                    <th class="small">เบอร์โทร</th>
+                                    <th class="small">อีเมล</th>
+                                    <th class="small">จังหวัด</th>
+                                    <th class="small text-center">ในระบบ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leadBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small id="leadPageInfo" class="text-muted"></small>
+                        <div class="btn-group">
+                            <button type="button" id="leadPrev" class="btn btn-sm btn-outline-secondary" disabled>ก่อนหน้า</button>
+                            <button type="button" id="leadNext" class="btn btn-sm btn-outline-secondary" disabled>ถัดไป</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -264,6 +300,113 @@ $customers = $conn->query("SELECT * FROM customers ORDER BY id DESC");
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+    // ลูกค้าจาก Lead Management: เรียกผ่านพร็อกซีฝั่งเซิร์ฟเวอร์ ค่าจาก API ใส่ด้วย textContent เท่านั้น
+    (function () {
+        const companySelect = document.getElementById('leadCompany');
+        const notice = document.getElementById('leadNotice');
+        const body = document.getElementById('leadBody');
+        const pageInfo = document.getElementById('leadPageInfo');
+        const prev = document.getElementById('leadPrev');
+        const next = document.getElementById('leadNext');
+        let page = 1;
+        let pages = 1;
+        let contactNote = '';
+        let requestSeq = 0;
+
+        function showNotice(text, isError) {
+            notice.textContent = text;
+            notice.className = 'small mb-2 ' + (isError ? 'text-danger' : 'text-muted');
+        }
+
+        async function request(params) {
+            const res = await fetch('api/fetch_lead_customers.php?' + new URLSearchParams(params));
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message);
+            return json;
+        }
+
+        function existsCell(row) {
+            const td = document.createElement('td');
+            td.className = 'small text-center text-nowrap';
+            if (row.in_customers === null || row.in_customers === undefined) {
+                td.textContent = '-';
+                return td;
+            }
+            const badge = document.createElement('span');
+            badge.className = row.in_customers ? 'badge bg-success' : 'badge bg-light text-dark border';
+            badge.textContent = row.in_customers ? 'มีแล้ว' : 'ยังไม่มี';
+            if (row.in_customers) badge.title = 'ตรงกับ' + row.matched_by + 'ในระบบ';
+            td.appendChild(badge);
+            return td;
+        }
+
+        function renderRows(rows) {
+            body.replaceChildren(...rows.map(row => {
+                const tr = document.createElement('tr');
+                const name = row.organization_name || row.display_name || ('#' + row.id);
+                [name, row.phone, row.email, row.province].forEach(value => {
+                    const td = document.createElement('td');
+                    td.className = 'small';
+                    td.textContent = value || '-';
+                    tr.appendChild(td);
+                });
+                tr.appendChild(existsCell(row));
+                return tr;
+            }));
+        }
+
+        function updatePager(meta, disabled) {
+            pages = meta.pages || 1;
+            pageInfo.textContent = meta.total === undefined ? '' : `ทั้งหมด ${meta.total} ราย · หน้า ${page}/${pages}`;
+            prev.disabled = disabled || page <= 1;
+            next.disabled = disabled || page >= pages;
+        }
+
+        async function loadCustomers() {
+            const seq = ++requestSeq;
+            showNotice('กำลังโหลด...', false);
+            prev.disabled = next.disabled = true;
+            try {
+                const json = await request({ company_id: companySelect.value, page });
+                if (seq !== requestSeq) return;
+                renderRows(json.data);
+                showNotice(json.data.length ? contactNote : 'ไม่มีข้อมูลลูกค้าในบริษัทนี้', false);
+                updatePager(json.meta, false);
+            } catch (err) {
+                if (seq !== requestSeq) return;
+                body.replaceChildren();
+                showNotice(err.message || 'โหลดข้อมูลไม่สำเร็จ', true);
+                updatePager({}, true);
+            }
+        }
+
+        async function init() {
+            try {
+                const json = await request({});
+                const scopes = json.meta.scopes || [];
+                if (!scopes.includes('customers.read')) {
+                    showNotice('API key นี้ไม่มีสิทธิ์ customers.read', true);
+                    return;
+                }
+                if (!json.data.length) {
+                    showNotice('API key นี้ยังไม่มีบริษัทที่อ่านได้', true);
+                    return;
+                }
+                contactNote = scopes.includes('customers.contact') ? '' : 'API key นี้ไม่มีสิทธิ์ customers.contact จึงไม่เห็นชื่อและข้อมูลติดต่อ';
+                companySelect.replaceChildren(...json.data.map(company => new Option(company.name, company.id)));
+                companySelect.disabled = false;
+                loadCustomers();
+            } catch (err) {
+                showNotice(err.message || 'โหลดข้อมูลไม่สำเร็จ', true);
+            }
+        }
+
+        companySelect.addEventListener('change', () => { page = 1; loadCustomers(); });
+        prev.addEventListener('click', () => { page--; loadCustomers(); });
+        next.addEventListener('click', () => { page++; loadCustomers(); });
+        init();
+    })();
+
     function showCustomerHistory(custId, custName) {
         document.getElementById('historyCustName').innerText = custName;
         const body = document.getElementById('historyBody');

@@ -202,7 +202,7 @@ $status_text = $current_status === 'Confirmed' ? 'อนุมัติแล้
 
     .function-form .main-header {
         background: #fff;
-        border-bottom: 2px solid var(--hotel-gold, #b89441);
+        border-bottom: 1px solid var(--line, #e8eaee);
     }
 
     .function-form .main-header h4 {

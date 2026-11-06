@@ -306,7 +306,7 @@ if ($q && mysqli_num_rows($q) > 0) {
                 if (!$master) $master = $drafts[0];
                 $has_drafts = count($drafts) > 1;
             ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="d-flex align-items-center">

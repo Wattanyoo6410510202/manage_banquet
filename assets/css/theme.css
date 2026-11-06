@@ -409,19 +409,12 @@ body .fs-6:not(#printableArea *) { font-size: var(--fs-base) !important; }
 .card-footer:where(:not(#printableArea *)){ background: var(--surface-2); border-top: 1px solid var(--line); }
 .card-title:where(:not(#printableArea *)){ font-size: var(--fs-md); font-weight: 700; }
 
-/* หัวการ์ด/หัว modal ที่เคยเป็นพื้นสีทึบ → พื้นขาว + แถบสีด้านบน */
+/* หัวการ์ดที่เคยเป็นพื้นสีทึบ → พื้นขาว ไม่มีแถบสี */
 .card-header.bg-dark:where(:not(#printableArea *)), .card-header.bg-primary:where(:not(#printableArea *)), .card-header.bg-success:where(:not(#printableArea *)), .card-header.bg-info:where(:not(#printableArea *)),
 .card-header.bg-warning:where(:not(#printableArea *)), .card-header.bg-danger:where(:not(#printableArea *)), .card-header.bg-secondary:where(:not(#printableArea *)){
     background: var(--surface) !important;
     color: var(--ink) !important;
-    box-shadow: inset 0 3px 0 var(--accent-bar, var(--gold));
 }
-.card-header.bg-success:where(:not(#printableArea *)){ --accent-bar: var(--success); }
-.card-header.bg-info:where(:not(#printableArea *)), .card-header.bg-primary:where(:not(#printableArea *)){ --accent-bar: var(--info); }
-.card-header.bg-warning:where(:not(#printableArea *)){ --accent-bar: #d69614; }
-.card-header.bg-danger:where(:not(#printableArea *)){ --accent-bar: var(--danger); }
-.card-header.bg-secondary:where(:not(#printableArea *)){ --accent-bar: var(--neutral); }
-.card-header.bg-opacity-10:where(:not(#printableArea *)){ box-shadow: none; }
 .card-header.bg-success.bg-opacity-10:where(:not(#printableArea *)){ background: var(--success-soft) !important; }
 .card-header.bg-warning.bg-opacity-10:where(:not(#printableArea *)){ background: var(--warning-soft) !important; }
 .card-header .text-white:where(:not(#printableArea *)), .card-header.text-white:where(:not(#printableArea *)),

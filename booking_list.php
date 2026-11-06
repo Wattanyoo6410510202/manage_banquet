@@ -597,7 +597,7 @@ require_once "header.php";
 .bk-page{--gold:#b89441;--gold-tint:#f7f1e3;--ink:#111318;--ink2:#5b6470;--muted:#8a9099;--line:#e8eaee}
 .bk-page{color:var(--ink)}
 .bk-hero{border-radius:16px;padding:15px 20px;color:var(--ink);position:relative;overflow:hidden;
-    background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold)}
+    background:#fff;border:1px solid var(--line)}
 .bk-hero::after{content:'';position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(520px 200px at 92% -40%,rgba(184,148,65,.10),transparent 70%)}
 .bk-hero>*{position:relative;z-index:1}

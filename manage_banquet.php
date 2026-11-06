@@ -672,7 +672,7 @@ if ($conflict_q) {
                     }
                 }
             ?>
-                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px; border-left: 4px solid #b89441 !important;">
+                <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="d-flex align-items-center">
@@ -812,7 +812,7 @@ if ($conflict_q) {
     /* ===== Hero + Stat (redesign ของหน้า Banquet Event List) ===== */
     .mb-hero {
         border-radius: 16px; padding: 15px 20px; position: relative; overflow: hidden;
-        background: #fff; border: 1px solid #e8eaee; border-left: 4px solid var(--hotel-gold, #b89441);
+        background: #fff; border: 1px solid #e8eaee;
     }
     .mb-hero::after {
         content: ''; position: absolute; inset: 0; pointer-events: none;

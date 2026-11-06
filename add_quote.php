@@ -112,8 +112,10 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold small mb-1 text-danger">เลือกลูกค้า *</label>
+                    <div class="d-flex gap-1">
+                    <div class="flex-grow-1" style="min-width: 0;">
                     <select name="customer_id" id="customer_select" class="form-select form-select-sm select2-customer-search" required>
-                        <?php if ($selected_customer_id): 
+                        <?php if ($selected_customer_id):
                             $c_stmt = $conn->prepare("SELECT cust_name, cust_phone, cust_address FROM customers WHERE id = ?");
                             $c_stmt->bind_param("i", $selected_customer_id);
                             $c_stmt->execute();
@@ -130,6 +132,11 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
                             <option value="">--- พิมพ์ชื่อลูกค้าเพื่อค้นหา ---</option>
                         <?php endif; ?>
                     </select>
+                    </div>
+                    <button type="button" id="leadPickBtn" class="btn btn-sm btn-outline-secondary text-nowrap">
+                        <i class="bi bi-cloud-download me-1"></i>เลือกจาก Lead
+                    </button>
+                    </div>
                     <div id="customer_info" class="mt-1 p-2 rounded-3 bg-light border <?= $selected_customer_id ? '' : 'd-none' ?>" style="font-size: var(--fs-sm);">
                         <div class="fw-bold text-dark" id="info_name"><?= htmlspecialchars($selected_customer_id ? $c_name : '') ?></div>
                         <div class="text-muted small" id="info_phone"><?= htmlspecialchars($c_phone ?? '') ?></div>
@@ -1231,6 +1238,203 @@ while ($bt = $break_types_with_cat->fetch_assoc()) {
     .table-items th, .table-items td { white-space: nowrap; }
     .table-items textarea { min-width: 180px; }
 </style>
+
+<!-- Modal เลือกลูกค้าจาก Lead Management -->
+<div class="modal fade" id="leadPickModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cloud-download me-2"></i>เลือกลูกค้าจาก Lead Management</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="small fw-bold" for="leadPickCompany">บริษัท</label>
+                    <select id="leadPickCompany" class="form-select form-select-sm" disabled></select>
+                </div>
+                <div id="leadPickNotice" class="small text-muted mb-2"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="small">ชื่อลูกค้า</th>
+                                <th class="small">เบอร์โทร</th>
+                                <th class="small">อีเมล</th>
+                                <th class="small text-center">ในระบบ</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadPickBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small id="leadPickPageInfo" class="text-muted"></small>
+                <div class="btn-group">
+                    <button type="button" id="leadPickPrev" class="btn btn-sm btn-outline-secondary" disabled>ก่อนหน้า</button>
+                    <button type="button" id="leadPickNext" class="btn btn-sm btn-outline-secondary" disabled>ถัดไป</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // เลือกลูกค้าจาก Lead Management: ค่าจาก API ใส่ด้วย textContent เท่านั้น
+    (function () {
+        const modalEl = document.getElementById('leadPickModal');
+        const companySelect = document.getElementById('leadPickCompany');
+        const notice = document.getElementById('leadPickNotice');
+        const body = document.getElementById('leadPickBody');
+        const pageInfo = document.getElementById('leadPickPageInfo');
+        const prev = document.getElementById('leadPickPrev');
+        const next = document.getElementById('leadPickNext');
+        let page = 1;
+        let companiesLoaded = false;
+        let contactNote = '';
+        let requestSeq = 0;
+
+        function showNotice(text, isError) {
+            notice.textContent = text;
+            notice.className = 'small mb-2 ' + (isError ? 'text-danger' : 'text-muted');
+        }
+
+        async function fetchJson(url, options) {
+            const res = await fetch(url, options);
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message);
+            return json;
+        }
+
+        function cell(text, className) {
+            const td = document.createElement('td');
+            td.className = 'small ' + (className || '');
+            td.textContent = text || '-';
+            return td;
+        }
+
+        function buildRow(row, companyId) {
+            const tr = document.createElement('tr');
+            tr.appendChild(cell(row.organization_name || row.display_name || ('#' + row.id)));
+            tr.appendChild(cell(row.phone));
+            tr.appendChild(cell(row.email));
+
+            const status = document.createElement('td');
+            status.className = 'small text-center text-nowrap';
+            if (row.in_customers === null || row.in_customers === undefined) {
+                status.textContent = '-';
+            } else {
+                const badge = document.createElement('span');
+                badge.className = row.in_customers ? 'badge bg-success' : 'badge bg-light text-dark border';
+                badge.textContent = row.in_customers ? 'มีแล้ว' : 'ยังไม่มี';
+                if (row.in_customers) badge.title = 'ตรงกับ' + row.matched_by + 'ในระบบ';
+                status.appendChild(badge);
+            }
+            tr.appendChild(status);
+
+            const action = document.createElement('td');
+            action.className = 'text-end text-nowrap';
+            if (row.in_customers !== null && row.in_customers !== undefined) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm ' + (row.in_customers ? 'btn-outline-primary' : 'btn-primary');
+                btn.textContent = row.in_customers ? 'เลือก' : 'เพิ่มและเลือก';
+                btn.addEventListener('click', () => pick(btn, companyId, row.id));
+                action.appendChild(btn);
+            }
+            tr.appendChild(action);
+            return tr;
+        }
+
+        async function loadCustomers() {
+            const seq = ++requestSeq;
+            const companyId = companySelect.value;
+            showNotice('กำลังโหลด...', false);
+            prev.disabled = next.disabled = true;
+            try {
+                const json = await fetchJson('api/fetch_lead_customers.php?' + new URLSearchParams({ company_id: companyId, page }));
+                if (seq !== requestSeq) return;
+                const pages = json.meta.pages || 1;
+                body.replaceChildren(...json.data.map(row => buildRow(row, companyId)));
+                showNotice(json.data.length ? contactNote : 'ไม่มีข้อมูลลูกค้าในบริษัทนี้', false);
+                pageInfo.textContent = `ทั้งหมด ${json.meta.total} ราย · หน้า ${page}/${pages}`;
+                prev.disabled = page <= 1;
+                next.disabled = page >= pages;
+            } catch (err) {
+                if (seq !== requestSeq) return;
+                body.replaceChildren();
+                pageInfo.textContent = '';
+                showNotice(err.message || 'โหลดข้อมูลไม่สำเร็จ', true);
+            }
+        }
+
+        async function loadCompanies() {
+            showNotice('กำลังโหลด...', false);
+            try {
+                const json = await fetchJson('api/fetch_lead_customers.php');
+                const scopes = json.meta.scopes || [];
+                if (!scopes.includes('customers.read')) {
+                    showNotice('API key นี้ไม่มีสิทธิ์ customers.read', true);
+                    return;
+                }
+                if (!json.data.length) {
+                    showNotice('API key นี้ยังไม่มีบริษัทที่อ่านได้', true);
+                    return;
+                }
+                contactNote = scopes.includes('customers.contact') ? '' : 'API key นี้ไม่มีสิทธิ์ customers.contact จึงเลือกลูกค้าไม่ได้';
+                companySelect.replaceChildren(...json.data.map(company => new Option(company.name, company.id)));
+                companySelect.disabled = false;
+                companiesLoaded = true;
+                loadCustomers();
+            } catch (err) {
+                showNotice(err.message || 'โหลดข้อมูลไม่สำเร็จ', true);
+            }
+        }
+
+        function applyCustomer(customer) {
+            const $sel = $('#customer_select');
+            $sel.find('option').filter(function () { return this.value === String(customer.id); }).remove();
+            $sel.append(new Option(customer.cust_name, customer.id, true, true)).trigger('change');
+            $('#customer_info').removeClass('d-none');
+            $('#info_name').text(customer.cust_name || '');
+            $('#info_phone').text(customer.cust_phone || '');
+            $('#info_address').text(customer.cust_address || '');
+        }
+
+        async function pick(btn, companyId, leadCustomerId) {
+            const label = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'กำลังบันทึก...';
+            try {
+                const fd = new FormData();
+                fd.append('company_id', companyId);
+                fd.append('lead_customer_id', leadCustomerId);
+                const json = await fetchJson('api/import_lead_customer.php', { method: 'POST', body: fd });
+                applyCustomer(json.customer);
+                bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                if (json.created) {
+                    Swal.fire('เพิ่มลูกค้าแล้ว', 'ระบบ Lead ไม่มีเลขผู้เสียภาษีและที่อยู่ ไปกรอกเพิ่มได้ที่หน้าลูกค้า', 'success');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = label;
+                Swal.fire('ผิดพลาด!', err.message || 'เพิ่มลูกค้าไม่สำเร็จ', 'error');
+            }
+        }
+
+        document.getElementById('leadPickBtn').addEventListener('click', () => {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            if (companiesLoaded) {
+                loadCustomers();
+            } else {
+                loadCompanies();
+            }
+        });
+        companySelect.addEventListener('change', () => { page = 1; loadCustomers(); });
+        prev.addEventListener('click', () => { page--; loadCustomers(); });
+        next.addEventListener('click', () => { page++; loadCustomers(); });
+    })();
+</script>
 
 <?php include "includes/menu_type_modal.php"; ?>
 <?php include "footer.php"; ?>

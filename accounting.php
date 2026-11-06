@@ -169,7 +169,7 @@ $qs = function (array $override) {
 ?>
 
 <style>
-    .ac-hero{border-radius:16px;padding:15px 20px;background:#fff;border:1px solid #e8eaee;border-left:4px solid #b89441}
+    .ac-hero{border-radius:16px;padding:15px 20px;background:#fff;border:1px solid #e8eaee}
     .ac-tab{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;border:2px solid #e8eaee;
         background:#fff;text-decoration:none;color:#111318;flex:1 1 0;transition:transform .15s,box-shadow .15s,border-color .15s}
     .ac-tab:hover{border-color:var(--c);transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.08)}
