@@ -180,6 +180,10 @@ while ($u = $users->fetch_assoc()) $user_list[] = $u;
                         </div>
                         <?php endif; ?>
                     </div>
+                    <div class="form-check form-switch mb-1">
+                        <input class="form-check-input" type="checkbox" role="switch" id="hideCancelledQt" checked onchange="updateCalendarEvents()">
+                        <label class="form-check-label small" for="hideCancelledQt">ไม่แสดงใบเสนอราคาที่ยกเลิก</label>
+                    </div>
                     <div class="cal-legend">
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#ffc107"></i>รออนุมัติ</span>
                         <span class="cal-legend-item"><i class="cal-dot" style="background:#0dcaf0"></i>อนุมัติแล้ว</span>
@@ -500,6 +504,11 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'GET',
             extraParams: function () { return { _: Date.now() }; },
             failure: function () { UI.alert('\u0e42\u0e2b\u0e25\u0e14\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e07\u0e32\u0e19\u0e43\u0e19\u0e1b\u0e0f\u0e34\u0e17\u0e34\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'); }
+        },
+        // \u0e1b\u0e0f\u0e34\u0e17\u0e34\u0e19\u0e42\u0e2b\u0e25\u0e14 event \u0e43\u0e2b\u0e21\u0e48\u0e17\u0e38\u0e01\u0e04\u0e23\u0e31\u0e49\u0e07\u0e17\u0e35\u0e48\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e40\u0e14\u0e37\u0e2d\u0e19 \u0e08\u0e36\u0e07\u0e15\u0e49\u0e2d\u0e07\u0e0b\u0e48\u0e2d\u0e19\u0e43\u0e1a\u0e17\u0e35\u0e48\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01\u0e15\u0e31\u0e49\u0e07\u0e41\u0e15\u0e48\u0e15\u0e2d\u0e19\u0e23\u0e31\u0e1a\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25
+        eventDataTransform: function (ev) {
+            if (ev.extendedProps && ev.extendedProps.is_cancelled && isHidingCancelledQt()) ev.display = 'none';
+            return ev;
         },
 
         eventClick: function (info) {
@@ -891,6 +900,7 @@ function updateDayTimetable(date, viewStart, viewEnd) {
         let totalAmt = 0, confirmedAmt = 0, pendingAmt = 0, totalDep = 0;
         allEvents.forEach(ev => {
             const p = ev.extendedProps;
+            if (p.is_cancelled) return; // แสดงแถวได้เมื่อปิด toggle แต่ไม่นับรวมในยอดเงิน
             const t = parseFloat((p.total || '0').replace(/,/g, '')) || 0;
             const d = parseFloat((p.func_deposit || '0').replace(/,/g, '')) || 0;
             totalAmt += t;
@@ -953,7 +963,7 @@ function renderRow(ev) {
     else if(st === 'confirmed' || st === 'approved') badgeClass = 'bg-info text-dark';
     else if(st === 'in progress') badgeClass = 'bg-primary';
     else if(st === 'completed') badgeClass = 'bg-success';
-    else if(st === 'cancelled') badgeClass = 'bg-danger';
+    else if(st === 'cancelled' || props.is_cancelled) badgeClass = 'bg-danger';
 
     const eid = ev.id;
     timetableBody.innerHTML += `
@@ -1035,7 +1045,7 @@ function renderQtRow(ev) {
     else if (st === 'confirmed' || st === 'approved') badgeClass = 'bg-info text-dark';
     else if (st === 'in progress') badgeClass = 'bg-primary';
     else if (st === 'completed') badgeClass = 'bg-success';
-    else if (st === 'cancelled') badgeClass = 'bg-danger';
+    else if (st === 'cancelled' || props.is_cancelled) badgeClass = 'bg-danger';
     else if (props.overlap) badgeClass = 'bg-warning text-dark';
 
     timetableBody.innerHTML += `
@@ -1092,6 +1102,10 @@ function filterRooms() {
     updateCalendarEvents();
 }
 
+function isHidingCancelledQt() {
+    return document.getElementById('hideCancelledQt').checked;
+}
+
 function updateCalendarEvents() {
     if(!calendar) return;
     const companyId = document.getElementById('companyFilter').value;
@@ -1103,18 +1117,21 @@ function updateCalendarEvents() {
     calendar.getEvents().forEach(event => {
         const isQt = event.id.startsWith('qt_');
         const isRb = event.id.startsWith('rb_');
-        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !isRb) || (source === 'quotation' && isQt) || (source === 'qt_approved' && isQt && !event.extendedProps.status.toLowerCase().includes('draft') && !event.extendedProps.status.toLowerCase().includes('freeze')) || (source === 'room' && isRb));
+        const isCancelled = !!event.extendedProps.is_cancelled;
+        let matchesSource = (source === 'all' || (source === 'eo' && !isQt && !isRb) || (source === 'quotation' && isQt) || (source === 'qt_approved' && isQt && !isCancelled && !event.extendedProps.status.toLowerCase().includes('draft') && !event.extendedProps.status.toLowerCase().includes('freeze')) || (source === 'room' && isRb));
         let matchesMode = (event.extendedProps.mode === mode);
         let matchesRoom = (roomId === 'all' || event.extendedProps.room_id == roomId);
 
         let matchesApprove = true;
         if (approveFilter === 'approved') {
             if (isRb) matchesApprove = true;
-            else if (isQt) matchesApprove = !event.extendedProps.status.toLowerCase().includes('draft');
+            else if (isQt) matchesApprove = !isCancelled && !event.extendedProps.status.toLowerCase().includes('draft');
             else matchesApprove = event.extendedProps.approved == 1;
         }
 
-        if (matchesSource && matchesMode && matchesRoom && matchesApprove) {
+        const matchesCancelled = !(isCancelled && isHidingCancelledQt());
+
+        if (matchesSource && matchesMode && matchesRoom && matchesApprove && matchesCancelled) {
             event.setProp('display', 'auto');
         } else {
             event.setProp('display', 'none');

@@ -141,17 +141,22 @@ $sql_q = "SELECT q.*, c.cust_name, c.cust_phone, u.name as creator_name,
           )
           LEFT JOIN function_types ft ON f.function_type_id = ft.id
           LEFT JOIN meeting_rooms mr ON f.room_id = mr.id
-          WHERE q.status NOT IN ('Cancelled')
-            AND q.event_date >= '" . $conn->real_escape_string($range_start) . "'
+          WHERE q.event_date >= '" . $conn->real_escape_string($range_start) . "'
             AND q.event_date <  '" . $conn->real_escape_string($range_end) . "'
           ORDER BY q.id DESC";
 $q_q = mysqli_query($conn, $sql_q);
 if (!$q_q) {
     $q_q = mysqli_query($conn, "SELECT * FROM quotations
-        WHERE status NOT IN ('Cancelled')
-          AND event_date >= '" . $conn->real_escape_string($range_start) . "'
+        WHERE event_date >= '" . $conn->real_escape_string($range_start) . "'
           AND event_date <  '" . $conn->real_escape_string($range_end) . "'
         ORDER BY id DESC");
+}
+
+/* ใบเสนอราคาที่ยกเลิก: หน้ารายการใบเสนอราคาบันทึกที่ workflow_status ส่วน status เก็บผลอนุมัติ จึงต้องเช็คทั้งคู่
+   ส่งใบที่ยกเลิกไปด้วยเสมอ แล้วให้ toggle "ไม่แสดงที่ยกเลิก" ในหน้าปฏิทินเป็นตัวซ่อน */
+function qt_is_cancelled($row) {
+    return strtolower(trim($row['status'] ?? '')) === 'cancelled'
+        || strtolower(trim($row['workflow_status'] ?? '')) === 'cancelled';
 }
 
 $qt_rows = [];
@@ -160,7 +165,8 @@ if ($q_q) {
     while ($row = mysqli_fetch_assoc($q_q)) {
         $qt_rows[] = $row;
         $d = $row['event_date'] ?? '';
-        if ($d && strtolower(trim($row['status'] ?? '')) === 'approved') {
+        /* ใบที่ยกเลิกแล้วไม่ได้ครองวันงาน จึงไม่ทำให้ใบอื่นขึ้น "วันซ้อนกัน" */
+        if ($d && strtolower(trim($row['status'] ?? '')) === 'approved' && !qt_is_cancelled($row)) {
             $date_approved_map[$d] = true;
         }
     }
@@ -193,6 +199,14 @@ foreach ($qt_rows as $row) {
     } elseif ($is_freeze) {
         $color = '#dc3545';
         $status_text = 'กรุณาเปลี่ยนวันหรือกด Freeze';
+    }
+
+    $is_cancelled = qt_is_cancelled($row);
+    if ($is_cancelled) {
+        $is_freeze = false;
+        $is_overlap = false;
+        $color = '#dc3545';
+        $status_text = 'ยกเลิก';
     }
 
     $qt_title = "[" . ($row['quote_no'] ?? '') . "] " . ($row['event_name'] ?? '');
@@ -240,6 +254,7 @@ foreach ($qt_rows as $row) {
             'func_total_amount' => number_format($row['func_total_amount'] ?? 0, 2),
             'workflow_status' => $wf_status,
             'overlap' => $is_overlap ? 1 : 0,
+            'is_cancelled' => $is_cancelled ? 1 : 0,
             // ลูกค้าเซ็นแล้ว = อัปโหลดใบเซ็นแล้ว (api/upload_signed_quote.php) หรือมีลายเซ็นในระบบเดิม
             'customer_signed' => (!empty($row['signed_file']) || !empty($row['customer_signature'])) ? 1 : 0,
             'signed_at' => (string) ($row['signed_uploaded_at'] ?? ''),
